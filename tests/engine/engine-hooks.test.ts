@@ -301,6 +301,13 @@ describe('meta commands and timers', () => {
       ['smash', 'kitten'],
       ['wear', 'unicorn'],
       ['ring', 'unicorn'],
+      ['open', 'zz_nothing'],
+      ['close', 'zz_nothing'],
+      ['lock', 'zz_nothing', 'key'],
+      ['unlock', 'zz_nothing', 'key'],
+      ['put', 'zz_nothing', 'bed'],
+      ['search', 'zz_nothing'],
+      ['take', 'zz_nothing', 'bed'],
     ] as const) {
       expect(run(state, a, t, i).understood).toBe(false);
     }

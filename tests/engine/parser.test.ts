@@ -140,9 +140,10 @@ describe('fallbackParse', () => {
 
     it('parses "insert disk in drive"', () => {
       expect(fallbackParse('insert disk in drive')).toEqual({
-        action: 'use',
+        action: 'put',
         target: 'disk',
         indirect: 'drive',
+        prep: 'in',
       });
     });
 
@@ -308,7 +309,7 @@ describe('use synonyms', () => {
     });
   });
 
-  it.each(['open', 'push', 'pull', 'press'])('“%s X” is a use', (verb) => {
+  it.each(['push', 'pull', 'press'])('“%s X” is a use', (verb) => {
     expect(fallbackParse(`${verb} the drawer`)).toEqual({ action: 'use', target: 'drawer' });
   });
 

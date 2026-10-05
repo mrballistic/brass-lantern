@@ -18,6 +18,8 @@ export interface Room {
   instead?: RuleTable;
   /** Rules that run after a verb's default succeeds here. */
   after?: RuleTable;
+  /** Items present here without being in the room: doors, windows, the sky. Never listed. */
+  scenery?: string[];
 }
 
 /**
@@ -80,6 +82,16 @@ export interface Item {
   contains?: string[];
   /** Makes the item a container; doors use the same block for openable/open/locked/key. */
   container?: Container;
+  /** Things can be put on it, and what's on it is always visible and reachable. */
+  surface?: boolean;
+  /** Present but never listed in the room (the house, the forest). Still examinable. */
+  scenery?: boolean;
+  /** A door between rooms: exits name it, and pass only while it's open. */
+  door?: boolean;
+  /** "a", "an", "some", or "" in listings. Defaults by the name's first letter. */
+  article?: string;
+  /** Heading over this item's contents in listings. */
+  contentsHeading?: string;
 }
 
 export interface Container {

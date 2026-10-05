@@ -1,11 +1,15 @@
 import type { GameState } from '@/types/game';
 import type { Item, World } from '@/types/world';
 import { evaluateCondition } from '../conditions';
-import { describeRoom } from '../describe';
-import { inventoryOf, isCarried, matchItem, matchNpc, moveItem, PLAYER, reachableItems, visibleItemsIn } from '../model';
+import { contentsLines, describeRoom, withArticle } from '../describe';
+import {
+  closedAround, inventoryOf, isCarried, matchItem, matchNpc, moveItem, PLAYER, reachableItems, visibleItems, visibleItemsIn,
+} from '../model';
 import { miss, ok, type EngineResult } from '../result';
 import { applyRule, findRule, runEvent, withRules } from '../rules';
 import { scoreLines } from './meta';
+
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export function handleLook(world: World, state: GameState): EngineResult {
   return ok(describeRoom(state.currentRoom, world, state));
@@ -15,7 +19,11 @@ export function handleInventory(world: World, state: GameState): EngineResult {
   const carried = inventoryOf(world, state);
   if (carried.length === 0) return ok([world.emptyInventory ?? 'You are empty-handed.']);
   const lines = ['You are carrying:'];
-  for (const id of carried) lines.push(`  - ${world.items[id]?.name ?? id}`);
+  for (const id of carried) {
+    const name = world.items[id]?.name ?? id;
+    lines.push(world.style === 'infocom' ? `  ${capitalize(withArticle(world, id))}` : `  - ${name}`);
+    lines.push(...contentsLines(world, state, id, 2));
+  }
   return ok(lines);
 }
 
@@ -33,19 +41,25 @@ export function handleTake(target: string | undefined, world: World, state: Game
     }
     return ok(lines, true);
   }
-  const itemId = matchItem(target, visibleIds, world);
+  const carried = inventoryOf(world, state);
+  const itemId = matchItem(target, visibleItems(world, state).filter((id) => !carried.includes(id)), world);
   if (!itemId) {
-    if (matchItem(target, inventoryOf(world, state), world)) return ok(['You already have that.']);
+    if (matchItem(target, carried, world)) return ok(['You already have that.']);
     return miss(`You don’t see a “${target}” here.`);
   }
+  return takeItem(itemId, world, state);
+}
+
+/** Take an item the player can see: refusals first, so a refusal changes nothing. */
+export function takeItem(itemId: string, world: World, state: GameState): EngineResult {
   const item = world.items[itemId];
   if (!item.portable) return ok([item.refusal ?? `You can’t take the ${item.name}.`]);
+  const closed = closedAround(world, state, itemId);
+  if (closed) return ok([`The ${world.items[closed].name} is closed.`]);
 
   moveItem(state, itemId, PLAYER);
   (state.itemState[itemId] ??= {}).moved = true;
-
-  const lines = [`Taken: ${item.name}.`];
-  return ok(lines, true);
+  return ok([world.style === 'infocom' ? 'Taken.' : `Taken: ${item.name}.`], true);
 }
 
 export function handleDrop(target: string | undefined, world: World, state: GameState): EngineResult {
@@ -55,13 +69,15 @@ export function handleDrop(target: string | undefined, world: World, state: Game
 
   moveItem(state, itemId, state.currentRoom);
 
-  return ok([`Dropped: ${world.items[itemId]?.name ?? itemId}.`], true);
+  return ok([world.style === 'infocom' ? 'Dropped.' : `Dropped: ${world.items[itemId]?.name ?? itemId}.`], true);
 }
 
 export function handleExamine(target: string | undefined, world: World, state: GameState): EngineResult {
   if (!target) return ok(['Examine what?']);
-  const matchedItem = matchItem(target, reachableItems(world, state), world);
-  if (matchedItem) return ok([world.items[matchedItem]?.description ?? 'It’s nondescript.']);
+  const matchedItem = matchItem(target, visibleItems(world, state), world);
+  if (matchedItem) {
+    return ok([world.items[matchedItem]?.description ?? 'It’s nondescript.', ...contentsLines(world, state, matchedItem)]);
+  }
 
   const matchedNpc = matchNpc(target, world, state);
   if (matchedNpc) return ok([world.npcs[matchedNpc]?.description ?? 'They look back at you.']);

@@ -18,8 +18,16 @@ const RE = {
   take: /^(?:take|get|grab|pick\s+up)\s+(?:the\s+)?(.+)$/i,
   drop: /^(?:drop|put\s+down|leave)\s+(?:the\s+)?(.+)$/i,
   examine: /^(?:examine|inspect|look\s+at|x|read)\s+(?:the\s+)?(.+)$/i,
-  use: /^(?:use|operate|open|push|pull|press)\s+(?:the\s+)?(.+?)(?:\s+(?:on|in|into|with)\s+(?:the\s+)?(.+))?$/i,
-  // "put the disk in the drive". Runs after wear/drop so "put on"/"put down" win.
+  use: /^(?:use|operate|push|pull|press)\s+(?:the\s+)?(.+?)(?:\s+(?:on|in|into|with)\s+(?:the\s+)?(.+))?$/i,
+  open: /^open\s+(?:the\s+)?(.+)$/i,
+  close: /^(?:close|shut)\s+(?:the\s+)?(.+)$/i,
+  lock: /^lock\s+(?:the\s+)?(.+?)(?:\s+with\s+(?:the\s+)?(.+))?$/i,
+  unlock: /^unlock\s+(?:the\s+)?(.+?)(?:\s+with\s+(?:the\s+)?(.+))?$/i,
+  putIn: /^(?:put|insert|place|slide|stick|feed|plug)\s+(?:the\s+|a\s+)?(.+?)\s+(?:in|into|inside)\s+(?:the\s+|my\s+)?(.+)$/i,
+  putOn: /^(?:put|place|set)\s+(?:the\s+|a\s+)?(.+?)\s+(?:on|onto)\s+(?:the\s+)?(.+)$/i,
+  takeFrom: /^(?:take|get|remove)\s+(?:the\s+)?(.+?)\s+(?:from|out\s+of|off)\s+(?:the\s+)?(.+)$/i,
+  search: /^(?:search|look\s+in|look\s+inside)\s+(?:the\s+)?(.+)$/i,
+  // "attach X to Y", "insert disk": USE. Runs after wear/drop/putIn/putOn so those win.
   insert: /^(?:insert|put|slide|stick|feed|plug|attach)\s+(?:the\s+|a\s+)?(.+?)(?:\s+(?:in|into|on|onto|to)\s+(?:the\s+|my\s+)?(.+))?$/i,
   give: /^(?:give|hand|offer|return)\s+(?:the\s+)?(.+?)(?:\s+(?:back\s+)?to\s+(?:the\s+)?(.+?))?(?:\s+back)?$/i,
   wear: /^(?:wear|put\s+on)\s+(?:the\s+)?(.+)$/i,
@@ -51,14 +59,22 @@ const SINGLE_WORD: Record<string, ParsedAction> = {
 // Each entry maps a verb-pattern regex to the canonical action. The first capture
 // group is the target; an optional second group is the indirect object. Order
 // matters — earlier entries win on ambiguous input.
-const VERB_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
+const VERB_PATTERNS: ReadonlyArray<readonly [RegExp, string, ('in' | 'on')?]> = [
   [RE.movement, 'go'],
   [RE.enter, 'go'],
+  [RE.takeFrom, 'take'],
   [RE.take, 'take'],
   [RE.drop, 'drop'],
+  [RE.search, 'search'],
   [RE.examine, 'examine'],
+  [RE.open, 'open'],
+  [RE.close, 'close'],
+  [RE.lock, 'lock'],
+  [RE.unlock, 'unlock'],
   [RE.use, 'use'],
   [RE.wear, 'wear'],
+  [RE.putIn, 'put', 'in'],
+  [RE.putOn, 'put', 'on'],
   [RE.insert, 'use'],
   [RE.give, 'give'],
   [RE.talk, 'talk'],
@@ -74,7 +90,8 @@ export const BUILT_IN_WORDS: ReadonlySet<string> = new Set([
   'go', 'move', 'walk', 'head', 'run', 'exit', 'enter', 'into', 'take', 'get', 'grab', 'pick up',
   'drop', 'put down', 'leave', 'examine', 'inspect', 'look at', 'x', 'read', 'use', 'operate', 'open',
   'push', 'pull', 'press', 'insert', 'put', 'slide', 'stick', 'feed', 'plug', 'attach', 'give', 'hand',
-  'offer', 'return', 'wear', 'put on', 'talk', 'speak', 'chat', 'ask', 'question', 'smash', 'destroy',
+  'offer', 'return', 'wear', 'put on', 'close', 'shut', 'lock', 'unlock', 'place', 'set', 'remove',
+  'search', 'look in', 'look inside', 'talk', 'speak', 'chat', 'ask', 'question', 'smash', 'destroy',
   'break', 'kill', 'hit', 'attack', 'wreck', 'whack', 'beat', 'sit', 'sit down', 'relax', 'wait', 'z',
   ...Object.keys(SINGLE_WORD),
   ...Object.keys(DIRECTIONS),
@@ -202,11 +219,12 @@ function parse(rawInput: string, allowBareWord: boolean, verbs?: World['verbs'])
   const phrase = matchWorld(input, patterns.filter((p) => p.phrase));
   if (phrase) return phrase;
 
-  for (const [re, action] of VERB_PATTERNS) {
+  for (const [re, action, prep] of VERB_PATTERNS) {
     const m = input.match(re);
     if (!m) continue;
     const parsed: ParsedAction = { action, target: m[1].trim() };
     if (m[2]) parsed.indirect = m[2].trim();
+    if (prep) parsed.prep = prep;
     return parsed;
   }
 

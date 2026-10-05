@@ -19,6 +19,7 @@ export interface ParsedAction {
 export const ACTION_VOCAB = [
   'go', 'take', 'drop', 'use', 'examine', 'look', 'talk', 'inventory',
   'smash', 'wear', 'give', 'sit', 'wait', 'hint', 'score', 'help',
+  'open', 'close', 'lock', 'unlock', 'put', 'search',
   'restart', 'quit', 'save', 'load', 'unknown',
 ] as const;
 
@@ -82,7 +83,8 @@ function buildSystemInstruction(ctx: IntentContext): string {
     '- Exits are listed by id. For movement, use an exit id or a direction (north/south/east/west/up/down).',
     '- Prefer things in this room or inventory. Pick the closest listed id rather than inventing one.',
     '- give: target is the item, indirect is the NPC. use: target is the item being used, indirect is what it is used on or put into.',
-    '- Putting, inserting, sliding or loading one item into another is use. Hitting something with an item is smash, with the item as indirect.',
+    '- Putting one item in or on another is put: target is the item, indirect is the container or surface. Opening and closing are open and close; lock and unlock take the key as indirect; looking inside something is search.',
+    '- Hitting something with an item is smash, with the item as indirect.',
     '- Asking for help with the puzzle, a clue, or what to do next is hint.',
     "- If the input is ambiguous or doesn't fit any verb, use action 'unknown' and omit target.",
     '- Some verbs (look, inventory, hint, score, help, restart, quit, save, load, sit, wait) take no target.',

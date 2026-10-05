@@ -1,0 +1,144 @@
+import type { GameState } from '@/types/game';
+import type { World } from '@/types/world';
+import { contentsLines, listPhrase } from '../describe';
+import {
+  canReachInside,
+  canSeeInside,
+  childrenOf,
+  inventoryOf,
+  isCarried,
+  isInside,
+  isLocked,
+  isOpen,
+  matchItem,
+  moveItem,
+  reachableItems,
+  visibleItems,
+} from '../model';
+import { miss, ok, type EngineResult } from '../result';
+import { applyRule, findRule } from '../rules';
+import { takeItem } from './objects';
+
+// Every handler checks everything it needs before it changes anything, so a
+// refusal is an understood reply that leaves the game as it was.
+
+const name = (world: World, id: string) => world.items[id]?.name ?? id;
+
+function find(target: string, world: World, state: GameState): string | null {
+  return matchItem(target, visibleItems(world, state), world);
+}
+
+/** Worlds that modeled OPEN or PUT as USE keep working: fall back to the target's use rules. */
+function useFallback(id: string, other: string | null, world: World, state: GameState): EngineResult | null {
+  const reach = reachableItems(world, state);
+  const rule = findRule(world, state, 'instead', 'use', { target: id, indirect: other, room: state.currentRoom }, reach);
+  return rule ? applyRule(rule, world, state) : null;
+}
+
+export function handleOpen(target: string | undefined, world: World, state: GameState): EngineResult {
+  if (!target) return ok(['Open what?']);
+  const id = find(target, world, state);
+  if (!id) return miss(`You don’t see a “${target}” here.`);
+  const item = world.items[id];
+  if (!item.container?.openable) return useFallback(id, null, world, state) ?? ok(['You can’t open that.']);
+  if (isOpen(world, state, id)) return ok(['It’s already open.']);
+  if (isLocked(world, state, id)) return ok([`The ${item.name} is locked.`]);
+  (state.itemState[id] ??= {}).open = true;
+  const inside = childrenOf(world, state, id).filter((k) => !world.items[k]?.scenery);
+  if (item.door || inside.length === 0 || item.container.transparent) return ok(['Opened.'], true);
+  return ok([`Opening the ${item.name} reveals ${listPhrase(world, inside)}.`], true);
+}
+
+export function handleClose(target: string | undefined, world: World, state: GameState): EngineResult {
+  if (!target) return ok(['Close what?']);
+  const id = find(target, world, state);
+  if (!id) return miss(`You don’t see a “${target}” here.`);
+  if (!world.items[id].container?.openable) return ok(['You can’t close that.']);
+  if (!isOpen(world, state, id)) return ok(['It’s already closed.']);
+  (state.itemState[id] ??= {}).open = false;
+  return ok(['Closed.'], true);
+}
+
+function handleLockState(
+  locking: boolean,
+  target: string | undefined,
+  indirect: string | undefined,
+  world: World,
+  state: GameState,
+): EngineResult {
+  const verb = locking ? 'lock' : 'unlock';
+  const Verb = locking ? 'Lock' : 'Unlock';
+  if (!target) return ok([`${Verb} what?`]);
+  const id = find(target, world, state);
+  if (!id) return miss(`You don’t see a “${target}” here.`);
+  const c = world.items[id].container;
+  if (!c?.key) return ok([`You can’t ${verb} that.`]);
+  if (!indirect) return ok([`${Verb} it with what?`]);
+  const keyId = matchItem(indirect, visibleItems(world, state), world);
+  if (!keyId) return miss(`You don’t see a “${indirect}” here.`);
+  if (!isCarried(state, keyId)) return ok([`You aren’t carrying the ${name(world, keyId)}.`]);
+  if (keyId !== c.key) return ok([`The ${name(world, keyId)} doesn’t fit the lock.`]);
+  if (locking && isOpen(world, state, id)) return ok(['You’ll have to close it first.']);
+  if (isLocked(world, state, id) === locking) return ok([`It’s already ${locking ? 'locked' : 'unlocked'}.`]);
+  (state.itemState[id] ??= {}).locked = locking;
+  return ok([locking ? 'Locked.' : 'Unlocked.'], true);
+}
+
+export function handleLock(target: string | undefined, indirect: string | undefined, world: World, state: GameState) {
+  return handleLockState(true, target, indirect, world, state);
+}
+
+export function handleUnlock(target: string | undefined, indirect: string | undefined, world: World, state: GameState) {
+  return handleLockState(false, target, indirect, world, state);
+}
+
+export function handlePut(
+  target: string | undefined,
+  indirect: string | undefined,
+  world: World,
+  state: GameState,
+): EngineResult {
+  if (!target) return ok(['Put what?']);
+  const id = matchItem(target, inventoryOf(world, state), world);
+  if (!id) return miss(`You aren’t carrying a “${target}”.`);
+  if (!indirect) return ok([`Put the ${name(world, id)} where?`]);
+  const dest = find(indirect, world, state);
+  if (!dest) return miss(`You don’t see a “${indirect}” here.`);
+  const d = world.items[dest];
+  if ((!d.container || d.door) && !d.surface) {
+    return useFallback(id, dest, world, state) ?? ok(['You can’t put things there.']);
+  }
+  if (dest === id || isInside(state, dest, id)) return ok([`You can’t put the ${name(world, id)} inside itself.`]);
+  if (!canReachInside(world, state, dest)) return ok([`The ${d.name} is closed.`]);
+  const capacity = d.container?.capacity;
+  if (capacity !== undefined && childrenOf(world, state, dest).length >= capacity) {
+    return ok([`There’s no room in the ${d.name}.`]);
+  }
+  moveItem(state, id, dest);
+  return ok(['Done.'], true);
+}
+
+export function handleTakeFrom(target: string, indirect: string, world: World, state: GameState): EngineResult {
+  const from = find(indirect, world, state);
+  if (!from) return miss(`You don’t see a “${indirect}” here.`);
+  const fromName = name(world, from);
+  const isHolder = Boolean(world.items[from].surface || world.items[from].container);
+  if (isHolder && !canReachInside(world, state, from) && !canSeeInside(world, state, from)) {
+    return ok([`The ${fromName} is closed.`]);
+  }
+  const id = matchItem(target, childrenOf(world, state, from), world);
+  if (!id) return miss(`There’s no “${target}” in the ${fromName}.`);
+  return takeItem(id, world, state);
+}
+
+export function handleSearch(target: string | undefined, world: World, state: GameState): EngineResult {
+  if (!target) return ok(['Search what?']);
+  const id = find(target, world, state);
+  if (!id) return miss(`You don’t see a “${target}” here.`);
+  const item = world.items[id];
+  if (!canSeeInside(world, state, id)) {
+    return ok([item.container && !item.door ? `The ${item.name} is closed.` : 'You find nothing of interest.']);
+  }
+  const lines = contentsLines(world, state, id);
+  return ok(lines.length > 0 ? lines : [`The ${item.name} is empty.`]);
+}

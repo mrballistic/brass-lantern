@@ -50,6 +50,8 @@ export interface ParsedAction {
   target?: string;
   /** Second object: the NPC in "give X to Y", the item in "use X on Y". */
   indirect?: string;
+  /** For PUT: in or on. */
+  prep?: 'in' | 'on';
 }
 
 export interface SavedState {

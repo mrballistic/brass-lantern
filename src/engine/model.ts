@@ -39,8 +39,9 @@ export function moveItem(state: GameState, id: string, place: Place): void {
   state.locations[id] = place;
 }
 
+/** What a room lists: its direct contents, minus scenery. */
 export function visibleItemsIn(roomId: string, world: World, state: GameState): string[] {
-  return childrenOf(world, state, roomId);
+  return childrenOf(world, state, roomId).filter((id) => !world.items[id]?.scenery);
 }
 
 /** Fuzzy candidates for items, with aliases folded into the matchable name. */
@@ -52,9 +53,6 @@ export function itemCandidates(ids: string[], world: World): Array<{ id: string;
   });
 }
 
-export function reachableItems(world: World, state: GameState): string[] {
-  return [...childrenOf(world, state, state.currentRoom), ...inventoryOf(world, state)];
-}
 
 export function matchItem(target: string, ids: string[], world: World): string | null {
   return fuzzyMatch(target, itemCandidates(ids, world));
@@ -88,4 +86,64 @@ export function isOn(state: GameState, id: string): boolean {
 /** Can the player touch it? */
 export function isReachable(world: World, state: GameState, id: string): boolean {
   return reachableItems(world, state).includes(id);
+}
+
+/** You can see what's in or on it: a surface, or an open or transparent container. */
+export function canSeeInside(world: World, state: GameState, id: string): boolean {
+  const item = world.items[id];
+  if (!item) return false;
+  if (item.surface) return true;
+  if (!item.container || item.door) return false;
+  return isOpen(world, state, id) || Boolean(item.container.transparent);
+}
+
+/** You can touch what's in or on it: a surface, or an open container. */
+export function canReachInside(world: World, state: GameState, id: string): boolean {
+  const item = world.items[id];
+  if (!item) return false;
+  return Boolean(item.surface) || (Boolean(item.container) && !item.door && isOpen(world, state, id));
+}
+
+function roots(world: World, state: GameState): string[] {
+  const room = state.currentRoom;
+  return [...childrenOf(world, state, room), ...(world.rooms[room]?.scenery ?? []), ...inventoryOf(world, state)];
+}
+
+function collect(world: World, state: GameState, into: (id: string) => boolean): string[] {
+  const out: string[] = [];
+  const walk = (id: string) => {
+    if (out.includes(id)) return;
+    out.push(id);
+    if (into(id)) for (const child of childrenOf(world, state, id)) walk(child);
+  };
+  roots(world, state).forEach(walk);
+  return out;
+}
+
+/** Everything the player can see: the room, its scenery, what they carry, and inside open or transparent things. */
+export function visibleItems(world: World, state: GameState): string[] {
+  return collect(world, state, (id) => canSeeInside(world, state, id));
+}
+
+/** Everything the player can touch: like visibleItems, but not through closed glass. */
+export function reachableItems(world: World, state: GameState): string[] {
+  return collect(world, state, (id) => canReachInside(world, state, id));
+}
+
+/** Is `id` inside `ancestor`, at any depth? */
+export function isInside(state: GameState, id: string, ancestor: string): boolean {
+  const seen = new Set<string>();
+  for (let p = state.locations[id]; p && !seen.has(p); p = state.locations[p]) {
+    if (p === ancestor) return true;
+    seen.add(p);
+  }
+  return false;
+}
+
+/** The closed container keeping the player's hands off `id`, if any. */
+export function closedAround(world: World, state: GameState, id: string): string | null {
+  for (let p = state.locations[id]; p && world.items[p]; p = state.locations[p]) {
+    if (!canReachInside(world, state, p)) return p;
+  }
+  return null;
 }

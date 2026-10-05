@@ -10,6 +10,7 @@ import {
 } from './verbs/objects';
 import { withRules } from './rules';
 import { handleWorldVerb } from './verbs/world-verbs';
+import { handleClose, handleLock, handleOpen, handlePut, handleSearch, handleTakeFrom, handleUnlock } from './verbs/containers';
 import { handleGive, handleTalk } from './verbs/people';
 import { handleHelp, handleHint, handleScore, handleUnknown, scoreLines } from './verbs/meta';
 
@@ -77,6 +78,10 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
     case 'take':
       // TAKE ALL applies the rules item by item.
       if (action.target && ALL.test(action.target)) return handleTake(action.target, world, state);
+      if (action.target && action.indirect) {
+        const { target, indirect } = action;
+        return withRules('take', action, world, state, () => handleTakeFrom(target, indirect, world, state));
+      }
       return withRules('take', action, world, state, () => handleTake(action.target, world, state));
     case 'drop':
       return withRules('drop', action, world, state, () => handleDrop(action.target, world, state));
@@ -84,6 +89,18 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
       return withRules('examine', action, world, state, () => handleExamine(action.target, world, state));
     case 'use':
       return handleUse(action.target, action.indirect, world, state);
+    case 'open':
+      return withRules('open', action, world, state, () => handleOpen(action.target, world, state));
+    case 'close':
+      return withRules('close', action, world, state, () => handleClose(action.target, world, state));
+    case 'lock':
+      return withRules('lock', action, world, state, () => handleLock(action.target, action.indirect, world, state));
+    case 'unlock':
+      return withRules('unlock', action, world, state, () => handleUnlock(action.target, action.indirect, world, state));
+    case 'put':
+      return withRules('put', action, world, state, () => handlePut(action.target, action.indirect, world, state));
+    case 'search':
+      return withRules('search', action, world, state, () => handleSearch(action.target, world, state));
     case 'wear':
       return withRules('wear', action, world, state, () => handleWear(action.target, world, state));
     case 'talk':
