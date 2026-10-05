@@ -67,3 +67,25 @@ export function matchNpc(target: string, world: World, state: GameState): string
     present.map((id) => ({ id, name: world.npcs[id]?.name ?? id })),
   );
 }
+
+export function isOpen(world: World, state: GameState, id: string): boolean {
+  const c = world.items[id]?.container;
+  if (!c) return false;
+  if (!c.openable) return true;
+  return state.itemState[id]?.open ?? c.open ?? false;
+}
+
+export function isLocked(world: World, state: GameState, id: string): boolean {
+  const c = world.items[id]?.container;
+  if (!c) return false;
+  return state.itemState[id]?.locked ?? c.locked ?? false;
+}
+
+export function isOn(state: GameState, id: string): boolean {
+  return Boolean(state.itemState[id]?.on);
+}
+
+/** Can the player touch it? */
+export function isReachable(world: World, state: GameState, id: string): boolean {
+  return reachableItems(world, state).includes(id);
+}

@@ -15,7 +15,7 @@ export function scoreLines(world: World, state: GameState): string[] {
 }
 
 export function handleHint(world: World, state: GameState): EngineResult {
-  const hint = (world.hints ?? []).find((h) => evaluateCondition(h.if, state));
+  const hint = (world.hints ?? []).find((h) => evaluateCondition(h.if, state, world));
   return ok([hint ? `[Hint] ${hint.text}` : '[Hint] You’re on your own here. Try LOOK.']);
 }
 

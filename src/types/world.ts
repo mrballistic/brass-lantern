@@ -52,6 +52,23 @@ export interface Item {
   onWear?: string;
   /** Items that start inside or on this one. */
   contains?: string[];
+  /** Makes the item a container; doors use the same block for openable/open/locked/key. */
+  container?: Container;
+}
+
+export interface Container {
+  /** Has a lid or door. Containers that aren't openable are always open. */
+  openable?: boolean;
+  /** Starts open. */
+  open?: boolean;
+  /** Starts locked. */
+  locked?: boolean;
+  /** The item that locks and unlocks it. */
+  key?: string;
+  /** You can see inside even when it's closed. */
+  transparent?: boolean;
+  /** How many items fit directly inside. */
+  capacity?: number;
 }
 
 export interface NPC {

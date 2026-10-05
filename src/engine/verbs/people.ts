@@ -20,7 +20,7 @@ export function handleTalk(target: string | undefined, world: World, state: Game
   let chosen = dialogue.default;
   for (const [key, value] of Object.entries(dialogue)) {
     if (key === 'default') continue;
-    if (evaluateCondition(key, state)) chosen = value;
+    if (evaluateCondition(key, state, world)) chosen = value;
   }
   return ok([chosen]);
 }

@@ -13,7 +13,7 @@ export function runOnEnter(roomId: string, world: World, state: GameState): stri
   const out: string[] = [];
   for (const trigger of room.onEnter) {
     if (state.firedEvents.includes(trigger.then)) continue;
-    if (evaluateCondition(trigger.if, state)) out.push(...runEvent(trigger.then, world, state));
+    if (evaluateCondition(trigger.if, state, world)) out.push(...runEvent(trigger.then, world, state));
   }
   return out;
 }
@@ -23,7 +23,7 @@ export const GENERIC_DENIAL = 'Something stops you. The story isn’t ready for 
 export function enterRoom(targetId: string, world: World, state: GameState): string[] {
   const target = world.rooms[targetId];
   if (!target) return ['There is nothing in that direction.'];
-  if (target.requires && !evaluateCondition(target.requires, state)) {
+  if (target.requires && !evaluateCondition(target.requires, state, world)) {
     return [target.denial ?? GENERIC_DENIAL];
   }
   state.currentRoom = targetId;

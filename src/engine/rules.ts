@@ -60,7 +60,7 @@ export function findUseRule(
       if (!reach.includes(rule.with)) continue;
       if (other && other !== rule.with) continue;
     }
-    if (rule.if && !evaluateCondition(rule.if, state)) continue;
+    if (rule.if && !evaluateCondition(rule.if, state, world)) continue;
     return rule;
   }
   return null;

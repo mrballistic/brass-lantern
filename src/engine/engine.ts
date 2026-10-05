@@ -61,7 +61,7 @@ function ambientLines(world: World, state: GameState): string[] {
   const out: string[] = [];
   for (const a of world.ambient ?? []) {
     if (a.every <= 0 || a.lines.length === 0) continue;
-    if (turns % a.every !== 0 || !evaluateCondition(a.if, state)) continue;
+    if (turns % a.every !== 0 || !evaluateCondition(a.if, state, world)) continue;
     out.push(a.lines[(turns / a.every - 1) % a.lines.length]);
   }
   return out;

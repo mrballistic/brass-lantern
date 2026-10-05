@@ -1,5 +1,7 @@
 import { evaluateCondition } from '@/engine/conditions';
 import type { GameState } from '@/types/game';
+import { stateWith } from '../helpers/state';
+import { fixtureWorld } from '../fixtures/world';
 
 function makeState(overrides: Partial<GameState> & { inventory?: string[] } = {}): GameState {
   const { inventory = [], ...rest } = overrides;
@@ -102,5 +104,32 @@ describe('evaluateCondition — conjunctions', () => {
     expect(evaluateCondition('flag:a & !flag:b', state)).toBe(true);
     expect(evaluateCondition('flag:a & flag:b', state)).toBe(false);
     expect(evaluateCondition('in:lobby & !has:wallet', state)).toBe(false);
+  });
+});
+
+describe('world conditions', () => {
+  it('visited, inside and has read the object tree', () => {
+    const s = stateWith(fixtureWorld, { carrying: ['key'] });
+    expect(evaluateCondition('visited:bedroom', s, fixtureWorld)).toBe(true);
+    expect(evaluateCondition('visited:yard', s, fixtureWorld)).toBe(false);
+    expect(evaluateCondition('inside:key:player', s, fixtureWorld)).toBe(true);
+    expect(evaluateCondition('inside:wallet:living', s, fixtureWorld)).toBe(true);
+    expect(evaluateCondition('!inside:wallet:yard', s, fixtureWorld)).toBe(true);
+  });
+
+  it('open, locked and on read item state', () => {
+    const s = stateWith(fixtureWorld);
+    s.itemState.lamp = { on: true };
+    expect(evaluateCondition('on:lamp', s, fixtureWorld)).toBe(true);
+    expect(evaluateCondition('on:bat', s, fixtureWorld)).toBe(false);
+    expect(evaluateCondition('open:bat', s, fixtureWorld)).toBe(false);
+    expect(evaluateCondition('locked:bat', s, fixtureWorld)).toBe(false);
+  });
+
+  it('here: is false without a world, so old callers stay safe', () => {
+    const s = stateWith(fixtureWorld, { carrying: ['key'] });
+    expect(evaluateCondition('here:key', s, fixtureWorld)).toBe(true);
+    expect(evaluateCondition('here:key', s)).toBe(false);
+    expect(evaluateCondition('here:crate', s, fixtureWorld)).toBe(false);
   });
 });

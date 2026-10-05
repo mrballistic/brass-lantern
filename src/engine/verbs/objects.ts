@@ -163,7 +163,7 @@ export function runFinale(world: World, state: GameState): EngineResult {
   const finale = world.finale!;
   const lines = runEvent(finale.event, world, state);
   for (const trigger of finale.epilogue) {
-    if (evaluateCondition(trigger.if, state)) lines.push(...runEvent(trigger.then, world, state));
+    if (evaluateCondition(trigger.if, state, world)) lines.push(...runEvent(trigger.then, world, state));
   }
   lines.push(...scoreLines(world, state));
   lines.push(...runEvent(finale.footer, world, state));
