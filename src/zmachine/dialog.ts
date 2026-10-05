@@ -22,6 +22,7 @@ function defaultStorage(): Storage | null {
  */
 export class LocalStorageDialog {
   readonly streaming = false;
+  private writeFailed = false;
 
   constructor(
     private readonly prefix: string,
@@ -79,7 +80,19 @@ export class LocalStorageDialog {
   /** `israw` with a string means "create an empty file". Returns whether it was stored. */
   file_write(ref: FileRef, content: ArrayLike<number> | string, israw?: boolean): boolean {
     const bytes = israw || typeof content === 'string' ? [] : Array.from(content);
-    return this.write(ref.dirent, JSON.stringify(bytes));
+    const ok = this.write(ref.dirent, JSON.stringify(bytes));
+    if (!ok) this.writeFailed = true;
+    return ok;
+  }
+
+  /**
+   * Did a file write fail since the last call? glkapi ignores file_write's
+   * result, so the game would say "Ok." about a save that wasn't stored.
+   */
+  takeWriteFailure(): boolean {
+    const failed = this.writeFailed;
+    this.writeFailed = false;
+    return failed;
   }
 
   /** Names of this game's saved games, sorted. */

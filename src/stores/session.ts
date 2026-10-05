@@ -33,6 +33,7 @@ export function useSession() {
 
   async function start(c: Cartridge): Promise<void> {
     carts.insert(c);
+    zgame.stop();
     if (c.kind === 'world') game.initialize(c);
     else await zgame.initialize(c);
   }
@@ -48,6 +49,7 @@ export function useSession() {
     const input = raw.trim();
     const lower = input.toLowerCase();
     if (lower === 'eject' && carts.hasMenu && mode.value !== 'menu') {
+      zgame.stop();
       carts.eject();
       return;
     }

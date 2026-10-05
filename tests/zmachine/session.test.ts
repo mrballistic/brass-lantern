@@ -108,6 +108,36 @@ describe('ZMachineSession with Zork I', () => {
     expect(await h.type('open mailbox')).toContain('reveals a leaflet');
   });
 
+  it('says so when a save doesn’t fit in storage, even though the game says Ok.', async () => {
+    // Small writes (the availability probe) succeed; anything bigger fails, like nearly-full storage.
+    const real = window.localStorage;
+    const tight: Storage = {
+      get length() { return real.length; },
+      key: (i) => real.key(i),
+      getItem: (k) => real.getItem(k),
+      removeItem: (k) => real.removeItem(k),
+      clear: () => real.clear(),
+      setItem: (k, v) => {
+        if (v.length > 50) throw new Error('QuotaExceededError');
+        real.setItem(k, v);
+      },
+    };
+    const h = harness(new LocalStorageDialog('test', tight));
+    h.session.start();
+    await h.type('save');
+    const out = await h.type('slot');
+    expect(out).toContain('[That save didn’t fit: browser storage is full.]');
+  });
+
+  it('declines SCRIPT (transcripts aren’t saved here) and keeps playing', async () => {
+    const h = harness();
+    h.session.start();
+    const out = await h.type('script');
+    expect(out).toContain('[Transcripts aren’t supported here.]');
+    expect(out).not.toContain('Save as?');
+    expect(await h.type('look')).toContain('West of House');
+  });
+
   it('autosaves every turn, and a new session resumes without replaying', async () => {
     const dialog = new LocalStorageDialog('test');
     const first = harness(dialog);

@@ -85,6 +85,20 @@ describe('session router', () => {
     expect(submit).toHaveBeenCalledWith('open mailbox');
   });
 
+  it('EJECT, or inserting another cartridge, stops the story session', async () => {
+    const zgame = useZGameStore();
+    vi.spyOn(zgame, 'initialize').mockResolvedValue();
+    const stop = vi.spyOn(zgame, 'stop');
+    const s = useSession();
+    await s.boot();
+    await s.submit('2');
+    stop.mockClear();
+    await s.submit('eject');
+    expect(stop).toHaveBeenCalledTimes(1);
+    await s.submit('1');
+    expect(stop).toHaveBeenCalledTimes(2);
+  });
+
   it('shows the Z-machine status line in the header', async () => {
     const zgame = useZGameStore();
     vi.spyOn(zgame, 'initialize').mockResolvedValue();

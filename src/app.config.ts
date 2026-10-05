@@ -5,7 +5,8 @@ import { tutorial } from '@/worlds/tutorial';
 
 /** What the cartridge menu offers. With one cartridge, the terminal boots straight into it. */
 export const cartridges: Cartridge[] = [
-  { kind: 'world', id: 'snack-attack', title: 'SNACK ATTACK', world: tutorial },
+  // saveKey: 1.0.0 saved here, before cartridges had their own keys.
+  { kind: 'world', id: 'snack-attack', title: 'SNACK ATTACK', world: tutorial, saveKey: 'brass-lantern:save' },
   // Zork I, Release 119. Source and story file released under the MIT License by Microsoft (2025).
   { kind: 'zcode', id: 'zork1', title: 'ZORK I', story: 'stories/zork1.z3', format: 'Z-machine v3' },
 ];

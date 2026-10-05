@@ -29,9 +29,15 @@ export class ZMachineSession {
     private readonly events: SessionEvents,
   ) {
     this.glkote = new BrowserGlkOte({
-      onLines: (lines) => events.onLines(lines),
+      onLines: (lines) => {
+        events.onLines(lines);
+        this.reportFailedWrite();
+      },
       onStatus: (status) => events.onStatus(status),
-      onInput: () => events.onWaiting(),
+      onInput: () => {
+        this.reportFailedWrite();
+        events.onWaiting();
+      },
       onFilePrompt: (prompt) => this.askForFile(prompt),
       onExit: () => events.onExit(),
       onError: (message) => events.onError(message),
@@ -61,8 +67,18 @@ export class ZMachineSession {
     else this.glkote.sendLine(text);
   }
 
+  private reportFailedWrite(): void {
+    if (this.dialog.takeWriteFailure()) this.events.onLines(['[That save didn’t fit: browser storage is full.]']);
+  }
+
   private askForFile(prompt: FilePrompt): void {
     this.filePrompt = prompt;
+    if (prompt.filetype !== 'save') {
+      // SCRIPT and other file kinds: there's nowhere useful to put them.
+      this.events.onLines([prompt.filetype === 'transcript' ? '[Transcripts aren’t supported here.]' : '[That kind of file isn’t supported here.]']);
+      this.answerFile(null);
+      return;
+    }
     if (prompt.filemode === 'read') {
       const saves = this.dialog.listSaves(prompt.gameid ?? '');
       if (saves.length === 0) {

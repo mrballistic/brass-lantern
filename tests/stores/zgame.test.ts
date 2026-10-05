@@ -112,6 +112,40 @@ describe('zgame store', () => {
     expect(sessions[1].start).toHaveBeenCalled();
   });
 
+  it('a newer initialize wins: the older download, when it lands, boots nothing', async () => {
+    let release!: (v: Uint8Array) => void;
+    const slow = fakeDeps(() => new Promise((r) => (release = r)));
+    const fast = fakeDeps();
+    const store = useZGameStore();
+    const first = store.initialize(CART, slow.deps);
+    await store.initialize(CART, fast.deps);
+    release(new Uint8Array([3]));
+    await first;
+    expect(slow.sessions).toHaveLength(0);
+    expect(fast.sessions).toHaveLength(1);
+  });
+
+  it('stop() cancels a pending start (EJECT during download)', async () => {
+    let release!: (v: Uint8Array) => void;
+    const slow = fakeDeps(() => new Promise((r) => (release = r)));
+    const store = useZGameStore();
+    const pending = store.initialize(CART, slow.deps);
+    store.stop();
+    release(new Uint8Array([3]));
+    await pending;
+    expect(slow.sessions).toHaveLength(0);
+  });
+
+  it('shows a loading line while the story downloads', async () => {
+    let release!: (v: Uint8Array) => void;
+    const slow = fakeDeps(() => new Promise((r) => (release = r)));
+    const store = useZGameStore();
+    const pending = store.initialize(CART, slow.deps);
+    expect(texts(store)).toContain('[Loading the cartridge…]');
+    release(new Uint8Array([3]));
+    await pending;
+  });
+
   it('shows interpreter errors', async () => {
     const { deps, sessions } = fakeDeps();
     const store = useZGameStore();
