@@ -67,3 +67,21 @@ describe('descriptions', () => {
     expect(fallbackParse('examine book')).toEqual({ action: 'examine', target: 'book' });
   });
 });
+
+describe('descriptions that change with the state of the world', () => {
+  it('the first description whose condition holds replaces the plain one', () => {
+    const s = stateWith(world, { room: 'shed', carrying: ['key'] });
+    expect(run(s, 'look').lines).toContain('A dusty shed. A crate sits in the middle.');
+    s.itemState.hatch = { open: true };
+    expect(run(s, 'look').lines).toContain('A dusty shed. Daylight falls through the open hatch.');
+  });
+
+  it('Infocom style: a room you’ve been to is just its name and what’s in it, unless you LOOK', () => {
+    const w = { ...world, style: 'infocom' as const };
+    const s = stateWith(w, { room: 'bedroom' });
+    const go = (target: string) => execute({ action: 'go', target }, { world: w, state: s }).lines;
+    expect(go('west')).toContain('A living room with a table by the door.');
+    expect(go('east')).toEqual(['📍 Bedroom', 'There is an alarm clock here.', 'There is a bed here.']);
+    expect(execute({ action: 'look' }, { world: w, state: s }).lines).toContain('A small bedroom.');
+  });
+});

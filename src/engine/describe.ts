@@ -1,5 +1,6 @@
 import type { GameState } from '@/types/game';
 import type { Room, World } from '@/types/world';
+import { evaluateCondition } from './conditions';
 import { canSeeInside, childrenOf, visibleItemsIn } from './model';
 
 export const COMPASS = ['north', 'south', 'east', 'west', 'northeast', 'northwest', 'southeast', 'southwest', 'up', 'down'];
@@ -90,15 +91,19 @@ export function describeRoom(
   roomId: string,
   world: World,
   state: GameState,
-  opts: { first?: boolean } = {},
+  opts: { first?: boolean; brief?: boolean } = {},
 ): string[] {
   const room = world.rooms[roomId];
   if (!room) return [`The world frays. Room “${roomId}” does not exist.`];
+  const infocom = world.style === 'infocom';
   const lines: string[] = [];
   lines.push(`📍 ${room.name}`);
-  lines.push(opts.first && room.firstDescription ? room.firstDescription : room.description);
+  // Infocom's default (BRIEF): a room you've seen is just its name and contents.
+  if (!(opts.brief && infocom)) {
+    const varied = room.descriptions?.find((d) => evaluateCondition(d.if, state, world))?.text;
+    lines.push(opts.first && room.firstDescription ? room.firstDescription : (varied ?? room.description));
+  }
 
-  const infocom = world.style === 'infocom';
   const visibleItems = visibleItemsIn(roomId, world, state);
   const plain: string[] = [];
   for (const id of visibleItems) {

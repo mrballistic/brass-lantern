@@ -3,6 +3,8 @@ export interface Room {
   description: string;
   /** Replaces `description` on the first visit only. */
   firstDescription?: string;
+  /** Descriptions that depend on the state of things; the first whose `if` holds replaces `description`. */
+  descriptions?: Array<{ if: string; text: string }>;
   /** Label → a room ID, or an Exit for conditions, messages and doors. */
   exits: Record<string, string | Exit>;
   /**

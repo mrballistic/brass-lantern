@@ -31,7 +31,7 @@ export function enterRoom(targetId: string, world: World, state: GameState): str
   state.currentRoom = targetId;
   state.moveCount += 1;
   if (first) state.visited.push(targetId);
-  const lines = describeRoom(targetId, world, state, { first });
+  const lines = describeRoom(targetId, world, state, { first, brief: !first });
   lines.push(...runOnEnter(targetId, world, state));
   return lines;
 }

@@ -59,6 +59,7 @@ export const fixtureWorld: World = {
       name: 'Shed',
       description: 'A dusty shed. A crate sits in the middle.',
       firstDescription: 'You push the door open. A dusty shed, untouched for years. A crate sits in the middle.',
+      descriptions: [{ if: 'open:hatch', text: 'A dusty shed. Daylight falls through the open hatch.' }],
       exits: { south: 'yard', out: 'yard', northeast: { to: 'loft', door: 'hatch' }, up: { to: 'loft', door: 'hatch' } },
       listExits: ['out'],
       items: ['crate', 'socket', 'chest', 'jar', 'shelf'],
