@@ -17,8 +17,10 @@ const DIRECTIONS: Record<string, string> = {
 };
 
 const RE = {
-  movement: /^(?:go|move|walk|head|run|exit)\s+(?:to\s+(?:the\s+)?|toward\s+|over\s+to\s+(?:the\s+)?|out\s+to\s+(?:the\s+)?)?(.+)$/i,
+  movement: /^(?:go|walk|head|run|exit)\s+(?:to\s+(?:the\s+)?|toward\s+|over\s+to\s+(?:the\s+)?|out\s+to\s+(?:the\s+)?)?(.+)$/i,
   enter: /^(?:enter|go\s+into|into)\s+(?:the\s+)?(.+)$/i,
+  // MOVE is GO only with a destination word; plain “move X” is left for worlds (MOVE RUG).
+  moveTo: /^move\s+(?:to|toward|towards|over\s+to)\s+(?:the\s+)?(.+)$/i,
   climb: /^climb(?:\s+(up|down))?(?:\s+(?:the\s+)?(.+))?$/i,
   take: /^(?:take|get|grab|pick\s+up)\s+(?:the\s+)?(.+)$/i,
   drop: /^(?:drop|put\s+down|leave)\s+(?:the\s+)?(.+)$/i,
@@ -72,6 +74,7 @@ const SINGLE_WORD: Record<string, ParsedAction> = {
 // matters — earlier entries win on ambiguous input.
 const VERB_PATTERNS: ReadonlyArray<readonly [RegExp, string, ('in' | 'on')?]> = [
   [RE.enter, 'enter'],
+  [RE.moveTo, 'go'],
   [RE.movement, 'go'],
   [RE.takeFrom, 'take'],
   [RE.take, 'take'],
@@ -104,7 +107,7 @@ const VERB_PATTERNS: ReadonlyArray<readonly [RegExp, string, ('in' | 'on')?]> = 
  * one of these (the built-in wins); verbClashes reports any that try.
  */
 export const BUILT_IN_WORDS: ReadonlySet<string> = new Set([
-  'go', 'move', 'walk', 'head', 'run', 'exit', 'enter', 'into', 'take', 'get', 'grab', 'pick up',
+  'go', 'move to', 'walk', 'head', 'run', 'exit', 'enter', 'into', 'take', 'get', 'grab', 'pick up',
   'drop', 'put down', 'leave', 'examine', 'inspect', 'look at', 'x', 'read', 'use', 'operate', 'open',
   'push', 'pull', 'press', 'insert', 'put', 'slide', 'stick', 'feed', 'plug', 'attach', 'give', 'hand',
   'offer', 'return', 'wear', 'put on', 'close', 'shut', 'lock', 'unlock', 'place', 'set', 'remove',

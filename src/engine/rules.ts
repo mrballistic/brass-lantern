@@ -44,7 +44,15 @@ export function itemIdForName(label: string, world: World): string | null {
 export function runEvent(key: string, world: World, state: GameState): string[] {
   applyEventEffects(key, world, state);
   if (!state.firedEvents.includes(key)) state.firedEvents.push(key);
-  return [...(world.events[key] ?? [])];
+  const lines = world.events[key] ?? [];
+  // Infocom's games never show their bookkeeping: effect lines act, but stay off screen.
+  return world.style === 'infocom' ? lines.filter((l) => !isEffectLine(l)) : [...lines];
+}
+
+const EFFECT_LINE = /^\[(?:Flag set:\s*.+?|Added to inventory:\s*.+?|.+? consumed)\]$/i;
+
+function isEffectLine(line: string): boolean {
+  return EFFECT_LINE.test(line);
 }
 
 /** First applicable use rule on `itemId`, given what else is in reach. */
