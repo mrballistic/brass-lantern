@@ -1,0 +1,34 @@
+# CLAUDE.md
+
+Guidance for AI coding agents working in this repo. Humans: see CONTRIBUTING.md and docs/.
+
+## What this is
+
+Brass Lantern: a text-adventure engine (Vue 3 SPA with a CRT terminal) plus an optional intent server (`server/`, Express + Gemini). A game is a `World` object in `src/worlds/`; `src/app.config.ts` picks which one plays. The default is the tutorial world, Snack Attack.
+
+## Invariants
+
+- **The engine never branches on a world's IDs.** World-specific behavior is data; if the schema can't express something, add a generic hook to `src/types/world.ts` + `src/engine/engine.ts`, and give `tests/fixtures/world.ts` a use of it.
+- **Engine misses never mutate state.** The store runs the regex reading, and on `understood: false` retries with the LLM's reading; that's only safe because a miss changes nothing. `tests/engine/engine-hooks.test.ts` checks it.
+- **The LLM only classifies.** It returns `{ action, target, indirect }`; the server drops anything that isn't a known verb plus identifiers. LLM-generated story text is a defect.
+- **New verbs go in three places:** `src/engine/parser.ts`, the dispatcher (and HELP) in `src/engine/engine.ts`, and `ACTION_VOCAB` in `server/src/llm.ts`.
+- **Conditions** (`flag:` / `has:` / `in:`, `!`, `&`) are parsed only in `src/engine/conditions.ts`; **fuzzy matching** only in `src/engine/fuzzy.ts`.
+- **The Gemini key is server-only**, sent in the `x-goog-api-key` header. Never a `VITE_` variable. Every server env var goes through `server/src/config.ts`.
+- **Player-facing text** uses curly quotes and apostrophes.
+
+## Tests and checks
+
+```bash
+npm run lint && npm run type-check && npm run test:coverage && npm run build
+cd server && npm run lint && npm run type-check && npm test
+```
+
+Coverage thresholds: 80% lines/functions/statements, 75% branches. Shared tests play the fixture world by mocking the app config: `vi.mock('@/app.config', async () => (await import('../fixtures/world')).fixtureConfig)`.
+
+## Docs
+
+`docs/` is a VitePress site published to GitHub Pages with a demo build (`.github/workflows/pages.yml`). When behavior changes, update the relevant page in the same change: `guide/your-first-world.md` quotes `src/worlds/tutorial.ts`, and `tests/worlds/tutorial.test.ts` plays it, so keep the three in sync.
+
+## Provenance
+
+Much of `src/`, `server/src/` and `tests/` is developed alongside a private game and synced here file for file. Keep shared files free of any particular game's content.

@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#0a0a08"/>
+  <g font-family="'VT323', 'Courier New', monospace" fill="#FFB000">
+    <text x="90" y="150" font-size="44" opacity="0.6">═══════════════════════════════</text>
+    <text x="90" y="250" font-size="110" letter-spacing="6">BRASS LANTERN</text>
+    <text x="90" y="320" font-size="44" opacity="0.85">a text adventure engine</text>
+    <text x="90" y="400" font-size="44" opacity="0.6">═══════════════════════════════</text>
+    <text x="90" y="500" font-size="44" fill="#88ffaa">&gt; light lantern</text>
+    <rect x="420" y="468" width="22" height="40" fill="#FFB000"/>
+  </g>
+  <g opacity="0.18">
+    <rect width="1200" height="630" fill="url(#scan)"/>
+  </g>
+  <defs>
+    <pattern id="scan" width="4" height="4" patternUnits="userSpaceOnUse">
+      <rect width="4" height="2" fill="#000"/>
+    </pattern>
+  </defs>
+</svg>

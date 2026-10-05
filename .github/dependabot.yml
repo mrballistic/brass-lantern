@@ -1,0 +1,43 @@
+# Dependency updates for both npm trees and the workflow actions. Minor and
+# patch bumps are grouped into one PR per tree so they don't pile up; majors
+# arrive individually because they tend to need code changes.
+#
+# Held on purpose:
+# - TypeScript on 6.x: the toolchain (vue-tsc, typescript-eslint) hasn't
+#   caught up with 7. Lift the ignore when it has.
+# - @types/node on the major we run (Node 24 LTS, locally and on the server).
+#   Bump it together with a runtime upgrade.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      frontend-minor:
+        update-types: [minor, patch]
+    ignore:
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
+      - dependency-name: '@types/node'
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: npm
+    directory: /server
+    schedule:
+      interval: monthly
+    groups:
+      server-minor:
+        update-types: [minor, patch]
+    ignore:
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
+      - dependency-name: '@types/node'
+        update-types: [version-update:semver-major]
+
+  # Actions are pinned to commit SHAs with the version in a comment;
+  # Dependabot updates both together.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

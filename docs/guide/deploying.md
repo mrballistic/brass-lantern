@@ -1,0 +1,54 @@
+# Deploying
+
+A Brass Lantern game is a static site, plus the intent server if you want loose phrasing understood.
+
+## Static only
+
+`npm run build` writes `dist/`, which any static host can serve: GitHub Pages, Netlify, an S3 bucket, a web server. Without an intent server the game still plays on the regex parser alone; players just get a "didn't understand" reply where the server would have helped.
+
+To serve from a subpath, set the base at build time:
+
+```bash
+VITE_BASE=/my-game/ npm run build
+```
+
+That's how the [demo](https://mrballistic.github.io/brass-lantern/demo/) is published: `.github/workflows/pages.yml` builds these docs and the demo together and deploys them to GitHub Pages on every push to `main`.
+
+## With the intent server
+
+The SPA calls `/api/parse-intent` on its own origin, so serve both from one host and proxy `/api/` to the server:
+
+```apache
+# Apache (mod_proxy, mod_proxy_http)
+DocumentRoot /var/www/my-game
+<Directory /var/www/my-game>
+    FallbackResource /index.html
+</Directory>
+ProxyPass        /api/  http://127.0.0.1:3001/api/
+ProxyPassReverse /api/  http://127.0.0.1:3001/api/
+```
+
+```nginx
+# nginx
+root /var/www/my-game;
+location / { try_files $uri /index.html; }
+location /api/ { proxy_pass http://127.0.0.1:3001; }
+```
+
+Build and run the server:
+
+```bash
+cd server
+npm ci && npm run build
+GEMINI_KEY=… NODE_ENV=production node dist/index.js
+```
+
+In production, use a process manager (systemd, pm2, a container) and keep the key in an environment file only that service can read. The server drains in-flight requests on SIGTERM, so rolling restarts don't drop players' commands.
+
+## Suggestions from running one
+
+- **Cache hashed assets forever and `index.html` never**, and upload the assets before `index.html`. Then a deploy never serves a page whose scripts haven't arrived yet.
+- **Deploy as a user that can only write the site**, not an admin. A CI deploy key is as powerful as the account it logs into.
+- **Pin your CI actions to commit SHAs**, and keep deploy secrets in a deployment environment that only release tags can use.
+- **Check that the key never reaches the bundle.** A CI step that greps `dist/` for `AIza` fails the build if it ever does.
+- **Analytics:** set `VITE_GA_MEASUREMENT_ID` at build time to turn on GA4. The consent banner appears only then.

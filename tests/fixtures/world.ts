@@ -1,0 +1,173 @@
+import type { World } from '@/types/world';
+
+/**
+ * A small world that touches every engine hook, for tests that should pass
+ * against any game (they mock '@/app.config' to play this). Shared with the
+ * public brass-lantern repo, so keep it world-agnostic and complete: when the
+ * engine grows a hook, give this world a use of it.
+ */
+export const fixtureWorld: World = {
+  startRoom: 'bedroom',
+
+  rooms: {
+    bedroom: {
+      name: 'Bedroom',
+      description: 'A small bedroom.',
+      exits: { west: 'living', living_room: 'living' },
+      listExits: ['living_room'],
+      items: ['alarm', 'bed'],
+      npcs: [],
+      onEnter: [],
+    },
+    living: {
+      name: 'Living Room',
+      description: 'A living room with a table by the door.',
+      exits: { east: 'bedroom', bedroom: 'bedroom', out: 'yard', outside: 'yard' },
+      listExits: ['bedroom', 'outside'],
+      items: ['key', 'wallet', 'shirt'],
+      npcs: [],
+      onEnter: [{ if: '!flag:entered_living', then: 'enter_living' }],
+    },
+    yard: {
+      name: 'Yard',
+      description: 'A yard. The shed is to the north.',
+      exits: { in: 'living', inside: 'living', north: 'shed', shed: 'shed', wait: 'shed' },
+      listExits: ['inside', 'shed'],
+      items: ['bat', 'lamp'],
+      npcs: ['neighbor'],
+      onEnter: [],
+    },
+    shed: {
+      name: 'Shed',
+      description: 'A dusty shed. A crate sits in the middle.',
+      exits: { south: 'yard', out: 'yard' },
+      listExits: ['out'],
+      items: ['crate', 'socket'],
+      npcs: [],
+      onEnter: [],
+      requires: 'has:key',
+      denial: 'The shed is locked.',
+    },
+  },
+
+  items: {
+    alarm: {
+      name: 'alarm clock',
+      aliases: ['clock'],
+      description: 'A ringing alarm clock.',
+      portable: false,
+      refusal: 'It is screwed to the wall.',
+      tags: [],
+      onSmash: 'smash_alarm',
+      onSnooze: 'snooze_alarm',
+    },
+    bed: {
+      name: 'bed',
+      description: 'An unmade bed.',
+      portable: false,
+      tags: [],
+      onUse: [{ if: 'flag:rested', say: ['You are already rested.'] }, { then: 'rest' }],
+    },
+    key: { name: 'brass key', aliases: ['key'], description: 'A small brass key.', portable: true, tags: [], onTake: 'take_key' },
+    wallet: { name: 'wallet', description: 'A leather wallet.', portable: true, tags: [] },
+    shirt: { name: 'loud shirt', aliases: ['shirt'], description: 'A very loud shirt.', portable: true, tags: [], onWear: 'wear_shirt' },
+    bat: { name: 'bat', aliases: ['club'], description: 'A wooden bat.', portable: true, tags: [] },
+    lamp: {
+      name: 'lamp',
+      description: 'An unplugged lamp.',
+      portable: true,
+      tags: [],
+      onUse: [{ with: 'socket', then: 'plug_lamp' }, { say: ['It needs a socket.'] }],
+    },
+    lit_lamp: { name: 'lit lamp', description: 'A glowing lamp.', portable: true, tags: [] },
+    socket: { name: 'socket', description: 'A wall socket.', portable: false, tags: [] },
+    crate: { name: 'crate', aliases: ['box'], description: 'A nailed-shut crate.', portable: false, refusal: 'It is too heavy.', tags: [] },
+  },
+
+  npcs: {
+    neighbor: {
+      name: 'Neighbor',
+      description: 'Your neighbor, leaning on the fence.',
+      onGive: { wallet: 'give_wallet' },
+      refuse: { key: '“Keep your key.”' },
+      refuseGift: '“No thanks.”',
+    },
+  },
+
+  dialogue: {
+    neighbor: {
+      default: '“Nice day.”',
+      'flag:paid': '“Thanks for the cash.”',
+      'flag:paid & has:bat': '“Careful with that bat.”',
+    },
+  },
+
+  flagLabels: {
+    'entered living': 'entered_living',
+    'alarm smashed': 'alarm_smashed',
+    rested: 'rested',
+    'wearing shirt': 'wearing_shirt',
+    paid: 'paid',
+    'lamp lit': 'lamp_lit',
+    'crate broken': 'crate_broken',
+  },
+
+  hints: [
+    { if: '!has:key', text: 'Find the key.' },
+    { if: '!flag:crate_broken', text: 'Break the crate.' },
+  ],
+
+  scoring: [
+    { flag: 'alarm_smashed', points: 10 },
+    { flag: 'paid', points: 10 },
+    { flag: 'crate_broken', points: 20 },
+  ],
+  ranks: [
+    { min: 0, title: 'Novice' },
+    { min: 40, title: 'Master' },
+  ],
+
+  idle: 'The clock ticks.',
+  confused: ['Please rephrase that.', 'Still confused.'],
+
+  ambient: [{ if: 'in:yard & !flag:paid', every: 2, lines: ['A dog barks.', 'The dog barks again.'] }],
+
+  finale: {
+    room: 'shed',
+    item: 'crate',
+    with: 'bat',
+    event: 'smash_crate',
+    epilogue: [
+      { if: 'flag:paid', then: 'ending_paid' },
+      { if: '!flag:paid', then: 'ending_unpaid' },
+    ],
+    footer: 'footer',
+    bareHanded: 'hurt_hand',
+    bareHandedAgain: 'Still hurts.',
+    wrongRoom: 'Not here.',
+  },
+
+  events: {
+    intro: ['═══ TEST HOUSE ═══', '✨ CHAPTER 1: TESTING'],
+    enter_living: ['You smell coffee.', '[Flag set: Entered living]'],
+    smash_alarm: ['🔨 You smash the alarm clock.', '[Flag set: Alarm smashed]'],
+    snooze_alarm: ['😴 You hit snooze.'],
+    rest: ['😴 You nap.', '[Flag set: Rested]'],
+    take_key: ['📎 The key is cold.'],
+    wear_shirt: ['🌺 You put on the shirt.', '[Flag set: Wearing shirt]'],
+    give_wallet: ['💼 The neighbor takes the wallet.', '[Flag set: Paid]'],
+    plug_lamp: ['✨ The lamp glows.', '[Lamp consumed]', '[Added to inventory: lit lamp]', '[Flag set: Lamp lit]'],
+    hurt_hand: ['🤜 Ouch.'],
+    smash_crate: ['💥 The crate splinters.', '[Flag set: Crate broken]'],
+    ending_paid: ['“The neighbor waves.”'],
+    ending_unpaid: ['“The neighbor glares.”'],
+    footer: ['Type RESTART to play again.'],
+  },
+};
+
+/** Drop-in replacement for src/app.config.ts in tests: vi.mock('@/app.config', () => fixtureConfig). */
+export const fixtureConfig = {
+  world: fixtureWorld,
+  appName: 'TEST TERMINAL',
+  storagePrefix: 'test',
+};
