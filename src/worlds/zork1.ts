@@ -6,8 +6,8 @@ import type { World } from '@/types/world';
  * source (historicalsource/zork1, MIT License, Copyright (c) 2025 Microsoft);
  * tests/worlds/zork1-diff.test.ts plays it against the original story file.
  *
- * Items are declared in the order Zork's source defines them: in Infocom style
- * the engine lists untouched things in reverse, newest first, as Zork does.
+ * Rooms' `items` and items' `contains` list things in the reverse of the order
+ * Zork prints them: Infocom style lists newest first, as Zork does.
  */
 
 const BOUNDARY = 'The rest of the Great Underground Empire isn’t built yet.';
@@ -340,7 +340,7 @@ export const zork1: World = {
       portable: true,
       tags: [],
       container: { openable: true, capacity: 9 },
-      contains: ['garlic', 'lunch'],
+      contains: ['lunch', 'garlic'],
     },
     lunch: {
       name: 'lunch',

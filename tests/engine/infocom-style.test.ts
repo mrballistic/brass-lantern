@@ -45,7 +45,7 @@ const world: World = {
       tags: [],
       initialDescription: 'On the table is a brown sack.',
       container: { openable: true },
-      contains: ['garlic', 'lunch'],
+      contains: ['lunch', 'garlic'],
     },
     cup: { name: 'cup', description: 'A cup.', portable: true, tags: [] },
     lunch: { name: 'lunch', description: 'Lunch.', portable: true, tags: [] },

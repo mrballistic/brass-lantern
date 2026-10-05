@@ -24,14 +24,21 @@ export function parentOf(state: GameState, id: string): Place {
 }
 
 /**
- * What's directly in or on `place`. Untouched things come in world order and
+ * What's directly in or on `place`. Untouched things come in the order the room
+ * or container lists them, and
  * moved things follow in the order they arrived (so the inventory keeps pickup
  * order). Infocom style reverses both, newest first, as Zork lists them.
  */
 export function childrenOf(world: World, state: GameState, place: string): string[] {
   const here = Object.keys(world.items).filter((id) => state.locations[id] === place);
   const placed = state.placed ?? {};
-  const untouched = here.filter((id) => placed[id] === undefined);
+  // Untouched things keep the order the room (or container) lists them in.
+  const listed = world.rooms[place]?.items ?? world.items[place]?.contains ?? [];
+  const rank = (id: string) => {
+    const i = listed.indexOf(id);
+    return i < 0 ? listed.length : i;
+  };
+  const untouched = here.filter((id) => placed[id] === undefined).sort((a, b) => rank(a) - rank(b));
   const moved = here.filter((id) => placed[id] !== undefined).sort((a, b) => placed[a] - placed[b]);
   if (world.style === 'infocom') return [...moved.reverse(), ...untouched.reverse()];
   return [...untouched, ...moved];

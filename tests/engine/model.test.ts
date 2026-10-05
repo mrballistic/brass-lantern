@@ -52,4 +52,10 @@ describe('the object tree', () => {
     moveItem(state, 'crate', null);
     expect(visibleItemsIn('yard', w, state)).not.toContain('crate');
   });
+
+  it('untouched things keep the order their room lists them in', () => {
+    // world.items declares bell before lamp; the yard lists lamp first.
+    expect(world.rooms.yard.items.indexOf('lamp')).toBeLessThan(world.rooms.yard.items.indexOf('bell'));
+    expect(childrenOf(world, initialState(world), 'yard').filter((id) => id !== 'fence')).toEqual(['bat', 'lamp', 'bell']);
+  });
 });
