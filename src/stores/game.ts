@@ -1,6 +1,9 @@
 import { defineStore } from 'pinia';
 import type { GameState, OutputLine, ParsedAction } from '@/types/game';
-import { world } from '@/app.config';
+import type { World } from '@/types/world';
+import type { WorldCartridge } from '@/types/cartridge';
+import { defaultWorldCartridge, saveKeyFor } from '@/cartridges';
+import { cookiesCommand } from '@/services/cookies';
 import {
   execute,
   initialState,
@@ -13,10 +16,22 @@ import type { EngineResult } from '@/engine/engine';
 import { buildContext, parseIntentRemote } from '@/engine/intent-client';
 import { makeLine } from '@/engine/output';
 import { createPersistenceService } from '@/services/persistence';
-import { analyticsConfigured, track } from '@/services/analytics';
-import { openConsent } from '@/services/consent';
+import { track } from '@/services/analytics';
 
-const persistence = createPersistenceService();
+/** Used before any world cartridge is inserted, e.g. in a Z-machine-only build. */
+const EMPTY_WORLD: World = {
+  startRoom: 'nowhere',
+  rooms: { nowhere: { name: '', description: '', exits: {}, items: [], npcs: [], onEnter: [] } },
+  items: {},
+  npcs: {},
+  events: {},
+  dialogue: {},
+  flagLabels: {},
+};
+
+const initialCartridge = defaultWorldCartridge();
+let world: World = initialCartridge?.world ?? EMPTY_WORLD;
+let persistence = createPersistenceService(initialCartridge ? saveKeyFor(initialCartridge) : undefined);
 
 interface State {
   game: GameState;
@@ -60,7 +75,11 @@ export const useGameStore = defineStore('game', {
   },
 
   actions: {
-    initialize(): void {
+    initialize(cartridge: WorldCartridge | undefined = defaultWorldCartridge()): void {
+      if (!cartridge) throw new Error('There is no world cartridge to play.');
+      world = cartridge.world;
+      persistence = createPersistenceService(saveKeyFor(cartridge));
+      this.$patch({ game: freshGame(), output: [], isParsing: false, restored: false, gameOverTracked: false, lastTarget: null });
       const saved = persistence.load();
       if (saved) {
         this.game = saved.gameState;
@@ -127,12 +146,7 @@ export const useGameStore = defineStore('game', {
       }
 
       if (lower === 'cookies' || lower === 'privacy') {
-        if (analyticsConfigured()) {
-          openConsent();
-          this.appendSystem('[Analytics settings opened]');
-        } else {
-          this.appendSystem('[This build has no analytics. Nothing is collected.]');
-        }
+        this.appendSystem(cookiesCommand());
         return;
       }
 

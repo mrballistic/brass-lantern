@@ -21,7 +21,7 @@ function detectStorage(): Storage | null {
   }
 }
 
-export function createPersistenceService(): PersistenceService {
+export function createPersistenceService(key: string = SAVE_KEY): PersistenceService {
   const storage = detectStorage();
 
   return {
@@ -37,7 +37,7 @@ export function createPersistenceService(): PersistenceService {
         outputHistory: capped,
       };
       try {
-        storage.setItem(SAVE_KEY, JSON.stringify(payload));
+        storage.setItem(key, JSON.stringify(payload));
       } catch {
         // Silent — quota exceeded or other storage failure should not break gameplay.
       }
@@ -46,7 +46,7 @@ export function createPersistenceService(): PersistenceService {
     load() {
       if (!storage) return null;
       try {
-        const raw = storage.getItem(SAVE_KEY);
+        const raw = storage.getItem(key);
         if (!raw) return null;
         const parsed = JSON.parse(raw) as SavedState;
         if (parsed.version !== SAVE_VERSION) return null;
@@ -61,7 +61,7 @@ export function createPersistenceService(): PersistenceService {
     clear() {
       if (!storage) return;
       try {
-        storage.removeItem(SAVE_KEY);
+        storage.removeItem(key);
       } catch {
         // Silent — non-fatal.
       }

@@ -122,6 +122,18 @@ describe('useGameStore', () => {
       expect(store.game.inventory).toContain('wallet');
     });
 
+    it('plays the cartridge it is given, with that cartridge’s save', async () => {
+      const { fixtureWorld } = await import('../fixtures/world');
+      const store = freshStore();
+      const other = { kind: 'world' as const, id: 'other', title: 'OTHER', world: { ...fixtureWorld, startRoom: 'yard' } };
+      store.initialize(other);
+      expect(store.game.currentRoom).toBe('yard');
+      await store.submit('look');
+      expect(localStorage.getItem('test:save:other')).not.toBeNull();
+      store.initialize();
+      expect(store.game.currentRoom).toBe('bedroom');
+    });
+
     it('LOAD with no save prints a "No saved game" notice', async () => {
       const store = freshStore();
       store.initialize();
