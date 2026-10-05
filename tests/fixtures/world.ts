@@ -133,6 +133,7 @@ export const fixtureWorld: World = {
       portable: true,
       switchable: true,
       light: true,
+      home: 'shed',
       tags: [],
       onUse: [{ with: 'socket', then: 'plug_lamp' }, { say: ['It needs a socket.'] }],
       after: { drop: [{ if: '!flag:lamp_rolled', then: 'lamp_rolls' }] },
@@ -222,6 +223,15 @@ export const fixtureWorld: World = {
   },
 
   darkness: { look: 'It is pitch black.', blunder: [{ chance: 100, then: ['You trip in the dark.'] }] },
+  death: {
+    message: ['**** You have died ****'],
+    penalty: -10,
+    lives: 1,
+    respawn: 'bedroom',
+    resurrection: ['You wake up.'],
+    scatter: ['yard', 'living'],
+    final: ['That’s it.'],
+  },
 
   idle: 'The clock ticks.',
   confused: ['Please rephrase that.', 'Still confused.'],
@@ -258,6 +268,7 @@ export const fixtureWorld: World = {
     ending_paid: ['“The neighbor waves.”'],
     ending_unpaid: ['“The neighbor glares.”'],
     footer: ['Type RESTART to play again.'],
+    fall_down: [{ die: 'You fall.' }, 'never printed'],
   },
 };
 

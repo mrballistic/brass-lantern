@@ -1,0 +1,77 @@
+import { describe, expect, it } from 'vitest';
+import { runSteps } from '@/engine/effects';
+import { execute } from '@/engine/engine';
+import type { World } from '@/types/world';
+import { stateWith } from '../helpers/state';
+import { fixtureWorld as world } from '../fixtures/world';
+
+describe('death', () => {
+  it('dies, pays the penalty, sends things home or scatters them, and respawns', () => {
+    const s = stateWith(world, { room: 'shed', carrying: ['lamp', 'wallet', 'key'] });
+    s.rng = 123;
+    s.fuses = { something: 3 };
+    const lines = runSteps([{ run: 'fall_down' }], world, s);
+    expect(lines.slice(0, 2)).toEqual(['You fall.', '**** You have died ****']);
+    expect(lines).toContain('You wake up.');
+    expect(lines).toContain('📍 Bedroom');
+    expect(lines).not.toContain('never printed');
+    expect(s.currentRoom).toBe('bedroom');
+    expect(s.vars?.score).toBe(-10);
+    expect(s.vars?.deaths).toBe(1);
+    expect(s.locations.lamp).toBe('shed');
+    expect(['yard', 'living']).toContain(s.locations.wallet);
+    expect(['yard', 'living']).toContain(s.locations.key);
+    expect(s.fuses).toEqual({});
+    expect(s.gameOver).toBe(false);
+  });
+
+  it('the same seed scatters the same way', () => {
+    const place = () => {
+      const s = stateWith(world, { carrying: ['wallet', 'key', 'bat'] });
+      s.rng = 99;
+      runSteps([{ die: 'x' }], world, s);
+      return ['wallet', 'key', 'bat'].map((id) => s.locations[id]);
+    };
+    expect(place()).toEqual(place());
+  });
+
+  it('the last life ends the game, and nothing runs after it', () => {
+    const s = stateWith(world);
+    s.vars = { deaths: 1 };
+    const lines = runSteps([{ die: 'Again.' }, 'not printed'], world, s);
+    expect(lines).toEqual(['Again.', '**** You have died ****', 'That’s it.']);
+    expect(s.gameOver).toBe(true);
+  });
+
+  it('a death mid-turn stops daemons that turn', () => {
+    const w: World = {
+      ...world,
+      daemons: [{ if: 'in:bedroom', then: [{ die: 'A daemon gets you.' }] }, { if: 'in:bedroom', then: ['Never seen.'] }],
+    };
+    const s = stateWith(w);
+    s.vars = { deaths: 1 };
+    const r = execute({ action: 'look' }, { world: w, state: s });
+    expect(r.lines).toContain('A daemon gets you.');
+    expect(r.lines).not.toContain('Never seen.');
+    expect(s.gameOver).toBe(true);
+  });
+
+  it('without a death block, dying just ends the game', () => {
+    const w = { ...world, death: undefined };
+    const s = stateWith(w, { room: 'yard', carrying: ['wallet'] });
+    expect(runSteps([{ die: 'Bonk.' }], w, s)).toEqual(['Bonk.']);
+    expect(s.gameOver).toBe(true);
+  });
+
+  it('a home that isn’t a room, or no scatter rooms, leaves things where the player fell', () => {
+    const w: World = {
+      ...world,
+      death: { ...world.death!, scatter: [] },
+      items: { ...world.items, wallet: { ...world.items.wallet, home: 'nowhere' } },
+    };
+    const s = stateWith(w, { room: 'yard', carrying: ['wallet', 'key'] });
+    runSteps([{ die: 'x' }], w, s);
+    expect(s.locations.wallet).toBe('yard');
+    expect(s.locations.key).toBe('yard');
+  });
+});

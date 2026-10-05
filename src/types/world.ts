@@ -118,8 +118,10 @@ export interface Item {
   roomDescription?: string;
   /** TURN ON / TURN OFF work on it. */
   switchable?: boolean;
-  /** Gives light while on (stage 2 uses it for darkness; listings say “providing light”). */
+  /** Gives light while on: dark rooms are lit by it; listings say “providing light”. */
   light?: boolean;
+  /** Where it goes if the player dies carrying it (Zork's lamp goes back to the living room). */
+  home?: string;
 }
 
 export interface Container {
@@ -246,6 +248,22 @@ export interface World {
     fall?: string;
     /** Run when the player tries a direction with no exit in the dark (Zork's grue). */
     blunder?: EventStep[];
+  };
+  /** What dying does. Without it, dying ends the game. */
+  death?: {
+    /** Printed after the cause. */
+    message?: string[];
+    /** Added to the score (Zork: -10). */
+    penalty?: number;
+    /** Deaths survived before the final one (Zork: 2). */
+    lives?: number;
+    /** Where the player wakes. */
+    respawn?: string;
+    resurrection?: string[];
+    /** Rooms carried things are spread over, at random. Things with a `home` go there instead. */
+    scatter?: string[];
+    /** Printed on the last death, which ends the game. */
+    final?: string[];
   };
   /** Run after every acted-on turn while their condition holds (a lamp burning down). */
   daemons?: Array<{ if: string; then: string | EventStep[] }>;

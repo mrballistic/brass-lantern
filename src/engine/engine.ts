@@ -6,6 +6,7 @@ import { darknessFalls, tooDark } from './light';
 import { runSteps, setEffectHooks } from './effects';
 import { seedFor } from './rng';
 import { afterTurn } from './time';
+import { die } from './death';
 import { ok, type EngineResult } from './result';
 import { enterRoom, handleClimb, handleEnter, handleGo, handleIdle } from './verbs/movement';
 import {
@@ -47,7 +48,10 @@ export function initialState(world: World): GameState {
 /* Dispatcher                                                          */
 /* ------------------------------------------------------------------ */
 
-setEffectHooks({ go: (room, world, state) => enterRoom(room, world, state) });
+setEffectHooks({
+  go: (room, world, state) => enterRoom(room, world, state),
+  die: (cause, world, state) => die(cause, world, state, enterRoom),
+});
 
 export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
   const { world, state } = deps;
