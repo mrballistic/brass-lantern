@@ -2,7 +2,7 @@ import type { GameState, ParsedAction } from '@/types/game';
 import type { Item, Room, Rule, World } from '@/types/world';
 import { evaluateCondition } from './conditions';
 import { inventoryOf, matchItem, reachableItems, visibleItems } from './model';
-import { runEventKey } from './effects';
+import { runEventKey, turnHalted } from './effects';
 import { ok, type EngineResult } from './result';
 
 /* Events and rules */
@@ -62,7 +62,7 @@ export function findRule(
 export function applyRule(rule: Rule, world: World, state: GameState): EngineResult {
   const lines: string[] = [];
   if (rule.then) lines.push(...runEvent(rule.then, world, state));
-  if (rule.say) lines.push(...rule.say);
+  if (rule.say && !turnHalted(state)) lines.push(...rule.say);
   return ok(lines, Boolean(rule.then));
 }
 

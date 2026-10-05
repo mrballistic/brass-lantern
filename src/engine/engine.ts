@@ -3,7 +3,7 @@ import type { World } from '@/types/world';
 import { describeRoom } from './describe';
 import { initialLocations, isLit } from './model';
 import { darknessFalls, tooDark } from './light';
-import { runSteps, setEffectHooks } from './effects';
+import { beginTurn, runSteps, setEffectHooks, turnHalted } from './effects';
 import { seedFor } from './rng';
 import { afterTurn } from './time';
 import { die } from './death';
@@ -62,24 +62,30 @@ export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
     return ok(['The game has ended. Type RESTART to play again.']);
   }
 
+  beginTurn(state);
   const pendingFuses = new Set(Object.keys(state.fuses ?? {}));
   const roomBefore = state.currentRoom;
   const litBefore = isLit(world, state);
   let result = dispatch(action, world, state);
   // You can't find things in the dark: an understood refusal, so the LLM isn't asked to re-guess.
   if (result.understood === false && action.target && action.action !== 'go' && !isLit(world, state)) {
-    result = ok([tooDark(world)]);
+    // Like a parser failure in Zork: no time passes.
+    result = { ...ok([tooDark(world)]), free: true };
   }
   if (result.understood === false || state.gameOver || result.free) return result;
 
   // Misses don't count as turns: they must not mutate state (see EngineResult).
   state.turns = (state.turns ?? 0) + 1;
   const before = JSON.stringify([state.vars, state.fuses, state.flags, state.locations, state.itemState, state.currentRoom]);
-  const later = afterTurn(world, state, pendingFuses);
+  // A death this turn ends it: no timers or daemons after the resurrection.
+  const later = turnHalted(state) ? [] : afterTurn(world, state, pendingFuses);
   // Light arriving or leaving while the player stays put.
   if (state.currentRoom === roomBefore && !state.gameOver) {
     const litNow = isLit(world, state);
-    if (litNow && !litBefore) later.push(...describeRoom(state.currentRoom, world, state));
+    if (litNow && !litBefore) {
+      if (!state.visited.includes(state.currentRoom)) state.visited.push(state.currentRoom);
+      later.push(...describeRoom(state.currentRoom, world, state));
+    }
     if (!litNow && litBefore) later.push(darknessFalls(world));
   }
   const changed = before !== JSON.stringify([state.vars, state.fuses, state.flags, state.locations, state.itemState, state.currentRoom]);

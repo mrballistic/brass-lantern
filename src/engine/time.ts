@@ -1,7 +1,7 @@
 import type { GameState } from '@/types/game';
 import type { World } from '@/types/world';
 import { evaluateCondition } from './conditions';
-import { runEventKey, runSteps } from './effects';
+import { runEventKey, runSteps, turnHalted } from './effects';
 
 /**
  * After every turn the engine acted on: fuses count down and fire, then
@@ -19,12 +19,12 @@ export function afterTurn(world: World, state: GameState, existing: Set<string>)
     } else {
       state.fuses![key] = left - 1;
     }
-    if (state.gameOver) return out;
+    if (state.gameOver || turnHalted(state)) return out;
   }
   for (const d of world.daemons ?? []) {
     if (!evaluateCondition(d.if, state, world)) continue;
     out.push(...(typeof d.then === 'string' ? runEventKey(d.then, world, state) : runSteps(d.then, world, state)));
-    if (state.gameOver) return out;
+    if (state.gameOver || turnHalted(state)) return out;
   }
   out.push(...ambientLines(world, state));
   return out;

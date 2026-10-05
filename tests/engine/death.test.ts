@@ -74,4 +74,25 @@ describe('death', () => {
     expect(s.locations.wallet).toBe('yard');
     expect(s.locations.key).toBe('yard');
   });
+
+  it('nothing after a death runs, however deeply it was nested, even when the player is resurrected', () => {
+    const w: World = {
+      ...world,
+      events: { ...world.events, inner: [{ die: 'Zapped.' }], zap: [{ run: 'inner' }] },
+      items: { ...world.items, bed: { ...world.items.bed, onUse: [{ then: 'zap', say: ['NOT AFTER DEATH (say)'] }] } },
+      daemons: [{ if: 'in:bedroom', then: ['NOT AFTER DEATH (daemon)'] }],
+    };
+    const s = stateWith(w);
+    const viaRun = runSteps([{ run: 'inner' }, 'NOT AFTER DEATH', { score: 50 }], w, s);
+    expect(viaRun).not.toContain('NOT AFTER DEATH');
+    expect(s.vars?.score).toBe(-10);
+
+    const s2 = stateWith(w);
+    expect(runSteps([{ chance: 100, then: [{ die: 'Fell.' }] }, 'NOT AFTER DEATH'], w, s2)).not.toContain('NOT AFTER DEATH');
+
+    const s3 = stateWith(w);
+    const r = execute({ action: 'use', target: 'bed' }, { world: w, state: s3 });
+    expect(r.lines).toContain('Zapped.');
+    expect(r.lines.join('\n')).not.toContain('NOT AFTER DEATH');
+  });
 });

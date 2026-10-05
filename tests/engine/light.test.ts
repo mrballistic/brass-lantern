@@ -39,7 +39,27 @@ describe('darkness', () => {
     const r = run(s, 'take', 'barrel');
     expect(r.lines).toEqual(['It’s too dark to see.']);
     expect(r.understood).not.toBe(false);
-    expect({ ...s, turns: 0 }).toEqual({ ...before, turns: 0 });
+    expect(s).toEqual(before); // takes no time either: no turn, no daemons
+  });
+
+  it('only real directions blunder; other phrasings in the dark go to the LLM as misses', () => {
+    const s = cellar();
+    const before = structuredClone(s);
+    for (const target of ['upstairs', 'the living room', 'back', 'away']) {
+      expect(run(s, 'go', target).understood).toBe(false);
+    }
+    expect(s).toEqual(before);
+    expect(run(s, 'go', 'northwest').lines).toEqual(['You trip in the dark.']);
+  });
+
+  it('a dark room isn’t visited until you’ve seen it', () => {
+    const w = { ...world, style: 'infocom' as const };
+    const s = stateWith(w, { room: 'shed', carrying: ['key', 'lamp'] });
+    const go = (t: string) => execute({ action: 'go', target: t }, { world: w, state: s }).lines;
+    go('down');
+    go('up');
+    s.itemState.lamp = { on: true };
+    expect(go('down')).toContain('A damp cellar.');
   });
 
   it('inventory and carried things still work in the dark', () => {

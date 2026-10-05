@@ -104,4 +104,17 @@ describe('Infocom style', () => {
     const lines = execute({ action: 'go', target: 'west' }, { world, state: s }).lines;
     expect(lines.indexOf('You smell coffee.')).toBeLessThan(lines.indexOf('📍 Living Room'));
   });
+
+  it('an arrival that moves you on (or kills you) doesn’t describe the room you left', () => {
+    const w: World = {
+      ...world,
+      rooms: { ...world.rooms, living: { ...world.rooms.living, onEnter: [{ if: 'in:living', then: 'whisked' }] } },
+      events: { ...world.events, whisked: ['A gust carries you back.', { go: 'bedroom' }] },
+    };
+    const s = stateWith(w, { room: 'bedroom' });
+    const lines = execute({ action: 'go', target: 'west' }, { world: w, state: s }).lines;
+    expect(lines).toContain('A gust carries you back.');
+    expect(lines).not.toContain('📍 Living Room');
+    expect(s.currentRoom).toBe('bedroom');
+  });
 });

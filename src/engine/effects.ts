@@ -17,6 +17,21 @@ export function setEffectHooks(h: typeof hooks): void {
   Object.assign(hooks, h);
 }
 
+// A death or an ending stops everything after it for the rest of the turn:
+// later steps, a rule's `say`, more arrival events, daemons. Tracked per game
+// state so separate games (and tests) don't interfere.
+const halted = new WeakSet<GameState>();
+
+/** Called at the start of each command. */
+export function beginTurn(state: GameState): void {
+  halted.delete(state);
+}
+
+/** Has a death or an ending stopped this turn? */
+export function turnHalted(state: GameState): boolean {
+  return halted.has(state);
+}
+
 export function itemIdForName(label: string, world: World): string | null {
   const normalized = label.trim().toLowerCase();
   for (const [id, item] of Object.entries(world.items)) {
@@ -87,14 +102,17 @@ function runEffect(e: Effect, world: World, state: GameState): { lines: string[]
   if ('run' in e) return { lines: runEventKey(e.run, world, state), stop: state.gameOver };
   if ('go' in e) return { lines: hooks.go ? hooks.go(e.go, world, state) : [] };
   if ('die' in e) {
-    if (hooks.die) return { lines: hooks.die(e.die, world, state), stop: true };
-    state.gameOver = true;
-    return { lines: [e.die], stop: true };
+    // The death plays out in full, then halts the rest of the turn.
+    const lines = hooks.die ? hooks.die(e.die, world, state) : [e.die];
+    if (!hooks.die) state.gameOver = true;
+    halted.add(state);
+    return { lines, stop: true };
   }
   if ('end' in e) {
-    if (hooks.end) return { lines: hooks.end(e.end, world, state), stop: true };
-    state.gameOver = true;
-    return { lines: [], stop: true };
+    const lines = hooks.end ? hooks.end(e.end, world, state) : [];
+    if (!hooks.end) state.gameOver = true;
+    halted.add(state);
+    return { lines, stop: true };
   }
   return { lines: [] };
 }
@@ -103,6 +121,7 @@ function runEffect(e: Effect, world: World, state: GameState): { lines: string[]
 export function runSteps(steps: EventStep[], world: World, state: GameState): string[] {
   const out: string[] = [];
   for (const step of steps) {
+    if (halted.has(state)) break;
     if (typeof step === 'string') {
       const effect = isEffectLine(step);
       if (effect) applyBracketLine(step, world, state);
