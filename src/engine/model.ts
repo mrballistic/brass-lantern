@@ -91,10 +91,33 @@ export function matchItem(target: string, ids: string[], world: World): string |
 
 export function matchNpc(target: string, world: World, state: GameState): string | null {
   const present = world.rooms[state.currentRoom]?.npcs ?? [];
-  return fuzzyMatch(
+  const id = fuzzyMatch(
     target,
     present.map((id) => ({ id, name: world.npcs[id]?.name ?? id })),
   );
+  if (id) noteActed(state, 'npc', id);
+  return id;
+}
+
+/** What this turn's command resolved to, for pronouns (“it”, “her”). */
+export interface Acted {
+  target?: string;
+  indirect?: string;
+  npc?: string;
+}
+
+const actedThisTurn = new WeakMap<GameState, Acted>();
+
+export function noteActed(state: GameState, slot: keyof Acted, id: string): void {
+  const acted = actedThisTurn.get(state) ?? {};
+  acted[slot] = id;
+  actedThisTurn.set(state, acted);
+}
+
+export function takeActed(state: GameState): Acted {
+  const acted = actedThisTurn.get(state) ?? {};
+  actedThisTurn.delete(state);
+  return acted;
 }
 
 export function isOpen(world: World, state: GameState, id: string): boolean {
@@ -248,7 +271,10 @@ export function pickItem(target: string, ids: string[], world: World, slot: 'tar
   const candidates = ids.map((id) => ({ id, name: world.items[id]?.name ?? id, aliases: world.items[id]?.aliases }));
   const found = [...new Set(fuzzyCandidates(target, candidates, { byId: state ? byIdTurns.has(state) : false }))];
   if (found.length === 0) return null;
-  if (found.length === 1) return found[0];
+  if (found.length === 1) {
+    if (state) noteActed(state, slot, found[0]);
+    return found[0];
+  }
   const word = target.trim().split(/\s+/).at(-1) ?? target;
   throw new AskSignal({ kind: 'which', slot, word, candidates: found });
 }

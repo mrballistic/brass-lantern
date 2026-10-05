@@ -51,6 +51,13 @@ const RE = {
   wait: /^(?:wait|z)$/i,
 };
 
+/** Verbs that need an object, typed alone. */
+const BARE_VERBS: Record<string, string> = {
+  take: 'take', get: 'take', grab: 'take', drop: 'drop', examine: 'examine', x: 'examine', inspect: 'examine',
+  read: 'read', open: 'open', close: 'close', shut: 'close', lock: 'lock', unlock: 'unlock', put: 'put',
+  give: 'give', wear: 'wear', use: 'use', search: 'search', smash: 'smash', break: 'smash', attack: 'smash',
+};
+
 const SINGLE_WORD: Record<string, ParsedAction> = {
   look: { action: 'look' },
   l: { action: 'look' },
@@ -173,7 +180,7 @@ export function fallbackParse(rawInput: string, verbs?: World['verbs']): ParsedA
 }
 
 /** Like fallbackParse, but without the bare-word-means-go guess. */
-function strictParse(rawInput: string, verbs?: World['verbs']): ParsedAction | null {
+export function strictParse(rawInput: string, verbs?: World['verbs']): ParsedAction | null {
   return parse(rawInput, false, verbs);
 }
 
@@ -234,6 +241,8 @@ function parse(rawInput: string, allowBareWord: boolean, verbs?: World['verbs'])
   if (!input) return null;
 
   if (input in SINGLE_WORD) return SINGLE_WORD[input];
+  // A verb on its own (“take”): the engine asks what for.
+  if (input in BARE_VERBS) return { action: BARE_VERBS[input] };
   if (input in DIRECTIONS) return { action: 'go', target: DIRECTIONS[input] };
   if (input === 'enter') return { action: 'enter' };
   {

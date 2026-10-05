@@ -1,7 +1,7 @@
 import type { GameState, ParsedAction } from '@/types/game';
 import type { World } from '@/types/world';
 import { describeRoom } from './describe';
-import { AskSignal, initialLocations, isLit, matchItem, setResolveById, visibleItems } from './model';
+import { AskSignal, initialLocations, isLit, matchItem, setResolveById, takeActed, visibleItems } from './model';
 import { whatQuestion, whichQuestion } from './ask';
 import { darknessFalls, tooDark } from './light';
 import { beginTurn, runSteps, setEffectHooks, turnHalted } from './effects';
@@ -68,6 +68,7 @@ export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
   const roomBefore = state.currentRoom;
   const litBefore = isLit(world, state);
   let result: EngineResult;
+  takeActed(state);
   setResolveById(state, Boolean(action.byId));
   try {
     result = dispatch(action, world, state);
@@ -77,6 +78,7 @@ export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
   } finally {
     setResolveById(state, false);
   }
+  result = { ...result, acted: takeActed(state) };
   // You can't find things in the dark: an understood refusal, so the LLM isn't asked to re-guess.
   if (result.understood === false && action.target && action.action !== 'go' && !isLit(world, state)) {
     // Like a parser failure in Zork: no time passes.

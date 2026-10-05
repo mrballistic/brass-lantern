@@ -14,6 +14,7 @@ import {
 import { inventoryOf, isLit } from '@/engine/model';
 import { migrateSave } from '@/engine/migrate';
 import { fallbackParse, splitCommands } from '@/engine/parser';
+import { interpret, newConversation, remember, resolvePronouns } from '@/engine/conversation';
 import type { EngineResult } from '@/engine/engine';
 import { buildContext, parseIntentRemote } from '@/engine/intent-client';
 import { makeLine } from '@/engine/output';
@@ -34,6 +35,8 @@ const EMPTY_WORLD: World = {
 const initialCartridge = defaultWorldCartridge();
 let world: World = initialCartridge?.world ?? EMPTY_WORLD;
 let persistence = createPersistenceService(initialCartridge ? saveKeyFor(initialCartridge) : undefined);
+// Between-command state (questions, pronouns, AGAIN, OOPS, UNDO). Not saved.
+let conversation = newConversation();
 
 interface State {
   game: GameState;
@@ -42,11 +45,8 @@ interface State {
   restored: boolean;
   /** game_completed already reported for the current game. */
   gameOverTracked: boolean;
-  /** Most recent target the engine acted on, for "it" / "them". */
-  lastTarget: string | null;
 }
 
-const PRONOUN = /^(?:it|them|that|this|him|her)$/i;
 
 function sameAction(a: ParsedAction, b: ParsedAction): boolean {
   const norm = (s?: string) => (s ?? '').toLowerCase().replace(/[\s-]+/g, '_');
@@ -64,7 +64,6 @@ export const useGameStore = defineStore('game', {
     isParsing: false,
     restored: false,
     gameOverTracked: false,
-    lastTarget: null,
   }),
 
   getters: {
@@ -82,7 +81,8 @@ export const useGameStore = defineStore('game', {
       if (!cartridge) throw new Error('There is no world cartridge to play.');
       world = cartridge.world;
       persistence = createPersistenceService(saveKeyFor(cartridge));
-      this.$patch({ game: freshGame(), output: [], isParsing: false, restored: false, gameOverTracked: false, lastTarget: null });
+      conversation = newConversation();
+      this.$patch({ game: freshGame(), output: [], isParsing: false, restored: false, gameOverTracked: false });
       const saved = migrateSave(world, persistence.loadRaw());
       if (saved) {
         this.game = saved.gameState;
@@ -169,9 +169,19 @@ export const useGameStore = defineStore('game', {
      * reading first is safe.
      */
     async runCommand(input: string): Promise<void> {
-      const parsed = fallbackParse(input, world.verbs);
+      const step = interpret(input, conversation, world, this.game);
+      if ('reply' in step) {
+        this.appendLines(step.reply);
+        return;
+      }
+      // An answer to a question (or AGAIN) runs as is: never via the intent server.
+      if ('run' in step) {
+        this.applyResult(this.execute(step.run));
+        return;
+      }
+      const parsed = fallbackParse(step.parse, world.verbs);
       if (parsed) {
-        const result = this.execute(this.resolvePronoun(parsed));
+        const result = this.execute(resolvePronouns(parsed, conversation));
         if (result.understood !== false) {
           this.applyResult(result);
           return;
@@ -185,13 +195,6 @@ export const useGameStore = defineStore('game', {
       this.applyResult(retry ?? this.execute({ action: 'unknown' }));
     },
 
-    /** "give it to gary" right after "take the stapler" means the stapler. */
-    resolvePronoun(action: ParsedAction): ParsedAction {
-      if (action.target && PRONOUN.test(action.target) && this.lastTarget) {
-        return { ...action, target: this.lastTarget };
-      }
-      return action;
-    },
 
     /**
      * Ask the LLM what the player meant. Returns the engine's result for that
@@ -221,9 +224,7 @@ export const useGameStore = defineStore('game', {
 
     execute(action: ParsedAction): EngineResult {
       const result = execute(action, { world, state: this.game });
-      if (result.understood !== false && action.target && !PRONOUN.test(action.target)) {
-        this.lastTarget = action.target;
-      }
+      remember(conversation, action, result);
       return result;
     },
 
@@ -246,6 +247,7 @@ export const useGameStore = defineStore('game', {
     },
 
     restartGame(): void {
+      conversation = newConversation();
       persistence.clear();
       this.game = freshGame();
       this.gameOverTracked = false;

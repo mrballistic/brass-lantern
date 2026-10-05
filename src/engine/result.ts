@@ -18,6 +18,8 @@ export interface EngineResult {
   free?: boolean;
   /** A question back to the player; the conversation layer takes the answer. */
   ask?: Ask;
+  /** What the command acted on, for pronouns. */
+  acted?: { target?: string; indirect?: string; npc?: string };
 }
 
 /** A question: which of several things, or what object a verb needs. */

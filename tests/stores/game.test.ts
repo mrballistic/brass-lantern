@@ -225,6 +225,18 @@ describe('useGameStore', () => {
       expect(store.game.flags.paid).toBe(true);
     });
 
+    it('answers a question without asking the LLM', async () => {
+      const store = freshStore();
+      store.initialize();
+      store.game.currentRoom = 'living';
+      const fetchMock = mockIntent({ action: 'unknown' });
+      await store.submit('take');
+      expect(store.output.at(-1)!.text).toBe('What do you want to take?');
+      await store.submit('wallet');
+      expect(store.game.locations.wallet).toBe('player');
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
     it('runs every command in a compound line', async () => {
       const store = freshStore();
       store.initialize();
