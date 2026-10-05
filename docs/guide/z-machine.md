@@ -2,6 +2,27 @@
 
 Brass Lantern also runs **Z-machine story files**, the format Infocom’s games shipped in. The demo includes **Zork I** (Release 119), which Microsoft released under the MIT License in 2025. It plays exactly as Infocom wrote it, in the same CRT terminal as native worlds.
 
+## Playing Zork I
+
+Open the [demo](https://mrballistic.github.io/brass-lantern/demo/) and type `2`. You start west of a white house, with a mailbox. The rest is up to you.
+
+If you’ve never played it, Zork’s parser is older and stricter than Brass Lantern’s:
+
+| Command | Notes |
+|---|---|
+| `N` `S` `E` `W` `NE` `NW` `SE` `SW` `UP` `DOWN` | Directions. Diagonals matter: the house is circled by them. |
+| `LOOK` (`L`), `EXAMINE` *thing* | `X` isn’t a word in Zork I; spell out EXAMINE. |
+| `TAKE` *thing*, `TAKE ALL`, `DROP` *thing* | Also `PUT` *thing* `IN` *thing*. |
+| `INVENTORY` (`I`) | |
+| `OPEN`, `READ`, `MOVE`, `TURN ON`, `ATTACK` *creature* `WITH` *weapon* | The verbs you’ll need most. |
+| `AGAIN` (`G`) | Repeats your last command. |
+| `SCORE`, `DIAGNOSE` | Points out of 350, and how hurt you are. |
+| `VERBOSE`, `BRIEF` | Full room descriptions every time, or only on your first visit. |
+| `SAVE`, `RESTORE` | See [Saving](#saving). SAVE before anything risky. |
+| `EJECT` | Back to the cartridge menu. The game autosaves, so it’s there when you come back. |
+
+Things Brass Lantern adds to native worlds don’t apply here: chained commands with “and”, the intent server, HINT. Zork has no hints, and it’s more fun that way. Map as you go.
+
 ## Cartridges
 
 `src/app.config.ts` lists what the terminal offers:
@@ -17,7 +38,14 @@ export const cartridges: Cartridge[] = [
 - **With one cartridge**, it boots straight in, with no menu.
 - **After a reload**, the last cartridge you played comes straight back if it has a game in progress.
 
-To add a story, put the file in `public/stories/` and add an entry. `story` is relative to the site’s base, so it works under a subpath too.
+To add a story, put the file in `public/stories/` and add an entry. `story` is relative to the site’s base, so it works under a subpath too. Story files are binary and fetched on demand, and the interpreter is a separate chunk that loads only when a story cartridge is inserted, so a build that offers only native worlds never downloads it.
+
+## Finding more story files
+
+- **The [IF Archive](https://www.ifarchive.org/indexes/if-archive/games/zcode/)** holds thousands of Z-machine games, from the 1980s to this year. Files end in `.z3`, `.z5` or `.z8`.
+- **Infocom’s other games** are still under copyright, except Zork I, II and III, which Microsoft released under the MIT License in 2025 ([historicalsource](https://github.com/historicalsource)). Only Zork I’s story file ships here.
+- **Check the license before you publish one.** Playing a story file locally is one thing; putting it on a public site is redistribution. Many IF Archive games allow it; some don’t.
+- **Writing your own:** [Inform 6](https://www.inform-fiction.org/) and [ZIL](https://foss.heptapod.net/zilf/zilf) (Infocom’s own language) both compile to the Z-machine.
 
 ## Saving
 
