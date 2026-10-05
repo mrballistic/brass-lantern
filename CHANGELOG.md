@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.5.0 (2026-10-05)
+
+Engine parity, stage 2: darkness and time.
+
+- **Structured effects.** Events are lists of lines and typed effects: set and clear flags, move things anywhere, open/close/lock/switch, numeric variables and score, `go`, timers (`schedule`, `cancel`), `chance`, `run`, `die` and `end`. Bracket lines still work.
+- **Variables and randomness.** `world.vars`, `var:` and `carrying` conditions. A seeded random generator lives in the game state, so saves and tests replay exactly. Score entries can be conditions (points while a treasure is in the case).
+- **Daemons and fuses.** These run after every acted-on turn, never after a miss. Ambient lines are now a kind of daemon.
+- **Darkness:**
+  - dark rooms and light sources; “too dark to see” as an understood refusal;
+  - a world-defined blunder in the dark (Zork's grue);
+  - the reply says when the light changes;
+  - the LLM context shows nothing of a dark room.
+- **Death** (`world.death`): penalty, lives, respawn, items going home or scattering. **Endings** (`world.endings`), with the finale as one of them.
+- **Exits** can give different refusals for different reasons (`denials`).
+- **VERBOSE, BRIEF, SUPERBRIEF.** These take no game time.
+- **Infocom style** runs arrival events before the room description.
+- **A world audit test** checks every world for effects and references to things that don't exist.
+- **Zork I · Native** goes underground: the cellar (the trap door slams behind you), East of Chasm, the gallery's painting, and the studio's chimney, plus the lamp burning down, the grue and resurrection. 60 walkthrough replies match the original, and so do its death texts.
+
 ## 1.4.0 (2026-10-05)
 
 The engine gets Zork's world model: stage 1 of making native worlds as capable as Infocom's.

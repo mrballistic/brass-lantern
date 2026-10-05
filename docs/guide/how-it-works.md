@@ -31,7 +31,8 @@ The store (`src/stores/game.ts`) runs every line through the same steps:
 4. **Pronouns.** `it` / `them` become the last thing the engine acted on.
 5. **Execute.** `execute(action, { world, state })` returns the lines to print, whether anything changed, and `understood: false` if it couldn't make sense of the command (no such exit, no such item, no rule that applies).
 6. **Retry on a miss.** If the regex couldn't parse the command, or the engine didn't understand it, the store asks the intent server how to read it. If the LLM's reading is different and the engine can act on it, that result is shown instead; otherwise the literal reply stands.
-7. **Output.** Lines are styled by their prefix and typed out, and the game is saved if anything changed.
+7. **Time passes.** After a command the engine acted on (never after a misunderstood one), timers fire, daemons run and ambient lines print, in that order (`src/engine/time.ts`). If the light changed, the reply says so.
+8. **Output.** Lines are styled by their prefix and typed out, and the game is saved if anything changed.
 
 ::: warning The one rule to keep
 Step 6 runs the engine on the literal reading first, and possibly again on the LLM's reading. That's only safe because **a miss never changes the game**. When you add an engine handler, decide whether you can act before you touch any state. `tests/engine/engine-hooks.test.ts` checks this.
@@ -60,7 +61,10 @@ Inserting or ejecting a cartridge clears the screen.
 | Conditions | anywhere | `flag:`, `has:`, `in:`, `visited:`, `inside:`, `open:`, `locked:`, `on:`, `here:`, `!`, `&`. One parser, `src/engine/conditions.ts`. |
 | Rules | `instead`, `after` on items and rooms | Replace a verb's default, or follow it. `src/engine/rules.ts`. |
 | Containers, doors | `item.container`, `item.surface`, `item.door` | Open, close, lock, put in, take from. |
-| Exits | `room.exits` | A room ID, or `{ to, if, denial, door }`. |
+| Exits | `room.exits` | A room ID, or `{ to, if, denial, door, denials }`. |
+| Effects | `events` | Lines and typed effects: flags, moves, variables, timers, chance, death, endings (`src/engine/effects.ts`). |
+| Darkness | `room.dark`, `item.light`, `world.darkness` | In an unlit dark room you can only find what you carry (`src/engine/model.ts` `isLit`). |
+| Death, endings | `world.death`, `world.endings` | `src/engine/death.ts`, `src/engine/endings.ts`. |
 | Events | `events` | Line lists. `[Flag set: …]`, `[Added to inventory: …]` and `[… consumed]` lines change state. Events from `onEnter`, `onTake`, `onWear`, `onSmash` and `bareHanded` fire once; use-rule and gift events run every time. |
 | Flags | `flagLabels` | The friendly label in an event line, mapped to a flag ID. |
 | Use rules | `item.onUse` | The older form of `instead.use`. |

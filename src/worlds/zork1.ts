@@ -707,7 +707,7 @@ export const zork1: World = {
       'Copyright (c) 1981, 1982, 1983, 1984, 1985, 1986 Infocom, Inc. All rights reserved.',
       'ZORK is a registered trademark of Infocom, Inc.',
       'Release 119 / Serial number 880429',
-      '[A native Brass Lantern port, stage 1: the house and the forest. The underground comes later.]',
+      '[A native Brass Lantern port: the house, the forest and the first rooms below. The troll comes later.]',
     ],
     rug_moved: [
       'With a great effort, the rug is moved to one side of the room, revealing the dusty cover of a closed trap door.',
