@@ -1,0 +1,23 @@
+// What every handler returns.
+
+export interface EngineResult {
+  /** Lines to append to the output log. */
+  lines: string[];
+  /** Set true if the engine state changed (so the store should persist). */
+  mutated: boolean;
+  /**
+   * False when the engine couldn't make sense of the command: an unknown
+   * verb, or a target that matches nothing here. Misses never mutate state,
+   * so the store can safely ask the LLM for a better reading and run that
+   * instead.
+   */
+  understood?: boolean;
+}
+
+export function ok(lines: string[], mutated = false): EngineResult {
+  return { lines, mutated };
+}
+
+export function miss(line: string): EngineResult {
+  return { lines: [line], mutated: false, understood: false };
+}
