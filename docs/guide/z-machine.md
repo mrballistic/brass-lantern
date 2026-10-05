@@ -1,22 +1,22 @@
 # Playing story files
 
-Brass Lantern also runs **Z-machine story files**, the format Infocom’s games shipped in. The demo includes **Zork I** (Release 119), which Microsoft released under the MIT License in 2025. It plays exactly as Infocom wrote it, in the same CRT terminal as native worlds.
+Brass Lantern also runs **Z-machine story files**, the format Infocom’s games shipped in. The demo includes the **Zork trilogy** (Zork I Release 119, Zork II Release 63, Zork III Release 25), which Microsoft released under the MIT License in 2025. It plays exactly as Infocom wrote it, in the same CRT terminal as native worlds.
 
-## Playing Zork I
+## Playing Zork
 
-Open the [demo](https://mrballistic.github.io/brass-lantern/demo/) and type `2`. You start west of a white house, with a mailbox. The rest is up to you.
+Open the [demo](https://mrballistic.github.io/brass-lantern/demo/) and type `2` for Zork I. You start west of a white house, with a mailbox. The rest is up to you. Zork II (`3`) and Zork III (`4`) pick up where it leaves off, each opening with a brass lantern close by. Each game stands alone; nothing carries over between them.
 
 If you’ve never played it, Zork’s parser is older and stricter than Brass Lantern’s:
 
 | Command | Notes |
 |---|---|
 | `N` `S` `E` `W` `NE` `NW` `SE` `SW` `UP` `DOWN` | Directions. Diagonals matter: the house is circled by them. |
-| `LOOK` (`L`), `EXAMINE` *thing* | `X` isn’t a word in Zork I; spell out EXAMINE. |
+| `LOOK` (`L`), `EXAMINE` *thing* | `X` isn’t a word in the Zork games; spell out EXAMINE. |
 | `TAKE` *thing*, `TAKE ALL`, `DROP` *thing* | Also `PUT` *thing* `IN` *thing*. |
 | `INVENTORY` (`I`) | |
 | `OPEN`, `READ`, `MOVE`, `TURN ON`, `ATTACK` *creature* `WITH` *weapon* | The verbs you’ll need most. |
 | `AGAIN` (`G`) | Repeats your last command. |
-| `SCORE`, `DIAGNOSE` | Points out of 350, and how hurt you are. |
+| `SCORE`, `DIAGNOSE` | Your score, and how hurt you are. |
 | `VERBOSE`, `BRIEF` | Full room descriptions every time, or only on your first visit. |
 | `SAVE`, `RESTORE` | See [Saving](#saving). SAVE before anything risky. |
 | `EJECT` | Back to the cartridge menu. The game autosaves, so it’s there when you come back. |
@@ -31,6 +31,8 @@ Things Brass Lantern adds to native worlds don’t apply here: chained commands 
 export const cartridges: Cartridge[] = [
   { kind: 'world', id: 'snack-attack', title: 'SNACK ATTACK', world: tutorial },
   { kind: 'zcode', id: 'zork1', title: 'ZORK I', story: 'stories/zork1.z3', format: 'Z-machine v3' },
+  { kind: 'zcode', id: 'zork2', title: 'ZORK II', story: 'stories/zork2.z3', format: 'Z-machine v3' },
+  { kind: 'zcode', id: 'zork3', title: 'ZORK III', story: 'stories/zork3.z3', format: 'Z-machine v3' },
 ];
 ```
 
@@ -43,7 +45,7 @@ To add a story, put the file in `public/stories/` and add an entry. `story` is r
 ## Finding more story files
 
 - **The [IF Archive](https://www.ifarchive.org/indexes/if-archive/games/zcode/)** holds thousands of Z-machine games, from the 1980s to this year. Files end in `.z3`, `.z5` or `.z8`.
-- **Infocom’s other games** are still under copyright, except Zork I, II and III, which Microsoft released under the MIT License in 2025 ([historicalsource](https://github.com/historicalsource)). Only Zork I’s story file ships here.
+- **Infocom’s other games** are still under copyright, except Zork I, II and III, which Microsoft released under the MIT License in 2025 ([historicalsource](https://github.com/historicalsource)). Those three ship here; the rest can’t be redistributed.
 - **Check the license before you publish one.** Playing a story file locally is one thing; putting it on a public site is redistribution. Many IF Archive games allow it; some don’t.
 - **Writing your own:** [Inform 6](https://www.inform-fiction.org/) and [ZIL](https://foss.heptapod.net/zilf/zilf) (Infocom’s own language) both compile to the Z-machine.
 

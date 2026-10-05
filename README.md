@@ -1,6 +1,6 @@
 # Brass Lantern
 
-**Classic parser text adventures in a CRT terminal, in the browser.** Write your own game as data, or load a real Infocom-era story file. **Zork I** is included.
+**Classic parser text adventures in a CRT terminal, in the browser.** Write your own game as data, or load a real Infocom-era story file. **The Zork trilogy** is included.
 
 **[Play the demo](https://mrballistic.github.io/brass-lantern/demo/)** · **[Read the docs](https://mrballistic.github.io/brass-lantern/)**
 
@@ -10,6 +10,8 @@ INSTALLED CARTRIDGES
 ═══════════════════════════════
   1  SNACK ATTACK   native
   2  ZORK I         Z-machine v3
+  3  ZORK II        Z-machine v3
+  4  ZORK III       Z-machine v3
 [Type a number to insert a cartridge. EJECT brings you back here.]
 > 2
 West of House
@@ -25,7 +27,7 @@ There is a small mailbox here.
 - a forgiving parser, with synonyms, chained commands (`take key and wallet`, `north then look`), pronouns and a second object (`put the disk in the drive`), all with zero latency;
 - an optional LLM on a short leash. Input the parser can't handle goes to a small server that asks Gemini which of *your* verbs and IDs it means. The reply is reduced to a verb plus identifiers, so the model never writes the story, and the key stays on the server.
 
-**Load a story file.** Z-machine games (versions 3, 4, 5 and 8) run unmodified in the same terminal, through [ifvms](https://github.com/curiousdannii/ifvms.js), the interpreter inside Parchment. SAVE and RESTORE work, every turn autosaves, and the status line shows in the header. Zork I ships with the demo; Microsoft released it under the MIT License in 2025.
+**Load a story file.** Z-machine games (versions 3, 4, 5 and 8) run unmodified in the same terminal, through [ifvms](https://github.com/curiousdannii/ifvms.js), the interpreter inside Parchment. SAVE and RESTORE work, every turn autosaves, and the status line shows in the header. Zork I, II and III ship with the demo; Microsoft released them under the MIT License in 2025.
 
 Both kinds sit side by side as **cartridges**. With more than one, the terminal opens on a menu; with one, it boots straight in.
 
@@ -40,12 +42,14 @@ npm install
 npm run dev            # http://localhost:5173
 ```
 
-You'll get the cartridge menu: **Snack Attack**, a three-room tutorial world, and **Zork I**. What it offers is set in `src/app.config.ts`:
+You'll get the cartridge menu: **Snack Attack**, a three-room tutorial world, and **Zork I, II and III**. What it offers is set in `src/app.config.ts`:
 
 ```ts
 export const cartridges: Cartridge[] = [
   { kind: 'world', id: 'snack-attack', title: 'SNACK ATTACK', world: tutorial },
   { kind: 'zcode', id: 'zork1', title: 'ZORK I', story: 'stories/zork1.z3', format: 'Z-machine v3' },
+  { kind: 'zcode', id: 'zork2', title: 'ZORK II', story: 'stories/zork2.z3', format: 'Z-machine v3' },
+  { kind: 'zcode', id: 'zork3', title: 'ZORK III', story: 'stories/zork3.z3', format: 'Z-machine v3' },
 ];
 ```
 
@@ -81,4 +85,4 @@ Vue 3, TypeScript, Pinia and Vite in the browser; ifvms and glkapi.js for story 
 
 [MIT](./LICENSE). Brass Lantern isn't affiliated with any historical text-adventure publisher, though it owes them everything.
 
-Zork I's story file, ifvms and glkapi.js are included under their own MIT licenses; see [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).
+The Zork story files, ifvms and glkapi.js are included under their own MIT licenses; see [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).
