@@ -4,7 +4,7 @@ import { evaluateCondition } from './conditions';
 import { describeRoom } from './describe';
 import { initialLocations } from './model';
 import { ok, type EngineResult } from './result';
-import { enterRoom, handleGo, handleIdle } from './verbs/movement';
+import { enterRoom, handleClimb, handleEnter, handleGo, handleIdle } from './verbs/movement';
 import {
   ALL, handleDrop, handleExamine, handleInventory, handleLook, handleSmash, handleTake, handleUse, handleWear,
 } from './verbs/objects';
@@ -73,6 +73,10 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
   switch (action.action) {
     case 'go':
       return handleGo(action.target, world, state);
+    case 'enter':
+      return withRules('enter', action, world, state, () => handleEnter(action.target, world, state));
+    case 'climb':
+      return withRules('climb', action, world, state, () => handleClimb(action.target, world, state));
     case 'look':
       return handleLook(world, state);
     case 'take':

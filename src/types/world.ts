@@ -1,7 +1,8 @@
 export interface Room {
   name: string;
   description: string;
-  exits: Record<string, string>;
+  /** Label → a room ID, or an Exit for conditions, messages and doors. */
+  exits: Record<string, string | Exit>;
   /**
    * Exit labels to show the player, in order. Rooms carry many synonym exits
    * (east, cubicles, cubicle_farm) so the parser is forgiving; listing them
@@ -50,6 +51,17 @@ export interface WorldVerb {
   reply?: string;
   /** Treat it as GO: through the target exit, or the exit labeled with the verb's ID when bare. */
   go?: boolean;
+}
+
+/** An exit with conditions. Without `to`, it only prints `denial`. */
+export interface Exit {
+  to?: string;
+  /** Condition for this exit alone. */
+  if?: string;
+  /** Shown when `if` fails, when the door is closed, or always if there's no `to`. */
+  denial?: string;
+  /** An item (with `door: true`) that must be open. */
+  door?: string;
 }
 
 export interface EventTrigger {

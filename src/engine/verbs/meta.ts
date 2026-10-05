@@ -30,7 +30,8 @@ export function handleHelp(world: World): EngineResult {
   );
   return ok([
     '═══════ COMMANDS ═══════',
-    'GO <direction|place>     N / S / E / W also work',
+    'GO <direction|place>     N S E W NE NW SE SW U D also work',
+    'ENTER / CLIMB <thing>    Go in, or up',
     'LOOK                     Re-describe the current location',
     'TAKE <item>              Pick up an item (synonyms: GET, GRAB; TAKE ALL)',
     'DROP <item>              Drop an item from your inventory',

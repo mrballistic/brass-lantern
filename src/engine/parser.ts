@@ -6,7 +6,11 @@ const DIRECTIONS: Record<string, string> = {
   s: 'south', south: 'south',
   e: 'east', east: 'east',
   w: 'west', west: 'west',
-  up: 'up', down: 'down',
+  up: 'up', down: 'down', u: 'up', d: 'down',
+  ne: 'northeast', northeast: 'northeast',
+  nw: 'northwest', northwest: 'northwest',
+  se: 'southeast', southeast: 'southeast',
+  sw: 'southwest', southwest: 'southwest',
   out: 'out', outside: 'outside', exit: 'out',
   in: 'in', inside: 'inside',
   back: 'back',
@@ -14,7 +18,8 @@ const DIRECTIONS: Record<string, string> = {
 
 const RE = {
   movement: /^(?:go|move|walk|head|run|exit)\s+(?:to\s+(?:the\s+)?|toward\s+|over\s+to\s+(?:the\s+)?|out\s+to\s+(?:the\s+)?)?(.+)$/i,
-  enter: /^(?:enter|into)\s+(?:the\s+)?(.+)$/i,
+  enter: /^(?:enter|go\s+into|into)\s+(?:the\s+)?(.+)$/i,
+  climb: /^climb(?:\s+(up|down))?(?:\s+(?:the\s+)?(.+))?$/i,
   take: /^(?:take|get|grab|pick\s+up)\s+(?:the\s+)?(.+)$/i,
   drop: /^(?:drop|put\s+down|leave)\s+(?:the\s+)?(.+)$/i,
   examine: /^(?:examine|inspect|look\s+at|x|read)\s+(?:the\s+)?(.+)$/i,
@@ -60,8 +65,8 @@ const SINGLE_WORD: Record<string, ParsedAction> = {
 // group is the target; an optional second group is the indirect object. Order
 // matters — earlier entries win on ambiguous input.
 const VERB_PATTERNS: ReadonlyArray<readonly [RegExp, string, ('in' | 'on')?]> = [
+  [RE.enter, 'enter'],
   [RE.movement, 'go'],
-  [RE.enter, 'go'],
   [RE.takeFrom, 'take'],
   [RE.take, 'take'],
   [RE.drop, 'drop'],
@@ -91,7 +96,7 @@ export const BUILT_IN_WORDS: ReadonlySet<string> = new Set([
   'drop', 'put down', 'leave', 'examine', 'inspect', 'look at', 'x', 'read', 'use', 'operate', 'open',
   'push', 'pull', 'press', 'insert', 'put', 'slide', 'stick', 'feed', 'plug', 'attach', 'give', 'hand',
   'offer', 'return', 'wear', 'put on', 'close', 'shut', 'lock', 'unlock', 'place', 'set', 'remove',
-  'search', 'look in', 'look inside', 'talk', 'speak', 'chat', 'ask', 'question', 'smash', 'destroy',
+  'search', 'look in', 'look inside', 'climb', 'go into', 'talk', 'speak', 'chat', 'ask', 'question', 'smash', 'destroy',
   'break', 'kill', 'hit', 'attack', 'wreck', 'whack', 'beat', 'sit', 'sit down', 'relax', 'wait', 'z',
   ...Object.keys(SINGLE_WORD),
   ...Object.keys(DIRECTIONS),
@@ -212,6 +217,11 @@ function parse(rawInput: string, allowBareWord: boolean, verbs?: World['verbs'])
 
   if (input in SINGLE_WORD) return SINGLE_WORD[input];
   if (input in DIRECTIONS) return { action: 'go', target: DIRECTIONS[input] };
+  if (input === 'enter') return { action: 'enter' };
+  {
+    const m = input.match(RE.climb);
+    if (m) return m[2] || m[1] ? { action: 'climb', target: (m[2] ?? m[1]).trim() } : { action: 'climb' };
+  }
 
   // A world's multi-word phrases go first, so "hit the snooze button" isn't
   // read as SMASH, or "go to bed" as GO. Single words go after the built-ins.

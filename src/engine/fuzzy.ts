@@ -69,14 +69,14 @@ export function fuzzyMatch(
 
 /** Direction words that should only match exits by EXACT label (no substring/fuzzy). */
 const STRICT_DIRECTIONS = new Set([
-  'north', 'south', 'east', 'west', 'up', 'down',
+  'north', 'south', 'east', 'west', 'up', 'down', 'northeast', 'northwest', 'southeast', 'southwest',
   'in', 'out', 'inside', 'outside', 'back',
 ]);
 
 /** Specialized matcher for exit labels. Direction synonyms collapse onto the canonical key. */
 export function fuzzyMatchExit(
   input: string,
-  exits: Record<string, string>,
+  exits: Record<string, unknown>,
 ): string | null {
   if (!input) return null;
   const needle = normalize(input);
@@ -87,6 +87,12 @@ export function fuzzyMatchExit(
     w: ['west'],
     up: ['up'],
     down: ['down'],
+    u: ['up'],
+    d: ['down'],
+    ne: ['northeast'],
+    nw: ['northwest'],
+    se: ['southeast'],
+    sw: ['southwest'],
   };
   const expanded = synonyms[needle] ?? [needle];
   for (const label of Object.keys(exits)) {

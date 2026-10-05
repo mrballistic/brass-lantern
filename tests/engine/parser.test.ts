@@ -89,7 +89,7 @@ describe('fallbackParse', () => {
 
   describe('enter / drive', () => {
     it('parses "enter lobby"', () => {
-      expect(fallbackParse('enter lobby')).toEqual({ action: 'go', target: 'lobby' });
+      expect(fallbackParse('enter lobby')).toEqual({ action: 'enter', target: 'lobby' });
     });
 
   });

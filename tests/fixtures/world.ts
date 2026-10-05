@@ -25,7 +25,13 @@ export const fixtureWorld: World = {
     living: {
       name: 'Living Room',
       description: 'A living room with a table by the door.',
-      exits: { east: 'bedroom', bedroom: 'bedroom', out: 'yard', outside: 'yard' },
+      exits: {
+        east: 'bedroom',
+        bedroom: 'bedroom',
+        out: 'yard',
+        outside: 'yard',
+        south: { to: 'yard', if: 'flag:paid', denial: 'The door is stuck.' },
+      },
       listExits: ['bedroom', 'outside'],
       items: ['key', 'wallet', 'shirt'],
       npcs: [],
@@ -34,7 +40,15 @@ export const fixtureWorld: World = {
     yard: {
       name: 'Yard',
       description: 'A yard. The shed is to the north.',
-      exits: { in: 'living', inside: 'living', north: 'shed', shed: 'shed', wait: 'shed' },
+      exits: {
+        in: 'living',
+        inside: 'living',
+        north: 'shed',
+        shed: 'shed',
+        wait: 'shed',
+        west: { denial: 'The fence is too high to climb.' },
+        climb: { denial: 'The fence is too high to climb.' },
+      },
       listExits: ['inside', 'shed'],
       items: ['bat', 'lamp', 'bell', 'fence'],
       npcs: ['neighbor'],
@@ -44,18 +58,28 @@ export const fixtureWorld: World = {
     shed: {
       name: 'Shed',
       description: 'A dusty shed. A crate sits in the middle.',
-      exits: { south: 'yard', out: 'yard' },
+      exits: { south: 'yard', out: 'yard', northeast: { to: 'loft', door: 'hatch' }, up: { to: 'loft', door: 'hatch' } },
       listExits: ['out'],
       items: ['crate', 'socket', 'chest', 'jar', 'shelf'],
       npcs: [],
       onEnter: [],
-      scenery: ['sky'],
+      scenery: ['sky', 'hatch'],
       requires: 'has:key',
       denial: 'The shed is locked.',
+    },
+    loft: {
+      name: 'Loft',
+      description: 'A cramped loft.',
+      exits: { southwest: { to: 'shed', door: 'hatch' }, down: { to: 'shed', door: 'hatch' } },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      scenery: ['hatch'],
     },
   },
 
   items: {
+    hatch: { name: 'hatch', description: 'A wooden hatch in the ceiling.', portable: false, tags: [], door: true, container: { openable: true } },
     alarm: {
       name: 'alarm clock',
       aliases: ['clock'],
