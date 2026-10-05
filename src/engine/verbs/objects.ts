@@ -1,7 +1,7 @@
 import type { GameState } from '@/types/game';
 import type { Item, World } from '@/types/world';
 import { evaluateCondition } from '../conditions';
-import { contentsLines, describeRoom, withArticle } from '../describe';
+import { contentsLines, describeRoom, lightNote, withArticle } from '../describe';
 import {
   closedAround, inventoryOf, isCarried, matchItem, matchNpc, moveItem, PLAYER, reachableItems, visibleItems, visibleItemsIn,
 } from '../model';
@@ -21,7 +21,7 @@ export function handleInventory(world: World, state: GameState): EngineResult {
   const lines = ['You are carrying:'];
   for (const id of carried) {
     const name = world.items[id]?.name ?? id;
-    lines.push(world.style === 'infocom' ? `  ${capitalize(withArticle(world, id))}` : `  - ${name}`);
+    lines.push(world.style === 'infocom' ? `  ${capitalize(withArticle(world, id))}${lightNote(world, state, id)}` : `  - ${name}`);
     lines.push(...contentsLines(world, state, id, 2));
   }
   return ok(lines);

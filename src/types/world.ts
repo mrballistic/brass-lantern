@@ -116,6 +116,8 @@ export interface Item {
   roomDescription?: string;
   /** TURN ON / TURN OFF work on it. */
   switchable?: boolean;
+  /** Gives light while on (stage 2 uses it for darkness; listings say “providing light”). */
+  light?: boolean;
 }
 
 export interface Container {
@@ -131,6 +133,10 @@ export interface Container {
   transparent?: boolean;
   /** How many items fit directly inside. */
   capacity?: number;
+  /** Printed when it opens, instead of the default. */
+  opened?: string;
+  /** Printed when it closes, instead of the default. */
+  closed?: string;
 }
 
 export interface NPC {
@@ -184,6 +190,8 @@ export interface World {
   hints?: Hint[];
   /** Points awarded per flag; SCORE and the epilogue total them. */
   scoring?: ScoreEntry[];
+  /** The total SCORE reports. Defaults to the sum of `scoring`. */
+  maxScore?: number;
   /** Highest `min` the score reaches wins. */
   ranks?: Rank[];
   /** Reply to QUIT. */

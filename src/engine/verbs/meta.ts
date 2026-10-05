@@ -6,9 +6,16 @@ import { ok, type EngineResult } from '../result';
 export function scoreLines(world: World, state: GameState): string[] {
   const scoring = world.scoring ?? [];
   if (scoring.length === 0) return [];
-  const max = scoring.reduce((sum, s) => sum + s.points, 0);
+  const max = world.maxScore ?? scoring.reduce((sum, s) => sum + s.points, 0);
   const score = scoring.reduce((sum, s) => sum + (state.flags[s.flag] ? s.points : 0), 0);
   const rank = [...(world.ranks ?? [])].sort((a, b) => b.min - a.min).find((r) => score >= r.min);
+  if (world.style === 'infocom') {
+    // Zork reports the turns before this one.
+    const moves = state.turns ?? 0;
+    const lines = [`Your score is ${score} (total of ${max} points), in ${moves} move${moves === 1 ? '' : 's'}.`];
+    if (rank) lines.push(`This gives you the rank of ${rank.title}.`);
+    return lines;
+  }
   const lines = [`[Score: ${score} of ${max}, in ${state.moveCount} moves.]`];
   if (rank) lines.push(`[Rank: ${rank.title}]`);
   return lines;

@@ -45,7 +45,7 @@ export function followExit(exit: string | Exit, world: World, state: GameState):
   if (typeof exit !== 'string') {
     if (exit.if && !evaluateCondition(exit.if, state, world)) return ok([exit.denial ?? 'You can’t go that way.']);
     if (exit.door && !isOpen(world, state, exit.door)) {
-      return ok([exit.denial ?? `The ${world.items[exit.door]?.name ?? exit.door} is closed.`]);
+      return ok([`The ${world.items[exit.door]?.name ?? exit.door} is closed.`]);
     }
     if (!exit.to) return ok([exit.denial ?? 'You can’t go that way.']);
   }
@@ -61,6 +61,7 @@ export function handleGo(target: string | undefined, world: World, state: GameSt
 
   const exitKey = fuzzyMatchExit(target, room.exits);
   if (!exitKey) {
+    if (world.style === 'infocom') return miss('You can’t go that way.');
     return miss(`You can’t go that way. Exits: ${exitList(room) || '(none)'}.`);
   }
   return followExit(room.exits[exitKey], world, state);

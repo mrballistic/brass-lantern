@@ -33,6 +33,8 @@ export function articleFor(world: World, id: string): string {
   const item = world.items[id];
   if (!item) return 'a';
   if (item.article !== undefined) return item.article;
+  // Infocom's games print a plain "a" ("a elvish sword" never comes up; they chose names to suit).
+  if (world.style === 'infocom') return 'a';
   return /^[aeiou]/i.test(item.name) ? 'an' : 'a';
 }
 
@@ -52,7 +54,9 @@ function listed(world: World, id: string): string {
 /** "a leaflet", "a leaflet and a sword", "a leaflet, a sword, and a lamp". */
 export function listPhrase(world: World, ids: string[]): string {
   const parts = ids.map((id) => withArticle(world, id));
-  if (parts.length <= 2) return parts.join(' and ');
+  if (parts.length === 1) return parts[0];
+  // Zork puts “, and” before the last item even when there are only two.
+  if (parts.length === 2 && world.style !== 'infocom') return parts.join(' and ');
   return `${parts.slice(0, -1).join(', ')}, and ${parts.at(-1)}`;
 }
 
@@ -69,13 +73,26 @@ function heading(world: World, id: string): string {
 export function contentsLines(world: World, state: GameState, id: string, depth = 0): string[] {
   if (!canSeeInside(world, state, id)) return [];
   const kids = childrenOf(world, state, id).filter((k) => !world.items[k]?.scenery);
-  if (kids.length === 0) return [];
-  const lines = [`${'  '.repeat(depth)}${heading(world, id)}`];
-  for (const k of kids) {
-    lines.push(`${'  '.repeat(depth + 1)}${listed(world, k)}`);
+  const lines: string[] = [];
+  // Untouched things with a first-seen sentence describe themselves (“On the table is a brown sack.”).
+  const told = kids.filter((k) => !state.itemState[k]?.moved && world.items[k]?.initialDescription);
+  for (const k of told) {
+    lines.push(world.items[k].initialDescription!);
+    lines.push(...contentsLines(world, state, k, depth));
+  }
+  const rest = kids.filter((k) => !told.includes(k));
+  if (rest.length === 0) return lines;
+  lines.push(`${'  '.repeat(depth)}${heading(world, id)}`);
+  for (const k of rest) {
+    lines.push(`${'  '.repeat(depth + 1)}${listed(world, k)}${lightNote(world, state, k)}`);
     lines.push(...contentsLines(world, state, k, depth + 1));
   }
   return lines;
+}
+
+/** “ (providing light)” after a lit light source, as Zork lists it. */
+export function lightNote(world: World, state: GameState, id: string): string {
+  return world.items[id]?.light && state.itemState[id]?.on ? ' (providing light)' : '';
 }
 
 /** An item's own sentence in a room listing: its first-seen one until it's moved, then its room one. */
@@ -114,6 +131,10 @@ export function describeRoom(
   }
   if (plain.length > 0) lines.push(`You can see: ${plain.join(', ')}.`);
   for (const id of visibleItems) lines.push(...contentsLines(world, state, id));
+  // Scenery isn't listed, but what's on or in it is (the kitchen table's sack).
+  for (const id of childrenOf(world, state, roomId).filter((k) => world.items[k]?.scenery)) {
+    lines.push(...contentsLines(world, state, id));
+  }
 
   if (room.npcs.length > 0) {
     const names = room.npcs.map((id) => world.npcs[id]?.name ?? id);
