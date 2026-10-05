@@ -11,12 +11,12 @@ import {
 function makeGameState(overrides: Partial<GameState> = {}): GameState {
   return {
     currentRoom: 'cubicle',
-    inventory: [],
+    locations: {},
+    itemState: {},
+    visited: ['cubicle'],
     flags: {},
     moveCount: 0,
     gameOver: false,
-    itemsRemoved: {},
-    itemsAdded: {},
     firedEvents: [],
     ...overrides,
   };
@@ -70,7 +70,7 @@ describe('persistence service', () => {
       const history: OutputLine[] = Array.from({ length: 600 }, (_, i) => makeOutputLine(i));
 
       svc.save(state, history);
-      const loaded = svc.load();
+      const loaded = svc.loadRaw() as SavedState | null;
 
       expect(loaded).not.toBeNull();
       expect(loaded?.outputHistory).toHaveLength(500);
@@ -79,27 +79,25 @@ describe('persistence service', () => {
       expect(loaded?.outputHistory[499].id).toBe('line-599');
     });
 
-    it('load() returns null when no save exists', () => {
+    it('loadRaw() returns null when no save exists', () => {
       const svc = createPersistenceService();
-      expect(svc.load()).toBeNull();
+      expect(svc.loadRaw()).toBeNull();
     });
 
-    it('load() round-trips a saved SavedState', () => {
+    it('loadRaw() round-trips a saved SavedState', () => {
       const svc = createPersistenceService();
       const state = makeGameState({
         currentRoom: 'breakroom',
-        inventory: ['stapler'],
+        locations: { stapler: 'player', report: null, memo: 'lobby' },
         flags: { metBob: true },
         moveCount: 7,
         gameOver: false,
-        itemsRemoved: { cubicle: ['report'] },
-        itemsAdded: { lobby: ['memo'] },
         firedEvents: ['intro'],
       });
       const history = [makeOutputLine(1), makeOutputLine(2)];
 
       svc.save(state, history);
-      const loaded = svc.load();
+      const loaded = svc.loadRaw() as SavedState | null;
 
       expect(loaded).not.toBeNull();
       expect(loaded?.gameState).toEqual(state);
@@ -107,64 +105,21 @@ describe('persistence service', () => {
       expect(loaded?.version).toBe(SAVE_VERSION);
     });
 
-    it('load() returns null on version mismatch', () => {
-      const svc = createPersistenceService();
-      const payload: SavedState = {
-        version: '0.9',
-        savedAt: new Date().toISOString(),
-        gameState: makeGameState(),
-        outputHistory: [],
-      };
-      window.localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
 
-      expect(svc.load()).toBeNull();
-    });
-
-    it('load() returns null on malformed JSON', () => {
+    it('loadRaw() returns null on malformed JSON', () => {
       const svc = createPersistenceService();
       window.localStorage.setItem(SAVE_KEY, '{ not valid json');
-      expect(svc.load()).toBeNull();
+      expect(svc.loadRaw()).toBeNull();
     });
 
-    it('load() returns null when gameState.currentRoom is missing', () => {
+    it('loadRaw() returns an older save as stored, for migrateSave to convert', () => {
       const svc = createPersistenceService();
-      const bogus = {
-        version: SAVE_VERSION,
-        savedAt: new Date().toISOString(),
-        gameState: { inventory: [], flags: {}, moveCount: 0 },
-        outputHistory: [],
-      };
-      window.localStorage.setItem(SAVE_KEY, JSON.stringify(bogus));
-
-      expect(svc.load()).toBeNull();
+      window.localStorage.setItem(SAVE_KEY, JSON.stringify({ version: '1.0', gameState: { currentRoom: 'x' } }));
+      expect(svc.loadRaw()).toEqual({ version: '1.0', gameState: { currentRoom: 'x' } });
     });
 
-    it('load() returns null when gameState itself is missing', () => {
-      const svc = createPersistenceService();
-      const bogus = {
-        version: SAVE_VERSION,
-        savedAt: new Date().toISOString(),
-        outputHistory: [],
-      };
-      window.localStorage.setItem(SAVE_KEY, JSON.stringify(bogus));
 
-      expect(svc.load()).toBeNull();
-    });
 
-    it('load() coerces a non-array outputHistory to an empty array', () => {
-      const svc = createPersistenceService();
-      const bogus = {
-        version: SAVE_VERSION,
-        savedAt: new Date().toISOString(),
-        gameState: makeGameState(),
-        outputHistory: 'not-an-array',
-      };
-      window.localStorage.setItem(SAVE_KEY, JSON.stringify(bogus));
-
-      const loaded = svc.load();
-      expect(loaded).not.toBeNull();
-      expect(loaded?.outputHistory).toEqual([]);
-    });
 
     it('clear() removes the save key', () => {
       const svc = createPersistenceService();
@@ -248,8 +203,8 @@ describe('persistence service', () => {
       // save() is a no-op — no throw, no write.
       expect(() => svc.save(makeGameState(), [])).not.toThrow();
 
-      // load() returns null without throwing.
-      expect(svc.load()).toBeNull();
+      // loadRaw() returns null without throwing.
+      expect(svc.loadRaw()).toBeNull();
 
       // clear() is a no-op without throwing.
       expect(() => svc.clear()).not.toThrow();

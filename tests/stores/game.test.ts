@@ -97,6 +97,19 @@ describe('useGameStore', () => {
   });
 
   describe('save / load / restart meta commands', () => {
+    it('resumes a 1.0 save after migrating it', () => {
+      localStorage.setItem(SAVE_KEY, JSON.stringify({
+        version: '1.0', savedAt: '', outputHistory: [{ id: 'x', text: '> west', timestamp: 0, type: 'input' }],
+        gameState: { currentRoom: 'living', inventory: ['key'], flags: {}, moveCount: 1, gameOver: false,
+                     itemsRemoved: { living: ['key'] }, itemsAdded: {}, firedEvents: ['enter_living'] },
+      }));
+      const store = freshStore();
+      store.initialize();
+      expect(store.restored).toBe(true);
+      expect(store.game.locations.key).toBe('player');
+      expect(store.game.currentRoom).toBe('living');
+    });
+
     it('explicit SAVE writes to localStorage and prints a confirmation', async () => {
       const store = freshStore();
       store.initialize();

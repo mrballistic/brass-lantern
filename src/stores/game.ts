@@ -12,6 +12,7 @@ import {
   visibleItemsIn,
 } from '@/engine/engine';
 import { inventoryOf } from '@/engine/model';
+import { migrateSave } from '@/engine/migrate';
 import { fallbackParse, splitCommands } from '@/engine/parser';
 import type { EngineResult } from '@/engine/engine';
 import { buildContext, parseIntentRemote } from '@/engine/intent-client';
@@ -81,7 +82,7 @@ export const useGameStore = defineStore('game', {
       world = cartridge.world;
       persistence = createPersistenceService(saveKeyFor(cartridge));
       this.$patch({ game: freshGame(), output: [], isParsing: false, restored: false, gameOverTracked: false, lastTarget: null });
-      const saved = persistence.load();
+      const saved = migrateSave(world, persistence.loadRaw());
       if (saved) {
         this.game = saved.gameState;
         this.gameOverTracked = saved.gameState.gameOver;
@@ -129,7 +130,7 @@ export const useGameStore = defineStore('game', {
         return;
       }
       if (lower === 'load') {
-        const loaded = persistence.load();
+        const loaded = migrateSave(world, persistence.loadRaw());
         if (!loaded) {
           this.appendSystem('No saved game found.');
           return;
