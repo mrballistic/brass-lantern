@@ -154,7 +154,7 @@ export const useGameStore = defineStore('game', {
 
       // "get key and wallet", "take wallet then go outside": each piece runs
       // on its own, so each gets the LLM fallback if it misses.
-      for (const command of splitCommands(input)) {
+      for (const command of splitCommands(input, world.verbs)) {
         if (this.game.gameOver) break;
         await this.runCommand(command);
       }
@@ -168,7 +168,7 @@ export const useGameStore = defineStore('game', {
      * reading first is safe.
      */
     async runCommand(input: string): Promise<void> {
-      const parsed = fallbackParse(input);
+      const parsed = fallbackParse(input, world.verbs);
       if (parsed) {
         const result = this.execute(this.resolvePronoun(parsed));
         if (result.understood !== false) {

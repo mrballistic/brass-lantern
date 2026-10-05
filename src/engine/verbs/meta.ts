@@ -24,7 +24,10 @@ export function handleScore(world: World, state: GameState): EngineResult {
   return ok(lines.length > 0 ? lines : [`[Moves: ${state.moveCount}]`]);
 }
 
-export function handleHelp(): EngineResult {
+export function handleHelp(world: World): EngineResult {
+  const own = Object.entries(world.verbs ?? {}).map(
+    ([id, v]) => `${id.toUpperCase().padEnd(25)}${v.words.filter((w) => w !== id).join(', ')}`.trimEnd(),
+  );
   return ok([
     '═══════ COMMANDS ═══════',
     'GO <direction|place>     N / S / E / W also work',
@@ -38,15 +41,14 @@ export function handleHelp(): EngineResult {
     'TALK TO <npc>            Speak with someone (synonyms: ASK)',
     'INVENTORY / I            List what you are carrying',
     'SMASH <target>           Apply violence',
-    'SNOOZE                   Hit the snooze button (contextual)',
     'WAIT / Z                 Let time pass',
-    'SLEEP                    If there’s somewhere to sleep',
     'HINT                     A nudge in the right direction',
-    'SCORE                    How liberated you are so far',
+    'SCORE                    Your score so far',
     'SAVE / LOAD              Local terminal memory',
     'RESTART                  Wipe save and start over',
     'COOKIES                  Analytics settings',
     'HELP / ?                 This screen',
+    ...own,
     '════════════════════════',
     'Chain commands: TAKE KEY AND WALLET, WEST THEN LOOK.',
     'You can also just type what you want to do in plain English.',

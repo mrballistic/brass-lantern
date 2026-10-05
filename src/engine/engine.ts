@@ -6,9 +6,10 @@ import { initialLocations } from './model';
 import { ok, type EngineResult } from './result';
 import { enterRoom, handleGo, handleIdle } from './verbs/movement';
 import {
-  handleDrop, handleExamine, handleInstall, handleInventory, handleLook, handleSmash,
-  handleSnooze, handleTake, handleUse, handleWear,
+  ALL, handleDrop, handleExamine, handleInventory, handleLook, handleSmash, handleTake, handleUse, handleWear,
 } from './verbs/objects';
+import { withRules } from './rules';
+import { handleWorldVerb } from './verbs/world-verbs';
 import { handleGive, handleTalk } from './verbs/people';
 import { handleHelp, handleHint, handleScore, handleUnknown, scoreLines } from './verbs/meta';
 
@@ -74,33 +75,31 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
     case 'look':
       return handleLook(world, state);
     case 'take':
-      return handleTake(action.target, world, state);
+      // TAKE ALL applies the rules item by item.
+      if (action.target && ALL.test(action.target)) return handleTake(action.target, world, state);
+      return withRules('take', action, world, state, () => handleTake(action.target, world, state));
     case 'drop':
-      return handleDrop(action.target, world, state);
+      return withRules('drop', action, world, state, () => handleDrop(action.target, world, state));
     case 'examine':
-      return handleExamine(action.target, world, state);
+      return withRules('examine', action, world, state, () => handleExamine(action.target, world, state));
     case 'use':
       return handleUse(action.target, action.indirect, world, state);
     case 'wear':
-      return handleWear(action.target, world, state);
+      return withRules('wear', action, world, state, () => handleWear(action.target, world, state));
     case 'talk':
       return handleTalk(action.target, world, state);
     case 'give':
-      return handleGive(action.target, action.indirect, world, state);
+      return withRules('give', action, world, state, () => handleGive(action.target, action.indirect, world, state));
     case 'inventory':
       return handleInventory(world, state);
     case 'smash':
-      return handleSmash(action.target, world, state);
-    case 'snooze':
-      return handleSnooze(world, state);
-    case 'install':
-      return handleInstall(action.target, world, state);
+      return withRules('smash', action, world, state, () => handleSmash(action.target, world, state));
     case 'hint':
       return handleHint(world, state);
     case 'score':
       return handleScore(world, state);
     case 'help':
-      return handleHelp();
+      return handleHelp(world);
     case 'sit':
     case 'wait':
       return handleIdle(action.action, world, state);
@@ -114,7 +113,7 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
       // Handled at the store/persistence layer.
       return ok([`[${action.action.toUpperCase()}]`]);
     default:
-      return handleUnknown(world, state);
+      return handleWorldVerb(action, world, state) ?? handleUnknown(world, state);
   }
 }
 

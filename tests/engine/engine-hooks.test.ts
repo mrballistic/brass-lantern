@@ -245,8 +245,8 @@ describe('the finale', () => {
   });
 
   it('smashing nothing, or a pronoun, is the generic refusal', () => {
-    expect(run(fresh(), 'smash').lines[0]).toContain('frowned upon');
-    expect(run(fresh(), 'smash', 'it').lines[0]).toContain('frowned upon');
+    expect(run(fresh(), 'smash').lines[0]).toBe('Violence isn’t the answer to this one.');
+    expect(run(fresh(), 'smash', 'it').lines[0]).toBe('Violence isn’t the answer to this one.');
     expect(run(fresh(), 'smash', 'kitten').understood).toBe(false);
   });
 });
@@ -261,7 +261,8 @@ describe('meta commands and timers', () => {
     expect(run(state, 'help').lines[0]).toContain('COMMANDS');
     expect(run(state, 'quit').lines[0]).toContain('no quitting');
     expect(run(state, 'inventory').lines).toContain('  - brass key');
-    expect(run(fresh(), 'inventory').lines[0]).toContain('corporate despair');
+    expect(run(fresh(), 'inventory').lines[0]).toBe('You are empty-handed.');
+    expect(run(fresh(), 'inventory').lines[0]).not.toContain('despair');
   });
 
   it('save, load and restart are signalled for the store', () => {
@@ -299,7 +300,7 @@ describe('meta commands and timers', () => {
       ['give', 'unicorn'],
       ['smash', 'kitten'],
       ['wear', 'unicorn'],
-      ['install', 'unicorn'],
+      ['ring', 'unicorn'],
     ] as const) {
       expect(run(state, a, t, i).understood).toBe(false);
     }

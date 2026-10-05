@@ -18,6 +18,9 @@ export const fixtureWorld: World = {
       items: ['alarm', 'bed'],
       npcs: [],
       onEnter: [],
+      instead: {
+        snooze: [{ if: 'flag:alarm_smashed', say: ['The alarm clock is in pieces. There is nothing left to snooze.'] }],
+      },
     },
     living: {
       name: 'Living Room',
@@ -33,7 +36,7 @@ export const fixtureWorld: World = {
       description: 'A yard. The shed is to the north.',
       exits: { in: 'living', inside: 'living', north: 'shed', shed: 'shed', wait: 'shed' },
       listExits: ['inside', 'shed'],
-      items: ['bat', 'lamp'],
+      items: ['bat', 'lamp', 'bell'],
       npcs: ['neighbor'],
       onEnter: [],
     },
@@ -59,7 +62,7 @@ export const fixtureWorld: World = {
       refusal: 'It is screwed to the wall.',
       tags: [],
       onSmash: 'smash_alarm',
-      onSnooze: 'snooze_alarm',
+      instead: { snooze: [{ say: ['😴 You hit snooze.'] }] },
     },
     bed: {
       name: 'bed',
@@ -71,13 +74,22 @@ export const fixtureWorld: World = {
     key: { name: 'brass key', aliases: ['key'], description: 'A small brass key.', portable: true, tags: [], onTake: 'take_key' },
     wallet: { name: 'wallet', description: 'A leather wallet.', portable: true, tags: [] },
     shirt: { name: 'loud shirt', aliases: ['shirt'], description: 'A very loud shirt.', portable: true, tags: [], onWear: 'wear_shirt' },
-    bat: { name: 'bat', aliases: ['club'], description: 'A wooden bat.', portable: true, tags: [] },
+    bat: {
+      name: 'bat',
+      aliases: ['club'],
+      description: 'A wooden bat.',
+      portable: true,
+      tags: [],
+      instead: { take: [{ if: 'flag:paid', say: ['Not yours to take.'] }] },
+    },
+    bell: { name: 'bell', description: 'A brass bell on a post.', portable: false, tags: [], instead: { ring: [{ say: ['Ding.'] }] } },
     lamp: {
       name: 'lamp',
       description: 'An unplugged lamp.',
       portable: true,
       tags: [],
       onUse: [{ with: 'socket', then: 'plug_lamp' }, { say: ['It needs a socket.'] }],
+      after: { drop: [{ if: '!flag:lamp_rolled', then: 'lamp_rolls' }] },
     },
     lit_lamp: { name: 'lit lamp', description: 'A glowing lamp.', portable: true, tags: [] },
     socket: { name: 'socket', description: 'A wall socket.', portable: false, tags: [] },
@@ -110,6 +122,7 @@ export const fixtureWorld: World = {
     paid: 'paid',
     'lamp lit': 'lamp_lit',
     'crate broken': 'crate_broken',
+    'lamp rolled': 'lamp_rolled',
   },
 
   hints: [
@@ -126,6 +139,16 @@ export const fixtureWorld: World = {
     { min: 0, title: 'Novice' },
     { min: 40, title: 'Master' },
   ],
+
+  verbs: {
+    snooze: {
+      words: ['snooze', 'hit snooze', 'hit the snooze button', 'press snooze'],
+      target: 'none',
+      reply: 'There is nothing here to snooze.',
+    },
+    ring: { words: ['ring'], target: 'required' },
+    wander: { words: ['wander', 'wander to'], target: 'optional', go: true },
+  },
 
   idle: 'The clock ticks.',
   confused: ['Please rephrase that.', 'Still confused.'],
@@ -151,7 +174,7 @@ export const fixtureWorld: World = {
     intro: ['═══ TEST HOUSE ═══', '✨ CHAPTER 1: TESTING'],
     enter_living: ['You smell coffee.', '[Flag set: Entered living]'],
     smash_alarm: ['🔨 You smash the alarm clock.', '[Flag set: Alarm smashed]'],
-    snooze_alarm: ['😴 You hit snooze.'],
+    lamp_rolls: ['The lamp rolls under the fence.', '[Flag set: Lamp rolled]'],
     rest: ['😴 You nap.', '[Flag set: Rested]'],
     take_key: ['📎 The key is cold.'],
     wear_shirt: ['🌺 You put on the shirt.', '[Flag set: Wearing shirt]'],

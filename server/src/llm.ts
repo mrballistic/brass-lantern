@@ -6,6 +6,8 @@ export interface IntentContext {
   items: string[];
   npcs: string[];
   inventory: string[];
+  /** Verbs the world declares, accepted alongside ACTION_VOCAB. Identifiers only. */
+  verbs?: string[];
 }
 
 export interface ParsedAction {
@@ -16,7 +18,7 @@ export interface ParsedAction {
 
 export const ACTION_VOCAB = [
   'go', 'take', 'drop', 'use', 'examine', 'look', 'talk', 'inventory',
-  'smash', 'snooze', 'wear', 'install', 'give', 'sit', 'wait', 'hint', 'score', 'help',
+  'smash', 'wear', 'give', 'sit', 'wait', 'hint', 'score', 'help',
   'restart', 'quit', 'save', 'load', 'unknown',
 ] as const;
 
@@ -33,13 +35,13 @@ const UNKNOWN: ParsedAction = { action: 'unknown' };
 
 // Structured-output schema (REST/OpenAPI subset). Gemini returns JSON matching
 // this shape, so no markdown-fence stripping is needed.
-const responseSchema = {
+const responseSchema = (ctx: IntentContext) => ({
   type: 'OBJECT',
   properties: {
     action: {
       type: 'STRING',
       description: 'One verb from the allowed vocabulary.',
-      enum: Array.from(ACTION_VOCAB),
+      enum: [...ACTION_VOCAB, ...(ctx.verbs ?? [])],
     },
     target: {
       type: 'STRING',
@@ -55,7 +57,7 @@ const responseSchema = {
     },
   },
   required: ['action'],
-};
+});
 
 function buildSystemInstruction(ctx: IntentContext): string {
   const verbs = ACTION_VOCAB.join(', ');
@@ -65,6 +67,7 @@ function buildSystemInstruction(ctx: IntentContext): string {
     'You never write story text, dialogue, or descriptions. Output only the action JSON.',
     '',
     `Available action verbs (use exactly one): ${verbs}`,
+    ...(ctx.verbs?.length ? [`World verbs (also allowed; use one when it fits better): ${ctx.verbs.join(', ')}`] : []),
     '',
     'Current room context:',
     `- Room: ${ctx.roomName}`,
@@ -93,7 +96,7 @@ function requestBody(input: string, ctx: IntentContext): string {
     contents: [{ role: 'user', parts: [{ text: input }] }],
     generationConfig: {
       responseMimeType: 'application/json',
-      responseSchema,
+      responseSchema: responseSchema(ctx),
       maxOutputTokens: 150,
       temperature: 0,
       // Intent classification needs no reasoning, and thinking is most of the
@@ -134,10 +137,12 @@ function identifier(raw: unknown): string | null {
 }
 
 /** Narrow a model reply to something the engine can execute. */
-export function sanitize(raw: unknown): ParsedAction {
+export function sanitize(raw: unknown, ctx?: Pick<IntentContext, 'verbs'>): ParsedAction {
   if (typeof raw !== 'object' || raw === null) return UNKNOWN;
   const r = raw as Record<string, unknown>;
-  if (typeof r.action !== 'string' || !ACTIONS.has(r.action)) return UNKNOWN;
+  if (typeof r.action !== 'string') return UNKNOWN;
+  const worldVerb = TARGET_RE.test(r.action) && (ctx?.verbs ?? []).includes(r.action);
+  if (!ACTIONS.has(r.action) && !worldVerb) return UNKNOWN;
   const out: ParsedAction = { action: r.action };
   const target = identifier(r.target);
   if (target) out.target = target;
@@ -151,6 +156,7 @@ async function tryModel(
   body: string,
   signal: AbortSignal,
   fetchImpl: typeof fetch,
+  ctx: IntentContext,
 ): Promise<ParsedAction> {
   let res: Response;
   try {
@@ -195,7 +201,7 @@ async function tryModel(
     .map((p) => p.text)
     .join('');
   try {
-    return sanitize(JSON.parse(text));
+    return sanitize(JSON.parse(text), ctx);
   } catch {
     throw new ModelFailure(`unparseable reply: ${short(text)}`);
   }
@@ -237,7 +243,7 @@ export async function parseIntent(
     const last = i === models.length - 1;
     const signal = last ? deadline : AbortSignal.any([deadline, AbortSignal.timeout(attemptMs)]);
     try {
-      return await tryModel(model, body, signal, fetchImpl);
+      return await tryModel(model, body, signal, fetchImpl, ctx);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       failures.push(`${model}: ${message}`);

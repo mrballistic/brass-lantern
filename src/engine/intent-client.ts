@@ -7,6 +7,8 @@ export interface IntentContext {
   items: string[];
   npcs: string[];
   inventory: string[];
+  /** The world's own verbs, which the server accepts alongside its built-in list. */
+  verbs: string[];
 }
 
 /** "red_stapler (red Swingline stapler)": the ID the engine matches exactly, plus what the player sees. */
@@ -26,6 +28,7 @@ export function buildContext(
     items: visibleItemIds.map((id) => label(id, world.items[id]?.name)),
     npcs: room.npcs.map((id) => label(id, world.npcs[id]?.name)),
     inventory: inventory.map((id) => label(id, world.items[id]?.name)),
+    verbs: Object.keys(world.verbs ?? {}),
   };
 }
 

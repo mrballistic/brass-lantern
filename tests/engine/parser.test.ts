@@ -1,4 +1,5 @@
 import { fallbackParse, splitCommands } from '@/engine/parser';
+import type { World } from '@/types/world';
 
 describe('fallbackParse', () => {
   describe('empty / invalid input', () => {
@@ -91,17 +92,6 @@ describe('fallbackParse', () => {
       expect(fallbackParse('enter lobby')).toEqual({ action: 'go', target: 'lobby' });
     });
 
-    it('parses "drive to work"', () => {
-      expect(fallbackParse('drive to work')).toEqual({ action: 'go', target: 'work' });
-    });
-
-    it('parses bare "drive"', () => {
-      expect(fallbackParse('drive')).toEqual({ action: 'go', target: 'drive' });
-    });
-
-    it('parses bare "leave"', () => {
-      expect(fallbackParse('leave')).toEqual({ action: 'go', target: 'drive' });
-    });
   });
 
   describe('take synonyms', () => {
@@ -203,10 +193,6 @@ describe('fallbackParse', () => {
       },
     );
 
-    it('parses "install virus"', () => {
-      expect(fallbackParse('install virus')).toEqual({ action: 'install', target: 'virus' });
-    });
-
     it('parses "sit"', () => {
       expect(fallbackParse('sit')).toEqual({ action: 'sit' });
     });
@@ -269,32 +255,6 @@ describe('fallbackParse', () => {
     });
   });
 
-  describe('snooze verb', () => {
-    it('parses bare "snooze"', () => {
-      expect(fallbackParse('snooze')).toEqual({ action: 'snooze' });
-    });
-    it('parses "hit snooze"', () => {
-      expect(fallbackParse('hit snooze')).toEqual({ action: 'snooze' });
-    });
-    it('parses "hit the snooze button"', () => {
-      expect(fallbackParse('hit the snooze button')).toEqual({ action: 'snooze' });
-    });
-    it('parses "press snooze"', () => {
-      expect(fallbackParse('press snooze')).toEqual({ action: 'snooze' });
-    });
-    it('parses "snooze alarm clock" with the item as target', () => {
-      expect(fallbackParse('snooze alarm clock')).toEqual({
-        action: 'snooze',
-        target: 'alarm clock',
-      });
-    });
-    it('parses "snooze the alarm clock" and strips "the"', () => {
-      expect(fallbackParse('snooze the alarm clock')).toEqual({
-        action: 'snooze',
-        target: 'alarm clock',
-      });
-    });
-  });
 });
 
 describe('splitCommands', () => {
@@ -339,11 +299,7 @@ describe('splitCommands', () => {
   });
 });
 
-describe('weekend verbs', () => {
-  it.each(['sleep', 'go to bed', 'take a nap', 'lie down', 'go to sleep'])('“%s” uses the bed', (input) => {
-    expect(fallbackParse(input)).toEqual({ action: 'use', target: 'bed' });
-  });
-
+describe('use synonyms', () => {
   it('attach X to Y is a use with an indirect object', () => {
     expect(fallbackParse('attach a cover sheet to my expense reports')).toEqual({
       action: 'use',
@@ -356,8 +312,42 @@ describe('weekend verbs', () => {
     expect(fallbackParse(`${verb} the drawer`)).toEqual({ action: 'use', target: 'drawer' });
   });
 
-  it('unplug and answer are uses', () => {
-    expect(fallbackParse('unplug the phone')).toEqual({ action: 'use', target: 'phone' });
-    expect(fallbackParse('answer phone')).toEqual({ action: 'use', target: 'phone' });
+});
+
+describe('verbs a world declares (formerly built in)', () => {
+  const verbs: World['verbs'] = {
+    drive: { words: ['drive', 'drive to', 'take the car', 'take the car to'], target: 'optional', go: true },
+    snooze: { words: ['snooze', 'hit snooze', 'hit the snooze button', 'press snooze'], target: 'optional' },
+    install: { words: ['install'], target: 'optional' },
+    sleep: { words: ['sleep', 'nap', 'go to bed', 'go to sleep', 'take a nap', 'lie down'], target: 'none' },
+    unplug: { words: ['unplug', 'disconnect'], target: 'required' },
+    answer: { words: ['answer', 'pick up the phone'], target: 'optional' },
+  };
+
+  it('parses them only for a world that declares them', () => {
+    expect(fallbackParse('install virus')).toBeNull();
+    expect(fallbackParse('install virus', verbs)).toEqual({ action: 'install', target: 'virus' });
+  });
+
+  it.each([
+    ['drive to work', { action: 'drive', target: 'work' }],
+    ['drive', { action: 'drive' }],
+    ['take the car to work', { action: 'drive', target: 'work' }],
+    ['snooze', { action: 'snooze' }],
+    ['hit snooze', { action: 'snooze' }],
+    ['hit the snooze button', { action: 'snooze' }],
+    ['press snooze', { action: 'snooze' }],
+    ['snooze the alarm clock', { action: 'snooze', target: 'alarm clock' }],
+    ['go to bed', { action: 'sleep' }],
+    ['take a nap', { action: 'sleep' }],
+    ['lie down', { action: 'sleep' }],
+    ['unplug the phone', { action: 'unplug', target: 'phone' }],
+    ['pick up the phone', { action: 'answer' }],
+  ])('“%s”', (input, expected) => {
+    expect(fallbackParse(input, verbs)).toEqual(expected);
+  });
+
+  it('built-in verbs still win over a world’s single words', () => {
+    expect(fallbackParse('take wallet', verbs)).toEqual({ action: 'take', target: 'wallet' });
   });
 });

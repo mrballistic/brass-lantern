@@ -186,6 +186,33 @@ describe('POST /api/parse-intent', () => {
     expect(res.body).toEqual({ action: 'give', target: 'red_mug', indirect: 'gary' });
   });
 
+  it('accepts a world verb named in the context, and drops one that isn’t', async () => {
+    fetchMock.mockResolvedValueOnce(geminiReply('{"action":"pray"}'));
+    const ok = await post({ input: 'say a prayer', context: { ...makeContext(), verbs: ['pray'] } });
+    expect(ok.body).toEqual({ action: 'pray' });
+    fetchMock.mockResolvedValueOnce(geminiReply('{"action":"pray"}'));
+    const dropped = await post({ input: 'say a prayer', context: makeContext() });
+    expect(dropped.body).toEqual({ action: 'unknown' });
+  });
+
+  it('offers world verbs to the model', async () => {
+    fetchMock.mockResolvedValueOnce(geminiReply('{"action":"pray"}'));
+    await post({ input: 'say a prayer', context: { ...makeContext(), verbs: ['pray'] } });
+    const body = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+    expect(body.generationConfig.responseSchema.properties.action.enum).toContain('pray');
+    expect(body.systemInstruction.parts[0].text).toContain('World verbs');
+  });
+
+  it('rejects a context whose verbs aren’t identifiers or are too many', async () => {
+    const bad = await post({ input: 'pray', context: { ...makeContext(), verbs: ['Pray Now!'] } });
+    expect(bad.status).toBe(400);
+    const many = await post({ input: 'pray', context: { ...makeContext(), verbs: Array.from({ length: 51 }, (_, i) => `v${i}`) } });
+    expect(many.status).toBe(400);
+    const notList = await post({ input: 'pray', context: { ...makeContext(), verbs: 'pray' } });
+    expect(notList.status).toBe(400);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('ignores thought parts in the reply', async () => {
     fetchMock.mockResolvedValueOnce(
       new Response(

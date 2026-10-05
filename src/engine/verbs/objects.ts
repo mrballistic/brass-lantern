@@ -4,7 +4,7 @@ import { evaluateCondition } from '../conditions';
 import { describeRoom } from '../describe';
 import { inventoryOf, isCarried, matchItem, matchNpc, moveItem, PLAYER, reachableItems, visibleItemsIn } from '../model';
 import { miss, ok, type EngineResult } from '../result';
-import { applyEventEffects, applyUseRule, findUseRule, runEvent } from '../rules';
+import { applyRule, findRule, runEvent, withRules } from '../rules';
 import { scoreLines } from './meta';
 
 export function handleLook(world: World, state: GameState): EngineResult {
@@ -13,7 +13,7 @@ export function handleLook(world: World, state: GameState): EngineResult {
 
 export function handleInventory(world: World, state: GameState): EngineResult {
   const carried = inventoryOf(world, state);
-  if (carried.length === 0) return ok(['Just the weight of corporate despair.']);
+  if (carried.length === 0) return ok([world.emptyInventory ?? 'You are empty-handed.']);
   const lines = ['You are carrying:'];
   for (const id of carried) lines.push(`  - ${world.items[id]?.name ?? id}`);
   return ok(lines);
@@ -28,7 +28,9 @@ export function handleTake(target: string | undefined, world: World, state: Game
     const portable = visibleIds.filter((id) => world.items[id]?.portable);
     if (portable.length === 0) return ok(['There is nothing here worth taking.']);
     const lines: string[] = [];
-    for (const id of portable) lines.push(...handleTake(id, world, state).lines);
+    for (const id of portable) {
+      lines.push(...withRules('take', { action: 'take', target: id }, world, state, () => handleTake(id, world, state)).lines);
+    }
     return ok(lines, true);
   }
   const itemId = matchItem(target, visibleIds, world);
@@ -43,9 +45,6 @@ export function handleTake(target: string | undefined, world: World, state: Game
   (state.itemState[itemId] ??= {}).moved = true;
 
   const lines = [`Taken: ${item.name}.`];
-  if (item.onTake && !state.firedEvents.includes(item.onTake)) {
-    lines.push(...runEvent(item.onTake, world, state));
-  }
   return ok(lines, true);
 }
 
@@ -86,9 +85,8 @@ export function handleUse(
   // "put the disk in the terminal" and "use the terminal with the disk" mean
   // the same thing, so check the rules on both sides.
   const rule =
-    findUseRule(itemId, otherId, reach, state, world) ??
-    (otherId ? findUseRule(otherId, itemId, reach, state, world) : null);
-  if (rule) return applyUseRule(rule, world, state);
+    findRule(world, state, 'instead', 'use', { target: itemId, indirect: otherId, room: state.currentRoom }, reach);
+  if (rule) return applyRule(rule, world, state);
 
   if (world.items[itemId]?.onWear && isCarried(state, itemId)) {
     return handleWear(target, world, state);
@@ -148,7 +146,7 @@ export function handleSmash(
     if (wreck) return ok([`The ${world.items[wreck].name} is already in pieces.`]);
     if (!PRONOUN.test(target)) return miss(`You don’t see a “${target}” worth smashing.`);
   }
-  return ok(['Smashing things at work is, somehow, still frowned upon.']);
+  return ok([world.smashRefusal ?? 'Violence isn’t the answer to this one.']);
 }
 
 /** Items that started in this room and have since been smashed. */
@@ -169,38 +167,4 @@ export function runFinale(world: World, state: GameState): EngineResult {
   lines.push(...runEvent(finale.footer, world, state));
   state.gameOver = true;
   return ok(lines, true);
-}
-
-export function handleSnooze(world: World, state: GameState): EngineResult {
-  const snoozable = visibleItemsIn(state.currentRoom, world, state)
-    .map((id) => world.items[id])
-    .find((item) => item?.onSnooze);
-  if (!snoozable?.onSnooze) {
-    const wreck = smashedHere(world, state).find((id) => world.items[id].onSnooze);
-    if (wreck) {
-      return ok([
-        `The ${world.items[wreck].name} is in pieces. There is nothing left to snooze.`,
-        'You will probably oversleep tomorrow. This feels, on balance, fine.',
-      ]);
-    }
-    return ok(['There is nothing here to snooze.']);
-  }
-  // Snoozing is repeatable and changes nothing, so it isn't recorded as fired.
-  applyEventEffects(snoozable.onSnooze, world, state);
-  return ok([...(world.events[snoozable.onSnooze] ?? [])]);
-}
-
-export function handleInstall(target: string | undefined, world: World, state: GameState): EngineResult {
-  // INSTALL is USE with a carried item. With no usable target, try whatever
-  // the player is carrying that has a rule here.
-  if (target) {
-    const result = handleUse(target, undefined, world, state);
-    if (result.understood !== false) return result;
-  }
-  const reach = reachableItems(world, state);
-  for (const id of inventoryOf(world, state)) {
-    const rule = findUseRule(id, null, reach, state, world);
-    if (rule?.with) return applyUseRule(rule, world, state);
-  }
-  return miss('There is nothing here to install onto.');
 }

@@ -14,6 +14,40 @@ export interface Room {
   requires?: string;
   /** Shown when `requires` fails. Falls back to a generic refusal. */
   denial?: string;
+  /** Rules that replace a verb's default here. */
+  instead?: RuleTable;
+  /** Rules that run after a verb's default succeeds here. */
+  after?: RuleTable;
+}
+
+/**
+ * A rule on an item or room. The first rule whose `if` holds (and whose `with`
+ * matches the other object, when given) wins. It runs an event, prints lines,
+ * or both.
+ */
+export interface Rule {
+  /** Condition string (see conditions.ts). */
+  if?: string;
+  /** The other item, for two-object commands. Must be in reach. */
+  with?: string;
+  then?: string;
+  say?: string[];
+}
+
+/** Verb → rules. */
+export type RuleTable = Record<string, Rule[]>;
+
+/** A verb the world declares. It does nothing by default: rules give it meaning. */
+export interface WorldVerb {
+  /** Words and phrases that mean it ("pray", "hit the snooze button"). */
+  words: string[];
+  target: 'none' | 'optional' | 'required';
+  /** Prepositions that introduce a second object ("with", "on"). */
+  indirect?: string[];
+  /** Printed when no rule applies. Defaults to “Nothing happens.” */
+  reply?: string;
+  /** Treat it as GO: through the target exit, or the exit labeled with the verb's ID when bare. */
+  go?: boolean;
 }
 
 export interface EventTrigger {
@@ -21,19 +55,8 @@ export interface EventTrigger {
   then: string;
 }
 
-/**
- * One way an item can be used. Rules are tried in order and the first whose
- * conditions hold wins. A rule fires an event (`then`), prints lines (`say`),
- * or both.
- */
-export interface UseRule {
-  /** Condition string (see conditions.ts). */
-  if?: string;
-  /** Another item that must be visible or carried for this rule to apply. */
-  with?: string;
-  then?: string;
-  say?: string[];
-}
+/** One way an item can be used: a Rule, under its older name. */
+export type UseRule = Rule;
 
 export interface Item {
   name: string;
@@ -46,8 +69,11 @@ export interface Item {
   refusal?: string;
   onTake?: string;
   onSmash?: string;
-  onSnooze?: string;
   onUse?: UseRule[];
+  /** Rules that replace a verb's default for this item. */
+  instead?: RuleTable;
+  /** Rules that run after a verb's default succeeds on this item. */
+  after?: RuleTable;
   /** Event fired the first time the item is worn. Wearable items only. */
   onWear?: string;
   /** Items that start inside or on this one. */
@@ -134,6 +160,14 @@ export interface World {
   finale?: Finale;
   /** Lines that interrupt on a timer while a condition holds (a ringing phone). */
   ambient?: Ambient[];
+  /** Verbs this world adds. They need no engine or intent-server changes. */
+  verbs?: Record<string, WorldVerb>;
+  /** Output conventions: 'brass' (default) or 'infocom' (Zork's listings and replies). */
+  style?: 'brass' | 'infocom';
+  /** INVENTORY with nothing carried. Defaults to “You are empty-handed.” */
+  emptyInventory?: string;
+  /** SMASH where nothing can be smashed. */
+  smashRefusal?: string;
 }
 
 /**
