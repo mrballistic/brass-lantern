@@ -21,7 +21,7 @@ If you’ve never played it, Zork’s parser is older and stricter than Brass La
 | `SAVE`, `RESTORE` | See [Saving](#saving). SAVE before anything risky. |
 | `EJECT` | Back to the cartridge menu. The game autosaves, so it’s there when you come back. |
 
-Things Brass Lantern adds to native worlds don’t apply here: chained commands with “and”, the intent server, HINT. Zork has no hints, and it’s more fun that way. Map as you go.
+Brass Lantern’s own command splitting, the intent server and HINT don’t apply here. Zork’s parser chains commands itself (`take lamp and sword`, `north. open door`), but it has no hints, and it’s more fun that way. Map as you go.
 
 ## Cartridges
 
@@ -77,6 +77,10 @@ Got a story file? Type **LOAD** at the cartridge menu and pick it, or drag it on
 The game’s own echo of your command, and its `>` prompt, are dropped, since the terminal draws its own.
 
 ## Limits
+
+- **SCRIPT** (a transcript file) isn’t supported; it says so and the game carries on.
+- **A full browser storage** makes SAVE say the save didn’t fit, rather than claiming success.
+- **A story that won’t download** within 20 seconds shows an error; reload to try again, or EJECT.
 
 - **Formats:** Z-machine versions 3, 4, 5 and 8 (what ifvms supports). No Glulx.
 - **Windows:** only the status line from the upper window is shown, so games that draw menus or quote boxes there lose them.

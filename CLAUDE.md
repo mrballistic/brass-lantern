@@ -4,7 +4,7 @@ Guidance for AI coding agents working in this repo. Humans: see CONTRIBUTING.md 
 
 ## What this is
 
-Brass Lantern: a text-adventure engine (Vue 3 SPA with a CRT terminal) plus an optional intent server (`server/`, Express + Gemini). A game is a `World` object in `src/worlds/`; `src/app.config.ts` picks which one plays. The default is the tutorial world, Snack Attack.
+Brass Lantern: a text-adventure engine (Vue 3 SPA with a CRT terminal) plus an optional intent server (`server/`, Express + Gemini). A native game is a `World` object in `src/worlds/`. `src/app.config.ts` lists the cartridges: native worlds and Z-machine story files (Zork I–III in `public/stories/`). With more than one, the terminal opens on a menu, where players can also LOAD their own story files (kept in IndexedDB). Snack Attack is the tutorial world. `src/stores/session.ts` routes input to the menu (`stores/cartridges.ts`), a native world (`stores/game.ts`) or a story (`stores/zgame.ts`).
 
 ## Invariants
 
