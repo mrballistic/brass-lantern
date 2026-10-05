@@ -8,10 +8,11 @@
 ═══════════════════════════════
 INSTALLED CARTRIDGES
 ═══════════════════════════════
-  1  SNACK ATTACK   native
-  2  ZORK I         Z-machine v3
-  3  ZORK II        Z-machine v3
-  4  ZORK III       Z-machine v3
+  1  SNACK ATTACK      native
+  2  ZORK I            Z-machine v3
+  3  ZORK II           Z-machine v3
+  4  ZORK III          Z-machine v3
+  5  ZORK I · NATIVE   native
 [Type a number to insert a cartridge. EJECT brings you back here.]
 [LOAD plays a Z-machine story file from your computer. It stays in this browser; nothing is uploaded.]
 > 2
@@ -29,6 +30,8 @@ There is a small mailbox here.
 - an optional LLM on a short leash. Input the parser can't handle goes to a small server that asks Gemini which of *your* verbs and IDs it means. The reply is reduced to a verb plus identifiers, so the model never writes the story, and the key stays on the server.
 
 **Load a story file.** Z-machine games (versions 3, 4, 5 and 8) run unmodified in the same terminal, through [ifvms](https://github.com/curiousdannii/ifvms.js), the interpreter inside Parchment. SAVE and RESTORE work, every turn autosaves, and the status line shows in the header. Zork I, II and III ship with the demo; Microsoft released them under the MIT License in 2025. Type LOAD at the menu to play your own story files, which stay in your browser.
+
+**Or both at once.** The demo includes Zork I rebuilt as a native world, checked line by line against the original story file: it’s how the engine proves it can carry an Infocom-class game ([Porting Zork](https://mrballistic.github.io/brass-lantern/guide/porting-zork)).
 
 Both kinds sit side by side as **cartridges**. With more than one, the terminal opens on a menu; with one, it boots straight in.
 
@@ -55,6 +58,7 @@ export const cartridges: Cartridge[] = [
   { kind: 'zcode', id: 'zork1', title: 'ZORK I', story: 'stories/zork1.z3', format: 'Z-machine v3' },
   { kind: 'zcode', id: 'zork2', title: 'ZORK II', story: 'stories/zork2.z3', format: 'Z-machine v3' },
   { kind: 'zcode', id: 'zork3', title: 'ZORK III', story: 'stories/zork3.z3', format: 'Z-machine v3' },
+  { kind: 'world', id: 'zork1-native', title: 'ZORK I · NATIVE', world: zork1 },
 ];
 ```
 
@@ -73,6 +77,7 @@ npm install && npm run dev
 - [Getting started](https://mrballistic.github.io/brass-lantern/guide/getting-started)
 - [Your first world](https://mrballistic.github.io/brass-lantern/guide/your-first-world)
 - [Playing story files](https://mrballistic.github.io/brass-lantern/guide/z-machine)
+- [Porting Zork](https://mrballistic.github.io/brass-lantern/guide/porting-zork)
 - [How it works](https://mrballistic.github.io/brass-lantern/guide/how-it-works)
 - [The intent server](https://mrballistic.github.io/brass-lantern/guide/intent-server)
 - [Testing a world](https://mrballistic.github.io/brass-lantern/guide/testing)

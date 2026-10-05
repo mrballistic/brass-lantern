@@ -11,7 +11,10 @@ Brass Lantern: a text-adventure engine (Vue 3 SPA with a CRT terminal) plus an o
 - **The engine never branches on a world's IDs.** World-specific behavior is data; if the schema can't express something, add a generic hook to `src/types/world.ts` + `src/engine/engine.ts`, and give `tests/fixtures/world.ts` a use of it.
 - **Engine misses never mutate state.** The store runs the regex reading, and on `understood: false` retries with the LLM's reading; that's only safe because a miss changes nothing. `tests/engine/engine-hooks.test.ts` checks it.
 - **The LLM only classifies.** It returns `{ action, target, indirect }`; the server drops anything that isn't a known verb plus identifiers. LLM-generated story text is a defect.
-- **New verbs go in three places:** `src/engine/parser.ts`, the dispatcher (and HELP) in `src/engine/engine.ts`, and `ACTION_VOCAB` in `server/src/llm.ts`.
+- **World verbs** (`world.verbs`, with `instead` rules) need no engine or server edits; prefer them. **Built-in verbs** still go in three places: `src/engine/parser.ts` (and `BUILT_IN_WORDS`), the dispatcher (wrapped in `withRules`, plus HELP) in `src/engine/engine.ts`, and `ACTION_VOCAB` in `server/src/llm.ts`.
+- **Every item has one parent** (`GameState.locations`); inventory and contents are derived (`src/engine/model.ts`). Built-in verbs check everything before changing anything, so a refusal is an understood reply and a miss changes nothing.
+- **Saves are format 2.0**; older ones are migrated in `src/engine/migrate.ts`. Add state fields as optional, or add a migration step.
+- **`tests/worlds/zork1-diff.test.ts`** plays the native Zork I (`src/worlds/zork1.ts`) against the original story file. Keep it passing; a difference goes in `tests/worlds/zork1-allowlist.ts` with its reason.
 - **Conditions** (`flag:` / `has:` / `in:`, `!`, `&`) are parsed only in `src/engine/conditions.ts`; **fuzzy matching** only in `src/engine/fuzzy.ts`.
 - **The Gemini key is server-only**, sent in the `x-goog-api-key` header. Never a `VITE_` variable. Every server env var goes through `server/src/config.ts`.
 - **Player-facing text** uses curly quotes and apostrophes.

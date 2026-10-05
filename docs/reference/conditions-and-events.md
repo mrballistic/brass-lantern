@@ -9,6 +9,12 @@ Conditions are strings, used by `requires`, `onEnter`, use rules, dialogue keys,
 | `flag:NAME` | the flag is set |
 | `has:ITEM` | the item is in the inventory |
 | `in:ROOM` | the player is in that room |
+| `visited:ROOM` | the player has been there |
+| `inside:ITEM:PLACE` | the item is directly in PLACE: a room, another item, or `player` |
+| `open:ITEM` | the container or door is open |
+| `locked:ITEM` | it's locked |
+| `on:ITEM` | it's switched on |
+| `here:ITEM` | the player can reach it (in the room, carried, or in something open) |
 | `!…` | negates any of the above |
 | `a & b` | every part holds: `in:break_room & !flag:lunch_freed` |
 
@@ -23,6 +29,8 @@ An event is a named list of lines. Lines are printed in order. Bracketed lines a
 | `[Flag set: Gary is happy]` | Sets the flag `flagLabels['gary is happy']` names. An unmapped label does nothing, so test for it. |
 | `[Added to inventory: badge]` | Adds the item whose `name` is "badge". |
 | `[Badge consumed]` | Removes the item whose `name` is "badge" from the inventory. |
+
+In a world with `style: 'infocom'`, bracketed lines still take effect but aren't printed.
 
 Facts worth knowing:
 

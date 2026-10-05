@@ -31,6 +31,7 @@ export default defineConfig({
           { text: 'Getting started', link: '/guide/getting-started' },
           { text: 'Your first world', link: '/guide/your-first-world' },
           { text: 'Playing story files (Zork)', link: '/guide/z-machine' },
+          { text: 'Porting Zork', link: '/guide/porting-zork' },
           { text: 'How it works', link: '/guide/how-it-works' },
           { text: 'The intent server', link: '/guide/intent-server' },
           { text: 'Testing a world', link: '/guide/testing' },
