@@ -7,6 +7,7 @@ import { transcriptKey } from '@/cartridges';
 import { makeLine } from '@/engine/output';
 import { track } from '@/services/analytics';
 import { LocalStorageDialog } from '@/zmachine/dialog';
+import { localStoryBytes } from './cartridges';
 import type { SessionEvents } from '@/zmachine/session';
 
 const MAX_TRANSCRIPT = 500;
@@ -18,6 +19,8 @@ interface RunningSession {
 
 export interface ZGameDeps {
   fetchStory(url: string): Promise<Uint8Array>;
+  /** A story the player loaded, from the shelf. */
+  loadLocal(id: string): Promise<Uint8Array>;
   createSession(story: Uint8Array, dialog: LocalStorageDialog, events: SessionEvents): RunningSession;
 }
 
@@ -25,16 +28,24 @@ export interface ZGameDeps {
 // starts, so native-only builds don't download it.
 let SessionClass: typeof import('@/zmachine/session').ZMachineSession | null = null;
 
+async function loadInterpreter(): Promise<void> {
+  SessionClass = (await import('@/zmachine/session')).ZMachineSession;
+}
+
 const defaultDeps: ZGameDeps = {
   async fetchStory(url) {
-    const [res, mod] = await Promise.all([
+    const [res] = await Promise.all([
       // A stalled connection fails after 20s instead of hanging forever.
       fetch(`${import.meta.env.BASE_URL}${url}`, { signal: AbortSignal.timeout(20_000) }),
-      import('@/zmachine/session'),
+      loadInterpreter(),
     ]);
-    SessionClass = mod.ZMachineSession;
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return new Uint8Array(await res.arrayBuffer());
+  },
+  async loadLocal(id) {
+    const [bytes] = await Promise.all([localStoryBytes(id), loadInterpreter()]);
+    if (!bytes) throw new Error('Not on the shelf');
+    return bytes;
   },
   createSession: (story, dialog, events) => {
     if (!SessionClass) throw new Error('The interpreter isn’t loaded.');
@@ -112,12 +123,16 @@ export const useZGameStore = defineStore('zgame', {
       const loading = this.output[this.output.length - 1];
       let bytes: Uint8Array;
       try {
-        bytes = await deps.fetchStory(cart.story);
+        bytes = cart.local ? await deps.loadLocal(cart.id) : await deps.fetchStory(cart.story);
       } catch {
         if (mine !== generation) return;
         this.removeLine(loading);
         this.failed = true;
-        this.appendLine('[This cartridge wouldn’t load. Check your connection and reload, or type EJECT.]');
+        this.appendLine(
+          cart.local
+            ? '[This story isn’t in the browser any more. Type EJECT, then LOAD it again.]'
+            : '[This cartridge wouldn’t load. Check your connection and reload, or type EJECT.]',
+        );
         return;
       }
       if (mine !== generation) return;

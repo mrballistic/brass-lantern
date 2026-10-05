@@ -13,6 +13,7 @@ const typer = useTypewriter();
 const inputEl = ref<HTMLInputElement | null>(null);
 const scrollEl = ref<HTMLDivElement | null>(null);
 const inputValue = ref('');
+const fileEl = ref<HTMLInputElement | null>(null);
 
 // The block cursor is drawn at the insertion point: a hidden mirror of the text before
 // the caret pushes it into place, and the native caret is transparent.
@@ -103,6 +104,8 @@ async function onSubmit(): Promise<void> {
     return;
   }
   inputValue.value = '';
+  // Open the picker now, inside the keypress, or the browser blocks it.
+  if (session.wantsFile(v)) fileEl.value?.click();
   // Push into history (dedupe consecutive duplicates) and reset cursor.
   if (history.value.at(-1) !== v) {
     history.value.push(v);
@@ -113,6 +116,20 @@ async function onSubmit(): Promise<void> {
   historyIndex.value = null;
   draft = '';
   await session.submit(v);
+}
+
+async function onFileChosen(): Promise<void> {
+  const el = fileEl.value;
+  const file = el?.files?.[0];
+  if (el) el.value = '';
+  if (file) await session.loadFile(file);
+  focusInput();
+}
+
+// Only the menu takes a dropped story file; in a game, a drop does nothing.
+async function onDrop(e: DragEvent): Promise<void> {
+  const file = e.dataTransfer?.files?.[0];
+  if (file && mode.value === 'menu') await session.loadFile(file);
 }
 
 function onShellClick(): void {
@@ -180,7 +197,14 @@ const inputPlaceholder = computed(() =>
 </script>
 
 <template>
-  <div class="terminal" tabindex="-1" @click="onShellClick" @keydown="onKeydown">
+  <div
+    class="terminal"
+    tabindex="-1"
+    @click="onShellClick"
+    @keydown="onKeydown"
+    @dragover.prevent
+    @drop.prevent="onDrop"
+  >
     <header class="terminal-header">
       <span>{{ appName }} v{{ version }}<template v-if="title"> · {{ title }}</template></span>
       <span class="header-right">
@@ -212,7 +236,7 @@ const inputPlaceholder = computed(() =>
           :disabled="isParsing"
           :placeholder="inputPlaceholder"
           @input="syncCaret"
-        @keyup="syncCaret"
+          @keyup="syncCaret"
           @click="syncCaret"
           @select="syncCaret"
           @scroll="syncCaret"
@@ -225,5 +249,14 @@ const inputPlaceholder = computed(() =>
         ><span class="caret-before">{{ beforeCaret }}</span><span class="block-cursor" aria-hidden="true" /></span>
       </span>
     </form>
+    <input
+      ref="fileEl"
+      class="story-picker"
+      type="file"
+      accept=".z3,.z4,.z5,.z8,.zblorb,.zlb,.blb,.blorb"
+      tabindex="-1"
+      aria-hidden="true"
+      @change="onFileChosen"
+    />
   </div>
 </template>

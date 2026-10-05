@@ -13,6 +13,7 @@ INSTALLED CARTRIDGES
   3  ZORK II        Z-machine v3
   4  ZORK III       Z-machine v3
 [Type a number to insert a cartridge. EJECT brings you back here.]
+[LOAD plays a Z-machine story file from your computer. It stays in this browser; nothing is uploaded.]
 > 2
 West of House
 You are standing in an open field west of a white house, with a boarded front door.
@@ -27,7 +28,7 @@ There is a small mailbox here.
 - a forgiving parser, with synonyms, chained commands (`take key and wallet`, `north then look`), pronouns and a second object (`put the disk in the drive`), all with zero latency;
 - an optional LLM on a short leash. Input the parser can't handle goes to a small server that asks Gemini which of *your* verbs and IDs it means. The reply is reduced to a verb plus identifiers, so the model never writes the story, and the key stays on the server.
 
-**Load a story file.** Z-machine games (versions 3, 4, 5 and 8) run unmodified in the same terminal, through [ifvms](https://github.com/curiousdannii/ifvms.js), the interpreter inside Parchment. SAVE and RESTORE work, every turn autosaves, and the status line shows in the header. Zork I, II and III ship with the demo; Microsoft released them under the MIT License in 2025.
+**Load a story file.** Z-machine games (versions 3, 4, 5 and 8) run unmodified in the same terminal, through [ifvms](https://github.com/curiousdannii/ifvms.js), the interpreter inside Parchment. SAVE and RESTORE work, every turn autosaves, and the status line shows in the header. Zork I, II and III ship with the demo; Microsoft released them under the MIT License in 2025. Type LOAD at the menu to play your own story files, which stay in your browser.
 
 Both kinds sit side by side as **cartridges**. With more than one, the terminal opens on a menu; with one, it boots straight in.
 

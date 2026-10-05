@@ -26,23 +26,34 @@ export function hasProgress(c: Cartridge): boolean {
 }
 
 /** The cartridge to boot without a menu: the only one, or the last one played if it has progress. */
-export function autoBootCartridge(): Cartridge | null {
+export function autoBootCartridge(all: Cartridge[] = cartridges): Cartridge | null {
   if (cartridges.length === 1) return cartridges[0];
-  const last = cartridges.find((c) => c.id === stored(LAST_CARTRIDGE_KEY));
+  const last = all.find((c) => c.id === stored(LAST_CARTRIDGE_KEY));
   return last && hasProgress(last) ? last : null;
+}
+
+/** Before the shelf is read: will boot resume a game? (Picks the short boot animation.) */
+export function willResume(): boolean {
+  const c = autoBootCartridge();
+  if (c) return hasProgress(c);
+  const last = stored(LAST_CARTRIDGE_KEY);
+  return last !== null && last.startsWith('local-') && stored(transcriptKey(last)) !== null;
 }
 
 export function defaultWorldCartridge(): WorldCartridge | undefined {
   return cartridges.find((c): c is WorldCartridge => c.kind === 'world');
 }
 
-export function menuLines(): string[] {
-  const width = Math.max(...cartridges.map((c) => c.title.length));
+export function menuLines(all: Cartridge[] = cartridges): string[] {
+  const width = Math.max(...all.map((c) => c.title.length));
+  const format = (c: Cartridge) => (c.kind === 'world' ? 'native' : c.local ? `${c.format}   yours` : c.format);
   return [
     '═══════════════════════════════',
     'INSTALLED CARTRIDGES',
     '═══════════════════════════════',
-    ...cartridges.map((c, i) => `  ${i + 1}  ${c.title.padEnd(width)}   ${c.kind === 'world' ? 'native' : c.format}`),
+    ...all.map((c, i) => `  ${i + 1}  ${c.title.padEnd(width)}   ${format(c)}`),
     '[Type a number to insert a cartridge. EJECT brings you back here.]',
+    '[LOAD plays a Z-machine story file from your computer. It stays in this browser; nothing is uploaded.]',
+    ...(all.some((c) => c.kind === 'zcode' && c.local) ? ['[REMOVE and a number takes one of yours off the shelf.]'] : []),
   ];
 }

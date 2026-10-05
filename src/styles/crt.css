@@ -244,6 +244,11 @@ html, body, #app {
   opacity: 0.5;
 }
 
+/* The hidden file input behind LOAD */
+.story-picker {
+  display: none;
+}
+
 /* Block cursor, positioned at the caret by a transparent mirror of the text before it */
 .terminal-input-bar .caret-mirror {
   position: absolute;

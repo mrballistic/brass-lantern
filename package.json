@@ -1,6 +1,6 @@
 {
   "name": "brass-lantern",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "author": "Todd Greco <mrballistic@gmail.com>",
   "private": true,
   "description": "A small engine for classic parser text adventures, with a CRT terminal and an optional LLM intent parser.",
@@ -45,6 +45,7 @@
     "@vue/tsconfig": "^0.9.1",
     "eslint": "^10.12.0",
     "eslint-plugin-vue": "^10.11.1",
+    "fake-indexeddb": "6.2.5",
     "glkote-term": "0.4.4",
     "globals": "^17.0.0",
     "happy-dom": "^20.14.5",

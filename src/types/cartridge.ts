@@ -19,6 +19,8 @@ export interface ZCodeCartridge {
   story: string;
   /** Shown in the menu, e.g. "Z-machine v3". */
   format: string;
+  /** Loaded by the player from their own computer and kept in the browser; `story` is unused. */
+  local?: boolean;
 }
 
 export type Cartridge = WorldCartridge | ZCodeCartridge;

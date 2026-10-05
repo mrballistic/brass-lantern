@@ -3,11 +3,27 @@ import { autoBootCartridge } from '@/cartridges';
 import { makeLine } from '@/engine/output';
 import { cookiesCommand } from '@/services/cookies';
 import type { Cartridge } from '@/types/cartridge';
+import { readStoryFile, type StoryFileResult } from '@/zmachine/storyfile';
 import { useCartridgeStore } from './cartridges';
 import { useGameStore } from './game';
 import { useZGameStore } from './zgame';
 
 export type SessionMode = 'menu' | 'world' | 'zcode';
+
+const FILE_TYPES = '.z3, .z5, .z8 or .zblorb';
+
+function whyNot(name: string, r: Exclude<StoryFileResult, { ok: true }>): string {
+  switch (r.error) {
+    case 'glulx':
+      return `[${name} is a Glulx game. Brass Lantern plays Z-machine story files: ${FILE_TYPES}.]`;
+    case 'version':
+      return `[${name} is a version ${r.version} story file; versions 3, 4, 5 and 8 work here.]`;
+    case 'too-big':
+      return `[${name} is too big to be a Z-machine story file.]`;
+    default:
+      return `[${name} isn’t a Z-machine story file.]`;
+  }
+}
 
 /**
  * One interface for the terminal, whatever is running: the cartridge menu,
@@ -40,9 +56,33 @@ export function useSession() {
 
   /** After the boot animation: resume or boot the obvious cartridge, or show the menu. */
   async function boot(): Promise<void> {
-    const c = autoBootCartridge();
+    await carts.loadShelf();
+    const c = autoBootCartridge(carts.all);
     if (c) await start(c);
     else carts.showMenu();
+  }
+
+  /** Should the terminal open a file picker for this input? (It has to, before awaiting, to keep the keypress's user activation.) */
+  function wantsFile(raw: string): boolean {
+    return mode.value === 'menu' && carts.hasMenu && /^(load|open)$/i.test(raw.trim());
+  }
+
+  /** A file the player chose or dropped: put it on the shelf and play it. */
+  async function loadFile(file: File): Promise<void> {
+    let result: StoryFileResult;
+    try {
+      result = readStoryFile(new Uint8Array(await file.arrayBuffer()), file.name);
+    } catch {
+      carts.output.push(makeLine(`[${file.name} couldn’t be read.]`));
+      return;
+    }
+    if (!result.ok) {
+      carts.output.push(makeLine(whyNot(file.name, result)));
+      return;
+    }
+    const { cartridge, stored } = await carts.addLocal(result.story);
+    await start(cartridge);
+    if (!stored) zgame.appendLine(`[This browser wouldn’t keep ${cartridge.title}, so it’s here only until you reload.]`);
   }
 
   async function submit(raw: string): Promise<void> {
@@ -66,9 +106,18 @@ export function useSession() {
       zgame.submit(input);
       return;
     }
+    if (wantsFile(input)) {
+      lines.push(makeLine(`> ${input}`), makeLine(`[Choose a story file: ${FILE_TYPES}.]`));
+      return;
+    }
+    const remove = /^(?:remove|forget)\s+(\d+)$/i.exec(input);
+    if (remove) {
+      await carts.remove(input, Number(remove[1]));
+      return;
+    }
     const chosen = carts.choose(input);
     if (chosen) await start(chosen);
   }
 
-  return { mode, output, isParsing, restored, status, title, boot, start, submit };
+  return { mode, output, isParsing, restored, status, title, boot, start, submit, wantsFile, loadFile };
 }

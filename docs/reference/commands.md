@@ -24,6 +24,8 @@ The verbs are fixed; a world gives them things to act on. Anything the regex par
 | SAVE / LOAD / RESTART | | Saves are in the browser. |
 | COOKIES | `privacy` | Analytics settings, when analytics are configured. |
 | EJECT | | Back to the cartridge menu (builds with more than one cartridge). |
+| LOAD (at the menu) | `open`, or drop a file on the terminal | Play a Z-machine story file from your computer. In a native world, LOAD restores your save instead. |
+| REMOVE *number* (at the menu) | `forget` | Take a story you loaded off the shelf. |
 | PLAY | | Start a story file again after it ends. |
 | CANCEL | | At a story file’s save or restore prompt. |
 | HELP | `?` | |

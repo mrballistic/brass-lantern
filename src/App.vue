@@ -3,14 +3,13 @@ import { ref, onMounted } from 'vue';
 import CrtBootSequence from '@/components/CrtBootSequence.vue';
 import Terminal from '@/components/Terminal.vue';
 import ConsentBanner from '@/components/ConsentBanner.vue';
-import { autoBootCartridge, hasProgress } from '@/cartridges';
+import { willResume } from '@/cartridges';
 
 const bootComplete = ref(false);
 const fastBoot = ref(false);
 
 onMounted(() => {
-  const c = autoBootCartridge();
-  fastBoot.value = c !== null && hasProgress(c);
+  fastBoot.value = willResume();
 });
 
 function onBootComplete(): void {
