@@ -184,3 +184,23 @@ export function runFinale(world: World, state: GameState): EngineResult {
   state.gameOver = true;
   return ok(lines, true);
 }
+
+export function handleRead(target: string | undefined, world: World, state: GameState): EngineResult {
+  if (!target) return ok(['Read what?']);
+  const id = matchItem(target, visibleItems(world, state), world);
+  if (!id) return miss(`You don’t see a “${target}” here.`);
+  const item = world.items[id];
+  return ok([item.text ?? item.description]);
+}
+
+export function handleSwitch(target: string | undefined, on: boolean, world: World, state: GameState): EngineResult {
+  const word = on ? 'on' : 'off';
+  if (!target) return ok([`Turn ${word} what?`]);
+  const id = matchItem(target, reachableItems(world, state), world);
+  if (!id) return miss(`You don’t see a “${target}” here.`);
+  const item = world.items[id];
+  if (!item.switchable) return ok([`You can’t turn that ${word}.`]);
+  if (Boolean(state.itemState[id]?.on) === on) return ok([`It’s already ${word}.`]);
+  (state.itemState[id] ??= {}).on = on;
+  return ok([`The ${item.name} is now ${word}.`], true);
+}

@@ -1,6 +1,8 @@
 export interface Room {
   name: string;
   description: string;
+  /** Replaces `description` on the first visit only. */
+  firstDescription?: string;
   /** Label → a room ID, or an Exit for conditions, messages and doors. */
   exits: Record<string, string | Exit>;
   /**
@@ -104,6 +106,14 @@ export interface Item {
   article?: string;
   /** Heading over this item's contents in listings. */
   contentsHeading?: string;
+  /** What READ shows. Defaults to the description. */
+  text?: string;
+  /** Its own sentence in a room until the player first takes it (Zork's FDESC). */
+  initialDescription?: string;
+  /** Its own sentence in a room after that (Zork's LDESC). */
+  roomDescription?: string;
+  /** TURN ON / TURN OFF work on it. */
+  switchable?: boolean;
 }
 
 export interface Container {

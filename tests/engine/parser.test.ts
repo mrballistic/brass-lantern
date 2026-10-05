@@ -118,7 +118,7 @@ describe('fallbackParse', () => {
   });
 
   describe('examine synonyms', () => {
-    it.each(['examine', 'inspect', 'x', 'read'])('parses "%s stapler"', (verb) => {
+    it.each(['examine', 'inspect', 'x'])('parses "%s stapler"', (verb) => {
       expect(fallbackParse(`${verb} stapler`)).toEqual({
         action: 'examine',
         target: 'stapler',

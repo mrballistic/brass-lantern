@@ -27,10 +27,11 @@ export function enterRoom(targetId: string, world: World, state: GameState): str
   if (target.requires && !evaluateCondition(target.requires, state, world)) {
     return [target.denial ?? GENERIC_DENIAL];
   }
+  const first = !state.visited.includes(targetId);
   state.currentRoom = targetId;
   state.moveCount += 1;
-  if (!state.visited.includes(targetId)) state.visited.push(targetId);
-  const lines = describeRoom(targetId, world, state);
+  if (first) state.visited.push(targetId);
+  const lines = describeRoom(targetId, world, state, { first });
   lines.push(...runOnEnter(targetId, world, state));
   return lines;
 }

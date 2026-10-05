@@ -77,22 +77,37 @@ export function contentsLines(world: World, state: GameState, id: string, depth 
   return lines;
 }
 
+/** An item's own sentence in a room listing: its first-seen one until it's moved, then its room one. */
+function itemSentence(world: World, state: GameState, id: string): string | undefined {
+  const item = world.items[id];
+  if (!item) return undefined;
+  if (!state.itemState[id]?.moved && item.initialDescription) return item.initialDescription;
+  return item.roomDescription;
+}
+
 /** Lines emitted when entering a room (description, items, NPCs, exits). */
-export function describeRoom(roomId: string, world: World, state: GameState): string[] {
+export function describeRoom(
+  roomId: string,
+  world: World,
+  state: GameState,
+  opts: { first?: boolean } = {},
+): string[] {
   const room = world.rooms[roomId];
   if (!room) return [`The world frays. Room “${roomId}” does not exist.`];
   const lines: string[] = [];
   lines.push(`📍 ${room.name}`);
-  lines.push(room.description);
+  lines.push(opts.first && room.firstDescription ? room.firstDescription : room.description);
 
   const infocom = world.style === 'infocom';
   const visibleItems = visibleItemsIn(roomId, world, state);
-  if (infocom) {
-    for (const id of visibleItems) lines.push(`There is ${withArticle(world, id)} here.`);
-  } else if (visibleItems.length > 0) {
-    const names = visibleItems.map((id) => world.items[id]?.name ?? id);
-    lines.push(`You can see: ${names.join(', ')}.`);
+  const plain: string[] = [];
+  for (const id of visibleItems) {
+    const sentence = itemSentence(world, state, id);
+    if (sentence) lines.push(sentence);
+    else if (infocom) lines.push(`There is ${withArticle(world, id)} here.`);
+    else plain.push(world.items[id]?.name ?? id);
   }
+  if (plain.length > 0) lines.push(`You can see: ${plain.join(', ')}.`);
   for (const id of visibleItems) lines.push(...contentsLines(world, state, id));
 
   if (room.npcs.length > 0) {

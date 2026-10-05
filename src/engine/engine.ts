@@ -11,6 +11,7 @@ import {
 import { withRules } from './rules';
 import { handleWorldVerb } from './verbs/world-verbs';
 import { handleClose, handleLock, handleOpen, handlePut, handleSearch, handleTakeFrom, handleUnlock } from './verbs/containers';
+import { handleRead, handleSwitch } from './verbs/objects';
 import { handleGive, handleTalk } from './verbs/people';
 import { handleHelp, handleHint, handleScore, handleUnknown, scoreLines } from './verbs/meta';
 
@@ -73,6 +74,12 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
   switch (action.action) {
     case 'go':
       return handleGo(action.target, world, state);
+    case 'read':
+      return withRules('read', action, world, state, () => handleRead(action.target, world, state));
+    case 'turn_on':
+      return withRules('turn_on', action, world, state, () => handleSwitch(action.target, true, world, state));
+    case 'turn_off':
+      return withRules('turn_off', action, world, state, () => handleSwitch(action.target, false, world, state));
     case 'enter':
       return withRules('enter', action, world, state, () => handleEnter(action.target, world, state));
     case 'climb':
@@ -141,7 +148,7 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
 /** Compose the opening: intro lines + first room description. */
 export function openingLines(world: World, state: GameState): string[] {
   const lines = [...(world.events.intro ?? [])];
-  lines.push(...describeRoom(state.currentRoom, world, state));
+  lines.push(...describeRoom(state.currentRoom, world, state, { first: true }));
   return lines;
 }
 
