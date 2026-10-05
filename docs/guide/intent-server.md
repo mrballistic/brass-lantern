@@ -27,14 +27,16 @@ The browser never talks to Google; only this server does, with the key in a requ
   "context": {
     "roomName": "Hallway",
     "exits": ["south", "cubicle", "north", "break_room"],
-    "items": ["mug (mug)"],
+    "items": ["mug"],
     "npcs": ["gary (Gary)"],
-    "inventory": ["stapler (stapler)"]
+    "inventory": ["stapler"]
   }
 }
 ```
 
-Response: `{ "action": "give", "target": "mug", "indirect": "gary" }`, or `{ "action": "unknown" }` when there's no good reading or anything fails. The client never has to handle an error.
+Response: `{ "action": "give", "target": "mug", "indirect": "gary" }`, or `{ "action": "unknown" }` when there's no good reading or every model fails. Items whose name matches their ID are sent as the bare ID; others as `id (name)`.
+
+Bad requests and rate limiting get an error status instead: 400 for a missing input or malformed context, 400 for input over 200 characters, 429 (with `Retry-After`) when rate limited, 500 if something unexpected breaks. All but the first carry `fallback: { "action": "unknown" }`. The bundled client treats any non-OK response as `unknown`, so the player just sees the literal reply.
 
 `GET /health` returns `{"ok":true}`.
 

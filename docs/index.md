@@ -31,4 +31,15 @@ features:
     details: Gated rooms, use rules, gifts, timed interruptions, hints, a score with ranks, and endings that remember what you did.
   - title: Plays Zork, too
     details: Z-machine story files run in the same terminal, starting with Zork I, II and III, which Microsoft released under the MIT License. Pick from a cartridge menu; saves and autosave included.
+  - title: Bring your own story files
+    details: Type LOAD at the menu to play a Z-machine game from your own computer. It stays in your browser; nothing is uploaded.
+    link: /guide/z-machine#playing-your-own-story-files
 ---
+
+<div class="built-with">
+
+## Built with Brass Lantern
+
+**[Office Space: The Text Adventure](https://initech.mrballistic.com)** is a full-length game on this engine: four chapters from a very bad Monday at Initech to a field, a baseball bat and a printer that has it coming. It runs with the intent server, so you can type like a person.
+
+</div>

@@ -34,6 +34,10 @@ Both kinds sit side by side as **cartridges**. With more than one, the terminal 
 
 **The terminal is the point.** Power-on sequence, scanlines, phosphor bloom and decay, flicker, a block cursor, and a typewriter that changes pace with the scene. All CSS, no canvas.
 
+## Built with Brass Lantern
+
+**[Office Space: The Text Adventure](https://initech.mrballistic.com)** is a full-length game on this engine: four chapters from a very bad Monday at Initech to a field, a baseball bat and a printer that has it coming. It runs with the intent server, so you can type like a person.
+
 ## Quick start
 
 ```bash

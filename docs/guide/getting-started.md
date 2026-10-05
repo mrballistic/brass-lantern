@@ -4,7 +4,7 @@ Brass Lantern is a small engine for classic parser text adventures (*go north*, 
 
 It also plays **Z-machine story files**, the format Infocom’s games shipped in, in the same terminal.
 
-It comes with four cartridges: **Snack Attack**, a three-room world that exists to show the engine off, and **Zork I, II and III**. [Play them](https://mrballistic.github.io/brass-lantern/demo/), then come back.
+It comes with four cartridges: **Snack Attack**, a three-room world that exists to show the engine off, and **Zork I, II and III**. [Play them](https://mrballistic.github.io/brass-lantern/demo/), then come back. For a full-length game built on the engine, try [Office Space: The Text Adventure](https://initech.mrballistic.com).
 
 ## Run it
 
@@ -59,7 +59,7 @@ Add your own world as a cartridge (and remove the others if you like: with one c
 
 ```bash
 npm run lint && npm run type-check && npm run test:coverage && npm run build
-cd server && npm install && npm run lint && npm test
+cd server && npm install && npm run lint && npm run type-check && npm test && npm run build
 ```
 
-CI runs the same on every push and PR.
+CI runs the same on every push and PR, and also checks the built site for anything shaped like an API key.

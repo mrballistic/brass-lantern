@@ -21,6 +21,7 @@ The verbs are fixed; a world gives them things to act on. Anything the regex par
 | INVENTORY | `i` `inv` | |
 | HINT | `hints` `clue` | |
 | SCORE | | |
+| QUIT | | Prints the world’s `quit` reply; the game carries on. |
 | SAVE / LOAD / RESTART | | Saves are in the browser. |
 | COOKIES | `privacy` | Analytics settings, when analytics are configured. |
 | EJECT | | Back to the cartridge menu (builds with more than one cartridge). |
@@ -33,3 +34,5 @@ The verbs are fixed; a world gives them things to act on. Anything the regex par
 **Chaining:** `take key and wallet`, `north then look`, `west. take lamp.` Each piece runs separately (and gets its own intent-server retry if it misses).
 
 **Pronouns:** `it`, `them` and `that` mean the last thing you acted on, as in `take the mug then give it to gary`.
+
+**Keys:** Up and Down step through your last 100 commands, keeping whatever you’d started typing. Enter on an empty line, or any letter, finishes the text that’s typing out.

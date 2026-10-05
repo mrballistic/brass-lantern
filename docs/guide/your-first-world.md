@@ -53,7 +53,7 @@ rooms: {
 - **`exits`** maps what the player can type to where it leads. Give each destination a few labels (a direction, a place name, `out`). The parser is forgiving about phrasing ("go to the hallway", "hall", "n"), but only matches labels you provide.
 - **`listExits`** is what the player sees. The engine adds the direction that goes to the same place: `Exits: hallway (north).`
 - **`requires`** is a [condition](../reference/conditions-and-events#conditions) for entering, and **`denial`** is the reply when it fails. A good denial hints at what's missing.
-- **`onEnter`** fires an event when you arrive, if its condition holds. **Every event fires at most once per game.**
+- **`onEnter`** fires an event when you arrive, if its condition holds. **An `onEnter` event fires at most once per game.**
 
 ## Items
 
@@ -191,7 +191,7 @@ ambient: [
 
 ## Play it
 
-Point `src/app.config.ts` at your world and run `npm run dev`. The winning transcript for Snack Attack:
+Add your world to `cartridges` in `src/app.config.ts` (`{ kind: 'world', id: 'snack-attack', title: 'SNACK ATTACK', world: tutorial }`) and run `npm run dev`. The winning transcript for Snack Attack:
 
 ```
 > open drawer

@@ -56,7 +56,7 @@ Inserting or ejecting a cartridge clears the screen.
 | Concept | Where in the world | Notes |
 |---|---|---|
 | Conditions | anywhere | `flag:X`, `has:X`, `in:X`, `!`, `&`. One parser, `src/engine/conditions.ts`. |
-| Events | `events` | Line lists. `[Flag set: …]`, `[Added to inventory: …]` and `[… consumed]` lines change state; each event fires once. |
+| Events | `events` | Line lists. `[Flag set: …]`, `[Added to inventory: …]` and `[… consumed]` lines change state. Events from `onEnter`, `onTake`, `onWear`, `onSmash` and `bareHanded` fire once; use-rule and gift events run every time. |
 | Flags | `flagLabels` | The friendly label in an event line, mapped to a flag ID. |
 | Use rules | `item.onUse` | First match wins; checked on both items for two-object uses. |
 | Gifts | `npc.onGive`, `npc.refuse` | Giving takes the item; a refusal keeps it. |
@@ -94,9 +94,9 @@ Each output line is classified by its first characters (`src/engine/output.ts`).
 | `[` | system | instant |
 | anything else | prose | 10ms/char |
 
-A restored session renders instantly, with no typewriter replay, and its boot sequence is shortened. The header shows `appName` and the version from `package.json`.
+A restored session renders instantly, with no typewriter replay, and its boot sequence is shortened. The header shows `appName` and the version from `package.json`, then the cartridge’s title (in builds with a menu); on the right, `MOVES: n` for a native world or the story’s own status line, and a COOKIES button when analytics are configured.
 
 ## Saves and analytics
 
-- **Saves** live in `localStorage` only, under `<storagePrefix>:save`, with up to 500 lines of history. They're written after every change. If storage is unavailable (private browsing), play continues and SAVE says so.
-- **Analytics** are off unless you set `VITE_GA_MEASUREMENT_ID` at build time. When it's set, nothing is sent and nothing is stored until the player accepts a consent banner, and Do Not Track is honored. Builds without an ID show no banner at all. Events: `page_view`, `game_start`, `session_resumed`, and `game_completed` with the move count.
+- **Saves** live in `localStorage` only, one per cartridge, under `<storagePrefix>:save:<cartridge id>` (or the cartridge’s `saveKey`), with up to 500 lines of history. [Cartridges and storage](../reference/cartridges#browser-storage) lists every key. They're written after every change. If storage is unavailable (private browsing), play continues and SAVE says so.
+- **Analytics** are off unless you set `VITE_GA_MEASUREMENT_ID` at build time. When it's set, nothing is sent and nothing is stored until the player accepts a consent banner, and Do Not Track is honored. Builds without an ID show no banner at all. Events: `page_view`, `game_start`, `session_resumed` (with a `cartridge` parameter for story files), and, for native worlds, `game_completed` with the move count.

@@ -43,6 +43,7 @@ export default defineConfig({
           { text: 'World schema', link: '/reference/world-schema' },
           { text: 'Conditions and events', link: '/reference/conditions-and-events' },
           { text: 'Player commands', link: '/reference/commands' },
+          { text: 'Cartridges and storage', link: '/reference/cartridges' },
         ],
       },
     ],
