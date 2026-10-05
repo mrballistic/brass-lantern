@@ -128,6 +128,12 @@ describe('put and take from', () => {
     expect(run(s, 'put', 'lamp', 'socket', 'in').lines).toContain('✨ The lamp glows.');
   });
 
+  it('PUT with something you aren’t holding falls back to its use rules (“put a cover sheet on the report”)', () => {
+    const s = stateWith(world, { room: 'shed' });
+    s.locations.lamp = 'shed';
+    expect(run(s, 'put', 'lamp', 'socket', 'in').lines).toContain('✨ The lamp glows.');
+  });
+
   it('OPEN on something that isn’t a container falls back to its use rules', () => {
     const s = stateWith(world, { room: 'bedroom' });
     expect(run(s, 'open', 'bed').lines).toContain('😴 You nap.');

@@ -101,7 +101,14 @@ export function handlePut(
 ): EngineResult {
   if (!target) return ok(['Put what?']);
   const id = matchItem(target, inventoryOf(world, state), world);
-  if (!id) return miss(`You aren’t carrying a “${target}”.`);
+  if (!id) {
+    // “Put a cover sheet on the report”, where the cover sheets are a stack on a table:
+    // something in sight, with use rules, still works as it did when PUT was USE.
+    const seen = matchItem(target, visibleItems(world, state), world);
+    const other = indirect ? find(indirect, world, state) : null;
+    const fallback = seen ? useFallback(seen, other, world, state) : null;
+    return fallback ?? miss(`You aren’t carrying a “${target}”.`);
+  }
   if (!indirect) return ok([`Put the ${name(world, id)} where?`]);
   const dest = find(indirect, world, state);
   if (!dest) return miss(`You don’t see a “${indirect}” here.`);
