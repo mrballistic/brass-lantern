@@ -97,4 +97,17 @@ describe('native Zork I against the original', () => {
       expect(normalize(ours[i]), `“${command}” now matches; remove it from the allowlist`).not.toBe(normalize(theirs[i]));
     }
   }, 30_000);
+
+  it('dies with the original’s words', async () => {
+    // Into the dark cellar without a light, then blunder east until the grue strikes.
+    const path = ['n', 'e', 'open window', 'w', 'w', 'move rug', 'open trap door', 'd'];
+    const theirs = await original([...path, ...Array.from({ length: 20 }, () => 'e')]);
+    const death = theirs.slice(path.length).find((reply) => reply.some((l) => l.includes('You have died')));
+    if (!death) {
+      console.warn('The original never died in 20 tries; skipping the death-text comparison.');
+      return;
+    }
+    const ours = [...(zork1.death?.message ?? []), ...(zork1.death?.resurrection ?? [])];
+    expect(normalize(death)).toContain(normalize(ours));
+  }, 30_000);
 });

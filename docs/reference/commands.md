@@ -26,6 +26,7 @@ The verbs are fixed; a world gives them things to act on. Anything the regex par
 | WAIT / SIT | `z` | Takes a `wait` / `sit` exit if the room has one. |
 | INVENTORY | `i` `inv` | |
 | HINT | `hints` `clue` | |
+| VERBOSE / BRIEF / SUPERBRIEF | | Full descriptions always, on first visits only, or never (LOOK still shows them). Takes no game time. |
 | SCORE | | |
 | QUIT | | Prints the world’s `quit` reply; the game carries on. |
 | SAVE / LOAD / RESTART | | Saves are in the browser. |

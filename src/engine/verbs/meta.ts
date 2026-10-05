@@ -1,13 +1,14 @@
 import type { GameState } from '@/types/game';
-import type { World } from '@/types/world';
+import type { ScoreEntry, World } from '@/types/world';
 import { evaluateCondition } from '../conditions';
 import { ok, type EngineResult } from '../result';
 
 export function scoreLines(world: World, state: GameState): string[] {
   const scoring = world.scoring ?? [];
   if (scoring.length === 0) return [];
-  const max = world.maxScore ?? scoring.reduce((sum, s) => sum + s.points, 0);
-  const score = scoring.reduce((sum, s) => sum + (state.flags[s.flag] ? s.points : 0), 0);
+  const max = world.maxScore ?? scoring.reduce((sum, s) => sum + Math.max(0, s.points), 0);
+  const earned = (s: ScoreEntry) => (s.flag ? Boolean(state.flags[s.flag]) : s.if ? evaluateCondition(s.if, state, world) : false);
+  const score = scoring.reduce((sum, s) => sum + (earned(s) ? s.points : 0), 0) + (state.vars?.score ?? 0);
   const rank = [...(world.ranks ?? [])].sort((a, b) => b.min - a.min).find((r) => score >= r.min);
   if (world.style === 'infocom') {
     // Zork reports the turns before this one.
@@ -59,6 +60,7 @@ export function handleHelp(world: World): EngineResult {
     'WAIT / Z                 Let time pass',
     'HINT                     A nudge in the right direction',
     'SCORE                    Your score so far',
+    'VERBOSE / BRIEF / SUPERBRIEF  How much rooms describe themselves',
     'SAVE / LOAD              Local terminal memory',
     'RESTART                  Wipe save and start over',
     'COOKIES                  Analytics settings',

@@ -1,58 +1,15 @@
 import type { GameState, ParsedAction } from '@/types/game';
 import type { Item, Room, Rule, World } from '@/types/world';
 import { evaluateCondition } from './conditions';
-import { inventoryOf, isCarried, matchItem, moveItem, PLAYER, reachableItems, visibleItems } from './model';
+import { inventoryOf, matchItem, reachableItems, visibleItems } from './model';
+import { runEventKey, turnHalted } from './effects';
 import { ok, type EngineResult } from './result';
 
 /* Events and rules */
 
-/** Apply structural mutations indicated by an event script's bracketed system lines. */
-export function applyEventEffects(eventKey: string, world: World, state: GameState): void {
-  const lines = world.events[eventKey] ?? [];
-  for (const line of lines) {
-    if (!line.startsWith('[')) continue;
-
-    const flagSet = line.match(/^\[Flag set:\s*(.+?)\]$/i);
-    if (flagSet) {
-      const flagId = world.flagLabels[flagSet[1].toLowerCase().trim()];
-      if (flagId) state.flags[flagId] = true;
-    }
-
-    const added = line.match(/^\[Added to inventory:\s*(.+?)\]$/i);
-    if (added) {
-      const itemId = itemIdForName(added[1], world);
-      if (itemId) moveItem(state, itemId, PLAYER);
-    }
-
-    const consumed = line.match(/^\[(.+?) consumed\]$/i);
-    if (consumed) {
-      const itemId = itemIdForName(consumed[1], world);
-      if (itemId && isCarried(state, itemId)) moveItem(state, itemId, null);
-    }
-  }
-}
-
-export function itemIdForName(label: string, world: World): string | null {
-  const normalized = label.trim().toLowerCase();
-  for (const [id, item] of Object.entries(world.items)) {
-    if (item.name.toLowerCase() === normalized) return id;
-  }
-  return null;
-}
-
 /** Emit an event's lines, apply its effects, and record that it fired. */
 export function runEvent(key: string, world: World, state: GameState): string[] {
-  applyEventEffects(key, world, state);
-  if (!state.firedEvents.includes(key)) state.firedEvents.push(key);
-  const lines = world.events[key] ?? [];
-  // Infocom's games never show their bookkeeping: effect lines act, but stay off screen.
-  return world.style === 'infocom' ? lines.filter((l) => !isEffectLine(l)) : [...lines];
-}
-
-const EFFECT_LINE = /^\[(?:Flag set:\s*.+?|Added to inventory:\s*.+?|.+? consumed)\]$/i;
-
-function isEffectLine(line: string): boolean {
-  return EFFECT_LINE.test(line);
+  return runEventKey(key, world, state);
 }
 
 /** First applicable use rule on `itemId`, given what else is in reach. */
@@ -105,7 +62,7 @@ export function findRule(
 export function applyRule(rule: Rule, world: World, state: GameState): EngineResult {
   const lines: string[] = [];
   if (rule.then) lines.push(...runEvent(rule.then, world, state));
-  if (rule.say) lines.push(...rule.say);
+  if (rule.say && !turnHalted(state)) lines.push(...rule.say);
   return ok(lines, Boolean(rule.then));
 }
 

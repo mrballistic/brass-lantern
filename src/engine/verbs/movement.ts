@@ -1,9 +1,10 @@
 import type { GameState } from '@/types/game';
 import type { Exit, World } from '@/types/world';
 import { evaluateCondition } from '../conditions';
-import { describeRoom, exitList } from '../describe';
+import { COMPASS, describeRoom, exitList } from '../describe';
 import { fuzzyMatchExit } from '../fuzzy';
-import { isOpen, matchItem, visibleItems } from '../model';
+import { isLit, isOpen, matchItem, visibleItems } from '../model';
+import { runSteps, turnHalted } from '../effects';
 import { miss, ok, type EngineResult } from '../result';
 import { runEvent } from '../rules';
 
@@ -13,11 +14,14 @@ export function runOnEnter(roomId: string, world: World, state: GameState): stri
   if (!room) return [];
   const out: string[] = [];
   for (const trigger of room.onEnter) {
+    if (turnHalted(state)) break;
     if (state.firedEvents.includes(trigger.then)) continue;
     if (evaluateCondition(trigger.if, state, world)) out.push(...runEvent(trigger.then, world, state));
   }
   return out;
 }
+
+const DIRECTION_WORDS = new Set([...COMPASS, 'in', 'out', 'inside', 'outside']);
 
 export const GENERIC_DENIAL = 'Something stops you. The story isn’t ready for you to go there yet.';
 
@@ -30,8 +34,18 @@ export function enterRoom(targetId: string, world: World, state: GameState): str
   const first = !state.visited.includes(targetId);
   state.currentRoom = targetId;
   state.moveCount += 1;
-  if (first) state.visited.push(targetId);
-  const lines = describeRoom(targetId, world, state, { first, brief: !first });
+  // A dark room isn't visited until you've seen it (Zork's TOUCHBIT).
+  if (first && isLit(world, state)) state.visited.push(targetId);
+  const verbosity = state.verbosity ?? (world.style === 'infocom' ? 'brief' : 'verbose');
+  const brief = verbosity === 'superbrief' || (verbosity === 'brief' && !first);
+  // Infocom runs a room's arrival routine (M-ENTER) before describing it.
+  if (world.style === 'infocom') {
+    const arrival = runOnEnter(targetId, world, state);
+    // An arrival that moved the player on, or ended things, has said all there is to say.
+    if (state.currentRoom !== targetId || state.gameOver || turnHalted(state)) return arrival;
+    return [...arrival, ...describeRoom(targetId, world, state, { first, brief })];
+  }
+  const lines = describeRoom(targetId, world, state, { first, brief });
   lines.push(...runOnEnter(targetId, world, state));
   return lines;
 }
@@ -43,6 +57,8 @@ export function exitTarget(exit: string | Exit | undefined): string | undefined 
 /** Follow one exit. Every refusal comes before the move, so it changes nothing. */
 export function followExit(exit: string | Exit, world: World, state: GameState): EngineResult {
   if (typeof exit !== 'string') {
+    const refused = exit.denials?.find((d) => evaluateCondition(d.if, state, world));
+    if (refused) return ok([refused.text]);
     if (exit.if && !evaluateCondition(exit.if, state, world)) return ok([exit.denial ?? 'You can’t go that way.']);
     if (exit.door && !isOpen(world, state, exit.door)) {
       return ok([`The ${world.items[exit.door]?.name ?? exit.door} is closed.`]);
@@ -61,6 +77,11 @@ export function handleGo(target: string | undefined, world: World, state: GameSt
 
   const exitKey = fuzzyMatchExit(target, room.exits);
   if (!exitKey) {
+    // Stumbling around in the dark is a real attempt to move (Zork's grue).
+    // Only a real direction is a blunder; anything else goes to the LLM as a miss.
+    if (world.darkness?.blunder && DIRECTION_WORDS.has(target) && !isLit(world, state)) {
+      return ok(runSteps(world.darkness.blunder, world, state), true);
+    }
     if (world.style === 'infocom') return miss('You can’t go that way.');
     return miss(`You can’t go that way. Exits: ${exitList(room) || '(none)'}.`);
   }

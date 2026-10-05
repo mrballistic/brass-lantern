@@ -15,6 +15,9 @@ Conditions are strings, used by `requires`, `onEnter`, use rules, dialogue keys,
 | `locked:ITEM` | it's locked |
 | `on:ITEM` | it's switched on |
 | `here:ITEM` | the player can reach it (in the room, carried, or in something open) |
+| `var:NAME<op>N` | a numeric variable compared with `=`, `<`, `>`, `<=` or `>=` (unset is 0) |
+| `carrying<op>N` | how many things the player holds directly |
+| `lit:here`, `lit:ROOM` | the room has light |
 | `!…` | negates any of the above |
 | `a & b` | every part holds: `in:break_room & !flag:lunch_freed` |
 
@@ -22,15 +25,35 @@ There's no "or". Write two rules, or two dialogue keys, instead. An unrecognized
 
 ## Events
 
-An event is a named list of lines. Lines are printed in order. Bracketed lines are printed **and** change the game:
+An event is a named list of steps, run in order. A string is printed. An object is an effect:
+
+| Effect | Does |
+|---|---|
+| `{ say: 'text' }` | Prints, like a plain string. |
+| `{ set: 'flag' }`, `{ clear: 'flag' }` | Turns a flag on or off. |
+| `{ move: 'item', to: 'room' }` | Moves an item to a room, `'player'`, another item, or `null` (offstage). |
+| `{ open }`, `{ close }`, `{ lock }`, `{ unlock }` | Changes a container's or door's state. |
+| `{ switch: 'item', on: true }` | Switches a light (or anything switchable). |
+| `{ add: 'var', by: n }`, `{ setVar: 'var', to: n }` | Changes a numeric variable. |
+| `{ score: n }` | Adds to the score. |
+| `{ go: 'room' }` | Moves the player there and describes it. |
+| `{ schedule: 'event', in: n }`, `{ cancel: 'event' }` | Runs an event after `n` turns, or stops it. |
+| `{ chance: 80, then: [...], else: [...] }` | Picks a branch at random (from a seeded generator, so saves replay exactly). |
+| `{ run: 'event' }` | Runs another event here. |
+| `{ die: 'cause' }` | Kills the player. See [Death](./world-schema#death). Nothing after it runs. |
+| `{ end: 'ending' }` | Plays an ending. See [Endings](./world-schema#endings). Nothing after it runs. |
+
+Effects print nothing unless they say so. `tests/worlds/audit.test.ts` fails on an effect naming something that doesn't exist.
+
+### Bracket lines (the older form)
+
+Some lines are printed **and** change the game. They still work, and in an Infocom-style world they act without being shown:
 
 | Line | Effect |
 |---|---|
 | `[Flag set: Gary is happy]` | Sets the flag `flagLabels['gary is happy']` names. An unmapped label does nothing, so test for it. |
-| `[Added to inventory: badge]` | Adds the item whose `name` is "badge". |
+| `[Added to inventory: badge]` | Gives the player the item whose `name` is "badge". |
 | `[Badge consumed]` | Removes the item whose `name` is "badge" from the inventory. |
-
-In a world with `style: 'infocom'`, bracketed lines still take effect but aren't printed.
 
 Facts worth knowing:
 

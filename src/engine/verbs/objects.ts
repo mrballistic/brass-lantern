@@ -7,7 +7,7 @@ import {
 } from '../model';
 import { miss, ok, type EngineResult } from '../result';
 import { applyRule, findRule, runEvent, withRules } from '../rules';
-import { scoreLines } from './meta';
+import { finishEnding } from '../endings';
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -175,14 +175,13 @@ export function smashedHere(world: World, state: GameState): string[] {
 
 export function runFinale(world: World, state: GameState): EngineResult {
   const finale = world.finale!;
+  // The finale is an ending: its event, the epilogues that now hold, the score, the footer.
   const lines = runEvent(finale.event, world, state);
   for (const trigger of finale.epilogue) {
     if (evaluateCondition(trigger.if, state, world)) lines.push(...runEvent(trigger.then, world, state));
   }
-  lines.push(...scoreLines(world, state));
-  lines.push(...runEvent(finale.footer, world, state));
-  state.gameOver = true;
-  return ok(lines, true);
+  if (!state.firedEvents.includes(finale.footer)) state.firedEvents.push(finale.footer);
+  return ok(finishEnding(lines, true, world.events[finale.footer] ?? [], world, state), true);
 }
 
 export function handleRead(target: string | undefined, world: World, state: GameState): EngineResult {

@@ -11,10 +11,10 @@ Every field a world can use. The source of truth is [`src/types/world.ts`](https
 | `items` | `Record<id, Item>` | |
 | `npcs` | `Record<id, NPC>` | |
 | `dialogue` | `Record<npc id, Dialogue>` | What TALK TO says. |
-| `events` | `Record<id, string[]>` | Line lists. `intro` plays when a new game starts. |
+| `events` | `Record<id, EventStep[]>` | Lines and [effects](./conditions-and-events#effects). `intro` plays when a new game starts. |
 | `flagLabels` | `Record<label, flag id>` | Maps the lowercased label in `[Flag set: …]` lines to a flag ID. |
 | `hints?` | `Hint[]` | HINT shows the first whose condition holds. |
-| `scoring?` | `{ flag, points }[]` | SCORE sums points for set flags. |
+| `scoring?` | `{ flag, points }[]` or `{ if, points }[]` | SCORE sums points for set flags, plus conditions that hold right now (a treasure in the case), plus the `score` variable. |
 | `maxScore?` | number | The total SCORE reports. Default: the sum of `scoring`. |
 | `ranks?` | `{ min, title }[]` | The highest `min` the score reaches is the rank. |
 | `idle?` | string | Reply to WAIT or SIT where they don't lead anywhere. Default: "Time passes." |
@@ -23,6 +23,12 @@ Every field a world can use. The source of truth is [`src/types/world.ts`](https
 | `ambient?` | `Ambient[]` | Timed interruptions. |
 | `finale?` | `Finale` | The win condition. |
 | `verbs?` | `Record<id, WorldVerb>` | Verbs this world adds. See [World verbs](#world-verbs). |
+| `vars?` | `Record<name, number>` | Starting values for numeric variables. |
+| `seed?` | number | Seeds the random generator, for reproducible games. Default: the clock. |
+| `daemons?` | `{ if, then }[]` | Run after every turn the engine acts on, while `if` holds. `then` is an event name or steps. See [Time](#time). |
+| `darkness?` | `Darkness` | Texts and behavior for dark rooms. See [Darkness](#darkness). |
+| `death?` | `Death` | What dying does. See [Death](#death). |
+| `endings?` | `Record<id, Ending>` | Named endings for the `end` effect. See [Endings](#endings). |
 | `style?` | `'brass'` or `'infocom'` | Output conventions. See [Style](#style). Default `'brass'`. |
 | `emptyInventory?` | string | INVENTORY with nothing carried. Default: “You are empty-handed.” |
 | `smashRefusal?` | string | SMASH where nothing can be smashed. |
@@ -34,6 +40,7 @@ Every field a world can use. The source of truth is [`src/types/world.ts`](https
 | `name` | string | Shown as the room header. |
 | `description` | string | |
 | `firstDescription?` | string | Replaces `description` on the first visit only. |
+| `dark?` | boolean | Needs a light source to see in. |
 | `descriptions?` | `{ if, text }[]` | Descriptions that depend on the state of things (“a small window which is open”). The first whose condition holds replaces `description`. |
 | `exits` | `Record<label, room id or Exit>` | What the player can type, and where it goes. Several labels per destination is normal. A label of `wait` or `sit` is taken by WAIT/SIT. See [Exit](#exit). |
 | `listExits?` | label[] | What the exit line shows, in order; each gets the compass direction that leads the same way. Omit to list every label. |
@@ -53,6 +60,7 @@ Every field a world can use. The source of truth is [`src/types/world.ts`](https
 | `if?` | condition | Must hold for this exit alone. |
 | `denial?` | string | Shown when `if` fails, or always if there's no `to`. Default: “You can’t go that way.” |
 | `door?` | item ID | An item with `door: true` that must be open. A closed door says “The *name* is closed.” |
+| `denials?` | `{ if, text }[]` | Refusals with their own reasons, checked first; the first whose `if` holds refuses with `text` (Zork's chimney). |
 
 Message-only exits aren't listed unless `listExits` names them.
 
@@ -79,7 +87,8 @@ Message-only exits aren't listed unless `listExits` names them.
 | `initialDescription?` | string | Its own sentence in a room until first taken. |
 | `roomDescription?` | string | Its own sentence in a room after that. Items with neither are gathered into “You can see: …”. |
 | `switchable?` | boolean | TURN ON and TURN OFF work on it. |
-| `light?` | boolean | Gives light while on (darkness arrives in a later release; listings say “providing light”). |
+| `light?` | boolean | Gives light while on: it lights a dark room it's in, carried there, or inside something open or transparent there. |
+| `home?` | room ID | Where it goes if the player dies carrying it. |
 | `article?` | string | “a”, “an”, “some” or “” in listings. |
 | `contentsHeading?` | string | The heading over its contents (“Your collection of treasures consists of:”). |
 | `instead?`, `after?` | `Record<verb, Rule[]>` | See [Rules](#rules). |
@@ -162,6 +171,55 @@ verbs: {
   - lists newest first;
   - SCORE says “Your score is 15 (total of 350 points), in 40 moves.”;
   - bookkeeping lines like `[Flag set: …]` act without being shown.
+
+## Time
+
+After every turn the engine acts on (never after a misunderstood command), these happen in order:
+1. **Fuses** count down, and those reaching zero run. A fuse is set by the `schedule` effect and removed by `cancel`; one set during a turn starts counting the next turn.
+2. **Daemons** run, in order, each while its `if` holds.
+3. **Ambient lines** print.
+
+A lamp that burns down is a variable and a few daemons:
+
+```ts
+vars: { lamp_fuel: 185 },
+daemons: [
+  { if: 'on:lamp', then: [{ add: 'lamp_fuel', by: -1 }] },
+  { if: 'on:lamp & var:lamp_fuel=85 & here:lamp', then: ['The lamp appears a bit dimmer.'] },
+  { if: 'on:lamp & var:lamp_fuel<0', then: 'lamp_dies' },
+],
+```
+
+VERBOSE, BRIEF and SUPERBRIEF take no game time.
+
+## Darkness
+
+| Field | Type | |
+|---|---|---|
+| `look?` | string | LOOK and arriving in an unlit dark room. Default: “It is pitch black.” |
+| `tooDark?` | string | Acting on something you can't see. Default: “It’s too dark to see.” |
+| `fall?` | string | When the room goes dark around you. Default: “It is now pitch black.” |
+| `blunder?` | `EventStep[]` | Run when the player tries a direction with no exit in the dark. Zork's grue: `[{ chance: 80, then: [{ die: '…' }], else: ['You can’t go that way.'] }]`. |
+
+In an unlit dark room you can only find what you're carrying. Trying to act on anything else gets `tooDark`: an understood refusal, so the intent server isn't asked to re-guess. Turning a light on or off says so (`fall`, or the room's description).
+
+## Death
+
+| Field | Type | |
+|---|---|---|
+| `message?` | string[] | Printed after the cause. |
+| `penalty?` | number | Added to the score. |
+| `lives?` | number | Deaths survived before the final one. |
+| `respawn?` | room ID | Where the player wakes. |
+| `resurrection?` | string[] | |
+| `scatter?` | room ID[] | Carried things are spread over these, at random (seeded). Things with a `home` go there instead; with no scatter rooms, they stay where the player fell. |
+| `final?` | string[] | The last death, which ends the game. |
+
+The `die` effect uses it. Without a `death` block, dying prints the cause and ends the game. Pending fuses are cancelled on death.
+
+## Endings
+
+`endings: { victory: { lines: [...], score: true, footer: ['Type RESTART to play again.'] } }`. The `end` effect plays one: its lines, the score and rank if `score` is set, then the footer, and the game is over. The `finale` is an ending too, reached by smashing.
 
 ## NPC
 

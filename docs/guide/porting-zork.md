@@ -2,7 +2,7 @@
 
 Brass Lantern ships Zork I twice: the original story file, run by the Z-machine interpreter, and **ZORK I · NATIVE**, a rebuild as an ordinary Brass Lantern world (`src/worlds/zork1.ts`). The native version is how the engine proves it can carry an Infocom-class game. A test plays both side by side and fails if they disagree.
 
-It covers the house and the forest so far. The underground arrives as the engine gains darkness, timers, actors and combat.
+It covers the house, the forest, and the first rooms underground: the cellar, the chasm, the gallery and the studio, with darkness, the lamp burning down, the grue, and death. The rest arrives as the engine gains a fuller parser, actors and combat.
 
 ## How ZIL maps to a world
 
@@ -26,6 +26,15 @@ Zork was written in ZIL, Infocom's language. Its source is MIT licensed ([histor
 | an object's `ACTION` routine | `instead` and `after` rules |
 | a room's `VALUE` | an `onEnter` event that sets a scored flag |
 | a verb only some objects understand (MOVE, COUNT) | a [world verb](../reference/world-schema#world-verbs) |
+| a room without `ONBIT` | `dark: true` |
+| `LIT?` | the engine's light check (a `light` item switched on, in sight) |
+| an interrupt (`QUEUE`, `ENABLE`) | a fuse (`schedule`) or a daemon |
+| `I-LANTERN` and `LAMP-TABLE` | a `lamp_fuel` variable and daemons that warn at its thresholds |
+| `JIGS-UP` | the `die` effect and `world.death` |
+| `PROB` | the `chance` effect |
+| a room's `M-ENTER` | `onEnter`, which Infocom style runs before the description |
+| a `PER` exit routine with several refusals (the chimney) | an exit's `denials` |
+| `TVALUE` (points while a treasure is in the case) | a score entry with a condition: `{ if: 'inside:painting:trophy_case', points: 6 }` |
 
 `style: 'infocom'` makes the engine follow Zork's conventions:
 - “There is a sword here.”;
@@ -44,11 +53,10 @@ Zork was written in ZIL, Infocom's language. Its source is MIT licensed ([histor
 ```
 
 - **Expected differences** go in `tests/worlds/zork1-allowlist.ts`, each with a reason, and the test fails if one stops being different. The list is empty today.
-- **Random lines** the original prints (the distant songbird) are filtered out until the engine has seeded randomness.
+- **Random lines** the original prints (the distant songbird) are filtered out: the engine's generator is seeded and reproducible, but it can't replay Zork's own. Random outcomes (the grue, where things scatter when you die) are pinned by seeded unit tests instead, and the death texts are checked against a real death in the original.
 
 ## What's next
 
-- **Darkness and time:** dark rooms, the lamp running down, the grue, death and resurrection.
 - **Parser parity:** “Which lamp do you mean?”, AGAIN, OOPS, UNDO.
 - **Actors:** the troll, the thief, the cyclops, combat, carrying weight.
 - **The rest of the map**, vehicles included.

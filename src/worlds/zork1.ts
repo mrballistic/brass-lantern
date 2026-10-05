@@ -1,8 +1,9 @@
 import type { World } from '@/types/world';
 
 /**
- * Zork I, rebuilt as a native Brass Lantern world. Stage 1 of the engine-parity
- * work: the house and the forest above ground. Text adapted from Infocom's
+ * Zork I, rebuilt as a native Brass Lantern world: the house and the forest
+ * above ground (engine-parity stage 1), and the cellar, the gallery and the
+ * studio below (stage 2). Text adapted from Infocom's
  * source (historicalsource/zork1, MIT License, Copyright (c) 2025 Microsoft);
  * tests/worlds/zork1-diff.test.ts plays it against the original story file.
  *
@@ -10,7 +11,8 @@ import type { World } from '@/types/world';
  * Zork prints them: Infocom style lists newest first, as Zork does.
  */
 
-const BOUNDARY = 'The rest of the Great Underground Empire isn’t built yet.';
+const CARRYING = 'You can’t get up there with what you’re carrying.';
+const GRUE = 'Oh, no! You have walked into the slavering fangs of a lurking grue!';
 const OFF_MAP = 'That part of the map isn’t built yet.';
 const NO_TREE = 'There is no tree here suitable for climbing.';
 const BOARDED = 'The windows are all boarded.';
@@ -215,6 +217,7 @@ export const zork1: World = {
     attic: {
       name: 'Attic',
       description: 'This is the attic. The only exit is a stairway leading down.',
+      dark: true,
       exits: { down: 'kitchen' },
       items: ['attic_table', 'rope'],
       npcs: [],
@@ -230,12 +233,76 @@ export const zork1: World = {
       exits: {
         east: 'kitchen',
         west: { denial: 'The door is nailed shut.' },
-        down: { if: 'flag:rug_moved', door: 'trap_door', denial: BOUNDARY },
+        down: { to: 'cellar', if: 'flag:rug_moved', door: 'trap_door' },
       },
       items: ['trophy_case', 'lamp', 'sword', 'rug', 'wooden_door'],
       npcs: [],
       onEnter: [],
       scenery: ['trap_door'],
+    },
+    cellar: {
+      name: 'Cellar',
+      description:
+        'You are in a dark and damp cellar with a narrow passageway leading north, and a crawlway to the south. On the west is the bottom of a steep metal ramp which is unclimbable.',
+      dark: true,
+      exits: {
+        north: { denial: 'The troll’s domain isn’t built yet.' },
+        south: 'east_of_chasm',
+        up: { to: 'living_room', door: 'trap_door' },
+        west: { denial: 'You try to ascend the ramp, but it is impossible, and you slide back down.' },
+      },
+      items: [],
+      npcs: [],
+      // The first time down, the trap door slams behind you. Zork's VALUE 25: points for getting here.
+      onEnter: [
+        { if: 'open:trap_door', then: 'trap_door_slams' },
+        { if: '!flag:cellar_visited', then: 'cellar_points' },
+      ],
+      scenery: ['trap_door'],
+    },
+    east_of_chasm: {
+      name: 'East of Chasm',
+      description:
+        'You are on the east edge of a chasm, the bottom of which cannot be seen. A narrow passage goes north, and the path you are on continues to the east.',
+      dark: true,
+      exits: {
+        north: 'cellar',
+        east: 'gallery',
+        down: { denial: 'The chasm probably leads straight to the infernal regions.' },
+      },
+      items: [],
+      npcs: [],
+      onEnter: [],
+    },
+    gallery: {
+      name: 'Gallery',
+      description:
+        'This is an art gallery. Most of the paintings have been stolen by vandals with exceptional taste. The vandals left through either the north or west exits.',
+      exits: { west: 'east_of_chasm', north: 'studio' },
+      items: ['painting'],
+      npcs: [],
+      onEnter: [],
+    },
+    studio: {
+      name: 'Studio',
+      description:
+        'This appears to have been an artist’s studio. The walls and floors are splattered with paints of 69 different colors. Strangely enough, nothing of value is hanging here. At the south end of the room is an open door (also covered with paint). A dark and narrow chimney leads up from a fireplace; although you might be able to get up it, it seems unlikely you could get back down.',
+      dark: true,
+      exits: {
+        south: 'gallery',
+        up: {
+          to: 'kitchen',
+          denials: [
+            { if: 'carrying<=0', text: 'Going up empty-handed is a bad idea.' },
+            { if: '!has:lamp', text: CARRYING },
+            { if: 'carrying>2', text: CARRYING },
+          ],
+        },
+      },
+      items: ['owners_manual'],
+      npcs: [],
+      onEnter: [],
+      scenery: ['chimney'],
     },
   },
 
@@ -430,7 +497,9 @@ export const zork1: World = {
       portable: true,
       switchable: true,
       light: true,
+      home: 'living_room',
       tags: [],
+      instead: { turn_on: [{ if: 'flag:lamp_dead', say: ['A burned-out lamp won’t light.'] }] },
     },
     sword: {
       name: 'sword',
@@ -471,7 +540,10 @@ export const zork1: World = {
         closed: 'The door swings shut and closes.',
       },
       instead: {
-        open: [{ if: '!flag:rug_moved', say: ['You can’t see any trap door here!'] }],
+        open: [
+          { if: '!flag:rug_moved', say: ['You can’t see any trap door here!'] },
+          { if: 'in:cellar & !open:trap_door', say: ['The door is locked from above.'] },
+        ],
       },
     },
     wooden_door: {
@@ -482,6 +554,28 @@ export const zork1: World = {
       portable: false,
       tags: [],
       scenery: true,
+    },
+
+    // Underground
+    painting: {
+      name: 'painting',
+      aliases: ['art', 'canvas', 'treasure', 'beautiful painting'],
+      description: 'There’s nothing special about the painting.',
+      initialDescription: 'Fortunately, there is still one chance for you to be a vandal, for on the far wall is a painting of unparalleled beauty.',
+      roomDescription: 'A painting by a neglected genius is here.',
+      portable: true,
+      tags: [],
+      after: { take: [{ if: '!flag:took_painting', then: 'took_painting' }] },
+    },
+
+    owners_manual: {
+      name: 'ZORK owner’s manual',
+      aliases: ['manual', 'piece of paper', 'paper', 'owners manual', 'small piece'],
+      description: 'There’s nothing special about the ZORK owner’s manual.',
+      initialDescription: 'Loosely attached to a wall is a small piece of paper.',
+      text: 'Congratulations!\n\nYou are the privileged owner of ZORK I: The Great Underground Empire, a self-contained and self-maintaining universe. If used and maintained in accordance with normal operating practices for small universes, ZORK will provide many months of trouble-free operation.',
+      portable: true,
+      tags: [],
     },
 
     // The forest
@@ -555,6 +649,10 @@ export const zork1: World = {
   scoring: [
     { flag: 'kitchen_visited', points: 10 },
     { flag: 'took_egg', points: 5 },
+    { flag: 'cellar_visited', points: 25 },
+    { flag: 'took_painting', points: 4 },
+    // Treasures count while they're in the trophy case.
+    { if: 'inside:painting:trophy_case', points: 6 },
   ],
   maxScore: 350,
   ranks: [
@@ -568,6 +666,37 @@ export const zork1: World = {
     { min: 350, title: 'Master Adventurer' },
   ],
 
+  vars: { lamp_fuel: 185 },
+
+  // Zork's LAMP-TABLE: warnings after 100, 170 and 185 lit turns; out on the next.
+  daemons: [
+    { if: 'on:lamp', then: [{ add: 'lamp_fuel', by: -1 }] },
+    { if: 'on:lamp & var:lamp_fuel=85 & here:lamp', then: ['The lamp appears a bit dimmer.'] },
+    { if: 'on:lamp & var:lamp_fuel=15 & here:lamp', then: ['The lamp is definitely dimmer now.'] },
+    { if: 'on:lamp & var:lamp_fuel=0 & here:lamp', then: ['The lamp is nearly out.'] },
+    { if: 'on:lamp & var:lamp_fuel<0', then: 'lamp_dies' },
+  ],
+
+  darkness: {
+    look: 'It is pitch black. You are likely to be eaten by a grue.',
+    tooDark: 'It’s too dark to see!',
+    blunder: [{ chance: 80, then: [{ die: GRUE }], else: ['You can’t go that way.'] }],
+  },
+
+  death: {
+    message: ['', '****  You have died  ****', ''],
+    penalty: -10,
+    lives: 2,
+    respawn: 'forest_1',
+    resurrection: [
+      'Now, let’s take a look here... Well, you probably deserve another chance. I can’t quite fix you up completely, but you can’t have everything.',
+    ],
+    scatter: ['west_of_house', 'north_of_house', 'south_of_house', 'east_of_house', 'forest_1', 'forest_2', 'forest_3', 'path', 'clearing', 'grating_clearing'],
+    final: [
+      'You clearly are a suicidal maniac. We don’t allow psychotics in the cave, since they may harm other adventurers. Your remains will be installed in the Land of the Living Dead, where your fellow adventurers may gloat over them.',
+    ],
+  },
+
   quit: 'There is no quitting yet. Type EJECT to leave, or RESTART to begin again.',
   idle: 'Time passes...',
 
@@ -578,7 +707,7 @@ export const zork1: World = {
       'Copyright (c) 1981, 1982, 1983, 1984, 1985, 1986 Infocom, Inc. All rights reserved.',
       'ZORK is a registered trademark of Infocom, Inc.',
       'Release 119 / Serial number 880429',
-      '[A native Brass Lantern port, stage 1: the house and the forest. The underground comes later.]',
+      '[A native Brass Lantern port: the house, the forest and the first rooms below. The troll comes later.]',
     ],
     rug_moved: [
       'With a great effort, the rug is moved to one side of the room, revealing the dusty cover of a closed trap door.',
@@ -586,6 +715,10 @@ export const zork1: World = {
     ],
     took_egg: ['[Flag set: took egg]'],
     kitchen_points: ['[Flag set: kitchen visited]'],
+    trap_door_slams: [{ close: 'trap_door' }, 'The trap door crashes shut, and you hear someone barring it.'],
+    cellar_points: [{ set: 'cellar_visited' }],
+    took_painting: [{ set: 'took_painting' }],
+    lamp_dies: [{ switch: 'lamp', on: false }, { set: 'lamp_dead' }, 'You’d better have more light than from the brass lantern.'],
     leaves_moved: ['Done.', 'In disturbing the pile of leaves, a grating is revealed.', '[Flag set: grate revealed]'],
   },
 };

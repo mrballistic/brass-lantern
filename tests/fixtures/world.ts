@@ -60,7 +60,7 @@ export const fixtureWorld: World = {
       description: 'A dusty shed. A crate sits in the middle.',
       firstDescription: 'You push the door open. A dusty shed, untouched for years. A crate sits in the middle.',
       descriptions: [{ if: 'open:hatch', text: 'A dusty shed. Daylight falls through the open hatch.' }],
-      exits: { south: 'yard', out: 'yard', northeast: { to: 'loft', door: 'hatch' }, up: { to: 'loft', door: 'hatch' } },
+      exits: { south: 'yard', out: 'yard', northeast: { to: 'loft', door: 'hatch' }, up: { to: 'loft', door: 'hatch' }, down: 'cellar' },
       listExits: ['out'],
       items: ['crate', 'socket', 'chest', 'jar', 'shelf'],
       npcs: [],
@@ -68,6 +68,15 @@ export const fixtureWorld: World = {
       scenery: ['sky', 'hatch'],
       requires: 'has:key',
       denial: 'The shed is locked.',
+    },
+    cellar: {
+      name: 'Cellar',
+      description: 'A damp cellar.',
+      dark: true,
+      exits: { up: 'shed' },
+      items: ['barrel'],
+      npcs: [],
+      onEnter: [],
     },
     loft: {
       name: 'Loft',
@@ -123,6 +132,8 @@ export const fixtureWorld: World = {
       description: 'An unplugged lamp.',
       portable: true,
       switchable: true,
+      light: true,
+      home: 'shed',
       tags: [],
       onUse: [{ with: 'socket', then: 'plug_lamp' }, { say: ['It needs a socket.'] }],
       after: { drop: [{ if: '!flag:lamp_rolled', then: 'lamp_rolls' }] },
@@ -153,6 +164,7 @@ export const fixtureWorld: World = {
     book: { name: 'book', description: 'A dog-eared book.', portable: true, tags: [], text: '“It was a dark and stormy night.”' },
     fence: { name: 'fence', description: 'A white picket fence.', portable: false, tags: [], scenery: true },
     sky: { name: 'sky', description: 'Blue, mostly.', portable: false, tags: [] },
+    barrel: { name: 'barrel', description: 'An old barrel.', portable: false, tags: [] },
     crate: { name: 'crate', aliases: ['box'], description: 'A nailed-shut crate.', portable: false, refusal: 'It is too heavy.', tags: [] },
   },
 
@@ -210,6 +222,17 @@ export const fixtureWorld: World = {
     wander: { words: ['wander', 'wander to'], target: 'optional', go: true },
   },
 
+  darkness: { look: 'It is pitch black.', blunder: [{ chance: 100, then: ['You trip in the dark.'] }] },
+  death: {
+    message: ['**** You have died ****'],
+    penalty: -10,
+    lives: 1,
+    respawn: 'bedroom',
+    resurrection: ['You wake up.'],
+    scatter: ['yard', 'living'],
+    final: ['That’s it.'],
+  },
+
   idle: 'The clock ticks.',
   confused: ['Please rephrase that.', 'Still confused.'],
 
@@ -245,6 +268,7 @@ export const fixtureWorld: World = {
     ending_paid: ['“The neighbor waves.”'],
     ending_unpaid: ['“The neighbor glares.”'],
     footer: ['Type RESTART to play again.'],
+    fall_down: [{ die: 'You fall.' }, 'never printed'],
   },
 };
 

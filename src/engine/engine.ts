@@ -1,8 +1,13 @@
 import type { GameState, ParsedAction } from '@/types/game';
 import type { World } from '@/types/world';
-import { evaluateCondition } from './conditions';
 import { describeRoom } from './describe';
-import { initialLocations } from './model';
+import { initialLocations, isLit } from './model';
+import { darknessFalls, tooDark } from './light';
+import { beginTurn, runSteps, setEffectHooks, turnHalted } from './effects';
+import { seedFor } from './rng';
+import { afterTurn } from './time';
+import { die } from './death';
+import { runEnding } from './endings';
 import { ok, type EngineResult } from './result';
 import { enterRoom, handleClimb, handleEnter, handleGo, handleIdle } from './verbs/movement';
 import {
@@ -30,6 +35,8 @@ export function initialState(world: World): GameState {
     itemState: {},
     visited: [world.startRoom],
     flags: {},
+    vars: { ...(world.vars ?? {}) },
+    rng: seedFor(world),
     moveCount: 0,
     gameOver: false,
     firedEvents: [],
@@ -42,6 +49,12 @@ export function initialState(world: World): GameState {
 /* Dispatcher                                                          */
 /* ------------------------------------------------------------------ */
 
+setEffectHooks({
+  go: (room, world, state) => enterRoom(room, world, state),
+  die: (cause, world, state) => die(cause, world, state, enterRoom),
+  end: (id, world, state) => runEnding(id, world, state),
+});
+
 export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
   const { world, state } = deps;
 
@@ -49,26 +62,37 @@ export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
     return ok(['The game has ended. Type RESTART to play again.']);
   }
 
-  const result = dispatch(action, world, state);
-  if (result.understood === false || state.gameOver) return result;
+  beginTurn(state);
+  const pendingFuses = new Set(Object.keys(state.fuses ?? {}));
+  const roomBefore = state.currentRoom;
+  const litBefore = isLit(world, state);
+  let result = dispatch(action, world, state);
+  // You can't find things in the dark: an understood refusal, so the LLM isn't asked to re-guess.
+  if (result.understood === false && action.target && action.action !== 'go' && !isLit(world, state)) {
+    // Like a parser failure in Zork: no time passes.
+    result = { ...ok([tooDark(world)]), free: true };
+  }
+  if (result.understood === false || state.gameOver || result.free) return result;
 
   // Misses don't count as turns: they must not mutate state (see EngineResult).
   state.turns = (state.turns ?? 0) + 1;
-  const interruptions = ambientLines(world, state);
-  if (interruptions.length === 0) return result;
-  return { ...result, lines: [...result.lines, ...interruptions], mutated: true };
+  const before = JSON.stringify([state.vars, state.fuses, state.flags, state.locations, state.itemState, state.currentRoom]);
+  // A death this turn ends it: no timers or daemons after the resurrection.
+  const later = turnHalted(state) ? [] : afterTurn(world, state, pendingFuses);
+  // Light arriving or leaving while the player stays put.
+  if (state.currentRoom === roomBefore && !state.gameOver) {
+    const litNow = isLit(world, state);
+    if (litNow && !litBefore) {
+      if (!state.visited.includes(state.currentRoom)) state.visited.push(state.currentRoom);
+      later.push(...describeRoom(state.currentRoom, world, state));
+    }
+    if (!litNow && litBefore) later.push(darknessFalls(world));
+  }
+  const changed = before !== JSON.stringify([state.vars, state.fuses, state.flags, state.locations, state.itemState, state.currentRoom]);
+  if (later.length === 0 && !changed) return result;
+  return { ...result, lines: [...result.lines, ...later], mutated: true };
 }
 
-function ambientLines(world: World, state: GameState): string[] {
-  const turns = state.turns ?? 0;
-  const out: string[] = [];
-  for (const a of world.ambient ?? []) {
-    if (a.every <= 0 || a.lines.length === 0) continue;
-    if (turns % a.every !== 0 || !evaluateCondition(a.if, state, world)) continue;
-    out.push(a.lines[(turns / a.every - 1) % a.lines.length]);
-  }
-  return out;
-}
 
 function dispatch(action: ParsedAction, world: World, state: GameState): EngineResult {
   switch (action.action) {
@@ -84,6 +108,10 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
       return withRules('enter', action, world, state, () => handleEnter(action.target, world, state));
     case 'climb':
       return withRules('climb', action, world, state, () => handleClimb(action.target, world, state));
+    case 'verbose':
+    case 'brief':
+    case 'superbrief':
+      return setVerbosity(action.action, world, state);
     case 'look':
       return handleLook(world, state);
     case 'take':
@@ -145,9 +173,19 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
   }
 }
 
+const VERBOSITY_REPLY = {
+  infocom: { verbose: 'Maximum verbosity.', brief: 'Brief descriptions.', superbrief: 'Superbrief descriptions.' },
+  brass: { verbose: '[Full descriptions.]', brief: '[Brief descriptions.]', superbrief: '[Room names only.]' },
+} as const;
+
+function setVerbosity(mode: 'verbose' | 'brief' | 'superbrief', world: World, state: GameState): EngineResult {
+  state.verbosity = mode;
+  return { ...ok([VERBOSITY_REPLY[world.style === 'infocom' ? 'infocom' : 'brass'][mode]], true), free: true };
+}
+
 /** Compose the opening: intro lines + first room description. */
 export function openingLines(world: World, state: GameState): string[] {
-  const lines = [...(world.events.intro ?? [])];
+  const lines = runSteps(world.events.intro ?? [], world, state);
   lines.push(...describeRoom(state.currentRoom, world, state, { first: true }));
   return lines;
 }
