@@ -1,20 +1,37 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
-import { storeToRefs } from 'pinia';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { openConsent } from '@/services/consent';
 import { appName } from '@/app.config';
 import { analyticsConfigured } from '@/services/analytics';
-import { useGameStore } from '@/stores/game';
+import { useSession } from '@/stores/session';
 import { useTypewriter } from '@/composables/useTypewriter';
 
-const store = useGameStore();
-const { output, isParsing, restored } = storeToRefs(store);
-const { moveCount } = storeToRefs(store);
+const session = useSession();
+const { output, isParsing, restored, status, title, mode } = session;
 
 const typer = useTypewriter();
 const inputEl = ref<HTMLInputElement | null>(null);
 const scrollEl = ref<HTMLDivElement | null>(null);
 const inputValue = ref('');
+
+// The block cursor is drawn at the insertion point: a hidden mirror of the text before
+// the caret pushes it into place, and the native caret is transparent.
+const caretIndex = ref(0);
+const inputScroll = ref(0);
+const beforeCaret = computed(() => inputValue.value.slice(0, caretIndex.value));
+
+function syncCaret(): void {
+  const el = inputEl.value;
+  if (!el) return;
+  caretIndex.value = el.selectionStart ?? el.value.length;
+  inputScroll.value = el.scrollLeft;
+}
+
+// Programmatic changes (history recall, clearing on submit) put the caret at the end.
+watch(inputValue, async () => {
+  await nextTick();
+  syncCaret();
+});
 
 // Shell-style command history. history[0] is the OLDEST entry; history.at(-1) is the newest.
 // historyIndex: null = editing a fresh line; otherwise the index into `history` currently shown.
@@ -28,17 +45,33 @@ const HISTORY_LIMIT = 100;
 let enqueuedCount = 0;
 
 function enqueueNew(instant: boolean): void {
+  if (output.value.length < enqueuedCount) {
+    // The output was replaced (RESTART): clear the screen and start over.
+    typer.reset();
+    enqueuedCount = 0;
+  }
   const slice = output.value.slice(enqueuedCount);
   if (slice.length === 0) return;
   enqueuedCount = output.value.length;
   typer.enqueue(slice, { instant });
 }
 
-onMounted(() => {
-  store.initialize();
-  // If a session was restored, prefill typewriter rendered lines instantly.
+onMounted(async () => {
+  // Fires while arrow keys are held, which keyup can't see.
+  document.addEventListener('selectionchange', syncCaret);
+  await session.boot();
+  // A restored session renders instantly; anything new after it types out.
   enqueueNew(restored.value);
   focusInput();
+});
+
+onUnmounted(() => document.removeEventListener('selectionchange', syncCaret));
+
+// Inserting or ejecting a cartridge clears the screen.
+watch(mode, () => {
+  typer.reset();
+  enqueuedCount = 0;
+  enqueueNew(restored.value);
 });
 
 // Watch the array length, not the ref identity — Pinia mutates the array in place,
@@ -79,7 +112,7 @@ async function onSubmit(): Promise<void> {
   }
   historyIndex.value = null;
   draft = '';
-  await store.submit(v);
+  await session.submit(v);
 }
 
 function onShellClick(): void {
@@ -149,10 +182,10 @@ const inputPlaceholder = computed(() =>
 <template>
   <div class="terminal" tabindex="-1" @click="onShellClick" @keydown="onKeydown">
     <header class="terminal-header">
-      <span>{{ appName }} v{{ version }}</span>
+      <span>{{ appName }} v{{ version }}<template v-if="title"> · {{ title }}</template></span>
       <span class="header-right">
         <button v-if="showCookies" type="button" class="consent-open" @click.stop="openConsent">[ COOKIES ]</button>
-        <span class="moves">MOVES: {{ moveCount }}</span>
+        <span class="moves">{{ status }}</span>
       </span>
     </header>
 
@@ -168,17 +201,29 @@ const inputPlaceholder = computed(() =>
 
     <form class="terminal-input-bar" @submit.prevent="onSubmit">
       <span class="prompt">&gt;</span>
-      <input
-        ref="inputEl"
-        v-model="inputValue"
-        type="text"
-        autocomplete="off"
-        autocapitalize="off"
-        spellcheck="false"
-        :disabled="isParsing"
-        :placeholder="inputPlaceholder"
-      />
-      <span class="block-cursor" aria-hidden="true" />
+      <span class="input-field">
+        <input
+          ref="inputEl"
+          v-model="inputValue"
+          type="text"
+          autocomplete="off"
+          autocapitalize="off"
+          spellcheck="false"
+          :disabled="isParsing"
+          :placeholder="inputPlaceholder"
+          @input="syncCaret"
+        @keyup="syncCaret"
+          @click="syncCaret"
+          @select="syncCaret"
+          @scroll="syncCaret"
+        />
+        <span
+          v-show="!isParsing"
+          class="caret-mirror"
+          aria-hidden="true"
+          :style="{ transform: `translateX(${-inputScroll}px)` }"
+        ><span class="caret-before">{{ beforeCaret }}</span><span class="block-cursor" aria-hidden="true" /></span>
+      </span>
     </form>
   </div>
 </template>

@@ -39,6 +39,16 @@ Step 6 runs the engine on the literal reading first, and possibly again on the L
 
 The intent server sees the room by ID and name (`red_mug (red coffee mug)`), so its answer uses IDs the engine matches exactly. Everything still goes through the same fuzzy matcher (`src/engine/fuzzy.ts`: exact ID, then exact name, then substring, then token prefix), so a slightly-off answer still lands.
 
+## Cartridges and sessions
+
+The terminal talks to whatever is running through one interface (`useSession()` in `src/stores/session.ts`):
+
+- **The cartridge menu**, when nothing is inserted.
+- **A native world**, run by the engine above.
+- **A Z-machine story**, run by ifvms. See [Playing story files](./z-machine).
+
+Inserting or ejecting a cartridge clears the screen.
+
 ## The engine
 
 `execute` dispatches on the action to one handler per verb, and each handler reads the world's rules rather than knowing any particular game:

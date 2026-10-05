@@ -8,6 +8,8 @@ export default defineConfig({
   // GitHub Pages project site. Change if you host the docs at a domain root.
   base: '/brass-lantern/',
   cleanUrls: true,
+  // Design notes and implementation plans live beside the docs but aren't part of the site.
+  srcExclude: ['superpowers/**'],
   lastUpdated: true,
   head: [
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/brass-lantern/favicon.svg' }],
@@ -27,6 +29,7 @@ export default defineConfig({
         items: [
           { text: 'Getting started', link: '/guide/getting-started' },
           { text: 'Your first world', link: '/guide/your-first-world' },
+          { text: 'Playing story files', link: '/guide/z-machine' },
           { text: 'How it works', link: '/guide/how-it-works' },
           { text: 'The intent server', link: '/guide/intent-server' },
           { text: 'Testing a world', link: '/guide/testing' },

@@ -6,7 +6,7 @@ import vue from 'eslint-plugin-vue';
 export default tseslint.config(
   {
     // server/ is its own package with its own lint run.
-    ignores: ['dist/**', 'coverage/**', 'server/**', 'node_modules/**', 'docs/.vitepress/cache/**', 'docs/.vitepress/dist/**'],
+    ignores: ['dist/**', 'coverage/**', 'server/**', 'node_modules/**', 'docs/.vitepress/cache/**', 'docs/.vitepress/dist/**', 'src/zmachine/vendor/**'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

@@ -23,6 +23,9 @@ The verbs are fixed; a world gives them things to act on. Anything the regex par
 | SCORE | | |
 | SAVE / LOAD / RESTART | | Saves are in the browser. |
 | COOKIES | `privacy` | Analytics settings, when analytics are configured. |
+| EJECT | | Back to the cartridge menu (builds with more than one cartridge). |
+| PLAY | | Start a story file again after it ends. |
+| CANCEL | | At a story file’s save or restore prompt. |
 | HELP | `?` | |
 
 **Chaining:** `take key and wallet`, `north then look`, `west. take lamp.` Each piece runs separately (and gets its own intent-server retry if it misses).

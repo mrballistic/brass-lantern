@@ -22,6 +22,7 @@ Exits: hallway (north).
 - **An optional LLM, on a short leash.** Input the parser can't handle goes to a small server that asks Gemini which of *your* verbs and IDs it means. Replies are reduced to a verb plus identifiers, so the model never writes the story. The key stays on the server.
 - **A terminal worth staring at.** Boot sequence, scanlines, phosphor bloom and decay, flicker, a typewriter that changes pace with the scene. All CSS.
 - **Saves in the browser**, and analytics only when you configure them, and then only with the player's consent.
+- **Plays Zork, too.** Z-machine story files run in the same terminal, starting with **Zork I**, which Microsoft released under the MIT License in 2025. Pick it from the cartridge menu in the [demo](https://mrballistic.github.io/brass-lantern/demo/).
 
 ## Quick start
 
@@ -60,3 +61,5 @@ Vue 3, TypeScript, Pinia and Vite in the browser; Node 24 and Express for the op
 ## License
 
 [MIT](./LICENSE). Brass Lantern isn't affiliated with any historical text-adventure publisher, though it owes them everything.
+
+Zork I’s story file is included under its own MIT license; see [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).

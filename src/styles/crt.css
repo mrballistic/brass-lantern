@@ -216,15 +216,24 @@ html, body, #app {
   font-size: 20px;
   line-height: 1;
 }
+.terminal-input-bar .input-field {
+  flex: 1;
+  position: relative;
+  display: flex;
+  overflow: hidden;
+}
 .terminal-input-bar input {
   flex: 1;
+  min-width: 0;
+  padding: 0;
   background: transparent;
   border: none;
   outline: none;
   color: var(--crt-green);
   font-family: 'VT323', 'Courier New', monospace;
   font-size: 20px;
-  caret-color: var(--crt-amber);
+  /* The block cursor below stands in for the caret. */
+  caret-color: transparent;
   text-shadow: 0 0 6px rgba(136, 255, 170, 0.5);
 }
 .terminal-input-bar input::placeholder {
@@ -235,14 +244,25 @@ html, body, #app {
   opacity: 0.5;
 }
 
-/* Block cursor overlay */
+/* Block cursor, positioned at the caret by a transparent mirror of the text before it */
+.terminal-input-bar .caret-mirror {
+  position: absolute;
+  inset: 0 auto 0 0;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  white-space: pre;
+  font-family: 'VT323', 'Courier New', monospace;
+  font-size: 20px;
+}
+.terminal-input-bar .caret-before {
+  color: transparent;
+}
 .terminal-input-bar .block-cursor {
   display: inline-block;
-  width: 10px;
+  width: 0.5em;
   height: 22px;
   background: var(--crt-amber);
-  margin-left: 2px;
-  vertical-align: middle;
   animation: crt-cursor-blink 1s steps(2, end) infinite;
   box-shadow: 0 0 8px var(--crt-amber-glow-strong);
 }
@@ -320,8 +340,8 @@ html, body, #app {
 .crt-boot .ignition {
   position: absolute;
   top: 50%;
-  left: 20%;
-  width: 60%;
+  left: 0;
+  width: 100%;
   height: 1px;
   background: var(--crt-boot-line);
   box-shadow: 0 0 10px var(--crt-boot-line);

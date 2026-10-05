@@ -3,14 +3,14 @@ import { ref, onMounted } from 'vue';
 import CrtBootSequence from '@/components/CrtBootSequence.vue';
 import Terminal from '@/components/Terminal.vue';
 import ConsentBanner from '@/components/ConsentBanner.vue';
-import { createPersistenceService } from '@/services/persistence';
+import { autoBootCartridge, hasProgress } from '@/cartridges';
 
 const bootComplete = ref(false);
 const fastBoot = ref(false);
 
 onMounted(() => {
-  const svc = createPersistenceService();
-  fastBoot.value = svc.load() !== null;
+  const c = autoBootCartridge();
+  fastBoot.value = c !== null && hasProgress(c);
 });
 
 function onBootComplete(): void {

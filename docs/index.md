@@ -26,4 +26,6 @@ features:
     details: Boot sequence, scanlines, phosphor bloom and decay, flicker, a typewriter that changes pace with the scene. All CSS, no canvas.
   - title: The genre’s good parts, built in
     details: Gated rooms, use rules, gifts, timed interruptions, hints, a score with ranks, and endings that remember what you did.
+  - title: Plays Zork, too
+    details: Z-machine story files run in the same terminal, starting with Zork I, which Microsoft released under the MIT License. Pick from a cartridge menu; saves and autosave included.
 ---

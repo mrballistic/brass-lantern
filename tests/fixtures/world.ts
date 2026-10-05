@@ -167,7 +167,7 @@ export const fixtureWorld: World = {
 
 /** Drop-in replacement for src/app.config.ts in tests: vi.mock('@/app.config', () => fixtureConfig). */
 export const fixtureConfig = {
-  world: fixtureWorld,
+  cartridges: [{ kind: 'world' as const, id: 'test', title: 'TEST HOUSE', world: fixtureWorld, saveKey: 'test:save' }],
   appName: 'TEST TERMINAL',
   storagePrefix: 'test',
 };

@@ -32,6 +32,22 @@ describe('Terminal.vue', () => {
     expect(wrapper.find('.block-cursor').exists()).toBe(true);
   });
 
+  it('draws the block cursor at the insertion point, not after the field', async () => {
+    const wrapper = mount(Terminal);
+    await vi.runOnlyPendingTimersAsync();
+    const input = wrapper.find<HTMLInputElement>('.terminal-input-bar input');
+    // The cursor lives in the field, after a mirror of the text before the caret.
+    const cursor = wrapper.find('.input-field .block-cursor');
+    expect(cursor.exists()).toBe(true);
+    const before = () => wrapper.find('.input-field .caret-before').text();
+    await input.setValue('take lamp');
+    expect(before()).toBe('take lamp');
+    input.element.setSelectionRange(4, 4);
+    await input.trigger('keyup');
+    expect(before()).toBe('take');
+    expect(cursor.attributes('aria-hidden')).toBe('true');
+  });
+
   it('renders opening output lines after initialize', async () => {
     const wrapper = mount(Terminal);
     // Drain typewriter timers so lines commit.
@@ -162,5 +178,20 @@ describe('Terminal.vue', () => {
       await input.trigger('keydown', { key: 'ArrowUp' });
       expect(input.element.value).toBe('look');
     });
+  });
+
+  it('RESTART clears the screen and shows the opening again', async () => {
+    const wrapper = mount(Terminal);
+    await vi.advanceTimersByTimeAsync(60_000);
+    const input = wrapper.find<HTMLInputElement>('.terminal-input-bar input');
+    for (const cmd of ['west', 'east', 'west', 'restart']) {
+      await input.setValue(cmd);
+      await wrapper.find('form').trigger('submit');
+      await flushPromises();
+      await vi.runAllTimersAsync();
+    }
+    const text = wrapper.find('.terminal-output').text();
+    expect(text).toContain('TEST HOUSE');
+    expect(text).not.toContain('> west');
   });
 });
