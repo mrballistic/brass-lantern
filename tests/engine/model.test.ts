@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { childrenOf, initialLocations, inventoryOf, moveItem, parentOf, PLAYER } from '@/engine/model';
+import { childrenOf, initialLocations, inventoryOf, moveItem, parentOf, PLAYER, reachableItems, visibleItemsIn } from '@/engine/model';
 import { initialState } from '@/engine/engine';
 import { fixtureWorld as world } from '../fixtures/world';
 
@@ -38,5 +38,18 @@ describe('the object tree', () => {
     expect(inventoryOf(w, state)).toEqual(['shirt', 'key']);
     moveItem(state, 'key', 'living');
     expect(childrenOf(w, state, 'living')).toEqual(['key', 'wallet']);
+  });
+
+  it('a fixed item listed in several rooms is present in each of them', () => {
+    const w = { ...world, rooms: { ...world.rooms, yard: { ...world.rooms.yard, items: [...world.rooms.yard.items, 'crate'] } } };
+    const state = initialState(w);
+    expect(state.locations.crate).toBe('yard'); // the first room that lists it
+    expect(visibleItemsIn('yard', w, state)).toContain('crate');
+    expect(visibleItemsIn('shed', w, state)).toContain('crate');
+    state.currentRoom = 'yard';
+    expect(reachableItems(w, state)).toContain('crate');
+    // Once it's gone from the world (smashed), it's gone everywhere.
+    moveItem(state, 'crate', null);
+    expect(visibleItemsIn('yard', w, state)).not.toContain('crate');
   });
 });

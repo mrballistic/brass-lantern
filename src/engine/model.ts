@@ -10,7 +10,8 @@ export function initialLocations(world: World): Record<string, Place> {
   const loc: Record<string, Place> = {};
   for (const id of Object.keys(world.items)) loc[id] = null;
   for (const [roomId, room] of Object.entries(world.rooms)) {
-    for (const id of room.items) loc[id] = roomId;
+    // First listing wins; a fixed item listed again elsewhere is also present there (fixturesIn).
+    for (const id of room.items) if (loc[id] === null) loc[id] = roomId;
   }
   for (const [id, item] of Object.entries(world.items)) {
     for (const child of item.contains ?? []) loc[child] = id;
@@ -50,9 +51,21 @@ export function moveItem(state: GameState, id: string, place: Place): void {
   placed[id] = Math.max(0, ...Object.values(placed)) + 1;
 }
 
-/** What a room lists: its direct contents, minus scenery. */
+/**
+ * Fixed items a room lists that live in another room: the same printer in two
+ * versions of the break room. Nobody can carry them off, so they're present in
+ * every room that lists them, until they leave the world altogether.
+ */
+function fixturesIn(world: World, state: GameState, roomId: string): string[] {
+  return (world.rooms[roomId]?.items ?? []).filter((id) => {
+    const home = state.locations[id];
+    return world.items[id] && !world.items[id].portable && home !== roomId && home != null && home in world.rooms;
+  });
+}
+
+/** What a room lists: its direct contents (and fixtures it shares), minus scenery. */
 export function visibleItemsIn(roomId: string, world: World, state: GameState): string[] {
-  return childrenOf(world, state, roomId).filter((id) => !world.items[id]?.scenery);
+  return [...childrenOf(world, state, roomId), ...fixturesIn(world, state, roomId)].filter((id) => !world.items[id]?.scenery);
 }
 
 /** Fuzzy candidates for items, with aliases folded into the matchable name. */
@@ -117,7 +130,12 @@ export function canReachInside(world: World, state: GameState, id: string): bool
 
 function roots(world: World, state: GameState): string[] {
   const room = state.currentRoom;
-  return [...childrenOf(world, state, room), ...(world.rooms[room]?.scenery ?? []), ...inventoryOf(world, state)];
+  return [
+    ...childrenOf(world, state, room),
+    ...fixturesIn(world, state, room),
+    ...(world.rooms[room]?.scenery ?? []),
+    ...inventoryOf(world, state),
+  ];
 }
 
 function collect(world: World, state: GameState, into: (id: string) => boolean): string[] {
