@@ -234,6 +234,8 @@ export interface World {
   finale?: Finale;
   /** Lines that interrupt on a timer while a condition holds (a ringing phone). */
   ambient?: Ambient[];
+  /** Run after every acted-on turn while their condition holds (a lamp burning down). */
+  daemons?: Array<{ if: string; then: string | EventStep[] }>;
   /** Starting values for numeric variables (conditions: var:NAME<=N). */
   vars?: Record<string, number>;
   /** Seeds the random generator, for reproducible games. Default: the clock. */

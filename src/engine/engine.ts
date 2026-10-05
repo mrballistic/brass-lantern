@@ -1,10 +1,10 @@
 import type { GameState, ParsedAction } from '@/types/game';
 import type { World } from '@/types/world';
-import { evaluateCondition } from './conditions';
 import { describeRoom } from './describe';
 import { initialLocations } from './model';
 import { runSteps, setEffectHooks } from './effects';
 import { seedFor } from './rng';
+import { afterTurn } from './time';
 import { ok, type EngineResult } from './result';
 import { enterRoom, handleClimb, handleEnter, handleGo, handleIdle } from './verbs/movement';
 import {
@@ -55,26 +55,19 @@ export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
     return ok(['The game has ended. Type RESTART to play again.']);
   }
 
+  const pendingFuses = new Set(Object.keys(state.fuses ?? {}));
   const result = dispatch(action, world, state);
   if (result.understood === false || state.gameOver) return result;
 
   // Misses don't count as turns: they must not mutate state (see EngineResult).
   state.turns = (state.turns ?? 0) + 1;
-  const interruptions = ambientLines(world, state);
-  if (interruptions.length === 0) return result;
-  return { ...result, lines: [...result.lines, ...interruptions], mutated: true };
+  const before = JSON.stringify([state.vars, state.fuses, state.flags, state.locations, state.itemState, state.currentRoom]);
+  const later = afterTurn(world, state, pendingFuses);
+  const changed = before !== JSON.stringify([state.vars, state.fuses, state.flags, state.locations, state.itemState, state.currentRoom]);
+  if (later.length === 0 && !changed) return result;
+  return { ...result, lines: [...result.lines, ...later], mutated: true };
 }
 
-function ambientLines(world: World, state: GameState): string[] {
-  const turns = state.turns ?? 0;
-  const out: string[] = [];
-  for (const a of world.ambient ?? []) {
-    if (a.every <= 0 || a.lines.length === 0) continue;
-    if (turns % a.every !== 0 || !evaluateCondition(a.if, state, world)) continue;
-    out.push(a.lines[(turns / a.every - 1) % a.lines.length]);
-  }
-  return out;
-}
 
 function dispatch(action: ParsedAction, world: World, state: GameState): EngineResult {
   switch (action.action) {
