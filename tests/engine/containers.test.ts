@@ -195,3 +195,27 @@ describe('parsing', () => {
     expect(fallbackParse('insert disk in drive')).toEqual({ action: 'put', target: 'disk', indirect: 'drive', prep: 'in' });
   });
 });
+
+describe('things behind closed glass', () => {
+  /** The chest, inside the closed (but transparent) jar: visible, not reachable. */
+  function chestInJar() {
+    const s = stateWith(world, { room: 'shed', carrying: ['key', 'wallet'] });
+    s.locations.chest = 'jar';
+    return s;
+  }
+
+  it('can’t be unlocked, opened, closed or put into', () => {
+    const s = chestInJar();
+    unchanged(s, () => expect(run(s, 'unlock', 'chest', 'key').lines).toEqual(['The glass jar is closed.']));
+    unchanged(s, () => expect(run(s, 'open', 'chest').lines).toEqual(['The glass jar is closed.']));
+    unchanged(s, () => expect(run(s, 'close', 'chest').lines).toEqual(['The glass jar is closed.']));
+    unchanged(s, () => expect(run(s, 'put', 'wallet', 'chest', 'in').lines).toEqual(['The glass jar is closed.']));
+  });
+
+  it('don’t fire use rules through the glass', () => {
+    const s = stateWith(world, { room: 'shed', carrying: ['jar'] });
+    s.locations.socket = 'jar';
+    s.locations.lamp = 'shed';
+    unchanged(s, () => expect(run(s, 'put', 'lamp', 'socket', 'in').lines).toEqual(['The glass jar is closed.']));
+  });
+});

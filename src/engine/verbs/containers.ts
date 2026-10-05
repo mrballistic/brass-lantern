@@ -3,6 +3,7 @@ import type { World } from '@/types/world';
 import { contentsLines, listPhrase } from '../describe';
 import {
   canReachInside,
+  closedAround,
   canSeeInside,
   childrenOf,
   inventoryOf,
@@ -28,6 +29,15 @@ function find(target: string, world: World, state: GameState): string | null {
   return matchItem(target, visibleItems(world, state), world);
 }
 
+/** “The glass jar is closed.” when one of these is visible but sealed away. */
+function behindGlass(world: World, state: GameState, ...ids: Array<string | null>): EngineResult | null {
+  for (const id of ids) {
+    const closed = id ? closedAround(world, state, id) : null;
+    if (closed) return ok([`The ${name(world, closed)} is closed.`]);
+  }
+  return null;
+}
+
 /** Worlds that modeled OPEN or PUT as USE keep working: fall back to the target's use rules. */
 function useFallback(id: string, other: string | null, world: World, state: GameState): EngineResult | null {
   const reach = reachableItems(world, state);
@@ -39,6 +49,8 @@ export function handleOpen(target: string | undefined, world: World, state: Game
   if (!target) return ok(['Open what?']);
   const id = find(target, world, state);
   if (!id) return miss(`You don’t see a “${target}” here.`);
+  const sealed = behindGlass(world, state, id);
+  if (sealed) return sealed;
   const item = world.items[id];
   if (!item.container?.openable) return useFallback(id, null, world, state) ?? ok(['You can’t open that.']);
   if (isOpen(world, state, id)) return ok(['It’s already open.']);
@@ -54,6 +66,8 @@ export function handleClose(target: string | undefined, world: World, state: Gam
   if (!target) return ok(['Close what?']);
   const id = find(target, world, state);
   if (!id) return miss(`You don’t see a “${target}” here.`);
+  const sealed = behindGlass(world, state, id);
+  if (sealed) return sealed;
   if (!world.items[id].container?.openable) return ok(['You can’t close that.']);
   if (!isOpen(world, state, id)) return ok(['It’s already closed.']);
   (state.itemState[id] ??= {}).open = false;
@@ -72,6 +86,8 @@ function handleLockState(
   if (!target) return ok([`${Verb} what?`]);
   const id = find(target, world, state);
   if (!id) return miss(`You don’t see a “${target}” here.`);
+  const sealed = behindGlass(world, state, id);
+  if (sealed) return sealed;
   const c = world.items[id].container;
   if (!c?.key) return ok([`You can’t ${verb} that.`]);
   if (!indirect) return ok([`${Verb} it with what?`]);
@@ -106,12 +122,16 @@ export function handlePut(
     // something in sight, with use rules, still works as it did when PUT was USE.
     const seen = matchItem(target, visibleItems(world, state), world);
     const other = indirect ? find(indirect, world, state) : null;
+    const sealed = seen ? behindGlass(world, state, seen, other) : null;
+    if (sealed) return sealed;
     const fallback = seen ? useFallback(seen, other, world, state) : null;
     return fallback ?? miss(`You aren’t carrying a “${target}”.`);
   }
   if (!indirect) return ok([`Put the ${name(world, id)} where?`]);
   const dest = find(indirect, world, state);
   if (!dest) return miss(`You don’t see a “${indirect}” here.`);
+  const sealed = behindGlass(world, state, dest);
+  if (sealed) return sealed;
   const d = world.items[dest];
   if ((!d.container || d.door) && !d.surface) {
     return useFallback(id, dest, world, state) ?? ok(['You can’t put things there.']);
