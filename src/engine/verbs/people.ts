@@ -1,7 +1,7 @@
 import type { GameState } from '@/types/game';
 import type { World } from '@/types/world';
 import { evaluateCondition } from '../conditions';
-import { matchItem, matchNpc } from '../model';
+import { inventoryOf, matchItem, matchNpc, moveItem } from '../model';
 import { miss, ok, type EngineResult } from '../result';
 import { runEvent } from '../rules';
 
@@ -32,7 +32,7 @@ export function handleGive(
   state: GameState,
 ): EngineResult {
   if (!target) return ok(['Give what?']);
-  const itemId = matchItem(target, state.inventory, world);
+  const itemId = matchItem(target, inventoryOf(world, state), world);
   if (!itemId) return miss(`You aren’t carrying a “${target}”.`);
 
   const present = world.rooms[state.currentRoom]?.npcs ?? [];
@@ -54,6 +54,6 @@ export function handleGive(
   if (!event) {
     return ok([npc.refuseGift ?? `${npc.name} doesn’t want your ${item.name}.`]);
   }
-  state.inventory = state.inventory.filter((i) => i !== itemId);
+  moveItem(state, itemId, null);
   return ok(runEvent(event, world, state), true);
 }

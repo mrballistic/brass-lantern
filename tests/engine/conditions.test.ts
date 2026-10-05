@@ -1,17 +1,18 @@
 import { evaluateCondition } from '@/engine/conditions';
 import type { GameState } from '@/types/game';
 
-function makeState(overrides: Partial<GameState> = {}): GameState {
+function makeState(overrides: Partial<GameState> & { inventory?: string[] } = {}): GameState {
+  const { inventory = [], ...rest } = overrides;
   return {
     currentRoom: 'somewhere',
-    inventory: [],
+    locations: Object.fromEntries(inventory.map((id) => [id, 'player'])),
+    itemState: {},
+    visited: [],
     flags: {},
     moveCount: 0,
     gameOver: false,
-    itemsRemoved: {},
-    itemsAdded: {},
     firedEvents: [],
-    ...overrides,
+    ...rest,
   };
 }
 
@@ -96,16 +97,7 @@ describe('evaluateCondition', () => {
 
 describe('evaluateCondition — conjunctions', () => {
   it('requires every part joined with &', () => {
-    const state = {
-      currentRoom: 'lobby',
-      inventory: ['wallet'],
-      flags: { a: true },
-      moveCount: 0,
-      gameOver: false,
-      itemsRemoved: {},
-      itemsAdded: {},
-      firedEvents: [],
-    };
+    const state = makeState({ currentRoom: 'lobby', inventory: ['wallet'], flags: { a: true } });
     expect(evaluateCondition('flag:a & has:wallet & in:lobby', state)).toBe(true);
     expect(evaluateCondition('flag:a & !flag:b', state)).toBe(true);
     expect(evaluateCondition('flag:a & flag:b', state)).toBe(false);

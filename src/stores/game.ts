@@ -11,6 +11,7 @@ import {
   describeCurrentRoom,
   visibleItemsIn,
 } from '@/engine/engine';
+import { inventoryOf } from '@/engine/model';
 import { fallbackParse, splitCommands } from '@/engine/parser';
 import type { EngineResult } from '@/engine/engine';
 import { buildContext, parseIntentRemote } from '@/engine/intent-client';
@@ -200,7 +201,7 @@ export const useGameStore = defineStore('game', {
         const ctx = buildContext(
           world.rooms[this.game.currentRoom],
           world,
-          this.game.inventory,
+          inventoryOf(world, this.game),
           this.visibleItems,
         );
         const action = await parseIntentRemote(input, ctx);

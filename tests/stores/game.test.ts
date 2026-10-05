@@ -2,6 +2,8 @@ import { setActivePinia, createPinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useGameStore } from '@/stores/game';
 import { SAVE_KEY } from '@/types/game';
+import { inventoryOf } from '@/engine/model';
+import { carry } from '../helpers/state';
 // Plays the fixture world, so this file is the same in every repo using the engine.
 vi.mock('@/app.config', async () => (await import('../fixtures/world')).fixtureConfig);
 
@@ -79,9 +81,9 @@ describe('useGameStore', () => {
       store.initialize();
       await store.submit('west');
       await store.submit('take wallet');
-      expect(store.game.inventory).toContain('wallet');
+      expect(inventoryOf(store.world, store.game)).toContain('wallet');
       await store.submit('drop wallet');
-      expect(store.game.inventory).not.toContain('wallet');
+      expect(inventoryOf(store.world, store.game)).not.toContain('wallet');
     });
 
     it('persists after a mutating command', async () => {
@@ -115,11 +117,11 @@ describe('useGameStore', () => {
 
       // Wipe in-memory state but keep the save, then LOAD.
       store.game.currentRoom = 'bedroom';
-      store.game.inventory = [];
+      for (const id of inventoryOf(store.world, store.game)) store.game.locations[id] = null;
 
       await store.submit('load');
       expect(store.game.currentRoom).toBe('living');
-      expect(store.game.inventory).toContain('wallet');
+      expect(inventoryOf(store.world, store.game)).toContain('wallet');
     });
 
     it('plays the cartridge it is given, with that cartridge’s save', async () => {
@@ -150,7 +152,7 @@ describe('useGameStore', () => {
 
       await store.submit('restart');
       expect(store.game.currentRoom).toBe('bedroom');
-      expect(store.game.inventory).toEqual([]);
+      expect(inventoryOf(store.world, store.game)).toEqual([]);
       expect(store.game.moveCount).toBe(0);
       // A fresh save should now exist (post-restart persist).
       expect(localStorage.getItem(SAVE_KEY)).not.toBeNull();
@@ -204,7 +206,7 @@ describe('useGameStore', () => {
       const store = freshStore();
       store.initialize();
       store.game.currentRoom = 'yard';
-      store.game.inventory.push('wallet');
+      carry(store.game, 'wallet');
       mockIntent({ action: 'give', target: 'wallet', indirect: 'neighbor' });
       await store.submit('could the neighbor maybe have this');
       expect(store.game.flags.paid).toBe(true);
@@ -215,7 +217,7 @@ describe('useGameStore', () => {
       store.initialize();
       await store.submit('west');
       await store.submit('get key and wallet');
-      expect(store.game.inventory).toEqual(expect.arrayContaining(['key', 'wallet']));
+      expect(inventoryOf(store.world, store.game)).toEqual(expect.arrayContaining(['key', 'wallet']));
     });
 
     it('resolves “it” to the last thing you acted on', async () => {
@@ -223,7 +225,7 @@ describe('useGameStore', () => {
       store.initialize();
       store.game.currentRoom = 'living';
       await store.submit('take the wallet then drop it');
-      expect(store.game.inventory).not.toContain('wallet');
+      expect(inventoryOf(store.world, store.game)).not.toContain('wallet');
       expect(store.output.some((l) => l.text.includes('Dropped: wallet.'))).toBe(true);
     });
 
@@ -231,7 +233,7 @@ describe('useGameStore', () => {
       const store = freshStore();
       store.initialize();
       store.game.currentRoom = 'shed';
-      store.game.inventory.push('key', 'bat');
+      carry(store.game, 'key', 'bat');
       await store.submit('smash crate then look');
       expect(store.game.gameOver).toBe(true);
       expect(store.output.some((l) => l.text.includes('The game has ended'))).toBe(false);

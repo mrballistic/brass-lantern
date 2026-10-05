@@ -1,15 +1,27 @@
 import { storagePrefix } from '@/app.config';
 
+/** Where an item is: a room ID, 'player', another item's ID, or null (offstage). */
+export type Place = string | null;
+
+/** What changes about an item during play. */
+export interface ItemState {
+  open?: boolean;
+  locked?: boolean;
+  on?: boolean;
+  /** The player has picked it up at least once. */
+  moved?: boolean;
+}
+
 export interface GameState {
   currentRoom: string;
-  inventory: string[];
+  /** Every item's parent. Inventory and room contents are derived from it. */
+  locations: Record<string, Place>;
+  itemState: Record<string, ItemState>;
+  /** Rooms entered, in order, each once. */
+  visited: string[];
   flags: Record<string, boolean>;
   moveCount: number;
   gameOver: boolean;
-  /** Items dropped or removed from world after start, keyed by room ID. */
-  itemsRemoved: Record<string, string[]>;
-  /** Items added to a room after start (e.g. dropped from inventory). */
-  itemsAdded: Record<string, string[]>;
   /** Event scripts that have already fired (gates one-shot events). */
   firedEvents: string[];
   /** Commands nobody understood; rotates the confused replies. Absent in older saves. */
@@ -48,4 +60,4 @@ export interface SavedState {
 }
 
 export const SAVE_KEY = `${storagePrefix}:save`;
-export const SAVE_VERSION = '1.0' as const;
+export const SAVE_VERSION = '2.0' as const;

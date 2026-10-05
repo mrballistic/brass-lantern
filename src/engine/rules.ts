@@ -1,6 +1,7 @@
 import type { GameState } from '@/types/game';
 import type { UseRule, World } from '@/types/world';
 import { evaluateCondition } from './conditions';
+import { isCarried, moveItem, PLAYER } from './model';
 import { ok, type EngineResult } from './result';
 
 /* Events and rules */
@@ -20,13 +21,13 @@ export function applyEventEffects(eventKey: string, world: World, state: GameSta
     const added = line.match(/^\[Added to inventory:\s*(.+?)\]$/i);
     if (added) {
       const itemId = itemIdForName(added[1], world);
-      if (itemId && !state.inventory.includes(itemId)) state.inventory.push(itemId);
+      if (itemId) moveItem(state, itemId, PLAYER);
     }
 
     const consumed = line.match(/^\[(.+?) consumed\]$/i);
     if (consumed) {
       const itemId = itemIdForName(consumed[1], world);
-      if (itemId) state.inventory = state.inventory.filter((i) => i !== itemId);
+      if (itemId && isCarried(state, itemId)) moveItem(state, itemId, null);
     }
   }
 }

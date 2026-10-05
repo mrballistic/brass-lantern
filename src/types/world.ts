@@ -50,6 +50,8 @@ export interface Item {
   onUse?: UseRule[];
   /** Event fired the first time the item is worn. Wearable items only. */
   onWear?: string;
+  /** Items that start inside or on this one. */
+  contains?: string[];
 }
 
 export interface NPC {

@@ -2,6 +2,7 @@ import type { GameState, ParsedAction } from '@/types/game';
 import type { World } from '@/types/world';
 import { evaluateCondition } from './conditions';
 import { describeRoom } from './describe';
+import { initialLocations } from './model';
 import { ok, type EngineResult } from './result';
 import { enterRoom, handleGo, handleIdle } from './verbs/movement';
 import {
@@ -22,12 +23,12 @@ export interface EngineDeps {
 export function initialState(world: World): GameState {
   return {
     currentRoom: world.startRoom,
-    inventory: [],
+    locations: initialLocations(world),
+    itemState: {},
+    visited: [world.startRoom],
     flags: {},
     moveCount: 0,
     gameOver: false,
-    itemsRemoved: {},
-    itemsAdded: {},
     firedEvents: [],
     misses: 0,
     turns: 0,

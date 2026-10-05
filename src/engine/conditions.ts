@@ -25,7 +25,7 @@ export function evaluateCondition(condition: string, state: GameState): boolean 
       result = Boolean(state.flags[value]);
       break;
     case 'has':
-      result = state.inventory.includes(value);
+      result = state.locations[value] === 'player';
       break;
     case 'in':
       result = state.currentRoom === value;

@@ -2,7 +2,7 @@ import type { GameState } from '@/types/game';
 import type { Item, World } from '@/types/world';
 import { evaluateCondition } from '../conditions';
 import { describeRoom } from '../describe';
-import { matchItem, matchNpc, reachableItems, visibleItemsIn } from '../model';
+import { inventoryOf, isCarried, matchItem, matchNpc, moveItem, PLAYER, reachableItems, visibleItemsIn } from '../model';
 import { miss, ok, type EngineResult } from '../result';
 import { applyEventEffects, applyUseRule, findUseRule, runEvent } from '../rules';
 import { scoreLines } from './meta';
@@ -12,9 +12,10 @@ export function handleLook(world: World, state: GameState): EngineResult {
 }
 
 export function handleInventory(world: World, state: GameState): EngineResult {
-  if (state.inventory.length === 0) return ok(['Just the weight of corporate despair.']);
+  const carried = inventoryOf(world, state);
+  if (carried.length === 0) return ok(['Just the weight of corporate despair.']);
   const lines = ['You are carrying:'];
-  for (const id of state.inventory) lines.push(`  - ${world.items[id]?.name ?? id}`);
+  for (const id of carried) lines.push(`  - ${world.items[id]?.name ?? id}`);
   return ok(lines);
 }
 
@@ -32,16 +33,14 @@ export function handleTake(target: string | undefined, world: World, state: Game
   }
   const itemId = matchItem(target, visibleIds, world);
   if (!itemId) {
-    if (matchItem(target, state.inventory, world)) return ok(['You already have that.']);
+    if (matchItem(target, inventoryOf(world, state), world)) return ok(['You already have that.']);
     return miss(`You don’t see a “${target}” here.`);
   }
   const item = world.items[itemId];
   if (!item.portable) return ok([item.refusal ?? `You can’t take the ${item.name}.`]);
 
-  state.inventory.push(itemId);
-  const removed = state.itemsRemoved[state.currentRoom] ?? [];
-  removed.push(itemId);
-  state.itemsRemoved[state.currentRoom] = removed;
+  moveItem(state, itemId, PLAYER);
+  (state.itemState[itemId] ??= {}).moved = true;
 
   const lines = [`Taken: ${item.name}.`];
   if (item.onTake && !state.firedEvents.includes(item.onTake)) {
@@ -52,15 +51,10 @@ export function handleTake(target: string | undefined, world: World, state: Game
 
 export function handleDrop(target: string | undefined, world: World, state: GameState): EngineResult {
   if (!target) return ok(['Drop what?']);
-  const itemId = matchItem(target, state.inventory, world);
+  const itemId = matchItem(target, inventoryOf(world, state), world);
   if (!itemId) return miss(`You aren’t carrying a “${target}”.`);
 
-  state.inventory = state.inventory.filter((i) => i !== itemId);
-  const added = state.itemsAdded[state.currentRoom] ?? [];
-  added.push(itemId);
-  state.itemsAdded[state.currentRoom] = added;
-  const removed = state.itemsRemoved[state.currentRoom] ?? [];
-  state.itemsRemoved[state.currentRoom] = removed.filter((i) => i !== itemId);
+  moveItem(state, itemId, state.currentRoom);
 
   return ok([`Dropped: ${world.items[itemId]?.name ?? itemId}.`], true);
 }
@@ -96,7 +90,7 @@ export function handleUse(
     (otherId ? findUseRule(otherId, itemId, reach, state, world) : null);
   if (rule) return applyUseRule(rule, world, state);
 
-  if (world.items[itemId]?.onWear && state.inventory.includes(itemId)) {
+  if (world.items[itemId]?.onWear && isCarried(state, itemId)) {
     return handleWear(target, world, state);
   }
   return miss('You can’t see how to use that here.');
@@ -104,7 +98,7 @@ export function handleUse(
 
 export function handleWear(target: string | undefined, world: World, state: GameState): EngineResult {
   if (!target) return ok(['Wear what?']);
-  const itemId = matchItem(target, state.inventory, world);
+  const itemId = matchItem(target, inventoryOf(world, state), world);
   if (!itemId) return miss(`You aren’t carrying a “${target}”.`);
   const item: Item = world.items[itemId];
   if (!item.onWear) return ok(['That is not really wearable.']);
@@ -125,7 +119,7 @@ export function handleSmash(
   const item = itemId ? world.items[itemId] : null;
 
   if (finale && itemId === finale.item) {
-    const armed = state.inventory.includes(finale.with);
+    const armed = isCarried(state, finale.with);
     if (armed && state.currentRoom === finale.room) return runFinale(world, state);
     if (armed) return ok([finale.wrongRoom ?? 'Not here.']);
     if (finale.bareHanded) {
@@ -143,9 +137,7 @@ export function handleSmash(
       return ok([`The ${item.name} is already in pieces.`]);
     }
     const lines = runEvent(item.onSmash, world, state);
-    const removed = state.itemsRemoved[state.currentRoom] ?? [];
-    if (!removed.includes(itemId)) removed.push(itemId);
-    state.itemsRemoved[state.currentRoom] = removed;
+    moveItem(state, itemId, null);
     return ok(lines, true);
   }
 
@@ -206,7 +198,7 @@ export function handleInstall(target: string | undefined, world: World, state: G
     if (result.understood !== false) return result;
   }
   const reach = reachableItems(world, state);
-  for (const id of state.inventory) {
+  for (const id of inventoryOf(world, state)) {
     const rule = findUseRule(id, null, reach, state, world);
     if (rule?.with) return applyUseRule(rule, world, state);
   }

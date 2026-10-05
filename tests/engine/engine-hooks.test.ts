@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { execute, initialState, openingLines, describeCurrentRoom } from '@/engine/engine';
 import type { GameState, ParsedAction } from '@/types/game';
 import { fixtureWorld as world } from '../fixtures/world';
+import { inventoryOf } from '@/engine/model';
+import { carry } from '../helpers/state';
 
 // Every engine hook, exercised against the fixture world. World-agnostic, so
 // it runs unchanged in any repo that uses the engine.
@@ -51,14 +53,14 @@ describe('rooms and movement', () => {
   it('gated rooms show their denial until the condition holds', () => {
     const state = fresh('yard');
     expect(run(state, 'go', 'shed').lines[0]).toBe('The shed is locked.');
-    state.inventory.push('key');
+    carry(state, 'key');
     run(state, 'go', 'shed');
     expect(state.currentRoom).toBe('shed');
   });
 
   it('a wait exit is taken by WAIT; elsewhere WAIT is the idle line', () => {
     const yard = fresh('yard');
-    yard.inventory.push('key');
+    carry(yard, 'key');
     run(yard, 'wait');
     expect(yard.currentRoom).toBe('shed');
     expect(run(fresh(), 'sit').lines[0]).toBe('The clock ticks.');
@@ -77,7 +79,7 @@ describe('items', () => {
   it('take all takes every portable item', () => {
     const state = fresh('living');
     run(state, 'take', 'all');
-    expect(state.inventory).toEqual(expect.arrayContaining(['key', 'wallet', 'shirt']));
+    expect(inventoryOf(world, state)).toEqual(expect.arrayContaining(['key', 'wallet', 'shirt']));
     expect(run(state, 'take', 'everything').lines[0]).toContain('nothing here worth taking');
   });
 
@@ -113,15 +115,15 @@ describe('items', () => {
 
   it('a use with another item consumes one and adds another', () => {
     const state = fresh('shed');
-    state.inventory.push('key', 'lamp');
+    carry(state, 'key', 'lamp');
     expect(text(run(state, 'use', 'lamp', 'socket'))).toContain('The lamp glows.');
-    expect(state.inventory).not.toContain('lamp');
-    expect(state.inventory).toContain('lit_lamp');
+    expect(inventoryOf(world, state)).not.toContain('lamp');
+    expect(inventoryOf(world, state)).toContain('lit_lamp');
   });
 
   it('the use rule is found from either side', () => {
     const state = fresh('shed');
-    state.inventory.push('key', 'lamp');
+    carry(state, 'key', 'lamp');
     run(state, 'use', 'socket', 'lamp');
     expect(state.flags.lamp_lit).toBe(true);
   });
@@ -167,7 +169,7 @@ describe('people', () => {
     expect(run(state, 'talk', 'neighbor').lines[0]).toBe('“Nice day.”');
     state.flags.paid = true;
     expect(run(state, 'talk', 'neighbor').lines[0]).toBe('“Thanks for the cash.”');
-    state.inventory.push('bat');
+    carry(state, 'bat');
     expect(run(state, 'talk').lines[0]).toBe('“Careful with that bat.”');
   });
 
@@ -178,18 +180,18 @@ describe('people', () => {
 
   it('gifts: accepted, refused by item, refused in general', () => {
     const state = fresh('yard');
-    state.inventory.push('wallet', 'key', 'bat');
+    carry(state, 'wallet', 'key', 'bat');
     expect(run(state, 'give', 'key', 'neighbor').lines[0]).toBe('“Keep your key.”');
-    expect(state.inventory).toContain('key');
+    expect(inventoryOf(world, state)).toContain('key');
     expect(run(state, 'give', 'bat').lines[0]).toBe('“No thanks.”');
     expect(text(run(state, 'give', 'wallet'))).toContain('takes the wallet');
-    expect(state.inventory).not.toContain('wallet');
+    expect(inventoryOf(world, state)).not.toContain('wallet');
     expect(state.flags.paid).toBe(true);
   });
 
   it('gift misses and the nobody-here case', () => {
     const state = fresh();
-    state.inventory.push('wallet');
+    carry(state, 'wallet');
     expect(run(state, 'give', 'wallet').lines[0]).toContain('nobody here');
     expect(run(state, 'give', 'unicorn').understood).toBe(false);
     expect(run(fresh('yard'), 'give', 'wallet', 'ghost').understood).toBe(false);
@@ -199,7 +201,7 @@ describe('people', () => {
 describe('the finale', () => {
   function inShed(): GameState {
     const state = fresh('shed');
-    state.inventory.push('key');
+    carry(state, 'key');
     return state;
   }
 
@@ -212,14 +214,14 @@ describe('the finale', () => {
 
   it('with the tool in the wrong room', () => {
     const state = fresh('yard');
-    state.inventory.push('bat');
+    carry(state, 'bat');
     // The crate isn't here, so this is a miss rather than the finale.
     expect(run(state, 'smash', 'crate').understood).toBe(false);
   });
 
   it('wins with the tool: event, matching epilogue, score, footer', () => {
     const state = inShed();
-    state.inventory.push('bat');
+    carry(state, 'bat');
     state.flags.paid = true;
     const t = text(run(state, 'smash', 'crate', 'bat'));
     expect(t).toContain('The crate splinters.');
@@ -235,7 +237,7 @@ describe('the finale', () => {
 
   it('a different epilogue for a different path, and the top rank', () => {
     const state = inShed();
-    state.inventory.push('bat');
+    carry(state, 'bat');
     state.flags.alarm_smashed = true;
     const t = text(run(state, 'smash', 'crate'));
     expect(t).toContain('The neighbor glares.');
@@ -253,7 +255,7 @@ describe('meta commands and timers', () => {
   it('hint follows progress; score, help, quit, inventory', () => {
     const state = fresh();
     expect(run(state, 'hint').lines[0]).toBe('[Hint] Find the key.');
-    state.inventory.push('key');
+    carry(state, 'key');
     expect(run(state, 'hint').lines[0]).toBe('[Hint] Break the crate.');
     expect(run(state, 'score').lines[0]).toContain('[Score: 0 of 40');
     expect(run(state, 'help').lines[0]).toContain('COMMANDS');
@@ -284,7 +286,7 @@ describe('meta commands and timers', () => {
 
   it('misses never change state (the LLM retry depends on it)', () => {
     const state = fresh('yard');
-    state.inventory.push('lamp');
+    carry(state, 'lamp');
     const before = JSON.stringify(state);
     for (const [a, t, i] of [
       ['go', 'nowhere'],
