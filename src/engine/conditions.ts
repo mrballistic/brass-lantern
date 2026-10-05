@@ -1,23 +1,32 @@
 import type { GameState } from '@/types/game';
+import type { World } from '@/types/world';
+import { isLocked, isOn, isOpen, isReachable } from './model';
 
 /**
  * Evaluate a condition string against the current game state.
- * Supported forms: "flag:NAME", "has:ITEM", "in:ROOM", each negatable with a
- * leading "!", and joined with "&" when all must hold.
+ * Supported forms, each negatable with a leading "!" and joined with "&" when
+ * all must hold:
+ *   flag:NAME       the flag is set
+ *   has:ITEM        the player carries it
+ *   in:ROOM         the player is in the room
+ *   visited:ROOM    the player has been there
+ *   inside:X:PLACE  X's parent is PLACE (a room, an item, or "player")
+ *   open:X, locked:X, on:X   item state
+ *   here:X          the player can reach X (needs `world`)
  * Unrecognized strings evaluate to false.
  */
-export function evaluateCondition(condition: string, state: GameState): boolean {
+export function evaluateCondition(condition: string, state: GameState, world?: World): boolean {
   // "flag:a & !flag:b": every part must hold.
   if (condition.includes('&')) {
     const parts = condition.split('&');
-    return parts.every((part) => evaluateCondition(part, state));
+    return parts.every((part) => evaluateCondition(part, state, world));
   }
   const trimmed = condition.trim();
   if (!trimmed) return false;
 
   const negated = trimmed.startsWith('!');
   const body = negated ? trimmed.slice(1) : trimmed;
-  const [kind, value] = body.split(':', 2);
+  const [kind, value, extra] = body.split(':');
 
   let result: boolean;
   switch (kind) {
@@ -25,10 +34,28 @@ export function evaluateCondition(condition: string, state: GameState): boolean 
       result = Boolean(state.flags[value]);
       break;
     case 'has':
-      result = state.inventory.includes(value);
+      result = state.locations[value] === 'player';
       break;
     case 'in':
       result = state.currentRoom === value;
+      break;
+    case 'visited':
+      result = state.visited.includes(value);
+      break;
+    case 'inside':
+      result = (state.locations[value] ?? null) === (extra ?? null);
+      break;
+    case 'on':
+      result = isOn(state, value);
+      break;
+    case 'open':
+      result = world ? isOpen(world, state, value) : false;
+      break;
+    case 'locked':
+      result = world ? isLocked(world, state, value) : false;
+      break;
+    case 'here':
+      result = world ? isReachable(world, state, value) : false;
       break;
     default:
       return false;

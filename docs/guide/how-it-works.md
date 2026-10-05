@@ -51,14 +51,19 @@ Inserting or ejecting a cartridge clears the screen.
 
 ## The engine
 
-`execute` dispatches on the action to one handler per verb, and each handler reads the world's rules rather than knowing any particular game:
+`execute` (`src/engine/engine.ts`) dispatches on the action to one handler per verb (`src/engine/verbs/`), and each handler reads the world's rules rather than knowing any particular game.
+
+**The object tree.** Every item has one parent: a room, the player, another item, or nowhere yet (`GameState.locations`, in `src/engine/model.ts`). Inventory, a room's contents and a container's contents are all read from that one map. Containers and surfaces nest. What the player can *see* (through glass) and *reach* (into open things) is computed from the tree, and the parser only matches what can be seen.
 
 | Concept | Where in the world | Notes |
 |---|---|---|
-| Conditions | anywhere | `flag:X`, `has:X`, `in:X`, `!`, `&`. One parser, `src/engine/conditions.ts`. |
+| Conditions | anywhere | `flag:`, `has:`, `in:`, `visited:`, `inside:`, `open:`, `locked:`, `on:`, `here:`, `!`, `&`. One parser, `src/engine/conditions.ts`. |
+| Rules | `instead`, `after` on items and rooms | Replace a verb's default, or follow it. `src/engine/rules.ts`. |
+| Containers, doors | `item.container`, `item.surface`, `item.door` | Open, close, lock, put in, take from. |
+| Exits | `room.exits` | A room ID, or `{ to, if, denial, door }`. |
 | Events | `events` | Line lists. `[Flag set: …]`, `[Added to inventory: …]` and `[… consumed]` lines change state. Events from `onEnter`, `onTake`, `onWear`, `onSmash` and `bareHanded` fire once; use-rule and gift events run every time. |
 | Flags | `flagLabels` | The friendly label in an event line, mapped to a flag ID. |
-| Use rules | `item.onUse` | First match wins; checked on both items for two-object uses. |
+| Use rules | `item.onUse` | The older form of `instead.use`. |
 | Gifts | `npc.onGive`, `npc.refuse` | Giving takes the item; a refusal keeps it. |
 | Gated rooms | `room.requires`, `room.denial` | |
 | The ending | `finale` | Smash X in room Y holding Z: event, epilogue, score, footer. |
@@ -67,12 +72,14 @@ Inserting or ejecting a cartridge clears the screen.
 
 When a world needs behavior the schema can't express, add a *generic* hook to `src/types/world.ts` and the engine. Never branch on a world's IDs.
 
-**Adding a verb** takes three edits:
-- the regex in `src/engine/parser.ts`;
-- the dispatcher in `src/engine/engine.ts`, plus its HELP text;
+**Adding a verb** is usually a world change: declare it in `world.verbs` and give things `instead` rules for it. The parser learns its words from the world, and the browser tells the intent server which world verbs to accept, so neither needs editing.
+
+A *built-in* verb, with default behavior in the engine, still takes three edits:
+- the regex in `src/engine/parser.ts`, plus its words in `BUILT_IN_WORDS`;
+- the dispatcher in `src/engine/engine.ts` (wrapped in `withRules`), plus its HELP text;
 - `ACTION_VOCAB` in `server/src/llm.ts`. Without that last one, the server throws away the LLM's answer as an unknown verb.
 
-Many verbs are better as mappings onto existing ones. OPEN, PUSH and UNPLUG are USE; SLEEP is USE BED.
+**Saves** are format 2.0. A 1.0 save (from before the object tree) is converted on load by `src/engine/migrate.ts`, so players keep their games.
 
 ## The terminal
 

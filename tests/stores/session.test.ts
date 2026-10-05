@@ -65,7 +65,7 @@ describe('session router', () => {
 
   it('resumes the last cartridge with progress, instead of the menu', async () => {
     localStorage.setItem('test:cartridge', 'house');
-    localStorage.setItem('test:save', JSON.stringify({ version: '1.0', savedAt: '', gameState: { ...useGameStore().game, currentRoom: 'living' }, outputHistory: [] }));
+    localStorage.setItem('test:save', JSON.stringify({ version: '2.0', savedAt: '', gameState: { ...useGameStore().game, currentRoom: 'living' }, outputHistory: [] }));
     const s = useSession();
     await s.boot();
     expect(s.mode.value).toBe('world');

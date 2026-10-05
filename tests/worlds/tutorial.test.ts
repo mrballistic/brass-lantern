@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { tutorial as world } from '@/worlds/tutorial';
 import { execute, initialState, openingLines } from '@/engine/engine';
 import { fallbackParse, splitCommands } from '@/engine/parser';
+import { inventoryOf } from '@/engine/model';
 
 // The worked example in the world-building guide. If this breaks, the guide is wrong.
 
@@ -47,7 +48,7 @@ describe('tutorial world', () => {
   it('Gary refuses the badge and you keep it', () => {
     const { state, text } = play(['open drawer', 'north', 'give badge to gary']);
     expect(text).toContain('Keep your badge');
-    expect(state.inventory).toContain('badge');
+    expect(inventoryOf(world, state)).toContain('badge');
   });
 
   it('the machine hums every other turn while the pretzels are stuck', () => {

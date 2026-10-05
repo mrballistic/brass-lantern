@@ -5,7 +5,8 @@ const MAX_HISTORY_LINES = 500;
 
 export interface PersistenceService {
   save(state: GameState, outputHistory: OutputLine[]): void;
-  load(): SavedState | null;
+  /** The stored payload as parsed JSON, in whatever version it was saved; see migrateSave. */
+  loadRaw(): unknown;
   clear(): void;
   isAvailable(): boolean;
 }
@@ -43,16 +44,11 @@ export function createPersistenceService(key: string = SAVE_KEY): PersistenceSer
       }
     },
 
-    load() {
+    loadRaw() {
       if (!storage) return null;
       try {
         const raw = storage.getItem(key);
-        if (!raw) return null;
-        const parsed = JSON.parse(raw) as SavedState;
-        if (parsed.version !== SAVE_VERSION) return null;
-        if (!parsed.gameState || typeof parsed.gameState.currentRoom !== 'string') return null;
-        if (!Array.isArray(parsed.outputHistory)) parsed.outputHistory = [];
-        return parsed;
+        return raw ? (JSON.parse(raw) as unknown) : null;
       } catch {
         return null;
       }

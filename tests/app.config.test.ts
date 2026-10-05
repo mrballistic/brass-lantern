@@ -16,8 +16,9 @@ describe('app config', () => {
     expect(saveKeyFor(snack)).toBe('brass-lantern:save');
   });
 
-  it('offers the Zork trilogy', () => {
+  it('offers the Zork trilogy, and Zork I rebuilt natively', () => {
     expect(stories.map((c) => c.title)).toEqual(['ZORK I', 'ZORK II', 'ZORK III']);
+    expect(cartridges.find((c) => c.id === 'zork1-native')?.kind).toBe('world');
   });
 
   it.each(stories)('$title: the story file and its license ship, and it boots', async (cart) => {

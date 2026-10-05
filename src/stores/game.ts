@@ -11,6 +11,8 @@ import {
   describeCurrentRoom,
   visibleItemsIn,
 } from '@/engine/engine';
+import { inventoryOf } from '@/engine/model';
+import { migrateSave } from '@/engine/migrate';
 import { fallbackParse, splitCommands } from '@/engine/parser';
 import type { EngineResult } from '@/engine/engine';
 import { buildContext, parseIntentRemote } from '@/engine/intent-client';
@@ -80,7 +82,7 @@ export const useGameStore = defineStore('game', {
       world = cartridge.world;
       persistence = createPersistenceService(saveKeyFor(cartridge));
       this.$patch({ game: freshGame(), output: [], isParsing: false, restored: false, gameOverTracked: false, lastTarget: null });
-      const saved = persistence.load();
+      const saved = migrateSave(world, persistence.loadRaw());
       if (saved) {
         this.game = saved.gameState;
         this.gameOverTracked = saved.gameState.gameOver;
@@ -128,7 +130,7 @@ export const useGameStore = defineStore('game', {
         return;
       }
       if (lower === 'load') {
-        const loaded = persistence.load();
+        const loaded = migrateSave(world, persistence.loadRaw());
         if (!loaded) {
           this.appendSystem('No saved game found.');
           return;
@@ -152,7 +154,7 @@ export const useGameStore = defineStore('game', {
 
       // "get key and wallet", "take wallet then go outside": each piece runs
       // on its own, so each gets the LLM fallback if it misses.
-      for (const command of splitCommands(input)) {
+      for (const command of splitCommands(input, world.verbs)) {
         if (this.game.gameOver) break;
         await this.runCommand(command);
       }
@@ -166,7 +168,7 @@ export const useGameStore = defineStore('game', {
      * reading first is safe.
      */
     async runCommand(input: string): Promise<void> {
-      const parsed = fallbackParse(input);
+      const parsed = fallbackParse(input, world.verbs);
       if (parsed) {
         const result = this.execute(this.resolvePronoun(parsed));
         if (result.understood !== false) {
@@ -200,7 +202,7 @@ export const useGameStore = defineStore('game', {
         const ctx = buildContext(
           world.rooms[this.game.currentRoom],
           world,
-          this.game.inventory,
+          inventoryOf(world, this.game),
           this.visibleItems,
         );
         const action = await parseIntentRemote(input, ctx);
