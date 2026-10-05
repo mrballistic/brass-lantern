@@ -34,6 +34,11 @@ export function enterRoom(targetId: string, world: World, state: GameState): str
   if (first) state.visited.push(targetId);
   const verbosity = state.verbosity ?? (world.style === 'infocom' ? 'brief' : 'verbose');
   const brief = verbosity === 'superbrief' || (verbosity === 'brief' && !first);
+  // Infocom runs a room's arrival routine (M-ENTER) before describing it.
+  if (world.style === 'infocom') {
+    const arrival = runOnEnter(targetId, world, state);
+    return [...arrival, ...describeRoom(targetId, world, state, { first, brief })];
+  }
   const lines = describeRoom(targetId, world, state, { first, brief });
   lines.push(...runOnEnter(targetId, world, state));
   return lines;

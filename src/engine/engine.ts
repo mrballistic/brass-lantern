@@ -70,7 +70,7 @@ export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
   if (result.understood === false && action.target && action.action !== 'go' && !isLit(world, state)) {
     result = ok([tooDark(world)]);
   }
-  if (result.understood === false || state.gameOver) return result;
+  if (result.understood === false || state.gameOver || result.free) return result;
 
   // Misses don't count as turns: they must not mutate state (see EngineResult).
   state.turns = (state.turns ?? 0) + 1;
@@ -174,7 +174,7 @@ const VERBOSITY_REPLY = {
 
 function setVerbosity(mode: 'verbose' | 'brief' | 'superbrief', world: World, state: GameState): EngineResult {
   state.verbosity = mode;
-  return ok([VERBOSITY_REPLY[world.style === 'infocom' ? 'infocom' : 'brass'][mode]], true);
+  return { ...ok([VERBOSITY_REPLY[world.style === 'infocom' ? 'infocom' : 'brass'][mode]], true), free: true };
 }
 
 /** Compose the opening: intro lines + first room description. */

@@ -299,7 +299,7 @@ export const zork1: World = {
           ],
         },
       },
-      items: [],
+      items: ['owners_manual'],
       npcs: [],
       onEnter: [],
       scenery: ['chimney'],
@@ -566,6 +566,16 @@ export const zork1: World = {
       portable: true,
       tags: [],
       after: { take: [{ if: '!flag:took_painting', then: 'took_painting' }] },
+    },
+
+    owners_manual: {
+      name: 'ZORK owner’s manual',
+      aliases: ['manual', 'piece of paper', 'paper', 'owners manual', 'small piece'],
+      description: 'There’s nothing special about the ZORK owner’s manual.',
+      initialDescription: 'Loosely attached to a wall is a small piece of paper.',
+      text: 'Congratulations!\n\nYou are the privileged owner of ZORK I: The Great Underground Empire, a self-contained and self-maintaining universe. If used and maintained in accordance with normal operating practices for small universes, ZORK will provide many months of trouble-free operation.',
+      portable: true,
+      tags: [],
     },
 
     // The forest

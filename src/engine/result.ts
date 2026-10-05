@@ -12,6 +12,8 @@ export interface EngineResult {
    * instead.
    */
   understood?: boolean;
+  /** Takes no game time (VERBOSE): no turn, no daemons, no fuses. */
+  free?: boolean;
 }
 
 export function ok(lines: string[], mutated = false): EngineResult {

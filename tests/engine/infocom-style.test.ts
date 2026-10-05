@@ -98,4 +98,10 @@ describe('Infocom style', () => {
     const s = stateWith(world, { room: 'kitchen' });
     expect(run(s, 'go', 'north').lines).toEqual(['You can’t go that way.']);
   });
+
+  it('arrival events come before the room description, as Zork’s M-ENTER does', () => {
+    const s = stateWith(world, { room: 'bedroom' });
+    const lines = execute({ action: 'go', target: 'west' }, { world, state: s }).lines;
+    expect(lines.indexOf('You smell coffee.')).toBeLessThan(lines.indexOf('📍 Living Room'));
+  });
 });

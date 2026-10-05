@@ -31,4 +31,12 @@ describe('VERBOSE, BRIEF, SUPERBRIEF', () => {
     expect(execute({ action: 'brief' }, { world: w, state: s }).lines).toEqual(['Brief descriptions.']);
     expect(execute({ action: 'superbrief' }, { world: w, state: s }).lines).toEqual(['Superbrief descriptions.']);
   });
+
+  it('changing verbosity takes no game time: no turn, no daemons', () => {
+    const w = { ...world, daemons: [{ if: 'in:bedroom', then: [{ add: 'ticks', by: 1 }] }] };
+    const s = stateWith(w);
+    execute({ action: 'brief' }, { world: w, state: s });
+    expect(s.turns ?? 0).toBe(0);
+    expect(s.vars?.ticks ?? 0).toBe(0);
+  });
 });
