@@ -42,9 +42,21 @@ export const cartridges: Cartridge[] = [
 
 To add a story, put the file in `public/stories/` and add an entry. `story` is relative to the site’s base, so it works under a subpath too. Story files are binary and fetched on demand, and the interpreter is a separate chunk that loads only when a story cartridge is inserted, so a build that offers only native worlds never downloads it.
 
+## Playing your own story files
+
+Got a story file? Type **LOAD** at the cartridge menu and pick it, or drag it onto the terminal. It plays straight away, and joins the menu, marked *yours*, for next time.
+
+- **It never leaves your browser.** The file goes on a shelf in IndexedDB; nothing is uploaded, and the site never hosts it. That’s what makes this the way to play games you own but nobody may redistribute, like Infocom’s other titles from the *Lost Treasures* and *Masterpieces* collections.
+- **Accepted:** Z-machine versions 3, 4, 5 and 8, raw (`.z3`, `.z4`, `.z5`, `.z8`) or in a Blorb (`.zblorb`, `.zlb`). Glulx games (`.ulx`, `.gblorb`) and version 6 (*Zork Zero*, *Arthur*, *Shogun*, *Journey*) aren’t supported, and LOAD says so.
+- **Saving works like any cartridge:** SAVE, RESTORE, autosave, and resume on reload.
+- **REMOVE and its number** takes a story off the shelf. Its saved games stay, so loading it again picks up where you were.
+- **Loading the same file twice** keeps one copy; the cartridge is identified by the story’s release, serial number and checksum, not its file name. The title in the menu comes from the file name.
+- **If the browser won’t store it** (private browsing, full storage), it still plays, until the next reload.
+- **Only in builds with a menu.** A single-cartridge build boots straight into its game and has no LOAD.
+
 ## Finding more story files
 
-- **The [IF Archive](https://www.ifarchive.org/indexes/if-archive/games/zcode/)** holds thousands of Z-machine games, from the 1980s to this year. Files end in `.z3`, `.z5` or `.z8`.
+- **The [IF Archive](https://www.ifarchive.org/indexes/if-archive/games/zcode/)** holds thousands of Z-machine games, from the 1980s to this year. Files end in `.z3`, `.z5` or `.z8`; LOAD plays them.
 - **Infocom’s other games** are still under copyright, except Zork I, II and III, which Microsoft released under the MIT License in 2025 ([historicalsource](https://github.com/historicalsource)). Those three ship here; the rest can’t be redistributed.
 - **Check the license before you publish one.** Playing a story file locally is one thing; putting it on a public site is redistribution. Many IF Archive games allow it; some don’t.
 - **Writing your own:** [Inform 6](https://www.inform-fiction.org/) and [ZIL](https://foss.heptapod.net/zilf/zilf) (Infocom’s own language) both compile to the Z-machine.

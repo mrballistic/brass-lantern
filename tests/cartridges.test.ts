@@ -20,6 +20,7 @@ const {
   menuLines,
   saveKeyFor,
   transcriptKey,
+  willResume,
 } = await import('@/cartridges');
 const { cartridges } = await import('@/app.config');
 
@@ -62,6 +63,26 @@ describe('cartridges', () => {
       '  1  TEST HOUSE   native',
       '  2  A STORY      Z-machine v3',
       '[Type a number to insert a cartridge. EJECT brings you back here.]',
+      '[LOAD plays a Z-machine story file from your computer. It stays in this browser; nothing is uploaded.]',
     ]);
+  });
+
+  it('marks stories the player loaded, and says how to remove them', () => {
+    const mine = { kind: 'zcode' as const, id: 'local-x', title: 'MINE', story: '', format: 'Z-machine v5', local: true };
+    const lines = menuLines([...cartridges, mine]);
+    expect(lines).toContain('  3  MINE         Z-machine v5   yours');
+    expect(lines.at(-1)).toBe('[REMOVE and a number takes one of yours off the shelf.]');
+  });
+
+  it('knows before reading the shelf whether boot will resume a game', () => {
+    expect(willResume()).toBe(false);
+    localStorage.setItem(LAST_CARTRIDGE_KEY, 'story');
+    localStorage.setItem('test:z:story:transcript', '[]');
+    expect(willResume()).toBe(true);
+    // A loaded story isn't in the config, so it's judged by its transcript alone.
+    localStorage.setItem(LAST_CARTRIDGE_KEY, 'local-r1-000000-0000');
+    expect(willResume()).toBe(false);
+    localStorage.setItem('test:z:local-r1-000000-0000:transcript', '[]');
+    expect(willResume()).toBe(true);
   });
 });

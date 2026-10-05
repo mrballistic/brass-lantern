@@ -153,4 +153,24 @@ describe('zgame store', () => {
     sessions[0].events.onError('illegal opcode');
     expect(texts(store).at(-1)).toBe('[The interpreter stopped: illegal opcode]');
   });
+
+  it('loads a story the player brought from the shelf, not the network', async () => {
+    const { deps, sessions } = fakeDeps();
+    const loadLocal = vi.fn(async () => new Uint8Array([3]));
+    const store = useZGameStore();
+    await store.initialize({ ...CART, id: 'local-r1-000000-0000', story: '', local: true }, { ...deps, loadLocal });
+    expect(loadLocal).toHaveBeenCalledWith('local-r1-000000-0000');
+    expect(deps.fetchStory).not.toHaveBeenCalled();
+    expect(sessions[0].start).toHaveBeenCalled();
+  });
+
+  it('says how to recover when a loaded story is gone from the browser', async () => {
+    const { deps } = fakeDeps();
+    const store = useZGameStore();
+    await store.initialize(
+      { ...CART, id: 'local-gone', story: '', local: true },
+      { ...deps, loadLocal: async () => Promise.reject(new Error('Not on the shelf')) },
+    );
+    expect(texts(store).at(-1)).toBe('[This story isn’t in the browser any more. Type EJECT, then LOAD it again.]');
+  });
 });
