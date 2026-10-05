@@ -163,4 +163,19 @@ describe('Terminal.vue', () => {
       expect(input.element.value).toBe('look');
     });
   });
+
+  it('RESTART clears the screen and shows the opening again', async () => {
+    const wrapper = mount(Terminal);
+    await vi.advanceTimersByTimeAsync(60_000);
+    const input = wrapper.find<HTMLInputElement>('.terminal-input-bar input');
+    for (const cmd of ['west', 'east', 'west', 'restart']) {
+      await input.setValue(cmd);
+      await wrapper.find('form').trigger('submit');
+      await flushPromises();
+      await vi.runAllTimersAsync();
+    }
+    const text = wrapper.find('.terminal-output').text();
+    expect(text).toContain('TEST HOUSE');
+    expect(text).not.toContain('> west');
+  });
 });

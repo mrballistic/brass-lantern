@@ -1,15 +1,13 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
-import { storeToRefs } from 'pinia';
 import { openConsent } from '@/services/consent';
 import { appName } from '@/app.config';
 import { analyticsConfigured } from '@/services/analytics';
-import { useGameStore } from '@/stores/game';
+import { useSession } from '@/stores/session';
 import { useTypewriter } from '@/composables/useTypewriter';
 
-const store = useGameStore();
-const { output, isParsing, restored } = storeToRefs(store);
-const { moveCount } = storeToRefs(store);
+const session = useSession();
+const { output, isParsing, restored, status, title, mode } = session;
 
 const typer = useTypewriter();
 const inputEl = ref<HTMLInputElement | null>(null);
@@ -28,17 +26,29 @@ const HISTORY_LIMIT = 100;
 let enqueuedCount = 0;
 
 function enqueueNew(instant: boolean): void {
+  if (output.value.length < enqueuedCount) {
+    // The output was replaced (RESTART): clear the screen and start over.
+    typer.reset();
+    enqueuedCount = 0;
+  }
   const slice = output.value.slice(enqueuedCount);
   if (slice.length === 0) return;
   enqueuedCount = output.value.length;
   typer.enqueue(slice, { instant });
 }
 
-onMounted(() => {
-  store.initialize();
-  // If a session was restored, prefill typewriter rendered lines instantly.
+onMounted(async () => {
+  await session.boot();
+  // A restored session renders instantly; anything new after it types out.
   enqueueNew(restored.value);
   focusInput();
+});
+
+// Inserting or ejecting a cartridge clears the screen.
+watch(mode, () => {
+  typer.reset();
+  enqueuedCount = 0;
+  enqueueNew(restored.value);
 });
 
 // Watch the array length, not the ref identity — Pinia mutates the array in place,
@@ -79,7 +89,7 @@ async function onSubmit(): Promise<void> {
   }
   historyIndex.value = null;
   draft = '';
-  await store.submit(v);
+  await session.submit(v);
 }
 
 function onShellClick(): void {
@@ -149,10 +159,10 @@ const inputPlaceholder = computed(() =>
 <template>
   <div class="terminal" tabindex="-1" @click="onShellClick" @keydown="onKeydown">
     <header class="terminal-header">
-      <span>{{ appName }} v{{ version }}</span>
+      <span>{{ appName }} v{{ version }}<template v-if="title"> · {{ title }}</template></span>
       <span class="header-right">
         <button v-if="showCookies" type="button" class="consent-open" @click.stop="openConsent">[ COOKIES ]</button>
-        <span class="moves">MOVES: {{ moveCount }}</span>
+        <span class="moves">{{ status }}</span>
       </span>
     </header>
 
