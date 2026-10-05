@@ -206,7 +206,8 @@ export const useGameStore = defineStore('game', {
           inventoryOf(world, this.game),
           this.visibleItems,
         );
-        const action = await parseIntentRemote(input, ctx);
+        // The intent server names things by ID, so they resolve by ID first.
+        const action = { ...(await parseIntentRemote(input, ctx)), byId: true };
         if (action.action === 'unknown') return null;
         if (previous && sameAction(action, previous)) return null;
         const result = this.execute(action);

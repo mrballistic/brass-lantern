@@ -70,9 +70,9 @@ describe('rooms and movement', () => {
 describe('items', () => {
   it('take fires onTake once; non-portable items refuse', () => {
     const state = fresh('living');
-    expect(text(run(state, 'take', 'key'))).toContain('The key is cold.');
+    expect(text(run(state, 'take', 'brass key'))).toContain('The key is cold.');
     run(state, 'drop', 'key');
-    expect(text(run(state, 'take', 'key'))).not.toContain('cold');
+    expect(text(run(state, 'take', 'brass key'))).not.toContain('cold');
     expect(run(fresh(), 'take', 'clock').lines[0]).toBe('It is screwed to the wall.');
   });
 

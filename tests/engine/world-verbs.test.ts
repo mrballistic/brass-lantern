@@ -50,7 +50,7 @@ describe('world verbs', () => {
 
   it('a required target that’s missing asks for one', () => {
     const s = stateWith(world, { room: 'yard' });
-    expect(execute({ action: 'ring' }, { world, state: s }).lines).toEqual(['Ring what?']);
+    expect(execute({ action: 'ring' }, { world, state: s }).lines).toEqual(['What do you want to ring?']);
   });
 
   it('splitCommands treats world verbs as commands', () => {

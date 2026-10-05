@@ -1,11 +1,10 @@
 import type { GameState, ParsedAction } from '@/types/game';
 import type { World } from '@/types/world';
-import { matchItem, reachableItems } from '../model';
+import { needObject, pickItem, reachableItems } from '../model';
 import { miss, ok, type EngineResult } from '../result';
 import { applyRule, findRule } from '../rules';
 import { handleGo } from './movement';
 
-const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /** A verb the world declared. Null if the world has no such verb. */
 export function handleWorldVerb(action: ParsedAction, world: World, state: GameState): EngineResult | null {
@@ -13,10 +12,10 @@ export function handleWorldVerb(action: ParsedAction, world: World, state: GameS
   if (!verb) return null;
   if (verb.go) return handleGo(action.target ?? action.action, world, state);
   const reach = reachableItems(world, state);
-  const target = action.target ? matchItem(action.target, reach, world) : null;
+  const target = action.target ? pickItem(action.target, reach, world, 'target', state) : null;
   if (action.target && !target) return miss(`You don’t see a “${action.target}” here.`);
-  if (verb.target === 'required' && !target) return ok([`${capitalize(action.action)} what?`]);
-  const indirect = action.indirect ? matchItem(action.indirect, reach, world) : null;
+  if (verb.target === 'required' && !target) needObject();
+  const indirect = action.indirect ? pickItem(action.indirect, reach, world, 'indirect', state) : null;
   if (action.indirect && !indirect) return miss(`You don’t see a “${action.indirect}” here.`);
   const room = state.currentRoom;
   let rule = findRule(world, state, 'instead', action.action, { target, indirect, room }, reach);

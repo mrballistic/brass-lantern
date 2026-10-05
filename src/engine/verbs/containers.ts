@@ -13,6 +13,8 @@ import {
   isOpen,
   matchItem,
   moveItem,
+  needObject,
+  pickItem,
   reachableItems,
   visibleItems,
 } from '../model';
@@ -25,8 +27,8 @@ import { takeItem } from './objects';
 
 const name = (world: World, id: string) => world.items[id]?.name ?? id;
 
-function find(target: string, world: World, state: GameState): string | null {
-  return matchItem(target, visibleItems(world, state), world);
+function find(target: string, world: World, state: GameState, slot: 'target' | 'indirect' = 'target'): string | null {
+  return pickItem(target, visibleItems(world, state), world, slot, state);
 }
 
 /** “The glass jar is closed.” when one of these is visible but sealed away. */
@@ -46,7 +48,7 @@ function useFallback(id: string, other: string | null, world: World, state: Game
 }
 
 export function handleOpen(target: string | undefined, world: World, state: GameState): EngineResult {
-  if (!target) return ok(['Open what?']);
+  if (!target) needObject();
   const id = find(target, world, state);
   if (!id) return miss(`You don’t see a “${target}” here.`);
   const sealed = behindGlass(world, state, id);
@@ -63,7 +65,7 @@ export function handleOpen(target: string | undefined, world: World, state: Game
 }
 
 export function handleClose(target: string | undefined, world: World, state: GameState): EngineResult {
-  if (!target) return ok(['Close what?']);
+  if (!target) needObject();
   const id = find(target, world, state);
   if (!id) return miss(`You don’t see a “${target}” here.`);
   const sealed = behindGlass(world, state, id);
@@ -82,16 +84,15 @@ function handleLockState(
   state: GameState,
 ): EngineResult {
   const verb = locking ? 'lock' : 'unlock';
-  const Verb = locking ? 'Lock' : 'Unlock';
-  if (!target) return ok([`${Verb} what?`]);
+  if (!target) needObject();
   const id = find(target, world, state);
   if (!id) return miss(`You don’t see a “${target}” here.`);
   const sealed = behindGlass(world, state, id);
   if (sealed) return sealed;
   const c = world.items[id].container;
   if (!c?.key) return ok([`You can’t ${verb} that.`]);
-  if (!indirect) return ok([`${Verb} it with what?`]);
-  const keyId = matchItem(indirect, visibleItems(world, state), world);
+  if (!indirect) needObject('indirect');
+  const keyId = pickItem(indirect, visibleItems(world, state), world, 'indirect', state);
   if (!keyId) return miss(`You don’t see a “${indirect}” here.`);
   if (!isCarried(state, keyId)) return ok([`You aren’t carrying the ${name(world, keyId)}.`]);
   if (keyId !== c.key) return ok([`The ${name(world, keyId)} doesn’t fit the lock.`]);
@@ -115,8 +116,8 @@ export function handlePut(
   world: World,
   state: GameState,
 ): EngineResult {
-  if (!target) return ok(['Put what?']);
-  const id = matchItem(target, inventoryOf(world, state), world);
+  if (!target) needObject();
+  const id = pickItem(target, inventoryOf(world, state), world, 'target', state);
   if (!id) {
     // “Put a cover sheet on the report”, where the cover sheets are a stack on a table:
     // something in sight, with use rules, still works as it did when PUT was USE.
@@ -127,8 +128,8 @@ export function handlePut(
     const fallback = seen ? useFallback(seen, other, world, state) : null;
     return fallback ?? miss(`You aren’t carrying a “${target}”.`);
   }
-  if (!indirect) return ok([`Put the ${name(world, id)} where?`]);
-  const dest = find(indirect, world, state);
+  if (!indirect) needObject('indirect');
+  const dest = find(indirect, world, state, 'indirect');
   if (!dest) return miss(`You don’t see a “${indirect}” here.`);
   const sealed = behindGlass(world, state, dest);
   if (sealed) return sealed;
@@ -147,20 +148,20 @@ export function handlePut(
 }
 
 export function handleTakeFrom(target: string, indirect: string, world: World, state: GameState): EngineResult {
-  const from = find(indirect, world, state);
+  const from = find(indirect, world, state, 'indirect');
   if (!from) return miss(`You don’t see a “${indirect}” here.`);
   const fromName = name(world, from);
   const isHolder = Boolean(world.items[from].surface || world.items[from].container);
   if (isHolder && !canReachInside(world, state, from) && !canSeeInside(world, state, from)) {
     return ok([`The ${fromName} is closed.`]);
   }
-  const id = matchItem(target, childrenOf(world, state, from), world);
+  const id = pickItem(target, childrenOf(world, state, from), world, 'target', state);
   if (!id) return miss(`There’s no “${target}” in the ${fromName}.`);
   return takeItem(id, world, state);
 }
 
 export function handleSearch(target: string | undefined, world: World, state: GameState): EngineResult {
-  if (!target) return ok(['Search what?']);
+  if (!target) needObject();
   const id = find(target, world, state);
   if (!id) return miss(`You don’t see a “${target}” here.`);
   const item = world.items[id];

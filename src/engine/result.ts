@@ -1,3 +1,5 @@
+import type { ParsedAction } from '@/types/game';
+
 // What every handler returns.
 
 export interface EngineResult {
@@ -14,7 +16,14 @@ export interface EngineResult {
   understood?: boolean;
   /** Takes no game time (VERBOSE): no turn, no daemons, no fuses. */
   free?: boolean;
+  /** A question back to the player; the conversation layer takes the answer. */
+  ask?: Ask;
 }
+
+/** A question: which of several things, or what object a verb needs. */
+export type Ask =
+  | { kind: 'which'; slot: 'target' | 'indirect'; word: string; candidates: string[]; action: ParsedAction }
+  | { kind: 'what'; slot: 'target' | 'indirect'; action: ParsedAction };
 
 export function ok(lines: string[], mutated = false): EngineResult {
   return { lines, mutated };

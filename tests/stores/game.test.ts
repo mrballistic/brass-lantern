@@ -229,7 +229,7 @@ describe('useGameStore', () => {
       const store = freshStore();
       store.initialize();
       await store.submit('west');
-      await store.submit('get key and wallet');
+      await store.submit('get brass key and wallet');
       expect(inventoryOf(store.world, store.game)).toEqual(expect.arrayContaining(['key', 'wallet']));
     });
 

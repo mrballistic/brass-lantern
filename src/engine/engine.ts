@@ -1,7 +1,8 @@
 import type { GameState, ParsedAction } from '@/types/game';
 import type { World } from '@/types/world';
 import { describeRoom } from './describe';
-import { initialLocations, isLit } from './model';
+import { AskSignal, initialLocations, isLit, matchItem, setResolveById, visibleItems } from './model';
+import { whatQuestion, whichQuestion } from './ask';
 import { darknessFalls, tooDark } from './light';
 import { beginTurn, runSteps, setEffectHooks, turnHalted } from './effects';
 import { seedFor } from './rng';
@@ -66,7 +67,16 @@ export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
   const pendingFuses = new Set(Object.keys(state.fuses ?? {}));
   const roomBefore = state.currentRoom;
   const litBefore = isLit(world, state);
-  let result = dispatch(action, world, state);
+  let result: EngineResult;
+  setResolveById(state, Boolean(action.byId));
+  try {
+    result = dispatch(action, world, state);
+  } catch (e) {
+    if (!(e instanceof AskSignal)) throw e;
+    result = askResult(e.ask, action, world, state);
+  } finally {
+    setResolveById(state, false);
+  }
   // You can't find things in the dark: an understood refusal, so the LLM isn't asked to re-guess.
   if (result.understood === false && action.target && action.action !== 'go' && !isLit(world, state)) {
     // Like a parser failure in Zork: no time passes.
@@ -181,6 +191,16 @@ const VERBOSITY_REPLY = {
 function setVerbosity(mode: 'verbose' | 'brief' | 'superbrief', world: World, state: GameState): EngineResult {
   state.verbosity = mode;
   return { ...ok([VERBOSITY_REPLY[world.style === 'infocom' ? 'infocom' : 'brass'][mode]], true), free: true };
+}
+
+/** A question back to the player: understood, changes nothing, takes no time. */
+function askResult(ask: AskSignal['ask'], action: ParsedAction, world: World, state: GameState): EngineResult {
+  if (ask.kind === 'which') {
+    return { lines: [whichQuestion(world, ask.word, ask.candidates)], mutated: false, free: true, ask: { ...ask, action } };
+  }
+  const named = action.target ? matchItem(action.target, visibleItems(world, state), world) : null;
+  const targetName = named ? world.items[named]?.name : action.target;
+  return { lines: [whatQuestion(action, ask.slot, targetName)], mutated: false, free: true, ask: { ...ask, action } };
 }
 
 /** Compose the opening: intro lines + first room description. */

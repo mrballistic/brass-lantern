@@ -37,9 +37,9 @@ describe('instead and after rules', () => {
 
   it('onTake still fires once, as after.take', () => {
     const s = stateWith(world, { room: 'living' });
-    expect(run(s, 'take', 'key').lines).toContain('📎 The key is cold.');
-    run(s, 'drop', 'key');
-    expect(run(s, 'take', 'key').lines).not.toContain('📎 The key is cold.');
+    expect(run(s, 'take', 'brass key').lines).toContain('📎 The key is cold.');
+    run(s, 'drop', 'brass key');
+    expect(run(s, 'take', 'brass key').lines).not.toContain('📎 The key is cold.');
   });
 
   it('rules belong to the item the verb actually acted on', () => {

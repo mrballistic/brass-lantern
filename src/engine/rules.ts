@@ -1,7 +1,7 @@
 import type { GameState, ParsedAction } from '@/types/game';
 import type { Item, Room, Rule, World } from '@/types/world';
 import { evaluateCondition } from './conditions';
-import { inventoryOf, matchItem, reachableItems, visibleItems } from './model';
+import { inventoryOf, pickItem, reachableItems, visibleItems } from './model';
 import { runEventKey, turnHalted } from './effects';
 import { ok, type EngineResult } from './result';
 
@@ -103,8 +103,8 @@ export function withRules(
   const reach = reachableItems(world, state);
   // Resolve the target the way the verb's handler will, so the rules that fire
   // belong to the item the verb actually acts on.
-  const target = action.target ? matchItem(action.target, targetScope(verb, world, state), world) : null;
-  const indirect = action.indirect ? matchItem(action.indirect, visibleItems(world, state), world) : null;
+  const target = action.target ? pickItem(action.target, targetScope(verb, world, state), world, 'target', state) : null;
+  const indirect = action.indirect ? pickItem(action.indirect, visibleItems(world, state), world, 'indirect', state) : null;
   const ids = { target, indirect, room: state.currentRoom };
   const instead = findRule(world, state, 'instead', verb, ids, reach);
   if (instead) return applyRule(instead, world, state);

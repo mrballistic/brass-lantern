@@ -64,7 +64,7 @@ describe('open, close, lock, unlock', () => {
     const s = stateWith(world, { room: 'shed', carrying: ['key', 'book'] });
     unchanged(s, () => expect(run(s, 'open', 'chest').understood).not.toBe(false));
     unchanged(s, () => expect(run(s, 'unlock', 'chest', 'book').lines).toEqual(['The book doesn’t fit the lock.']));
-    unchanged(s, () => expect(run(s, 'unlock', 'chest').lines).toEqual(['Unlock it with what?']));
+    unchanged(s, () => expect(run(s, 'unlock', 'chest').lines).toEqual(['What do you want to unlock the wooden chest with?']));
     unchanged(s, () => expect(run(s, 'close', 'shelf').lines).toEqual(['You can’t close that.']));
     unchanged(s, () => expect(run(s, 'lock', 'bat').understood).toBe(false));
   });

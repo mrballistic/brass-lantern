@@ -62,6 +62,8 @@ export interface ParsedAction {
   indirect?: string;
   /** For PUT: in or on. */
   prep?: 'in' | 'on';
+  /** The targets are IDs (the intent server's answer), so they resolve by ID first. */
+  byId?: boolean;
 }
 
 export interface SavedState {
