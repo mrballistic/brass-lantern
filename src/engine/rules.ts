@@ -1,7 +1,7 @@
 import type { GameState, ParsedAction } from '@/types/game';
 import type { Item, Room, Rule, World } from '@/types/world';
 import { evaluateCondition } from './conditions';
-import { isCarried, matchItem, moveItem, PLAYER, reachableItems } from './model';
+import { inventoryOf, isCarried, matchItem, moveItem, PLAYER, reachableItems, visibleItems } from './model';
 import { ok, type EngineResult } from './result';
 
 /* Events and rules */
@@ -109,6 +109,27 @@ export function applyRule(rule: Rule, world: World, state: GameState): EngineRes
   return ok(lines, Boolean(rule.then));
 }
 
+/** The items each built-in verb picks its target from. */
+function targetScope(verb: string, world: World, state: GameState): string[] {
+  switch (verb) {
+    case 'drop':
+    case 'put':
+    case 'give':
+    case 'wear':
+      return inventoryOf(world, state);
+    case 'take': {
+      const carried = inventoryOf(world, state);
+      return visibleItems(world, state).filter((id) => !carried.includes(id));
+    }
+    case 'turn_on':
+    case 'turn_off':
+    case 'smash':
+      return reachableItems(world, state);
+    default:
+      return visibleItems(world, state);
+  }
+}
+
 /**
  * Runs a built-in verb with the world's rules around it: an applicable
  * `instead` rule replaces the default; `after` rules follow a default that
@@ -123,8 +144,10 @@ export function withRules(
   run: () => EngineResult,
 ): EngineResult {
   const reach = reachableItems(world, state);
-  const target = action.target ? matchItem(action.target, reach, world) : null;
-  const indirect = action.indirect ? matchItem(action.indirect, reach, world) : null;
+  // Resolve the target the way the verb's handler will, so the rules that fire
+  // belong to the item the verb actually acts on.
+  const target = action.target ? matchItem(action.target, targetScope(verb, world, state), world) : null;
+  const indirect = action.indirect ? matchItem(action.indirect, visibleItems(world, state), world) : null;
   const ids = { target, indirect, room: state.currentRoom };
   const instead = findRule(world, state, 'instead', verb, ids, reach);
   if (instead) return applyRule(instead, world, state);

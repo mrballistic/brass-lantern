@@ -41,4 +41,13 @@ describe('instead and after rules', () => {
     run(s, 'drop', 'key');
     expect(run(s, 'take', 'key').lines).not.toContain('📎 The key is cold.');
   });
+
+  it('rules belong to the item the verb actually acted on', () => {
+    // Carrying the lit lamp, with the plain lamp on the ground: DROP LAMP drops what you carry.
+    const s = stateWith(world, { room: 'yard', carrying: ['lit_lamp'] });
+    const r = run(s, 'drop', 'lamp');
+    expect(s.locations.lit_lamp).toBe('yard');
+    expect(r.lines).not.toContain('The lamp rolls under the fence.');
+    expect(s.flags.lamp_rolled).toBeUndefined();
+  });
 });
