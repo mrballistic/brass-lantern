@@ -37,9 +37,14 @@ function fromV1(world: World, g: V1Game): GameState {
     turns: g.turns ?? 0,
   };
   // Removed first, then added, then carried: an item taken in one room and
-  // dropped in another appears in both lists and must end up where it was dropped.
-  for (const ids of Object.values(g.itemsRemoved ?? {})) for (const id of ids) moveItem(state, id, null);
-  for (const [room, ids] of Object.entries(g.itemsAdded ?? {})) for (const id of ids) moveItem(state, id, room);
+  // dropped in another must end up where it was dropped. 1.0's TAKE never
+  // cleared itemsAdded while DROP did clear itemsRemoved, so an item in both
+  // lists for one room was taken back from there: that entry is stale.
+  const removed = g.itemsRemoved ?? {};
+  for (const ids of Object.values(removed)) for (const id of ids) moveItem(state, id, null);
+  for (const [room, ids] of Object.entries(g.itemsAdded ?? {})) {
+    for (const id of ids) if (!(removed[room] ?? []).includes(id)) moveItem(state, id, room);
+  }
   for (const id of g.inventory ?? []) moveItem(state, id, PLAYER);
   return state;
 }

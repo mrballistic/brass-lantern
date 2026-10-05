@@ -71,4 +71,25 @@ describe('migrateSave', () => {
     const save = { version: '2.0', savedAt: '', outputHistory: 'oops', gameState: initialState(world) };
     expect(migrateSave(world, save)?.outputHistory).toEqual([]);
   });
+
+  it('the last drop wins, even when 1.0 kept stale entries from earlier drops', () => {
+    // 1.0 never removed a re-taken item from itemsAdded, so an item in both lists
+    // for a room was taken back from there. Dropped in the yard, taken, dropped in
+    // the bedroom, taken, dropped in the yard again:
+    const out = migrateSave(world, v1({
+      currentRoom: 'yard',
+      itemsAdded: { yard: ['wallet', 'wallet'], bedroom: ['wallet'] },
+      itemsRemoved: { living: ['wallet'], bedroom: ['wallet'] },
+    }))!;
+    expect(out.gameState.locations.wallet).toBe('yard');
+  });
+
+  it('an item dropped, taken back and then given away stays gone', () => {
+    const out = migrateSave(world, v1({
+      itemsAdded: { yard: ['wallet'] },
+      itemsRemoved: { living: ['wallet'], yard: ['wallet'] },
+      flags: { paid: true },
+    }))!;
+    expect(out.gameState.locations.wallet).toBeNull();
+  });
 });
