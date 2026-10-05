@@ -16,6 +16,17 @@ function label(id: string, name: string | undefined): string {
   return name && name !== id ? `${id} (${name})` : id;
 }
 
+// What the server accepts (server/src/routes/parse-intent.ts). A verb outside
+// this would get the whole request rejected, so it's left out instead.
+const VERB_ID = /^[a-z0-9_]{1,48}$/;
+const MAX_VERBS = 50;
+
+function sendableVerbs(world: World): string[] {
+  return Object.keys(world.verbs ?? {})
+    .filter((id) => VERB_ID.test(id))
+    .slice(0, MAX_VERBS);
+}
+
 export function buildContext(
   room: Room,
   world: World,
@@ -28,7 +39,7 @@ export function buildContext(
     items: visibleItemIds.map((id) => label(id, world.items[id]?.name)),
     npcs: room.npcs.map((id) => label(id, world.npcs[id]?.name)),
     inventory: inventory.map((id) => label(id, world.items[id]?.name)),
-    verbs: Object.keys(world.verbs ?? {}),
+    verbs: sendableVerbs(world),
   };
 }
 
