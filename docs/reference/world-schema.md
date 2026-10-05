@@ -111,7 +111,7 @@ Rules are tried in order and the **first** whose conditions hold runs. For two-o
 | `then?` | event | |
 | `say?` | string[] | Lines printed without changing anything. |
 
-USE also covers OPEN, PUSH, PULL, PRESS, UNPLUG, ANSWER, INSERT, PUT/ATTACH X IN/ON/TO Y and INSTALL. SLEEP, NAP and GO TO BED mean USE BED, so give a bed-like item the alias `bed`. Using an item with `onWear` and no matching rule wears it.
+USE also covers PUSH, PULL, PRESS and ATTACH X TO Y. OPEN and PUT fall back to an item's use rules when it isn't a container (or isn't in your hands), so worlds written before OPEN and PUT existed keep working. Using an item with `onWear` and no matching rule wears it. Verbs like SLEEP, UNPLUG or INSTALL are [world verbs](#world-verbs) now: declare them and give items `instead` rules.
 
 ## Rules
 

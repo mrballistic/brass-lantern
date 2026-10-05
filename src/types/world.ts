@@ -62,7 +62,7 @@ export interface Exit {
   to?: string;
   /** Condition for this exit alone. */
   if?: string;
-  /** Shown when `if` fails, when the door is closed, or always if there's no `to`. */
+  /** Shown when `if` fails, or always if there's no `to`. (A closed door always says “The <door> is closed.”) */
   denial?: string;
   /** An item (with `door: true`) that must be open. */
   door?: string;
