@@ -236,6 +236,55 @@ describe('useGameStore', () => {
       expect(store.game.locations.wallet).toBe('player');
     });
 
+    it('undo steps back through changing turns, restoring state and screen', async () => {
+      const store = freshStore();
+      store.initialize();
+      const start = store.output.length;
+      await store.submit('west');
+      await store.submit('take wallet');
+      await store.submit('look'); // changes nothing: not an undo step
+      await store.submit('undo');
+      expect(store.game.locations.wallet).toBe('living');
+      await store.submit('undo');
+      expect(store.game.currentRoom).toBe('bedroom');
+      expect(store.output.length).toBe(start + 1); // just the reply
+      expect(store.output.at(-1)!.text).toBe('[Previous turn undone.]');
+      await store.submit('undo');
+      expect(store.output.at(-1)!.text).toBe('[Nothing to undo.]');
+    });
+
+    it('keeps at most 50 undo steps, and RESTART clears them', async () => {
+      const store = freshStore();
+      store.initialize();
+      for (let i = 0; i < 60; i++) await store.submit(i % 2 ? 'east' : 'west');
+      for (let i = 0; i < 50; i++) await store.submit('undo');
+      expect(store.output.at(-1)!.text).toBe('[Previous turn undone.]');
+      await store.submit('undo');
+      expect(store.output.at(-1)!.text).toBe('[Nothing to undo.]');
+      await store.submit('west');
+      await store.submit('restart');
+      await store.submit('undo');
+      expect(store.output.at(-1)!.text).toBe('[Nothing to undo.]');
+    });
+
+    it('undo after a question undoes the last changing turn', async () => {
+      const store = freshStore();
+      store.initialize();
+      await store.submit('west');
+      await store.submit('take');
+      await store.submit('undo');
+      expect(store.game.currentRoom).toBe('bedroom');
+    });
+
+    it('the LLM can map a phrasing to UNDO', async () => {
+      const store = freshStore();
+      store.initialize();
+      await store.submit('west');
+      mockIntent({ action: 'undo' });
+      await store.submit('take that back please');
+      expect(store.game.currentRoom).toBe('bedroom');
+    });
+
     it('answers a question without asking the LLM', async () => {
       const store = freshStore();
       store.initialize();

@@ -1,3 +1,4 @@
+import { toRaw } from 'vue';
 import { defineStore } from 'pinia';
 import type { GameState, OutputLine, ParsedAction } from '@/types/game';
 import type { World } from '@/types/world';
@@ -37,6 +38,9 @@ let world: World = initialCartridge?.world ?? EMPTY_WORLD;
 let persistence = createPersistenceService(initialCartridge ? saveKeyFor(initialCartridge) : undefined);
 // Between-command state (questions, pronouns, AGAIN, OOPS, UNDO). Not saved.
 let conversation = newConversation();
+const UNDO_LIMIT = 50;
+/** The output length when the current command was typed, before its echo. */
+let turnStart = 0;
 
 interface State {
   game: GameState;
@@ -117,6 +121,8 @@ export const useGameStore = defineStore('game', {
       const input = rawInput.trim();
       if (!input) return;
 
+      // Where the screen stood before this turn, for UNDO.
+      turnStart = this.output.length;
       this.appendInput(input);
 
       // Meta commands handled by the store, not the engine.
@@ -141,6 +147,10 @@ export const useGameStore = defineStore('game', {
         this.output = loaded.outputHistory;
         this.appendSystem('[Session restored from local terminal memory]');
         this.appendLines(describeCurrentRoom(world, this.game));
+        return;
+      }
+      if (lower === 'undo') {
+        this.undo();
         return;
       }
       if (lower === 'restart') {
@@ -213,6 +223,15 @@ export const useGameStore = defineStore('game', {
         // The intent server names things by ID, so they resolve by ID first.
         const action = { ...(await parseIntentRemote(input, ctx)), byId: true };
         if (action.action === 'unknown') return null;
+        // “Take that back”, “do that again”: the store's own commands.
+        if (action.action === 'undo') {
+          this.undo();
+          return { lines: [], mutated: false };
+        }
+        if (action.action === 'again') {
+          const step = interpret('again', conversation, world, this.game);
+          return 'run' in step ? this.execute(step.run) : { lines: 'reply' in step ? step.reply : [], mutated: false };
+        }
         if (previous && sameAction(action, previous)) return null;
         const result = this.execute(action);
         // If the LLM's reading misses too, the literal reading's reply is clearer.
@@ -224,9 +243,29 @@ export const useGameStore = defineStore('game', {
     },
 
     execute(action: ParsedAction): EngineResult {
+      // Snapshot before; kept only if the turn changed something.
+      const snapshot = { state: structuredClone(toRaw(this.game)), outputLength: turnStart };
       const result = execute(action, { world, state: this.game });
+      if (result.mutated) {
+        conversation.history.push(snapshot);
+        if (conversation.history.length > UNDO_LIMIT) conversation.history.shift();
+      }
       remember(conversation, action, result);
       return result;
+    },
+
+    /** Takes back the last turn that changed something: the game and the screen. */
+    undo(): void {
+      const snapshot = conversation.history.pop();
+      if (!snapshot) {
+        this.appendSystem('[Nothing to undo.]');
+        return;
+      }
+      this.game = snapshot.state;
+      this.gameOverTracked = snapshot.state.gameOver;
+      this.output = this.output.slice(0, snapshot.outputLength);
+      this.appendSystem(world.style === 'infocom' ? 'Undone.' : '[Previous turn undone.]');
+      this.persist();
     },
 
     applyResult(result: EngineResult, input?: string): void {
