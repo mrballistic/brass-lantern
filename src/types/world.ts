@@ -3,6 +3,8 @@ export interface Room {
   description: string;
   /** Replaces `description` on the first visit only. */
   firstDescription?: string;
+  /** Needs a light source to see in. */
+  dark?: boolean;
   /** Descriptions that depend on the state of things; the first whose `if` holds replaces `description`. */
   descriptions?: Array<{ if: string; text: string }>;
   /** Label → a room ID, or an Exit for conditions, messages and doors. */
@@ -234,6 +236,17 @@ export interface World {
   finale?: Finale;
   /** Lines that interrupt on a timer while a condition holds (a ringing phone). */
   ambient?: Ambient[];
+  /** Texts and behavior for dark rooms. */
+  darkness?: {
+    /** LOOK and arriving in an unlit dark room. Default: “It is pitch black.” */
+    look?: string;
+    /** Acting on something you can't see. Default: “It’s too dark to see.” */
+    tooDark?: string;
+    /** The room going dark around you. Default: “It is now pitch black.” */
+    fall?: string;
+    /** Run when the player tries a direction with no exit in the dark (Zork's grue). */
+    blunder?: EventStep[];
+  };
   /** Run after every acted-on turn while their condition holds (a lamp burning down). */
   daemons?: Array<{ if: string; then: string | EventStep[] }>;
   /** Starting values for numeric variables (conditions: var:NAME<=N). */

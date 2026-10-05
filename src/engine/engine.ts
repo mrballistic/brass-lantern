@@ -1,7 +1,8 @@
 import type { GameState, ParsedAction } from '@/types/game';
 import type { World } from '@/types/world';
 import { describeRoom } from './describe';
-import { initialLocations } from './model';
+import { initialLocations, isLit } from './model';
+import { darknessFalls, tooDark } from './light';
 import { runSteps, setEffectHooks } from './effects';
 import { seedFor } from './rng';
 import { afterTurn } from './time';
@@ -56,13 +57,25 @@ export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
   }
 
   const pendingFuses = new Set(Object.keys(state.fuses ?? {}));
-  const result = dispatch(action, world, state);
+  const roomBefore = state.currentRoom;
+  const litBefore = isLit(world, state);
+  let result = dispatch(action, world, state);
+  // You can't find things in the dark: an understood refusal, so the LLM isn't asked to re-guess.
+  if (result.understood === false && action.target && action.action !== 'go' && !isLit(world, state)) {
+    result = ok([tooDark(world)]);
+  }
   if (result.understood === false || state.gameOver) return result;
 
   // Misses don't count as turns: they must not mutate state (see EngineResult).
   state.turns = (state.turns ?? 0) + 1;
   const before = JSON.stringify([state.vars, state.fuses, state.flags, state.locations, state.itemState, state.currentRoom]);
   const later = afterTurn(world, state, pendingFuses);
+  // Light arriving or leaving while the player stays put.
+  if (state.currentRoom === roomBefore && !state.gameOver) {
+    const litNow = isLit(world, state);
+    if (litNow && !litBefore) later.push(...describeRoom(state.currentRoom, world, state));
+    if (!litNow && litBefore) later.push(darknessFalls(world));
+  }
   const changed = before !== JSON.stringify([state.vars, state.fuses, state.flags, state.locations, state.itemState, state.currentRoom]);
   if (later.length === 0 && !changed) return result;
   return { ...result, lines: [...result.lines, ...later], mutated: true };

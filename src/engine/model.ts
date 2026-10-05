@@ -156,14 +156,52 @@ function collect(world: World, state: GameState, into: (id: string) => boolean):
   return out;
 }
 
+/**
+ * Whether a room has light: it isn't dark, or a light source that's on is in
+ * it, carried there, or inside something open or transparent there.
+ */
+export function isLit(world: World, state: GameState, roomId: string = state.currentRoom): boolean {
+  if (!world.rooms[roomId]?.dark) return true;
+  return Object.keys(world.items).some((id) => {
+    if (!world.items[id].light || !state.itemState[id]?.on) return false;
+    const seen = new Set<string>();
+    let p = state.locations[id];
+    while (p && world.items[p] && !seen.has(p)) {
+      if (!canSeeInside(world, state, p)) return false; // shut in something opaque
+      seen.add(p);
+      p = state.locations[p];
+    }
+    const room = p === PLAYER ? state.currentRoom : p;
+    return room === roomId;
+  });
+}
+
+/** In the dark you can only find what you're carrying. */
+function inDark(world: World, state: GameState): boolean {
+  return !isLit(world, state);
+}
+
+function collectCarried(world: World, state: GameState, into: (id: string) => boolean): string[] {
+  const out: string[] = [];
+  const walk = (id: string) => {
+    if (out.includes(id)) return;
+    out.push(id);
+    if (into(id)) for (const child of childrenOf(world, state, id)) walk(child);
+  };
+  inventoryOf(world, state).forEach(walk);
+  return out;
+}
+
 /** Everything the player can see: the room, its scenery, what they carry, and inside open or transparent things. */
 export function visibleItems(world: World, state: GameState): string[] {
-  return collect(world, state, (id) => canSeeInside(world, state, id));
+  const into = (id: string) => canSeeInside(world, state, id);
+  return inDark(world, state) ? collectCarried(world, state, into) : collect(world, state, into);
 }
 
 /** Everything the player can touch: like visibleItems, but not through closed glass. */
 export function reachableItems(world: World, state: GameState): string[] {
-  return collect(world, state, (id) => canReachInside(world, state, id));
+  const into = (id: string) => canReachInside(world, state, id);
+  return inDark(world, state) ? collectCarried(world, state, into) : collect(world, state, into);
 }
 
 /** Is `id` inside `ancestor`, at any depth? */

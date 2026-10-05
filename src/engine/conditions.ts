@@ -1,6 +1,6 @@
 import type { GameState } from '@/types/game';
 import type { World } from '@/types/world';
-import { isLocked, isOn, isOpen, isReachable } from './model';
+import { isLit, isLocked, isOn, isOpen, isReachable } from './model';
 
 /**
  * Evaluate a condition string against the current game state.
@@ -15,6 +15,7 @@ import { isLocked, isOn, isOpen, isReachable } from './model';
  *   here:X          the player can reach X (needs `world`)
  *   var:NAME<=N     a numeric variable compared (=, <, >, <=, >=); unset is 0
  *   carrying<=N     how many things the player holds directly
+ *   lit:here, lit:ROOM  the room has light (needs `world`)
  * Unrecognized strings evaluate to false.
  */
 const COMPARE: Record<string, (a: number, b: number) => boolean> = {
@@ -76,6 +77,9 @@ export function evaluateCondition(condition: string, state: GameState, world?: W
       break;
     case 'locked':
       result = world ? isLocked(world, state, value) : false;
+      break;
+    case 'lit':
+      result = world ? isLit(world, state, value === 'here' ? state.currentRoom : value) : false;
       break;
     case 'here':
       result = world ? isReachable(world, state, value) : false;

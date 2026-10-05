@@ -11,7 +11,7 @@ import {
   describeCurrentRoom,
   visibleItemsIn,
 } from '@/engine/engine';
-import { inventoryOf } from '@/engine/model';
+import { inventoryOf, isLit } from '@/engine/model';
 import { migrateSave } from '@/engine/migrate';
 import { fallbackParse, splitCommands } from '@/engine/parser';
 import type { EngineResult } from '@/engine/engine';
@@ -73,7 +73,8 @@ export const useGameStore = defineStore('game', {
     persistenceAvailable: () => persistence.isAvailable(),
     world: () => world,
     currentRoom: (s) => world.rooms[s.game.currentRoom],
-    visibleItems: (s) => visibleItemsIn(s.game.currentRoom, world, s.game),
+    // In the dark the player sees nothing in the room, and neither does the LLM.
+    visibleItems: (s) => (isLit(world, s.game) ? visibleItemsIn(s.game.currentRoom, world, s.game) : []),
   },
 
   actions: {

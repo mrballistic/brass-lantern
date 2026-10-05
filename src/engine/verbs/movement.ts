@@ -3,7 +3,8 @@ import type { Exit, World } from '@/types/world';
 import { evaluateCondition } from '../conditions';
 import { describeRoom, exitList } from '../describe';
 import { fuzzyMatchExit } from '../fuzzy';
-import { isOpen, matchItem, visibleItems } from '../model';
+import { isLit, isOpen, matchItem, visibleItems } from '../model';
+import { runSteps } from '../effects';
 import { miss, ok, type EngineResult } from '../result';
 import { runEvent } from '../rules';
 
@@ -61,6 +62,8 @@ export function handleGo(target: string | undefined, world: World, state: GameSt
 
   const exitKey = fuzzyMatchExit(target, room.exits);
   if (!exitKey) {
+    // Stumbling around in the dark is a real attempt to move (Zork's grue).
+    if (world.darkness?.blunder && !isLit(world, state)) return ok(runSteps(world.darkness.blunder, world, state), true);
     if (world.style === 'infocom') return miss('You can’t go that way.');
     return miss(`You can’t go that way. Exits: ${exitList(room) || '(none)'}.`);
   }

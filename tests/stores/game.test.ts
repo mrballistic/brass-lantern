@@ -341,6 +341,13 @@ describe('useGameStore', () => {
       expect(store.moveCount).toBe(1);
     });
 
+    it('visibleItems is empty in a dark room, so the LLM context doesn’t give the room away', () => {
+      const store = freshStore();
+      store.initialize();
+      store.game.currentRoom = 'cellar';
+      expect(store.visibleItems).toEqual([]);
+    });
+
     it('visibleItems excludes items already in inventory', async () => {
       const store = freshStore();
       store.initialize();

@@ -1,7 +1,8 @@
 import type { GameState } from '@/types/game';
 import type { Room, World } from '@/types/world';
 import { evaluateCondition } from './conditions';
-import { canSeeInside, childrenOf, visibleItemsIn } from './model';
+import { darknessLook } from './light';
+import { canSeeInside, childrenOf, isLit, visibleItemsIn } from './model';
 
 export const COMPASS = ['north', 'south', 'east', 'west', 'northeast', 'northwest', 'southeast', 'southwest', 'up', 'down'];
 
@@ -113,6 +114,10 @@ export function describeRoom(
   const room = world.rooms[roomId];
   if (!room) return [`The world frays. Room “${roomId}” does not exist.`];
   const infocom = world.style === 'infocom';
+  if (!isLit(world, state, roomId)) {
+    // Zork prints only the darkness line; brass keeps a header so the screen reads the same.
+    return infocom ? [darknessLook(world)] : ['📍 Darkness', darknessLook(world)];
+  }
   const lines: string[] = [];
   lines.push(`📍 ${room.name}`);
   // Infocom's default (BRIEF): a room you've seen is just its name and contents.
