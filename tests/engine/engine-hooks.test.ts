@@ -80,7 +80,7 @@ describe('items', () => {
     const state = fresh('living');
     run(state, 'take', 'all');
     expect(inventoryOf(world, state)).toEqual(expect.arrayContaining(['key', 'wallet', 'shirt']));
-    expect(run(state, 'take', 'everything').lines[0]).toContain('nothing here worth taking');
+    expect(run(state, 'take', 'everything').lines[0]).toContain('There is nothing here to take');
   });
 
   it('take and drop misses', () => {

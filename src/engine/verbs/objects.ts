@@ -3,10 +3,10 @@ import type { Item, World } from '@/types/world';
 import { evaluateCondition } from '../conditions';
 import { contentsLines, describeRoom, lightNote, withArticle } from '../describe';
 import {
-  closedAround, inventoryOf, isCarried, matchItem, matchNpc, moveItem, needObject, pickItem, PLAYER, setResolveById, reachableItems, visibleItems, visibleItemsIn,
+  closedAround, inventoryOf, isCarried, matchItem, matchNpc, moveItem, needObject, pickItem, PLAYER, reachableItems, visibleItems,
 } from '../model';
 import { miss, ok, type EngineResult } from '../result';
-import { applyRule, findRule, runEvent, withRules } from '../rules';
+import { applyRule, findRule, runEvent } from '../rules';
 import { finishEnding } from '../endings';
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -31,22 +31,6 @@ export const ALL = /^(?:all|everything|it all)$/i;
 
 export function handleTake(target: string | undefined, world: World, state: GameState): EngineResult {
   if (!target) needObject();
-  const visibleIds = visibleItemsIn(state.currentRoom, world, state);
-  if (ALL.test(target)) {
-    const portable = visibleIds.filter((id) => world.items[id]?.portable);
-    if (portable.length === 0) return ok(['There is nothing here worth taking.']);
-    const lines: string[] = [];
-    // These are item IDs, so they resolve by ID (no “which one?” mid-list).
-    setResolveById(state, true);
-    try {
-      for (const id of portable) {
-        lines.push(...withRules('take', { action: 'take', target: id }, world, state, () => handleTake(id, world, state)).lines);
-      }
-    } finally {
-      setResolveById(state, false);
-    }
-    return ok(lines, true);
-  }
   const carried = inventoryOf(world, state);
   const itemId = pickItem(target, visibleItems(world, state).filter((id) => !carried.includes(id)), world, 'target', state);
   if (!itemId) {
