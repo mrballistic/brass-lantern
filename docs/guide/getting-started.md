@@ -2,7 +2,9 @@
 
 Brass Lantern is a small engine for classic parser text adventures (*go north*, *take lamp*, *give the mug to Gary*) that runs in the browser inside a CRT terminal. You write a game as data; the engine runs it.
 
-It comes with **Snack Attack**, a three-room world that exists to show the engine off. [Play it](https://mrballistic.github.io/brass-lantern/demo/), then come back.
+It also plays **Z-machine story files**, the format Infocom’s games shipped in, in the same terminal.
+
+It comes with two cartridges: **Snack Attack**, a three-room world that exists to show the engine off, and **Zork I**. [Play them](https://mrballistic.github.io/brass-lantern/demo/), then come back.
 
 ## Run it
 
@@ -15,21 +17,24 @@ npm install
 npm run dev        # http://localhost:5173
 ```
 
-That's the whole game, fully playable: the regex parser handles every command the engine knows, offline. Loose phrasing ("make that thing stop beeping") needs the optional [intent server](./intent-server).
+The terminal boots to the cartridge menu; type `1` for Snack Attack or `2` for Zork I. Both are fully playable offline: the regex parser handles every command the engine knows, and Zork has its own parser. Loose phrasing ("make that thing stop beeping") needs the optional [intent server](./intent-server).
 
 ## What's in the box
 
 ```
 src/
-  app.config.ts    which world to play, the name in the header, the storage prefix
+  app.config.ts    the cartridges to offer, the name in the header, the storage prefix
   worlds/          tutorial.ts (Snack Attack); put your worlds here
   engine/          the engine, the regex parser, fuzzy matching, line styling
-  stores/game.ts   the command flow: split, parse, run, ask the LLM on a miss, save
+  zmachine/        the story-file runtime: ifvms, Glk, saves
+  stores/          game.ts (native worlds: split, parse, run, ask the LLM on a miss, save),
+                   zgame.ts (story files), session.ts (routes input to whichever is running)
   components/      the terminal, the boot sequence, the consent banner
   styles/crt.css   the CRT
   types/world.ts   the world schema, with a comment on every field
 server/            the optional intent server (Express + Gemini)
-tests/             engine tests against a fixture world, plus Snack Attack played end to end
+public/stories/    zork1.z3 and its license
+tests/             engine tests against a fixture world, Snack Attack played end to end, Zork I run through the real interpreter
 docs/              this site (npm run docs:dev)
 ```
 

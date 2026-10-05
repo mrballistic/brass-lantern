@@ -4,7 +4,7 @@ const repo = 'https://github.com/mrballistic/brass-lantern';
 
 export default defineConfig({
   title: 'Brass Lantern',
-  description: 'A small engine for classic parser text adventures, with a CRT terminal and an optional LLM intent parser.',
+  description: 'Classic parser text adventures in a CRT terminal: write your own worlds, or play Z-machine story files like Zork I.',
   // GitHub Pages project site. Change if you host the docs at a domain root.
   base: '/brass-lantern/',
   cleanUrls: true,
@@ -20,6 +20,7 @@ export default defineConfig({
   themeConfig: {
     nav: [
       { text: 'Guide', link: '/guide/getting-started' },
+      { text: 'Story files', link: '/guide/z-machine' },
       { text: 'Reference', link: '/reference/world-schema' },
       { text: 'Play the demo', link: 'https://mrballistic.github.io/brass-lantern/demo/', target: '_self' },
     ],
@@ -29,7 +30,7 @@ export default defineConfig({
         items: [
           { text: 'Getting started', link: '/guide/getting-started' },
           { text: 'Your first world', link: '/guide/your-first-world' },
-          { text: 'Playing story files', link: '/guide/z-machine' },
+          { text: 'Playing story files (Zork)', link: '/guide/z-machine' },
           { text: 'How it works', link: '/guide/how-it-works' },
           { text: 'The intent server', link: '/guide/intent-server' },
           { text: 'Testing a world', link: '/guide/testing' },
