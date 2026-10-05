@@ -4,7 +4,7 @@ const repo = 'https://github.com/mrballistic/brass-lantern';
 
 export default defineConfig({
   title: 'Brass Lantern',
-  description: 'Classic parser text adventures in a CRT terminal: write your own worlds, or play Z-machine story files like Zork I.',
+  description: 'Classic parser text adventures in a CRT terminal: write your own worlds, or play Z-machine story files like Zork.',
   // GitHub Pages project site. Change if you host the docs at a domain root.
   base: '/brass-lantern/',
   cleanUrls: true,

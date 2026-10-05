@@ -4,7 +4,7 @@ Brass Lantern is a small engine for classic parser text adventures (*go north*, 
 
 It also plays **Z-machine story files**, the format Infocom’s games shipped in, in the same terminal.
 
-It comes with two cartridges: **Snack Attack**, a three-room world that exists to show the engine off, and **Zork I**. [Play them](https://mrballistic.github.io/brass-lantern/demo/), then come back.
+It comes with four cartridges: **Snack Attack**, a three-room world that exists to show the engine off, and **Zork I, II and III**. [Play them](https://mrballistic.github.io/brass-lantern/demo/), then come back.
 
 ## Run it
 
@@ -17,7 +17,7 @@ npm install
 npm run dev        # http://localhost:5173
 ```
 
-The terminal boots to the cartridge menu; type `1` for Snack Attack or `2` for Zork I. Both are fully playable offline: the regex parser handles every command the engine knows, and Zork has its own parser. Loose phrasing ("make that thing stop beeping") needs the optional [intent server](./intent-server).
+The terminal boots to the cartridge menu; type `1` for Snack Attack, or `2`–`4` for Zork I–III. All are fully playable offline: the regex parser handles every command the engine knows, and Zork has its own parser. Loose phrasing ("make that thing stop beeping") needs the optional [intent server](./intent-server).
 
 ## What's in the box
 
@@ -33,7 +33,7 @@ src/
   styles/crt.css   the CRT
   types/world.ts   the world schema, with a comment on every field
 server/            the optional intent server (Express + Gemini)
-public/stories/    zork1.z3 and its license
+public/stories/    the Zork trilogy and its licenses
 tests/             engine tests against a fixture world, Snack Attack played end to end, Zork I run through the real interpreter
 docs/              this site (npm run docs:dev)
 ```
@@ -46,6 +46,8 @@ Everything that makes a build *a particular game collection* is in `src/app.conf
 export const cartridges: Cartridge[] = [
   { kind: 'world', id: 'snack-attack', title: 'SNACK ATTACK', world: tutorial },
   { kind: 'zcode', id: 'zork1', title: 'ZORK I', story: 'stories/zork1.z3', format: 'Z-machine v3' },
+  { kind: 'zcode', id: 'zork2', title: 'ZORK II', story: 'stories/zork2.z3', format: 'Z-machine v3' },
+  { kind: 'zcode', id: 'zork3', title: 'ZORK III', story: 'stories/zork3.z3', format: 'Z-machine v3' },
 ];
 export const appName = 'BRASS LANTERN';
 export const storagePrefix = 'brass-lantern';
