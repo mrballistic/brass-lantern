@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { openConsent } from '@/services/consent';
 import { appName } from '@/app.config';
 import { analyticsConfigured } from '@/services/analytics';
@@ -13,6 +13,25 @@ const typer = useTypewriter();
 const inputEl = ref<HTMLInputElement | null>(null);
 const scrollEl = ref<HTMLDivElement | null>(null);
 const inputValue = ref('');
+
+// The block cursor is drawn at the insertion point: a hidden mirror of the text before
+// the caret pushes it into place, and the native caret is transparent.
+const caretIndex = ref(0);
+const inputScroll = ref(0);
+const beforeCaret = computed(() => inputValue.value.slice(0, caretIndex.value));
+
+function syncCaret(): void {
+  const el = inputEl.value;
+  if (!el) return;
+  caretIndex.value = el.selectionStart ?? el.value.length;
+  inputScroll.value = el.scrollLeft;
+}
+
+// Programmatic changes (history recall, clearing on submit) put the caret at the end.
+watch(inputValue, async () => {
+  await nextTick();
+  syncCaret();
+});
 
 // Shell-style command history. history[0] is the OLDEST entry; history.at(-1) is the newest.
 // historyIndex: null = editing a fresh line; otherwise the index into `history` currently shown.
@@ -38,11 +57,15 @@ function enqueueNew(instant: boolean): void {
 }
 
 onMounted(async () => {
+  // Fires while arrow keys are held, which keyup can't see.
+  document.addEventListener('selectionchange', syncCaret);
   await session.boot();
   // A restored session renders instantly; anything new after it types out.
   enqueueNew(restored.value);
   focusInput();
 });
+
+onUnmounted(() => document.removeEventListener('selectionchange', syncCaret));
 
 // Inserting or ejecting a cartridge clears the screen.
 watch(mode, () => {
@@ -178,17 +201,29 @@ const inputPlaceholder = computed(() =>
 
     <form class="terminal-input-bar" @submit.prevent="onSubmit">
       <span class="prompt">&gt;</span>
-      <input
-        ref="inputEl"
-        v-model="inputValue"
-        type="text"
-        autocomplete="off"
-        autocapitalize="off"
-        spellcheck="false"
-        :disabled="isParsing"
-        :placeholder="inputPlaceholder"
-      />
-      <span class="block-cursor" aria-hidden="true" />
+      <span class="input-field">
+        <input
+          ref="inputEl"
+          v-model="inputValue"
+          type="text"
+          autocomplete="off"
+          autocapitalize="off"
+          spellcheck="false"
+          :disabled="isParsing"
+          :placeholder="inputPlaceholder"
+          @input="syncCaret"
+        @keyup="syncCaret"
+          @click="syncCaret"
+          @select="syncCaret"
+          @scroll="syncCaret"
+        />
+        <span
+          v-show="!isParsing"
+          class="caret-mirror"
+          aria-hidden="true"
+          :style="{ transform: `translateX(${-inputScroll}px)` }"
+        ><span class="caret-before">{{ beforeCaret }}</span><span class="block-cursor" aria-hidden="true" /></span>
+      </span>
     </form>
   </div>
 </template>
