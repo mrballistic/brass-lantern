@@ -534,6 +534,7 @@ Checks: docs build, full suite with coverage, server. Commit `"1.6.0: docs for t
 - Sync (`scripts/sync-from-public.sh`) on a new branch.
 - **Expected visible changes:** the questions' wording, MOVES counting turns, and the new commands. Update Office Space tests that assert "X what?" or move counts after LOOKs, and nothing else.
 - Bump to 1.6.0, add a CHANGELOG entry, open a PR. After the final review and CI: merge both repos, tag `v1.6.0`, and verify the live site (boots; a save resumes; `take` asks what; `undo` works).
+- **brass-lantern release (owner’s request):** after merging, tag `v1.6.0` on brass-lantern’s `main` and publish a GitHub release (`gh release create v1.6.0 --title "1.6.0" --notes-file <the CHANGELOG 1.6.0 section>`). It’s the repo’s first tagged release.
 
 ---
 
