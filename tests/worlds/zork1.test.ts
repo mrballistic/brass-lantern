@@ -37,11 +37,11 @@ describe('Zork I, natively: house and forest', () => {
     expect(state.currentRoom).toBe('kitchen');
   });
 
-  it('moving the rug reveals the trap door, which opens onto unbuilt stairs', () => {
+  it('moving the rug reveals the trap door, which opens onto the stairs down', () => {
     const { text } = play(['n', 'e', 'open window', 'w', 'w', 'move rug', 'open trap door', 'd']);
     expect(text).toContain('With a great effort, the rug is moved to one side of the room, revealing the dusty cover of a closed trap door.');
     expect(text).toContain('The door reluctantly opens to reveal a rickety staircase descending into darkness.');
-    expect(text).toContain('The rest of the Great Underground Empire isn’t built yet.');
+    expect(text).toContain('It is pitch black. You are likely to be eaten by a grue.'); // no lamp lit
   });
 
   it('the egg up the tree scores', () => {
@@ -54,6 +54,69 @@ describe('Zork I, natively: house and forest', () => {
     const { text } = play(['n', 'n', 'n', 'move leaves', 'look']);
     expect(text).toContain('In disturbing the pile of leaves, a grating is revealed.');
     expect(text).toContain('There is a grating securely fastened into the ground.');
+  });
+
+  it('down the trap door with a light: it slams shut behind you, and the cellar scores', () => {
+    const { state, text } = play(['n', 'e', 'open window', 'w', 'w', 'take lamp', 'turn on lamp', 'move rug', 'open trap door', 'd']);
+    expect(text).toContain('The trap door crashes shut, and you hear someone barring it.');
+    expect(text).toContain('You are in a dark and damp cellar');
+    expect(state.currentRoom).toBe('cellar');
+    expect(state.flags.cellar_visited).toBe(true);
+    expect(play(['n', 'e', 'open window', 'w', 'w', 'take lamp', 'turn on lamp', 'move rug', 'open trap door', 'd', 'open trap door']).text).toContain(
+      'The door is locked from above.',
+    );
+  });
+
+  it('without light the cellar is pitch black', () => {
+    const { text } = play(['n', 'e', 'open window', 'w', 'w', 'move rug', 'open trap door', 'd']);
+    expect(text).toContain('It is pitch black. You are likely to be eaten by a grue.');
+  });
+
+  it('the painting, the chimney, the trophy case', () => {
+    const { state, text } = play([
+      'n', 'e', 'open window', 'w', 'w', 'take lamp', 'turn on lamp', 'move rug', 'open trap door', 'd',
+      's', 'e', 'take painting', 'n', 'u', 'w', 'open case', 'put painting in case', 'score',
+    ]);
+    expect(state.currentRoom).toBe('living_room');
+    expect(state.locations.painting).toBe('trophy_case');
+    // kitchen 10 + cellar 25 + painting 4 + painting in the case 6
+    expect(text).toContain('Your score is 45 (total of 350 points)');
+  });
+
+  it('the chimney refuses a full load, and empty hands', () => {
+    const { state, text } = play([
+      'n', 'e', 'open window', 'w', 'take sack', 'take bottle', 'w', 'take lamp', 'turn on lamp', 'move rug', 'open trap door', 'd',
+      's', 'e', 'take painting', 'n', 'u',
+    ]);
+    expect(text).toContain('You can’t get up there with what you’re carrying.');
+    expect(state.currentRoom).toBe('studio');
+  });
+
+  it('the lamp burns down, warns, and dies', () => {
+    const { state } = play(['n', 'e', 'open window', 'w', 'w', 'take lamp', 'turn on lamp']);
+    let text = '';
+    for (let i = 0; i < 200 && !state.flags.lamp_dead; i++) {
+      text += execute({ action: 'wait' }, { world: zork1, state }).lines.join('\n') + '\n';
+    }
+    expect(text).toContain('The lamp appears a bit dimmer.');
+    expect(text).toContain('The lamp is definitely dimmer now.');
+    expect(text).toContain('The lamp is nearly out.');
+    expect(state.flags.lamp_dead).toBe(true);
+    expect(state.itemState.lamp.on).toBe(false);
+    expect(execute({ action: 'turn_on', target: 'lamp' }, { world: zork1, state }).lines).toEqual(['A burned-out lamp won’t light.']);
+  });
+
+  it('the grue: blundering about in the dark is usually fatal, and the lamp goes home', () => {
+    const { state } = play(['n', 'e', 'open window', 'w', 'w', 'take lamp', 'move rug', 'open trap door', 'd']);
+    state.rng = 1;
+    let text = '';
+    for (let i = 0; i < 10 && state.currentRoom === 'cellar'; i++) {
+      text += execute({ action: 'go', target: 'east' }, { world: zork1, state }).lines.join('\n');
+    }
+    expect(text).toContain('Oh, no! You have walked into the slavering fangs of a lurking grue!');
+    expect(text).toContain('****  You have died  ****');
+    expect(state.currentRoom).toBe('forest_1');
+    expect(state.locations.lamp).toBe('living_room');
   });
 
   it('no world verb clashes with a built-in', () => {
