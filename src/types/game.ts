@@ -21,6 +21,12 @@ export interface GameState {
   visited: string[];
   /** When each item last moved (a counter), so listings can keep pickup order. Absent in older saves. */
   placed?: Record<string, number>;
+  /** Numeric variables (`score`, `deaths`, and the world's own). Absent in older saves. */
+  vars?: Record<string, number>;
+  /** The random generator's state. */
+  rng?: number;
+  /** Pending one-off events: key → acted-on turns left. */
+  fuses?: Record<string, number>;
   flags: Record<string, boolean>;
   moveCount: number;
   gameOver: boolean;

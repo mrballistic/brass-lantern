@@ -155,7 +155,35 @@ export interface NPCDialogue {
   [flagCondition: string]: string;
 }
 
-export type EventScripts = Record<string, string[]>;
+/** A step in an event: a line to print (bracket lines also act), or an effect. */
+export type EventStep = string | Effect;
+export type EventScripts = Record<string, EventStep[]>;
+
+/** What an event step can do besides print. See docs/reference/conditions-and-events.md. */
+export type Effect =
+  | { say: string }
+  | { set: string }
+  | { clear: string }
+  /** To a room, 'player', an item, or null (offstage). */
+  | { move: string; to: string | null }
+  | { open: string }
+  | { close: string }
+  | { lock: string }
+  | { unlock: string }
+  | { switch: string; on: boolean }
+  | { add: string; by: number }
+  | { setVar: string; to: number }
+  /** Adds to the `score` variable. */
+  | { score: number }
+  /** Moves the player there and describes it. */
+  | { go: string }
+  /** Runs an event after this many acted-on turns. */
+  | { schedule: string; in: number }
+  | { cancel: string }
+  | { chance: number; then?: EventStep[]; else?: EventStep[] }
+  | { run: string }
+  | { die: string }
+  | { end: string };
 export type DialogueMap = Record<string, NPCDialogue>;
 
 export interface Hint {
@@ -163,8 +191,10 @@ export interface Hint {
   text: string;
 }
 
+/** Points for a flag, or for a condition while it holds (a treasure in the case). */
 export interface ScoreEntry {
-  flag: string;
+  flag?: string;
+  if?: string;
   points: number;
 }
 
@@ -204,6 +234,10 @@ export interface World {
   finale?: Finale;
   /** Lines that interrupt on a timer while a condition holds (a ringing phone). */
   ambient?: Ambient[];
+  /** Starting values for numeric variables (conditions: var:NAME<=N). */
+  vars?: Record<string, number>;
+  /** Seeds the random generator, for reproducible games. Default: the clock. */
+  seed?: number;
   /** Verbs this world adds. They need no engine or intent-server changes. */
   verbs?: Record<string, WorldVerb>;
   /** Output conventions: 'brass' (default) or 'infocom' (Zork's listings and replies). */

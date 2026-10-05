@@ -3,6 +3,8 @@ import type { World } from '@/types/world';
 import { evaluateCondition } from './conditions';
 import { describeRoom } from './describe';
 import { initialLocations } from './model';
+import { runSteps, setEffectHooks } from './effects';
+import { seedFor } from './rng';
 import { ok, type EngineResult } from './result';
 import { enterRoom, handleClimb, handleEnter, handleGo, handleIdle } from './verbs/movement';
 import {
@@ -30,6 +32,8 @@ export function initialState(world: World): GameState {
     itemState: {},
     visited: [world.startRoom],
     flags: {},
+    vars: { ...(world.vars ?? {}) },
+    rng: seedFor(world),
     moveCount: 0,
     gameOver: false,
     firedEvents: [],
@@ -41,6 +45,8 @@ export function initialState(world: World): GameState {
 /* ------------------------------------------------------------------ */
 /* Dispatcher                                                          */
 /* ------------------------------------------------------------------ */
+
+setEffectHooks({ go: (room, world, state) => enterRoom(room, world, state) });
 
 export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
   const { world, state } = deps;
@@ -147,7 +153,7 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
 
 /** Compose the opening: intro lines + first room description. */
 export function openingLines(world: World, state: GameState): string[] {
-  const lines = [...(world.events.intro ?? [])];
+  const lines = runSteps(world.events.intro ?? [], world, state);
   lines.push(...describeRoom(state.currentRoom, world, state, { first: true }));
   return lines;
 }

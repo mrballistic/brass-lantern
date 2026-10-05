@@ -13,8 +13,22 @@ import { isLocked, isOn, isOpen, isReachable } from './model';
  *   inside:X:PLACE  X's parent is PLACE (a room, an item, or "player")
  *   open:X, locked:X, on:X   item state
  *   here:X          the player can reach X (needs `world`)
+ *   var:NAME<=N     a numeric variable compared (=, <, >, <=, >=); unset is 0
+ *   carrying<=N     how many things the player holds directly
  * Unrecognized strings evaluate to false.
  */
+const COMPARE: Record<string, (a: number, b: number) => boolean> = {
+  '=': (a, b) => a === b,
+  '<': (a, b) => a < b,
+  '>': (a, b) => a > b,
+  '<=': (a, b) => a <= b,
+  '>=': (a, b) => a >= b,
+};
+
+function carrying(state: GameState): number {
+  return Object.values(state.locations).filter((p) => p === 'player').length;
+}
+
 export function evaluateCondition(condition: string, state: GameState, world?: World): boolean {
   // "flag:a & !flag:b": every part must hold.
   if (condition.includes('&')) {
@@ -26,6 +40,15 @@ export function evaluateCondition(condition: string, state: GameState, world?: W
 
   const negated = trimmed.startsWith('!');
   const body = negated ? trimmed.slice(1) : trimmed;
+
+  // var:NAME<=N and carrying<=N (with =, <, >, <=, >=)
+  const compare = body.match(/^(?:var:(\w+)|carrying)\s*(<=|>=|=|<|>)\s*(-?\d+)$/);
+  if (compare) {
+    const [, name, op, n] = compare;
+    const value = name === undefined ? carrying(state) : (state.vars?.[name] ?? 0);
+    const result = COMPARE[op](value, Number(n));
+    return negated ? !result : result;
+  }
   const [kind, value, extra] = body.split(':');
 
   let result: boolean;
