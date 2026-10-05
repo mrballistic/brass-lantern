@@ -10,12 +10,13 @@ import { fixtureWorld as world } from '../fixtures/world';
 function say(conv: Conversation, state: GameState, input: string): string[] {
   const step = interpret(input, conv, world, state);
   if ('reply' in step) return step.reply;
+  const note = 'parse' in step ? (step.note ?? []) : [];
   const parsed = 'run' in step ? step.run : fallbackParse(step.parse, world.verbs);
   if (!parsed) return ['(unparsed)'];
   const action = 'run' in step ? parsed : resolvePronouns(parsed, conv);
   const r = execute(action, { world, state });
   remember(conv, action, r);
-  return r.lines;
+  return [...note, ...r.lines];
 }
 
 describe('answers', () => {
@@ -78,5 +79,34 @@ describe('pronouns', () => {
     expect(conv.it).toBe('wallet');
     say(conv, s, 'drop it');
     expect(s.locations.wallet).toBe('living');
+  });
+});
+
+describe('AGAIN and OOPS', () => {
+  it('again repeats the last action; with nothing, or after a question, it says so', () => {
+    const conv = newConversation();
+    const s = stateWith(world, { room: 'yard' });
+    expect(say(conv, s, 'again')).toEqual(['Beg pardon?']);
+    say(conv, s, 'ring bell');
+    expect(say(conv, s, 'g')[0]).toBe('Ding.'); // (the yard's dog may bark too)
+    say(conv, s, 'take');
+    expect(say(conv, s, 'again')).toEqual(['It’s difficult to repeat fragments.']);
+  });
+
+  it('oops fixes the unknown word in the last line nobody understood', () => {
+    const conv = newConversation();
+    const s = stateWith(world, { room: 'living' });
+    conv.lastUnknown = 'take wallett';
+    say(conv, s, 'oops wallet');
+    expect(s.locations.wallet).toBe('player');
+    expect(say(conv, s, 'oops wallet')).toEqual(['There was no word to replace!']);
+  });
+
+  it('oops uses only the first word, and says so', () => {
+    const conv = newConversation();
+    const s = stateWith(world, { room: 'living' });
+    conv.lastUnknown = 'take wallett';
+    expect(say(conv, s, 'oops wallet please')[0]).toBe('Warning: only the first word after OOPS is used.');
+    expect(s.locations.wallet).toBe('player');
   });
 });

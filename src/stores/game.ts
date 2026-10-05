@@ -179,20 +179,21 @@ export const useGameStore = defineStore('game', {
         this.applyResult(this.execute(step.run));
         return;
       }
+      if (step.note) this.appendLines(step.note);
       const parsed = fallbackParse(step.parse, world.verbs);
       if (parsed) {
         const result = this.execute(resolvePronouns(parsed, conversation));
         if (result.understood !== false) {
-          this.applyResult(result);
+          this.applyResult(result, step.parse);
           return;
         }
-        const retry = await this.reinterpret(input, parsed);
-        this.applyResult(retry ?? result);
+        const retry = await this.reinterpret(step.parse, parsed);
+        this.applyResult(retry ?? result, step.parse);
         return;
       }
 
-      const retry = await this.reinterpret(input, null);
-      this.applyResult(retry ?? this.execute({ action: 'unknown' }));
+      const retry = await this.reinterpret(step.parse, null);
+      this.applyResult(retry ?? this.execute({ action: 'unknown' }), step.parse);
     },
 
 
@@ -228,7 +229,9 @@ export const useGameStore = defineStore('game', {
       return result;
     },
 
-    applyResult(result: EngineResult): void {
+    applyResult(result: EngineResult, input?: string): void {
+      // OOPS can fix the last line nobody understood.
+      if (input !== undefined) conversation.lastUnknown = result.understood === false ? input : null;
       this.appendLines(result.lines);
       if (result.mutated) this.persist();
       // Fire game_completed exactly once per game, on the transition.

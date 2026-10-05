@@ -1,7 +1,7 @@
 import type { GameState, ParsedAction } from '@/types/game';
 import type { World } from '@/types/world';
 import { fuzzyCandidates } from './fuzzy';
-import { strictParse } from './parser';
+import { BUILT_IN_WORDS, strictParse } from './parser';
 import type { Ask, EngineResult } from './result';
 
 /**
@@ -36,8 +36,8 @@ export type Step =
   | { run: ParsedAction; viaAnswer?: boolean }
   /** Print this; nothing runs. */
   | { reply: string[] }
-  /** Treat as a fresh command: regex parser, engine, intent server. */
-  | { parse: string };
+  /** Treat as a fresh command: regex parser, engine, intent server. `note` prints first. */
+  | { parse: string; note?: string[] };
 
 function fill(action: ParsedAction, slot: Ask['slot'], value: string, byId: boolean): ParsedAction {
   const filled = { ...action, [slot]: value };
@@ -46,6 +46,23 @@ function fill(action: ParsedAction, slot: Ask['slot'], value: string, byId: bool
 
 /** Turns a line into a step, answering a pending question if it is an answer. */
 export function interpret(input: string, conv: Conversation, world: World, _state: GameState): Step {
+  const word = input.trim().toLowerCase();
+  if (word === 'again' || word === 'g') {
+    conv.pending = null;
+    if (conv.lastAsked) return { reply: ['It’s difficult to repeat fragments.'] };
+    if (!conv.lastAction) return { reply: ['Beg pardon?'] };
+    return { run: conv.lastAction, viaAnswer: true };
+  }
+  const oops = word.match(/^oops\s+(.+)$/);
+  if (oops) {
+    conv.pending = null;
+    if (!conv.lastUnknown) return { reply: ['There was no word to replace!'] };
+    const [replacement, ...extra] = oops[1].split(/\s+/);
+    const corrected = replaceUnknownWord(conv.lastUnknown, replacement, world);
+    conv.lastUnknown = null;
+    if (!corrected) return { reply: ['There was no word to replace!'] };
+    return { parse: corrected, note: extra.length > 0 ? ['Warning: only the first word after OOPS is used.'] : undefined };
+  }
   const pending = conv.pending;
   conv.pending = null;
   if (!pending) return { parse: input };
@@ -60,6 +77,30 @@ export function interpret(input: string, conv: Conversation, world: World, _stat
     return { parse: input };
   }
   return { run: fill(pending.action, pending.slot, input, false), viaAnswer: true };
+}
+
+const FILLER = new Set(['the', 'a', 'an', 'to', 'with', 'in', 'on', 'at', 'my', 'into', 'onto', 'from', 'and', 'then', 'it', 'them']);
+
+/** Every word the world or the parser knows. */
+function knownWords(world: World): Set<string> {
+  const words = new Set<string>(FILLER);
+  const add = (text: string) => text.toLowerCase().split(/[\s_]+/).forEach((w) => w && words.add(w));
+  for (const w of BUILT_IN_WORDS) add(w);
+  for (const [id, v] of Object.entries(world.verbs ?? {})) [id, ...v.words].forEach(add);
+  for (const [id, item] of Object.entries(world.items)) [id, item.name, ...(item.aliases ?? [])].forEach(add);
+  for (const [id, npc] of Object.entries(world.npcs)) [id, npc.name].forEach(add);
+  for (const [id, room] of Object.entries(world.rooms)) [id, room.name, ...Object.keys(room.exits)].forEach(add);
+  return words;
+}
+
+/** The line with its first unknown word replaced, or null if every word is known. */
+function replaceUnknownWord(line: string, replacement: string, world: World): string | null {
+  const known = knownWords(world);
+  const words = line.trim().split(/\s+/);
+  const i = words.findIndex((w) => !known.has(w.toLowerCase().replace(/[^a-z0-9_]/g, '')));
+  if (i < 0) return null;
+  words[i] = replacement;
+  return words.join(' ');
 }
 
 const IT = /^(?:it|them|that|this|those)$/i;
