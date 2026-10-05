@@ -35,18 +35,18 @@ docs/              this site (npm run docs:dev)
 
 ## Make it yours
 
-Everything that makes a build *a particular game* is in `src/app.config.ts`:
+Everything that makes a build *a particular game collection* is in `src/app.config.ts`:
 
 ```ts
-import type { World } from '@/types/world';
-import { tutorial } from '@/worlds/tutorial';
-
-export const world: World = tutorial;      // the world to play
-export const appName = 'BRASS LANTERN';    // the terminal header
-export const storagePrefix = 'brass-lantern'; // namespaces saves in localStorage
+export const cartridges: Cartridge[] = [
+  { kind: 'world', id: 'snack-attack', title: 'SNACK ATTACK', world: tutorial },
+  { kind: 'zcode', id: 'zork1', title: 'ZORK I', story: 'stories/zork1.z3', format: 'Z-machine v3' },
+];
+export const appName = 'BRASS LANTERN';
+export const storagePrefix = 'brass-lantern';
 ```
 
-Point `world` at your own, give it its own `storagePrefix` (so saves from different games don't collide), and you're making a game. [Your first world](./your-first-world) walks through writing one.
+Add your own world as a cartridge (and remove the others if you like: with one cartridge there’s no menu). [Your first world](./your-first-world) walks through writing one; [Playing story files](./z-machine) covers Z-machine cartridges.
 
 ## Checks
 

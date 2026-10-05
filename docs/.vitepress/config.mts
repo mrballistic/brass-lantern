@@ -29,6 +29,7 @@ export default defineConfig({
         items: [
           { text: 'Getting started', link: '/guide/getting-started' },
           { text: 'Your first world', link: '/guide/your-first-world' },
+          { text: 'Playing story files', link: '/guide/z-machine' },
           { text: 'How it works', link: '/guide/how-it-works' },
           { text: 'The intent server', link: '/guide/intent-server' },
           { text: 'Testing a world', link: '/guide/testing' },
