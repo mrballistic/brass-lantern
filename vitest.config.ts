@@ -25,6 +25,7 @@ export default defineConfig({
         'src/env.d.ts',
         'src/**/*.d.ts',
         'src/worlds/**',
+        'src/zmachine/vendor/**',
       ],
       thresholds: {
         lines: 80,
