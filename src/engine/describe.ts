@@ -120,8 +120,8 @@ export function describeRoom(
   }
   const lines: string[] = [];
   lines.push(`📍 ${room.name}`);
-  // Infocom's default (BRIEF): a room you've seen is just its name and contents.
-  if (!(opts.brief && infocom)) {
+  // BRIEF (Infocom's default) and SUPERBRIEF: just the name and contents.
+  if (!opts.brief) {
     const varied = room.descriptions?.find((d) => evaluateCondition(d.if, state, world))?.text;
     lines.push(opts.first && room.firstDescription ? room.firstDescription : (varied ?? room.description));
   }

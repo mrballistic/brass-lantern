@@ -60,6 +60,7 @@ export function handleHelp(world: World): EngineResult {
     'WAIT / Z                 Let time pass',
     'HINT                     A nudge in the right direction',
     'SCORE                    Your score so far',
+    'VERBOSE / BRIEF / SUPERBRIEF  How much rooms describe themselves',
     'SAVE / LOAD              Local terminal memory',
     'RESTART                  Wipe save and start over',
     'COOKIES                  Analytics settings',

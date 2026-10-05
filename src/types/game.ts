@@ -25,6 +25,8 @@ export interface GameState {
   vars?: Record<string, number>;
   /** The random generator's state. */
   rng?: number;
+  /** VERBOSE, BRIEF or SUPERBRIEF. Unset: brass worlds are verbose, Infocom-style ones brief. */
+  verbosity?: 'verbose' | 'brief' | 'superbrief';
   /** Pending one-off events: key → acted-on turns left. */
   fuses?: Record<string, number>;
   flags: Record<string, boolean>;

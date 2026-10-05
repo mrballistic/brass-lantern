@@ -68,6 +68,8 @@ export interface Exit {
   denial?: string;
   /** An item (with `door: true`) that must be open. */
   door?: string;
+  /** Refusals with their own reasons, checked first: the first whose `if` holds refuses with `text`. */
+  denials?: Array<{ if: string; text: string }>;
 }
 
 export interface EventTrigger {
@@ -249,6 +251,8 @@ export interface World {
     /** Run when the player tries a direction with no exit in the dark (Zork's grue). */
     blunder?: EventStep[];
   };
+  /** Named endings, played by the `end` effect: lines, then the score if `score`, then the footer. */
+  endings?: Record<string, { lines: EventStep[]; score?: boolean; footer?: EventStep[] }>;
   /** What dying does. Without it, dying ends the game. */
   death?: {
     /** Printed after the cause. */

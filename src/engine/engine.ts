@@ -7,6 +7,7 @@ import { runSteps, setEffectHooks } from './effects';
 import { seedFor } from './rng';
 import { afterTurn } from './time';
 import { die } from './death';
+import { runEnding } from './endings';
 import { ok, type EngineResult } from './result';
 import { enterRoom, handleClimb, handleEnter, handleGo, handleIdle } from './verbs/movement';
 import {
@@ -51,6 +52,7 @@ export function initialState(world: World): GameState {
 setEffectHooks({
   go: (room, world, state) => enterRoom(room, world, state),
   die: (cause, world, state) => die(cause, world, state, enterRoom),
+  end: (id, world, state) => runEnding(id, world, state),
 });
 
 export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
@@ -100,6 +102,10 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
       return withRules('enter', action, world, state, () => handleEnter(action.target, world, state));
     case 'climb':
       return withRules('climb', action, world, state, () => handleClimb(action.target, world, state));
+    case 'verbose':
+    case 'brief':
+    case 'superbrief':
+      return setVerbosity(action.action, world, state);
     case 'look':
       return handleLook(world, state);
     case 'take':
@@ -159,6 +165,16 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
     default:
       return handleWorldVerb(action, world, state) ?? handleUnknown(world, state);
   }
+}
+
+const VERBOSITY_REPLY = {
+  infocom: { verbose: 'Maximum verbosity.', brief: 'Brief descriptions.', superbrief: 'Superbrief descriptions.' },
+  brass: { verbose: '[Full descriptions.]', brief: '[Brief descriptions.]', superbrief: '[Room names only.]' },
+} as const;
+
+function setVerbosity(mode: 'verbose' | 'brief' | 'superbrief', world: World, state: GameState): EngineResult {
+  state.verbosity = mode;
+  return ok([VERBOSITY_REPLY[world.style === 'infocom' ? 'infocom' : 'brass'][mode]], true);
 }
 
 /** Compose the opening: intro lines + first room description. */

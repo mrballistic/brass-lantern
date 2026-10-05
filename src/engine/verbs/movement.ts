@@ -32,7 +32,9 @@ export function enterRoom(targetId: string, world: World, state: GameState): str
   state.currentRoom = targetId;
   state.moveCount += 1;
   if (first) state.visited.push(targetId);
-  const lines = describeRoom(targetId, world, state, { first, brief: !first });
+  const verbosity = state.verbosity ?? (world.style === 'infocom' ? 'brief' : 'verbose');
+  const brief = verbosity === 'superbrief' || (verbosity === 'brief' && !first);
+  const lines = describeRoom(targetId, world, state, { first, brief });
   lines.push(...runOnEnter(targetId, world, state));
   return lines;
 }
@@ -44,6 +46,8 @@ export function exitTarget(exit: string | Exit | undefined): string | undefined 
 /** Follow one exit. Every refusal comes before the move, so it changes nothing. */
 export function followExit(exit: string | Exit, world: World, state: GameState): EngineResult {
   if (typeof exit !== 'string') {
+    const refused = exit.denials?.find((d) => evaluateCondition(d.if, state, world));
+    if (refused) return ok([refused.text]);
     if (exit.if && !evaluateCondition(exit.if, state, world)) return ok([exit.denial ?? 'You can’t go that way.']);
     if (exit.door && !isOpen(world, state, exit.door)) {
       return ok([`The ${world.items[exit.door]?.name ?? exit.door} is closed.`]);

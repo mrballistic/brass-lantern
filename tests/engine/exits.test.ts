@@ -74,4 +74,29 @@ describe('exits', () => {
   it('message-only exits aren’t listed unless listExits names them', () => {
     expect(describeCurrentRoom(world, stateWith(world, { room: 'yard' })).join('\n')).not.toMatch(/Exits:.*west/);
   });
+
+  it('an exit can refuse for different reasons, first match wins', () => {
+    const w = {
+      ...world,
+      rooms: {
+        ...world.rooms,
+        bedroom: {
+          ...world.rooms.bedroom,
+          exits: {
+            ...world.rooms.bedroom.exits,
+            up: { to: 'living', denials: [{ if: 'carrying<=0', text: 'Not empty-handed.' }, { if: '!has:key', text: 'You need the key.' }] },
+          },
+        },
+      },
+    };
+    const s = stateWith(w);
+    const before = structuredClone(s);
+    expect(execute({ action: 'go', target: 'up' }, { world: w, state: s }).lines).toEqual(['Not empty-handed.']);
+    expect({ ...s, turns: 0 }).toEqual({ ...before, turns: 0 });
+    s.locations.wallet = 'player';
+    expect(execute({ action: 'go', target: 'up' }, { world: w, state: s }).lines).toEqual(['You need the key.']);
+    s.locations.key = 'player';
+    execute({ action: 'go', target: 'up' }, { world: w, state: s });
+    expect(s.currentRoom).toBe('living');
+  });
 });
