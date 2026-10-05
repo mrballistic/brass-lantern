@@ -81,7 +81,7 @@ describe('descriptions that change with the state of the world', () => {
     const s = stateWith(w, { room: 'bedroom' });
     const go = (target: string) => execute({ action: 'go', target }, { world: w, state: s }).lines;
     expect(go('west')).toContain('A living room with a table by the door.');
-    expect(go('east')).toEqual(['📍 Bedroom', 'There is a alarm clock here.', 'There is a bed here.']);
+    expect(go('east')).toEqual(['📍 Bedroom', 'There is a bed here.', 'There is a alarm clock here.']);
     expect(execute({ action: 'look' }, { world: w, state: s }).lines).toContain('A small bedroom.');
   });
 });

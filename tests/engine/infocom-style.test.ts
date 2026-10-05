@@ -45,7 +45,7 @@ const world: World = {
       tags: [],
       initialDescription: 'On the table is a brown sack.',
       container: { openable: true },
-      contains: ['lunch', 'garlic'],
+      contains: ['garlic', 'lunch'],
     },
     cup: { name: 'cup', description: 'A cup.', portable: true, tags: [] },
     lunch: { name: 'lunch', description: 'Lunch.', portable: true, tags: [] },
@@ -67,7 +67,7 @@ describe('Infocom style', () => {
 
   it('lists with Zork’s serial comma and plain “a”', () => {
     const s = stateWith(world, { room: 'kitchen', carrying: ['sack'] });
-    expect(run(s, 'open', 'sack').lines).toEqual(['Opening the brown sack reveals a lunch, and a clove of garlic.']);
+    expect(run(s, 'open', 'sack').lines).toEqual(['Opening the brown sack reveals a clove of garlic, and a lunch.']);
   });
 
   it('doors use their own open and close lines, and a closed door is always “closed”', () => {

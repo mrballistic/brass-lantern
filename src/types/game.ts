@@ -19,6 +19,8 @@ export interface GameState {
   itemState: Record<string, ItemState>;
   /** Rooms entered, in order, each once. */
   visited: string[];
+  /** When each item last moved (a counter), so listings can keep pickup order. Absent in older saves. */
+  placed?: Record<string, number>;
   flags: Record<string, boolean>;
   moveCount: number;
   gameOver: boolean;

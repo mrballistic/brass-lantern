@@ -16,7 +16,8 @@ describe('the object tree', () => {
     expect(childrenOf(world, state, 'living')).toEqual(['key', 'wallet', 'shirt']);
     moveItem(state, 'shirt', PLAYER);
     moveItem(state, 'key', PLAYER);
-    expect(inventoryOf(world, state)).toEqual(['key', 'shirt']);
+    // Things you pick up list in the order you picked them up.
+    expect(inventoryOf(world, state)).toEqual(['shirt', 'key']);
     expect(childrenOf(world, state, 'living')).toEqual(['wallet']);
     moveItem(state, 'key', 'yard');
     expect(parentOf(state, 'key')).toBe('yard');
@@ -26,5 +27,16 @@ describe('the object tree', () => {
     const state = initialState(world);
     expect(state.visited).toEqual(['bedroom']);
     expect(state.itemState).toEqual({});
+  });
+
+  it('Infocom style lists newest first, and untouched things in reverse world order, as Zork does', () => {
+    const w = { ...world, style: 'infocom' as const };
+    const state = initialState(w);
+    expect(childrenOf(w, state, 'living')).toEqual(['shirt', 'wallet', 'key']);
+    moveItem(state, 'key', PLAYER);
+    moveItem(state, 'shirt', PLAYER);
+    expect(inventoryOf(w, state)).toEqual(['shirt', 'key']);
+    moveItem(state, 'key', 'living');
+    expect(childrenOf(w, state, 'living')).toEqual(['key', 'wallet']);
   });
 });

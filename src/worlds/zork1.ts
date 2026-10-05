@@ -6,8 +6,8 @@ import type { World } from '@/types/world';
  * source (historicalsource/zork1, MIT License, Copyright (c) 2025 Microsoft);
  * tests/worlds/zork1-diff.test.ts plays it against the original story file.
  *
- * Item order matters: Zork lists a container's contents newest first, so each
- * `contains` and each room's `items` follows the order the original prints.
+ * Items are declared in the order Zork's source defines them: in Infocom style
+ * the engine lists untouched things in reverse, newest first, as Zork does.
  */
 
 const BOUNDARY = 'The rest of the Great Underground Empire isn’t built yet.';
@@ -208,7 +208,8 @@ export const zork1: World = {
       },
       items: ['kitchen_table'],
       npcs: [],
-      onEnter: [],
+      // Zork's VALUE 10: points the first time you come in.
+      onEnter: [{ if: '!flag:kitchen_visited', then: 'kitchen_points' }],
       scenery: ['kitchen_window', 'chimney'],
     },
     attic: {
@@ -339,7 +340,7 @@ export const zork1: World = {
       portable: true,
       tags: [],
       container: { openable: true, capacity: 9 },
-      contains: ['lunch', 'garlic'],
+      contains: ['garlic', 'lunch'],
     },
     lunch: {
       name: 'lunch',
@@ -548,9 +549,13 @@ export const zork1: World = {
     'rug moved': 'rug_moved',
     'took egg': 'took_egg',
     'grate revealed': 'grate_revealed',
+    'kitchen visited': 'kitchen_visited',
   },
 
-  scoring: [{ flag: 'took_egg', points: 5 }],
+  scoring: [
+    { flag: 'kitchen_visited', points: 10 },
+    { flag: 'took_egg', points: 5 },
+  ],
   maxScore: 350,
   ranks: [
     { min: 0, title: 'Beginner' },
@@ -580,6 +585,7 @@ export const zork1: World = {
       '[Flag set: rug moved]',
     ],
     took_egg: ['[Flag set: took egg]'],
+    kitchen_points: ['[Flag set: kitchen visited]'],
     leaves_moved: ['Done.', 'In disturbing the pile of leaves, a grating is revealed.', '[Flag set: grate revealed]'],
   },
 };

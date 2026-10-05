@@ -22,9 +22,18 @@ export function parentOf(state: GameState, id: string): Place {
   return state.locations[id] ?? null;
 }
 
-/** What's directly in or on `place`, in world declaration order. */
+/**
+ * What's directly in or on `place`. Untouched things come in world order and
+ * moved things follow in the order they arrived (so the inventory keeps pickup
+ * order). Infocom style reverses both, newest first, as Zork lists them.
+ */
 export function childrenOf(world: World, state: GameState, place: string): string[] {
-  return Object.keys(world.items).filter((id) => state.locations[id] === place);
+  const here = Object.keys(world.items).filter((id) => state.locations[id] === place);
+  const placed = state.placed ?? {};
+  const untouched = here.filter((id) => placed[id] === undefined);
+  const moved = here.filter((id) => placed[id] !== undefined).sort((a, b) => placed[a] - placed[b]);
+  if (world.style === 'infocom') return [...moved.reverse(), ...untouched.reverse()];
+  return [...untouched, ...moved];
 }
 
 export function inventoryOf(world: World, state: GameState): string[] {
@@ -37,6 +46,8 @@ export function isCarried(state: GameState, id: string): boolean {
 
 export function moveItem(state: GameState, id: string, place: Place): void {
   state.locations[id] = place;
+  const placed = (state.placed ??= {});
+  placed[id] = Math.max(0, ...Object.values(placed)) + 1;
 }
 
 /** What a room lists: its direct contents, minus scenery. */
