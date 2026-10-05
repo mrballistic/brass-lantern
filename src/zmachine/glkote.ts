@@ -71,6 +71,9 @@ export class BrowserGlkOte {
     if (data.type !== 'update' && data.type !== 'exit') return;
     if (data.gen === undefined || data.gen <= this.gen) return;
     this.gen = data.gen;
+    // glkapi sends the saved display state as data.autorestore (it nulls the
+    // second argument before calling us), so accept either.
+    restored = restored ?? data.autorestore;
 
     for (const w of restored?.windows ?? []) this.windows.set(w.id, w);
     for (const w of data.windows ?? []) this.windows.set(w.id, w);

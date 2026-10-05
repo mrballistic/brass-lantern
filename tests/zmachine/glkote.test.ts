@@ -96,6 +96,13 @@ describe('BrowserGlkOte', () => {
     expect(handlers.onLines).toHaveBeenCalledWith(['West of House']);
   });
 
+  it('recognizes an autorestore the way glkapi signals it: data.autorestore', () => {
+    const { glkote, handlers } = setup();
+    glkote.update({ ...turn(7), windows: null, autorestore: { windows: WINDOWS } });
+    expect(handlers.onLines).not.toHaveBeenCalled();
+    expect(handlers.onStatus).toHaveBeenCalledWith({ location: 'West of House', detail: 'Score: 0  Turns: 1' });
+  });
+
   it('reports a save/restore prompt and sends the answer', () => {
     const { glkote, handlers, accept } = setup();
     const prompt = { type: 'fileref_prompt' as const, filemode: 'write' as const, filetype: 'save', gameid: 'abc' };

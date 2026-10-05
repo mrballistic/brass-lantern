@@ -57,6 +57,8 @@ export interface GlkUpdate {
   specialinput?: FilePrompt;
   disable?: boolean;
   message?: string;
+  /** Present on the first update after an autorestore: what GlkOte.save_allstate() returned. */
+  autorestore?: { windows: GlkWindow[] };
 }
 
 /** The status line, split: location on the left, score or time on the right. */
