@@ -8,6 +8,8 @@ export default defineConfig({
   // GitHub Pages project site. Change if you host the docs at a domain root.
   base: '/brass-lantern/',
   cleanUrls: true,
+  // Design notes and implementation plans live beside the docs but aren't part of the site.
+  srcExclude: ['superpowers/**'],
   lastUpdated: true,
   head: [
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/brass-lantern/favicon.svg' }],
