@@ -1,4 +1,3 @@
-import { handleDisembark } from './vehicle';
 import type { GameState } from '@/types/game';
 import type { Item, World } from '@/types/world';
 import { evaluateCondition } from '../conditions';
@@ -57,10 +56,13 @@ export function takeItem(itemId: string, world: World, state: GameState): Engine
 
 export function handleDrop(target: string | undefined, world: World, state: GameState): EngineResult {
   if (!target) needObject();
-  // Dropping the vehicle you're in is getting out of it (Zork's PRE-DROP).
-  if (state.aboard && pickItem(target, [state.aboard], world, 'target', state)) return handleDisembark({ action: 'disembark' }, world, state);
   const itemId = pickItem(target, inventoryOf(world, state), world, 'target', state);
-  if (!itemId) return miss(`You aren’t carrying a “${target}”.`);
+  if (!itemId) {
+    // Infocom's parser checks HAVE first: a thing in sight but not held (the boat you're in) is “You don't have”.
+    const seen = world.style === 'infocom' ? pickItem(target, visibleItems(world, state), world, 'target', state) : undefined;
+    if (seen) return { ...ok([`You don’t have the ${world.items[seen].name}.`]), free: true };
+    return miss(`You aren’t carrying a “${target}”.`);
+  }
 
   // Aboard, things land in the vehicle (IDROP).
   moveItem(state, itemId, state.aboard ?? state.currentRoom);

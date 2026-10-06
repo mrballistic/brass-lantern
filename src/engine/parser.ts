@@ -310,10 +310,11 @@ function parse(rawInput: string, allowBareWord: boolean, verbs?: World['verbs'])
   if (input in SINGLE_WORD) return SINGLE_WORD[input];
   // A verb on its own (“take”): the engine asks what for.
   if (input in BARE_VERBS) return { action: BARE_VERBS[input] };
+  if (input === 'exit') return { action: 'go', target: 'out', exit: true };
   if (input in DIRECTIONS) return { action: 'go', target: DIRECTIONS[input] };
   if (input === 'enter') return { action: 'enter' };
   {
-    const m = input.match(RE.climb);
+    const m = RE.board.test(input) ? null : input.match(RE.climb);
     if (m) return m[2] || m[1] ? { action: 'climb', target: (m[2] ?? m[1]).trim() } : { action: 'climb' };
   }
   {

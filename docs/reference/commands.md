@@ -23,7 +23,7 @@ The verbs are fixed; a world gives them things to act on. Anything the regex par
 | TURN *thing* WITH *tool* | | A rule on the thing decides; otherwise “This has no effect.” TURN ON … WITH … is TURN ON. |
 | PLUG *thing* WITH *item* | | The same: a rule, or “This has no effect.” |
 | BOARD *vehicle* | `get in`, `climb in`, `sit in` | Into a vehicle on the ground here. See [vehicles](./world-schema#vehicles). |
-| DISEMBARK [*vehicle*] | `get out`, `get off`, `stand` | Out again, if it's safe. (EXIT on its own is still a direction.) |
+| DISEMBARK [*vehicle*] | `get out`, `get off`, `stand` | Out again, if it's safe. EXIT on its own does this while you're aboard, and is a direction (out) otherwise. |
 | USE *item* [ON *thing*] | `push` `pull` `press` `operate` `attach X to Y` | See [use rules](./world-schema#userule). OPEN and PUT fall back to an item's use rules when it isn't a container. |
 | GIVE *item* TO *person* | `hand` `offer` `return` | With one person present, GIVE *item* is enough. |
 | TALK TO *person* | `speak/chat with`, `question` | With one person present, TALK is enough. |

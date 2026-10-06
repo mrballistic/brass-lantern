@@ -119,6 +119,8 @@ export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
   if (state.gameOver && action.action !== 'restart' && action.action !== 'help') {
     return ok(['The game has ended. Type RESTART to play again.']);
   }
+  // Aboard, bare EXIT is getting out (V-EXIT), not walking out; captures see it as that.
+  if (action.action === 'go' && action.exit && state.aboard) return execute({ action: 'disembark', target: state.aboard, byId: true }, deps);
   // A capture sees parsed commands too (`ctx.action`), however they arrived: a spirit can't take things by AGAIN.
   if (action.action !== 'capture') {
     const steps = parsedCapture(world, state, action);

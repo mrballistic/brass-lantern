@@ -24,7 +24,7 @@ export function rulesFor(owner: Item | Room | NPC | undefined, phase: 'instead' 
   return own;
 }
 
-function ruleApplies(rule: Rule, other: string | null | undefined, reach: string[], world: World, state: GameState, role?: 'target' | 'indirect', prep?: string): boolean {
+function ruleApplies(rule: Rule, other: string | null | undefined, reach: string[], world: World, state: GameState, role?: 'target' | 'indirect' | 'vehicle', prep?: string): boolean {
   if (rule.as && role && rule.as !== role) return false;
   if (rule.prep && rule.prep !== prep) return false;
   if (rule.with) {
@@ -53,15 +53,16 @@ export function findRule(
   ids: RuleIds,
   reach: string[],
 ): Rule | null {
-  type Role = 'target' | 'indirect' | undefined;
+  type Role = 'target' | 'indirect' | 'vehicle' | undefined;
   const target: [Item | undefined, string | null | undefined, Role] = [ids.target ? world.items[ids.target] : undefined, ids.indirect, 'target'];
   const indirect: [Item | undefined, string | null | undefined, Role] = [ids.indirect ? world.items[ids.indirect] : undefined, ids.target, 'indirect'];
   // Zork's PERFORM asks the second object before the first (PRSI, then PRSO).
   const owners: Array<[Item | Room | NPC | undefined, string | null | undefined, Role]> = [
     ...(world.style === 'infocom' ? [indirect, target] : [target, indirect]),
     ...(ids.npcs ?? []).map((id): [NPC | undefined, string | null | undefined, Role] => [world.npcs[id], ids.target ?? ids.indirect, undefined]),
-    // Aboard, the vehicle answers before the room (Zork's M-BEG goes to the vehicle).
-    ...(state.aboard ? [[world.items[state.aboard], ids.indirect ?? ids.target, undefined] as [Item | undefined, string | null | undefined, Role]] : []),
+    // Aboard, the vehicle answers before the room (Zork's M-BEG goes to the vehicle);
+  // its rules for itself as an object (`as`) don't answer for other things.
+    ...(state.aboard ? [[world.items[state.aboard], ids.indirect ?? ids.target, 'vehicle'] as [Item | undefined, string | null | undefined, Role]] : []),
     [world.rooms[ids.room], ids.indirect ?? ids.target, undefined],
   ];
   for (const [owner, other, role] of owners) {

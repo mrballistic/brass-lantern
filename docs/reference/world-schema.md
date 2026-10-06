@@ -365,7 +365,7 @@ raft: { name: 'raft', vehicle: { travels: 'water' }, container: { open: true }, 
 pond: { name: 'Pond', water: true, … },
 ```
 
-- **BOARD** (GET IN, CLIMB IN) gets in a vehicle that's on the ground here; **DISEMBARK** (GET OUT, GET OFF, STAND) gets out, except on water: “You realize that getting out here would be fatal.” In Infocom style, DISEMBARK with no object names the one vehicle in sight: “(raft)”.
+- **BOARD** (GET IN, CLIMB IN) gets in a vehicle that's on the ground here; **DISEMBARK** (GET OUT, GET OFF, STAND) gets out, except on water: “You realize that getting out here would be fatal.” While aboard, EXIT on its own is DISEMBARK too (Zork's V-EXIT); otherwise it's the direction out. In Infocom style, DISEMBARK with no object names the one vehicle in sight: “(raft)”.
 - **Moving:** without a vehicle, water is out of reach (“You can’t go there without a vehicle.”); aboard, the vehicle won't go overland (“You can’t go there in a raft.”); coming from water onto land it rests on the shore (“The raft comes to a rest on the shore.”), and you stay aboard. The vehicle goes wherever you go, scripted moves included.
 - **Aboard:** DROP puts things in the vehicle, TAKE *vehicle* says “You’re inside of it!”, and the room's things stay in reach. The vehicle's rules are asked before the room's (Zork's M-BEG): an `instead.go` on it can refuse directions. Its `onEnd` runs in place of the room's. GO goes through rules too, so a room can have `instead.go` rules.
 - **Looking:** the header names the vehicle (“Pond, in the raft”); the vehicle isn't listed, its contents are; in Infocom style the room's things are “(outside the raft)”, as Zork's PRINT-CONT does.

@@ -100,6 +100,8 @@ export interface ParsedAction {
   prep?: 'in' | 'on';
   /** TAKE ALL BUT …: the words after BUT/EXCEPT. */
   except?: string[];
+  /** Bare EXIT (a direction, out), which aboard gets out of the vehicle (Zork's V-EXIT). */
+  exit?: boolean;
   /** The targets are IDs (the intent server's answer), so they resolve by ID first. */
   byId?: boolean;
 }

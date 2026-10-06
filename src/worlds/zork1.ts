@@ -2127,8 +2127,8 @@ export const zork1: World = {
         pump: [{ as: 'target', if: 'has:pump', say: ['Inflating it further would probably burst it.'] }],
         breathe: [{ as: 'target', say: ['Inflating it further would probably burst it.'] }],
         deflate: [
-          { if: 'aboard:inflated_boat', say: ['You can’t deflate the boat while you’re in it.'] },
-          { then: 'boat_deflate' },
+          { as: 'target', if: 'aboard:inflated_boat', say: ['You can’t deflate the boat while you’re in it.'] },
+          { as: 'target', then: 'boat_deflate' },
         ],
       },
     },

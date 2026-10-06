@@ -564,3 +564,44 @@ describe('Zork I, natively: 5b’s treasures, the thief and the boat (5b)', () =
     expect(lines).toMatch(/The rising water carries the boat over the dam, down the river, and over the falls\. Tsk, tsk\./);
   });
 });
+
+describe('Zork I, natively: the boat’s final-review fixes (5b)', () => {
+  const atDamBase = (aboard: boolean) => {
+    const state = initialState(zork1);
+    state.currentRoom = 'dam_base';
+    state.npcs = { thief: { room: null } };
+    state.locations.inflated_boat = 'dam_base';
+    state.locations.inflatable_boat = null;
+    if (aboard) state.aboard = 'inflated_boat';
+    return state;
+  };
+  const say = (state: ReturnType<typeof initialState>, line: string) =>
+    execute(fallbackParse(line, zork1.verbs) ?? { action: 'unknown' }, { world: zork1, state }).lines;
+  it('CLIMB IN and CLIMB ON board the boat', () => {
+    const s = atDamBase(false);
+    expect(say(s, 'climb in boat')[0]).toBe('You are now in the magic boat.');
+    expect(s.currentRoom).toBe('dam_base');
+    expect(say(s, 'climb on boat')[0]).toBe('You are already in the magic boat!');
+  });
+  it('aboard, the boat’s rules for itself don’t answer for other things', () => {
+    const s = atDamBase(true);
+    s.locations.leaflet = 'player';
+    expect(say(s, 'inflate leaflet')[0]).toBe('How can you inflate that?');
+    expect(say(s, 'deflate leaflet')[0]).toBe('Come on, now!');
+    expect(say(s, 'deflate boat')[0]).toBe('You can’t deflate the boat while you’re in it.');
+  });
+  it('aboard, bare EXIT gets out (V-EXIT), and on the river refuses', () => {
+    const s = atDamBase(true);
+    expect(say(s, 'exit')[0]).toBe('You are on your own feet again.');
+    expect(s.aboard).toBeUndefined();
+    const r = atDamBase(true);
+    r.currentRoom = 'river_1';
+    r.locations.inflated_boat = 'river_1';
+    expect(say(r, 'exit')[0]).toBe('You realize that getting out here would be fatal.');
+  });
+  it('aboard, DROP of the boat says you don’t have it', () => {
+    const s = atDamBase(true);
+    expect(say(s, 'drop boat')).toEqual(['You don’t have the magic boat.']);
+    expect(s.aboard).toBe('inflated_boat');
+  });
+});

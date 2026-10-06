@@ -62,8 +62,14 @@ describe('boarding and leaving', () => {
     expect(fallbackParse('get in the raft')).toEqual({ action: 'board', target: 'raft' });
     expect(fallbackParse('disembark')).toEqual({ action: 'disembark' });
     expect(fallbackParse('get out of raft')).toEqual({ action: 'disembark', target: 'raft' });
-    expect(fallbackParse('exit')).toEqual({ action: 'go', target: 'out' });
+    expect(fallbackParse('exit')).toEqual({ action: 'go', target: 'out', exit: true });
     expect(fallbackParse('stand up')).toEqual({ action: 'disembark' });
+  });
+  it('not aboard, bare EXIT walks out exactly as OUT does', () => {
+    const a = stateWith(fixtureWorld, { room: 'bedroom' });
+    const b = stateWith(fixtureWorld, { room: 'bedroom' });
+    expect(execute(fallbackParse('exit')!, { world: fixtureWorld, state: a })).toEqual(execute(fallbackParse('out')!, { world: fixtureWorld, state: b }));
+    expect(a).toEqual(b);
   });
 });
 
