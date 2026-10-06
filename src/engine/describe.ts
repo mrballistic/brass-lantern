@@ -2,7 +2,7 @@ import type { GameState } from '@/types/game';
 import type { Room, World } from '@/types/world';
 import { evaluateCondition } from './conditions';
 import { darknessLook } from './light';
-import { canSeeInside, childrenOf, isLit, visibleItemsIn } from './model';
+import { canSeeInside, childrenOf, isLit, npcsIn, visibleItemsIn } from './model';
 
 export const COMPASS = ['north', 'south', 'east', 'west', 'northeast', 'northwest', 'southeast', 'southwest', 'up', 'down'];
 
@@ -143,12 +143,18 @@ export function describeRoom(
     lines.push(...contentsLines(world, state, id));
   }
 
-  if (room.npcs.length > 0) {
-    const names = room.npcs.map((id) => world.npcs[id]?.name ?? id);
-    lines.push(`Present: ${names.join(', ')}.`);
-  }
+  const people = npcsIn(world, state, roomId);
+  // Infocom style: each character's own line, as Zork's LDESC; brass: a list.
+  if (infocom) for (const id of people) lines.push(npcDescription(world, state, id));
+  else if (people.length > 0) lines.push(`Present: ${people.map((id) => world.npcs[id]?.name ?? id).join(', ')}.`);
 
   const exits = exitList(room);
   if (exits && !infocom) lines.push(`Exits: ${exits}.`);
   return lines;
+}
+
+/** A character's line: the first description whose condition holds, else its description. */
+export function npcDescription(world: World, state: GameState, id: string): string {
+  const npc = world.npcs[id];
+  return npc?.descriptions?.find((d) => evaluateCondition(d.if, state, world))?.text ?? npc?.description ?? id;
 }

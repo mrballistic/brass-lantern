@@ -1,6 +1,6 @@
 import type { GameState, Place } from '@/types/game';
 import type { Effect, EventStep, World } from '@/types/world';
-import { isCarried, moveItem, PLAYER } from './model';
+import { isCarried, moveItem, npcStateOf, PLAYER } from './model';
 import { nextRandom } from './rng';
 
 // Running event steps: printed lines (bracket lines also act) and typed effects.
@@ -99,7 +99,16 @@ function runEffect(e: Effect, world: World, state: GameState): { lines: string[]
   // Naming a thing the world doesn't have does nothing (the audit reports it).
   const thing = 'move' in e ? e.move : 'open' in e ? e.open : 'close' in e ? e.close : 'lock' in e ? e.lock : 'unlock' in e ? e.unlock : 'switch' in e ? e.switch : null;
   if (thing !== null && !world.items[thing]) return { lines: [] };
-  if ('move' in e) return void moveItem(state, e.move, e.to as Place), { lines: [] };
+  if ('move' in e) return void moveItem(state, e.move, (e.to === 'here' ? state.currentRoom : e.to) as Place), { lines: [] };
+  if ('moveNpc' in e) {
+    if (world.npcs[e.moveNpc]) npcStateOf(state, e.moveNpc).room = e.to;
+    return { lines: [] };
+  }
+  if ('npcState' in e) {
+    const { npcState: id, ...fields } = e;
+    if (world.npcs[id]) Object.assign(npcStateOf(state, id), fields);
+    return { lines: [] };
+  }
   if ('open' in e) return void (itemState(state, e.open).open = true), { lines: [] };
   if ('close' in e) return void (itemState(state, e.close).open = false), { lines: [] };
   if ('lock' in e) return void (itemState(state, e.lock).locked = true), { lines: [] };

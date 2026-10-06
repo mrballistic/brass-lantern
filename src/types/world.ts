@@ -154,6 +154,10 @@ export interface NPC {
   refuse?: Record<string, string>;
   /** Shown when the player offers something not in `onGive` or `refuse`. */
   refuseGift?: string;
+  /** Items it holds at the start. Things a character holds aren't visible or reachable. */
+  holds?: string[];
+  /** Descriptions that depend on the state of things; the first whose condition holds wins. */
+  descriptions?: Array<{ if: string; text: string }>;
 }
 
 export interface NPCDialogue {
@@ -170,8 +174,12 @@ export type Effect =
   | { say: string }
   | { set: string }
   | { clear: string }
-  /** To a room, 'player', an item, or null (offstage). */
+  /** To a room, 'player', 'here' (the player's room), an item, a character, or null (offstage). */
   | { move: string; to: string | null }
+  /** A character to a room, or null (gone). */
+  | { moveNpc: string; to: string | null }
+  /** Sets a character's combat state. */
+  | { npcState: string; fighting?: boolean; staggered?: boolean; strength?: number }
   | { open: string }
   | { close: string }
   | { lock: string }

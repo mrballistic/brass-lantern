@@ -1,7 +1,7 @@
 import type { GameState } from '@/types/game';
 import type { Item, World } from '@/types/world';
 import { evaluateCondition } from '../conditions';
-import { contentsLines, describeRoom, lightNote, withArticle } from '../describe';
+import { contentsLines, describeRoom, lightNote, npcDescription, withArticle } from '../describe';
 import {
   closedAround, inventoryOf, isCarried, matchItem, matchNpc, moveItem, needObject, pickItem, PLAYER, reachableItems, visibleItems,
 } from '../model';
@@ -77,7 +77,7 @@ export function handleExamine(target: string | undefined, world: World, state: G
   }
 
   const matchedNpc = matchNpc(target, world, state);
-  if (matchedNpc) return ok([world.npcs[matchedNpc]?.description ?? 'They look back at you.']);
+  if (matchedNpc) return ok([npcDescription(world, state, matchedNpc)]);
 
   return miss(`You see no “${target}” here worth examining.`);
 }

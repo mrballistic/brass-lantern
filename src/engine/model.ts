@@ -1,4 +1,4 @@
-import type { GameState, Place } from '@/types/game';
+import type { GameState, NpcState, Place } from '@/types/game';
 import type { World } from '@/types/world';
 import { fuzzyCandidates, fuzzyMatch } from './fuzzy';
 
@@ -16,7 +16,40 @@ export function initialLocations(world: World): Record<string, Place> {
   for (const [id, item] of Object.entries(world.items)) {
     for (const child of item.contains ?? []) loc[child] = id;
   }
+  for (const [id, npc] of Object.entries(world.npcs)) {
+    for (const held of npc.holds ?? []) loc[held] = id;
+  }
   return loc;
+}
+
+/** Where a character is: its state, else the room that lists it. Null when it's gone (or dead). */
+export function npcRoom(world: World, state: GameState, id: string): string | null {
+  const s = state.npcs?.[id];
+  if (s?.strength === 0) return null;
+  if (s && s.room !== undefined) return s.room;
+  for (const [roomId, room] of Object.entries(world.rooms)) if (room.npcs.includes(id)) return roomId;
+  return null;
+}
+
+/** The characters in a room: the room's own list order, then any who arrived. */
+export function npcsIn(world: World, state: GameState, roomId: string): string[] {
+  const here = Object.keys(world.npcs).filter((id) => npcRoom(world, state, id) === roomId);
+  const listed = world.rooms[roomId]?.npcs ?? [];
+  return [...listed.filter((id) => here.includes(id)), ...here.filter((id) => !listed.includes(id)).sort()];
+}
+
+/** A character's state, created on first use. */
+export function npcStateOf(state: GameState, id: string): NpcState {
+  return ((state.npcs ??= {})[id] ??= {});
+}
+
+export function isAlive(world: World, state: GameState, id: string): boolean {
+  return npcRoom(world, state, id) !== null;
+}
+
+/** Alive and conscious. */
+export function isAwake(world: World, state: GameState, id: string): boolean {
+  return isAlive(world, state, id) && (state.npcs?.[id]?.strength ?? 1) > 0;
 }
 
 export function parentOf(state: GameState, id: string): Place {
@@ -90,7 +123,7 @@ export function matchItem(target: string, ids: string[], world: World): string |
 }
 
 export function matchNpc(target: string, world: World, state: GameState): string | null {
-  const present = world.rooms[state.currentRoom]?.npcs ?? [];
+  const present = npcsIn(world, state, state.currentRoom);
   const id = fuzzyMatch(
     target,
     present.map((id) => ({ id, name: world.npcs[id]?.name ?? id })),

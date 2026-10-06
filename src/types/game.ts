@@ -12,6 +12,18 @@ export interface ItemState {
   moved?: boolean;
 }
 
+/** A character's state. Absent fields mean the defaults: where its room lists it, conscious, not fighting. */
+export interface NpcState {
+  /** Where it is; null when it's gone. Absent: the room that lists it. */
+  room?: string | null;
+  /** Combat strength. Negative while unconscious; 0 is dead. Absent: its combat strength. */
+  strength?: number;
+  fighting?: boolean;
+  staggered?: boolean;
+  /** Percent chance to wake next turn while unconscious (Zork's V-PROB). */
+  wake?: number;
+}
+
 export interface GameState {
   currentRoom: string;
   /** Every item's parent. Inventory and room contents are derived from it. */
@@ -38,6 +50,8 @@ export interface GameState {
   misses?: number;
   /** Commands the engine acted on; drives timed ambient lines. Absent in older saves. */
   turns?: number;
+  /** Characters' places and states. Absent in older saves. */
+  npcs?: Record<string, NpcState>;
 }
 
 export type OutputLineType =
