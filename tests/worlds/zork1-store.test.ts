@@ -35,3 +35,24 @@ describe('the thief and UNDO', () => {
     expect(found).toBe(true);
   });
 });
+
+describe('the coal mine and UNDO (5c)', () => {
+  it('UNDO after the machine and after lowering the basket puts things back', async () => {
+    const s = store(1);
+    s.game.npcs = { thief: { room: null } };
+    s.game.currentRoom = 'machine_room';
+    s.game.locations.screwdriver = 'player';
+    s.game.locations.coal = 'machine';
+    await s.submit('turn switch with screwdriver');
+    expect(s.game.locations.diamond).toBe('machine');
+    await s.submit('undo');
+    expect(s.game.locations.coal).toBe('machine');
+    expect(s.game.locations.diamond ?? null).toBeNull();
+    s.game.currentRoom = 'shaft_room';
+    await s.submit('lower basket');
+    expect(s.game.locations.raised_basket).toBe('lower_shaft');
+    await s.submit('undo');
+    expect(s.game.locations.raised_basket).toBe('shaft_room');
+    expect(s.game.locations.lowered_basket).toBe('lower_shaft');
+  });
+});

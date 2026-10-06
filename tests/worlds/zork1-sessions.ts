@@ -196,3 +196,30 @@ export const GAS_SESSIONS: Record<string, string[]> = {
   ],
   'bat-flight': [...MINE_PREFIX, 'north', 'west', 'north', 'look'],
 };
+
+/** The screwdriver from the Maintenance Room and the lit torch, to the Shaft Room past the bat (with the garlic). */
+const TO_SHAFT = [
+  'drop sword', 'drop bottle', ...TO_DAM, 'north', 'north', 'take screwdriver', 'south', 'south', 'south', 'southwest', 'south',
+  ...TORCH_TO_MINE, 'north', 'west', 'north', 'east',
+];
+/** The torch down in the basket, the coal fetched and sent after it with the screwdriver, then on foot to the Timber Room. */
+const TO_TIMBER = [
+  ...TO_SHAFT, 'put torch in basket', 'north', 'down', 'east', 'northeast', 'southeast', 'southwest', 'down', 'down', 'south', 'take coal',
+  'north', 'up', 'up', 'north', 'east', 'south', 'north', 'up', 'south', 'put coal in basket', 'put screwdriver in basket', 'lower basket',
+  'north', 'down', 'east', 'northeast', 'southeast', 'southwest', 'down', 'down', 'west',
+];
+
+export const SHAFT_SESSIONS: Record<string, string[]> = {
+  basket: [
+    '@prefix:garlic', ...TO_SHAFT, 'look', 'take basket', 'put torch in basket', 'turn off lamp', 'lower basket', 'look',
+    'lower basket', 'take basket', 'raise basket', 'look', 'turn on lamp', 'take chain', 'raise chain', 'examine chain',
+  ],
+  // DUMMY's line is PICK-ONE's: the seed finder matches the last reply.
+  'basket-dummy': ['@prefix:garlic', ...TO_SHAFT, 'raise basket'],
+  machine: [
+    '@prefix:garlic', ...TO_TIMBER, 'look', 'west', 'drop lamp', 'west', 'look', 'score', 'take coal', 'take screwdriver', 'take torch',
+    'take basket', 'south', 'look', 'take machine', 'open lid', 'put coal in machine', 'turn switch with screwdriver', 'close lid',
+    'turn switch with torch', 'turn switch with screwdriver', 'open lid', 'look', 'take diamond', 'score', 'put garlic in machine',
+    'close lid', 'turn switch with screwdriver', 'open lid', 'take gunk', 'look', 'north', 'east',
+  ],
+};

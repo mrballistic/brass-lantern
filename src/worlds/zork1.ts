@@ -417,6 +417,44 @@ export const zork1: World = {
       npcs: [],
       onEnter: [],
     },
+    // MACHINE-ROOM-FCN: the lid's state ends the description.
+    machine_room: {
+      name: 'Machine Room',
+      description: 'This is a large, cold room whose sole exit is to the north. In one corner there is a machine which is reminiscent of a clothes dryer. On its face is a switch which is labelled “START”. The switch does not appear to be manipulable by any human hand (unless the fingers are about 1/16 by 1/4 inch). On the front of the machine is a large lid, which is closed.',
+      descriptions: [{ if: 'open:machine', text: 'This is a large, cold room whose sole exit is to the north. In one corner there is a machine which is reminiscent of a clothes dryer. On its face is a switch which is labelled “START”. The switch does not appear to be manipulable by any human hand (unless the fingers are about 1/16 by 1/4 inch). On the front of the machine is a large lid, which is open.' }],
+      dark: true,
+      exits: { north: 'lower_shaft' },
+      items: ['machine', 'machine_switch'],
+      npcs: [],
+      onEnter: [],
+    },
+    // NO-OBJS: only the empty-handed fit through; the first turn here with a light scores (LIGHT-SHAFT).
+    lower_shaft: {
+      name: 'Drafty Room',
+      description: 'This is a small drafty room in which is the bottom of a long shaft. To the south is a passageway and to the east a very narrow passage. In the shaft can be seen a heavy iron chain.',
+      dark: true,
+      exits: {
+        south: 'machine_room',
+        out: { to: 'timber_room', if: 'heaviest<=4', denial: 'You cannot fit through this passage with that load.' },
+        east: { to: 'timber_room', if: 'heaviest<=4', denial: 'You cannot fit through this passage with that load.' },
+      },
+      items: ['lowered_basket'],
+      npcs: [],
+      onEnter: [],
+      onEnd: [{ if: 'lit:here & !flag:light_shaft', then: [{ set: 'light_shaft' }] }],
+      scenery: ['chain'],
+      tags: ['sacred'],
+    },
+    timber_room: {
+      name: 'Timber Room',
+      description: 'This is a long and narrow passage, which is cluttered with broken timbers. A wide passage comes from the east and turns at the west end of the room into a very narrow passageway. From the west comes a strong draft.',
+      dark: true,
+      exits: { east: 'ladder_bottom', west: { to: 'lower_shaft', if: 'heaviest<=4', denial: 'You cannot fit through this passage with that load.' } },
+      items: ['timbers'],
+      npcs: [],
+      onEnter: [],
+      tags: ['sacred'],
+    },
     dead_end_5: {
       name: 'Dead End',
       description: 'You have come to a dead end in the mine.',
@@ -430,7 +468,7 @@ export const zork1: World = {
       name: 'Ladder Bottom',
       description: 'This is a rather wide room. On one side is the bottom of a narrow wooden ladder. To the west and the south are passages leaving the room.',
       dark: true,
-      exits: { south: 'dead_end_5', west: { denial: OFF_MAP }, up: 'ladder_top' },
+      exits: { south: 'dead_end_5', west: 'timber_room', up: 'ladder_top' },
       items: [],
       npcs: [],
       onEnter: [],
@@ -1809,6 +1847,7 @@ export const zork1: World = {
       size: 10,
       treasure: 5,
       tags: [],
+      after: { take: [{ if: '!flag:took_jade', then: 'took_jade' }] },
     },
     bracelet: {
       name: 'sapphire-encrusted bracelet',
@@ -1818,6 +1857,7 @@ export const zork1: World = {
       size: 10,
       treasure: 5,
       tags: [],
+      after: { take: [{ if: '!flag:took_bracelet', then: 'took_bracelet' }] },
     },
     coal: {
       name: 'small pile of coal',
@@ -1869,7 +1909,84 @@ export const zork1: World = {
       portable: false,
       tags: [],
       container: { open: true, weight: 50 },
-      instead: { take: [{ as: 'target', say: ['The cage is securely fastened to the iron chain.'] }] },
+      instead: {
+        take: [{ as: 'target', say: ['The cage is securely fastened to the iron chain.'] }],
+        raise: [{ then: 'basket_raise' }],
+        lower: [{ then: 'basket_lower' }],
+      },
+    },
+    lowered_basket: {
+      name: 'basket',
+      aliases: ['cage', 'dumbwaiter', 'basket', 'lowered basket'],
+      description: 'The basket is at the other end of the chain.',
+      roomDescription: 'From the chain is suspended a basket.',
+      portable: false,
+      tags: [],
+      instead: {
+        raise: [{ then: 'basket_raise' }],
+        lower: [{ then: 'basket_lower' }],
+        take: [{ say: ['The basket is at the other end of the chain.'] }],
+        open: [{ say: ['The basket is at the other end of the chain.'] }],
+        close: [{ say: ['The basket is at the other end of the chain.'] }],
+        put: [{ say: ['The basket is at the other end of the chain.'] }],
+      },
+    },
+    timbers: {
+      name: 'broken timber',
+      aliases: ['timbers', 'pile', 'timber', 'wooden timber', 'broken timbers'],
+      description: 'There’s nothing special about the broken timber.',
+      portable: true,
+      size: 50,
+      tags: [],
+    },
+    // MACHINE-F.
+    machine: {
+      name: 'machine',
+      aliases: ['machine', 'pdp10', 'dryer', 'lid'],
+      description: 'There’s nothing special about the machine.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      container: { openable: true, open: false, weight: 50 },
+      instead: {
+        take: [{ as: 'target', say: ['It is far too large to carry.'] }],
+        open: [{ as: 'target', then: 'machine_open' }],
+        close: [{ as: 'target', then: 'machine_close' }],
+        turn_on: [{ as: 'target', then: 'machine_on' }],
+      },
+    },
+    // MSWITCH-FUNCTION.
+    machine_switch: {
+      name: 'switch',
+      aliases: ['switch'],
+      description: 'There’s nothing special about the switch.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      instead: { turn: [{ as: 'target', then: 'machine_switch' }] },
+    },
+    diamond: {
+      name: 'huge diamond',
+      aliases: ['diamond', 'treasure', 'huge diamond', 'enormous diamond'],
+      description: 'There’s nothing special about the huge diamond.',
+      roomDescription: 'There is an enormous diamond (perfectly cut) here.',
+      portable: true,
+      treasure: 10,
+      tags: [],
+      after: { take: [{ if: '!flag:took_diamond', then: 'took_diamond' }] },
+    },
+    // GUNK-FUNCTION: it crumbles at a touch.
+    gunk: {
+      name: 'small piece of vitreous slag',
+      aliases: ['gunk', 'piece', 'slag', 'small piece', 'vitreous slag'],
+      description: 'There’s nothing special about the small piece of vitreous slag.',
+      portable: true,
+      size: 10,
+      tags: [],
+      instead: {
+        take: [{ then: 'gunk_crumbles' }],
+        examine: [{ then: 'gunk_crumbles' }],
+      },
     },
     // CHAIN-PSEUDO.
     chain: {
@@ -1879,7 +1996,12 @@ export const zork1: World = {
       portable: false,
       tags: [],
       scenery: true,
-      instead: { take: [{ say: ['The chain is secure.'] }], move: [{ say: ['The chain is secure.'] }] },
+      instead: {
+        take: [{ say: ['The chain is secure.'] }],
+        move: [{ say: ['The chain is secure.'] }],
+        raise: [{ say: ['Perhaps you should do that to the basket.'] }],
+        lower: [{ say: ['Perhaps you should do that to the basket.'] }],
+      },
     },
     // Stage 5b: the banks.
     shovel: {
@@ -2028,7 +2150,7 @@ export const zork1: World = {
       weapon: true,
       tags: [],
       // SCEPTRE-FUNCTION.
-      instead: { wave: [{ as: 'target', then: 'sceptre_waved' }] },
+      instead: { wave: [{ as: 'target', then: 'sceptre_waved' }], raise: [{ as: 'target', then: 'sceptre_waved' }] },
       after: { take: [{ if: '!flag:took_sceptre', then: 'took_sceptre' }] },
     },
     skull: {
@@ -3261,6 +3383,44 @@ export const zork1: World = {
       const last = words[words.length - 1];
       return [`${last} ${last} ...`, { free: true }];
     },
+    // BASKET-F: RAISE and LOWER swap the basket and its stand-in; contents ride along.
+    basket: (ctx) => {
+      const raise = ctx.arg === 'raise';
+      const top = !ctx.state.flags.cage_bottom;
+      if (raise === top) {
+        const [steps, line] = pickOne(ctx, 'dummy', ['Look around.', 'Too late for that.', 'Have your eyes checked.']);
+        return [...steps, line];
+      }
+      if (raise) return [{ move: 'raised_basket', to: 'shaft_room' }, { move: 'lowered_basket', to: 'lower_shaft' }, { clear: 'cage_bottom' }, 'The basket is raised to the top of the shaft.'];
+      // A light riding in the basket goes with it; the engine says “It is now pitch black.”
+      return [{ move: 'raised_basket', to: 'lower_shaft' }, { move: 'lowered_basket', to: 'shaft_room' }, 'The basket is lowered to the bottom of the shaft.', { set: 'cage_bottom' }];
+    },
+    // MACHINE-F's OPEN and CLOSE.
+    machine_lid: (ctx) => {
+      const open = Boolean(ctx.state.itemState.machine?.open);
+      if (ctx.arg === 'close') {
+        if (open) return [{ close: 'machine' }, 'The lid closes.'];
+      } else if (!open) {
+        const inside = ctx.children('machine');
+        if (!inside.length) return [{ open: 'machine' }, 'The lid opens.'];
+        const names = inside.map((id) => `${/^[aeiou]/i.test(ctx.world.items[id].name) ? 'an' : 'a'} ${ctx.world.items[id].name}`);
+        return [{ open: 'machine' }, `The lid opens, revealing ${names.join(', ')}.`];
+      }
+      const [steps, line] = pickOne(ctx, 'dummy', ['Look around.', 'Too late for that.', 'Have your eyes checked.']);
+      return [...steps, line];
+    },
+    // MSWITCH-FUNCTION: coal becomes a diamond; anything else, slag.
+    machine_switch: (ctx) => {
+      const tool = ctx.command?.indirect;
+      if (!tool) return ['It’s not clear how to turn it on with your bare hands.'];
+      if (tool !== 'screwdriver') return [`It seems that a ${ctx.world.items[tool]?.name ?? tool} won’t do.`];
+      if (ctx.state.itemState.machine?.open) return ['The machine doesn’t seem to want to do anything.'];
+      const inside = ctx.children('machine');
+      const made: EventStep[] = inside.includes('coal')
+        ? [{ move: 'coal', to: null }, { move: 'diamond', to: 'machine' }]
+        : [...inside.map((id): EventStep => ({ move: id, to: null })), { move: 'gunk', to: 'machine' }];
+      return ['The machine comes to life (figuratively) with a dazzling display of colored lights and bizarre noises. After a few moments, the excitement abates.', ...made];
+    },
     // BOOM-ROOM's M-END: a flame held here ignites the gas, more pointedly if you just lit it.
     gas_check: (ctx) => {
       const flames = ['candles', 'torch', 'match'];
@@ -3626,7 +3786,10 @@ export const zork1: World = {
     breathe: { words: ['blow in', 'blow into', 'breathe in', 'breathe into'], target: 'required', reply: 'You don’t have enough lung power to inflate it.' },
     launch: { words: ['launch'], target: 'optional', reply: 'You can’t launch that by saying “launch”!' },
     land: { words: ['land'], target: 'none', go: true },
-    wave: { words: ['wave', 'raise', 'brandish'], target: 'required', reply: 'Waving that has no effect.' },
+    wave: { words: ['wave', 'brandish'], target: 'required', reply: 'Waving that has no effect.' },
+    // V-RAISE and V-LOWER (HACK-HACK's line, fixed, as WAVE's is).
+    raise: { words: ['raise', 'lift', 'raise up'], target: 'required', reply: 'Playing in this way with the {target} has no effect.' },
+    lower: { words: ['lower'], target: 'required', reply: 'Playing in this way with the {target} has no effect.' },
     cross: { words: ['cross', 'ford'], target: 'required', reply: 'You can’t cross that!' },
     look_under: { words: ['look under'], target: 'required', reply: 'There is nothing but dust there.' },
     dig: { words: ['dig in', 'dig'], target: 'required', indirect: ['with'], reply: 'Digging with the pair of hands is slow and tedious.' },
@@ -3661,6 +3824,14 @@ export const zork1: World = {
     { if: 'inside:pot_of_gold:trophy_case', points: 10 },
     { if: 'inside:scarab:trophy_case', points: 5 },
     { if: 'inside:emerald:trophy_case', points: 10 },
+    // Stage 5c: the coal mine. LIGHT-SHAFT is 13 for the first lit turn in the Lower Shaft.
+    { flag: 'took_jade', points: 5 },
+    { if: 'inside:jade:trophy_case', points: 5 },
+    { flag: 'took_bracelet', points: 5 },
+    { if: 'inside:bracelet:trophy_case', points: 5 },
+    { flag: 'took_diamond', points: 10 },
+    { if: 'inside:diamond:trophy_case', points: 10 },
+    { flag: 'light_shaft', points: 13 },
     { flag: 'took_bar', points: 10 },
     { if: 'inside:bar:trophy_case', points: 5 },
     { flag: 'took_trident', points: 4 },
@@ -3819,11 +3990,21 @@ export const zork1: World = {
     over_the_cliff: [{ script: 'over_the_cliff' }],
     // BATS-ROOM's M-ENTER describes the room before FLY-ME; TAKE BAT doesn't.
     bat_arrival: [{ look: true }, { script: 'bat_flight' }],
+    gunk_crumbles: [{ move: 'gunk', to: null }, 'The slag was rather insubstantial, and crumbles into dust at your touch.'],
+    basket_raise: [{ script: 'basket', arg: 'raise' }],
+    basket_lower: [{ script: 'basket', arg: 'lower' }],
+    machine_open: [{ script: 'machine_lid', arg: 'open' }],
+    machine_close: [{ script: 'machine_lid', arg: 'close' }],
+    machine_on: [{ script: 'machine_switch' }],
+    machine_switch: [{ script: 'machine_switch' }],
     bat_flight: [{ script: 'bat_flight' }],
     slider: [{ script: 'slider' }],
     slide_down: ['You tumble down the slide....', { go: 'cellar' }],
     canyon_jump: [{ if: '!aboard', then: [{ die: 'Nice view, lousy place to jump.' }] }],
     took_scarab: [{ set: 'took_scarab' }],
+    took_jade: [{ set: 'took_jade' }],
+    took_bracelet: [{ set: 'took_bracelet' }],
+    took_diamond: [{ set: 'took_diamond' }],
     dig_sand: [{ script: 'dig_sand' }],
     took_emerald: [{ set: 'took_emerald' }],
     river_current: [{ script: 'river_current' }],

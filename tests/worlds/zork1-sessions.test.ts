@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it } from 'vitest';
 import { compare, nativeRun, originalRun, prefixed } from './zsession';
-import { BANK_SESSIONS, BOAT_SESSIONS, DAM_SESSIONS, DOME_SESSIONS, GAS_SESSIONS, GRUE_SESSIONS, MINE_SESSIONS, LOUD_SESSIONS, RAINBOW_SESSIONS, RIVER_SESSIONS, TEMPLE_SESSIONS } from './zork1-sessions';
+import { BANK_SESSIONS, BOAT_SESSIONS, DAM_SESSIONS, DOME_SESSIONS, GAS_SESSIONS, GRUE_SESSIONS, MINE_SESSIONS, LOUD_SESSIONS, RAINBOW_SESSIONS, RIVER_SESSIONS, SHAFT_SESSIONS, TEMPLE_SESSIONS } from './zork1-sessions';
 
 // Scripted sessions: each puzzle chain runs in native Zork I and in the real story
 // file, both seeded, and the replies are compared line by line.
@@ -49,9 +49,12 @@ const SEEDS: Record<string, { native: number; original: number }> = {
   'gas-light': { native: 2, original: 1 },
   maze: { native: 4, original: 1 },
   'bat-flight': { native: 1, original: 1 },
-  rainbow: { native: 19, original: 1 },
-  'jump-falls': { native: 7, original: 1 },
-  'rainbow-death': { native: 7, original: 1 },
+  basket: { native: 2, original: 4 },
+  machine: { native: 4, original: 4 },
+  'basket-dummy': { native: 2, original: 4 },
+  rainbow: { native: 4, original: 1 },
+  'jump-falls': { native: 20, original: 1 },
+  'rainbow-death': { native: 4, original: 1 },
   cliffs: { native: 9, original: 1 },
   dig: { native: 9, original: 1 },
   collapse: { native: 10, original: 1 },
@@ -78,7 +81,7 @@ const SEEDS: Record<string, { native: number; original: number }> = {
   water: { native: 1, original: 1 },
   echo: { native: 1, original: 1 },
   thrown: { native: 1, original: 1 },
-  quiet: { native: 2, original: 1 },
+  quiet: { native: 7, original: 1 },
   mirror: { native: 1, original: 1 },
   'mirror-break': { native: 1, original: 1 },
   dome: { native: 1, original: 1 },
@@ -100,6 +103,7 @@ const GROUPS: Array<[string, Record<string, string[]>]> = [
   ['a grue in the dark', GRUE_SESSIONS],
   ['the upper coal mine', MINE_SESSIONS],
   ['the gas room, the coal mine and the ladder', GAS_SESSIONS],
+  ['the narrow passage, the machine and the basket', SHAFT_SESSIONS],
 ];
 
 for (const [title, sessions] of GROUPS) {
