@@ -218,7 +218,11 @@ export function handleSwitch(target: string | undefined, on: boolean, world: Wor
   const id = pickItem(target, reachableItems(world, state), world, 'target', state);
   if (!id) return miss(`You don’t see a “${target}” here.`);
   const item = world.items[id];
-  if (!item.switchable) return ok([`You can’t turn that ${word}.`]);
+  if (!item.switchable) {
+    // Outside Infocom style, turning off what can't be switched (“put out the fire”) is a miss, so the intent server can read it.
+    if (!on && world.style !== 'infocom') return miss(`You can’t turn that ${word}.`);
+    return ok([`You can’t turn that ${word}.`]);
+  }
   if (Boolean(state.itemState[id]?.on) === on) return ok([`It’s already ${word}.`]);
   (state.itemState[id] ??= {}).on = on;
   return ok([`The ${item.name} is now ${word}.`], true);

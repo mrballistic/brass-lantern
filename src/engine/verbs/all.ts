@@ -1,9 +1,9 @@
 import type { GameState, ParsedAction } from '@/types/game';
 import type { World } from '@/types/world';
 import { fuzzyCandidates } from '../fuzzy';
-import { childrenOf, closedAround, inventoryOf, isCarried, isLit, pickItem, setResolveById, shown, visibleItems } from '../model';
+import { canReachInside, childrenOf, closedAround, inventoryOf, isCarried, isLit, pickItem, setResolveById, shown, visibleItems } from '../model';
 import { turnHalted } from '../effects';
-import { ok, type EngineResult } from '../result';
+import { miss, ok, type EngineResult } from '../result';
 import { withRules } from '../rules';
 import { handlePut } from './containers';
 import { handleDrop, handleTake } from './objects';
@@ -19,7 +19,7 @@ function covered(verb: string, action: ParsedAction, world: World, state: GameSt
   // TAKE ALL FROM X: what's in X (Zork's ALL with a second object).
   if (verb === 'take' && action.indirect) {
     const from = pickItem(action.indirect, visibleItems(world, state), world, 'indirect', state);
-    if (!from || closedAround(world, state, from)) return [];
+    if (!from || closedAround(world, state, from) || !canReachInside(world, state, from)) return [];
     return childrenOf(world, state, from).filter((id) => shown(state)(id) && !world.items[id]?.scenery);
   }
   if (verb === 'take' && world.style === 'infocom' && isLit(world, state)) {
@@ -52,6 +52,8 @@ function short(line: string): string {
 /** TAKE ALL, DROP ALL, PUT ALL IN X, each with BUT/EXCEPT. One “name: reply” line per item. */
 export function handleAll(action: ParsedAction, world: World, state: GameState): EngineResult {
   const verb = action.action;
+  // TAKE ALL FROM something not here: a miss, so the intent server can read it.
+  if (verb === 'take' && action.indirect && !pickItem(action.indirect, visibleItems(world, state), world, 'indirect', state)) return miss(`You don’t see a “${action.indirect}” here.`);
   let ids = covered(verb, action, world, state);
   const named = ids.map((id) => ({ id, name: world.items[id]?.name ?? id, aliases: world.items[id]?.aliases }));
   // EXCEPT words that match nothing are ignored, as in Zork.

@@ -269,3 +269,16 @@ describe('a character who just arrived is listed before the room’s things (obj
     expect(guard).toBeLessThan(note);
   });
 });
+
+describe('final review fixes (5d, brass)', () => {
+  it('THROW X IN Y with no rule is a miss in brass (the intent server can read it as PUT)', () => {
+    const s = stateWith(fixtureWorld, { room: 'bedroom', carrying: ['bat'] });
+    const r = execute({ action: 'throw', target: 'bat', indirect: 'bed', prep: 'in' }, { world: fixtureWorld, state: s });
+    expect(r.understood).toBe(false);
+    expect(s.locations.bat).toBe('player');
+  });
+  it('turning off something that can’t be switched is a miss in brass', () => {
+    const s = stateWith(fixtureWorld, { room: 'bedroom', carrying: ['bat'] });
+    expect(execute({ action: 'turn_off', target: 'bat' }, { world: fixtureWorld, state: s }).understood).toBe(false);
+  });
+});
