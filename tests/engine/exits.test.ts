@@ -145,3 +145,18 @@ describe('final review fixes (5c)', () => {
     expect(execute(fallbackParse('climb up fence')!, { world, state: s }).lines).toEqual(['The fence is too high to climb.']);
   });
 });
+
+describe('a refused exit, Infocom style (fast follow)', () => {
+  it('still costs a turn, but skips the room’s end routine (V-WALK’s RFATAL)', () => {
+    const w = {
+      ...world,
+      style: 'infocom' as const,
+      rooms: { ...world.rooms, yard: { ...world.rooms.yard, onEnd: [{ if: 'in:yard', then: ['Tick.'] }] } },
+    };
+    const s = stateWith(w, { room: 'yard' });
+    const moves = s.moveCount;
+    const r = execute({ action: 'go', target: 'north' }, { world: w, state: s });
+    expect(r.lines).not.toContain('Tick.');
+    expect(s.moveCount).toBe(moves + 1);
+  });
+});

@@ -14,6 +14,8 @@ export interface EngineResult {
    * instead.
    */
   understood?: boolean;
+  /** A refused move (Zork's M-FATAL): the turn counts, but Infocom style skips the room's end routine. */
+  fatal?: boolean;
   /** Takes no game time (VERBOSE): no turn, no daemons, no fuses. */
   free?: boolean;
   /** A question back to the player; the conversation layer takes the answer. */

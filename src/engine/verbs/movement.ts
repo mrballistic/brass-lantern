@@ -72,23 +72,26 @@ export function exitTarget(exit: string | Exit | undefined): string | undefined 
   return typeof exit === 'string' ? exit : exit?.to;
 }
 
+/** A refused move: it changes nothing, and (Zork's M-FATAL) skips the room's end routine. */
+const refuse = (line: string): EngineResult => ({ ...ok([line]), fatal: true });
+
 /** Follow one exit. Every refusal comes before the move, so it changes nothing. */
 export function followExit(exit: string | Exit, world: World, state: GameState): EngineResult {
   if (typeof exit !== 'string') {
     const refused = exit.denials?.find((d) => evaluateCondition(d.if, state, world));
-    if (refused) return ok([refused.text]);
-    if (exit.if && !evaluateCondition(exit.if, state, world)) return ok([exit.denial ?? 'You can’t go that way.']);
-    if (exit.door && !isOpen(world, state, exit.door)) {
-      return ok([`The ${world.items[exit.door]?.name ?? exit.door} is closed.`]);
-    }
-    if (!exit.to) return ok([exit.denial ?? 'You can’t go that way.']);
+    if (refused) return refuse(refused.text);
+    if (exit.if && !evaluateCondition(exit.if, state, world)) return refuse(exit.denial ?? 'You can’t go that way.');
+    if (exit.door && !isOpen(world, state, exit.door)) return refuse(`The ${world.items[exit.door]?.name ?? exit.door} is closed.`);
+    if (!exit.to) return refuse(exit.denial ?? 'You can’t go that way.');
   }
   const to = exitTarget(exit)!;
   const refused = vehicleRefusal(to, world, state);
-  if (refused) return ok([refused]);
+  if (refused) return refuse(refused);
   const passing = typeof exit !== 'string' && exit.then ? runEvent(exit.then, world, state) : [];
   if (turnHalted(state) || state.gameOver) return ok(passing, true);
   const lines = [...passing, ...enterRoom(to, world, state)];
+  // The room turned you away (its `requires`).
+  if (state.currentRoom !== to && passing.length === 0) return { ...ok(lines), fatal: true };
   return ok(lines, state.currentRoom === to || passing.length > 0);
 }
 

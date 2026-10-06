@@ -2,7 +2,7 @@ import type { GameState, ParsedAction } from '@/types/game';
 import type { EventStep, World } from '@/types/world';
 import { evaluateCondition } from './conditions';
 import { describeRoom } from './describe';
-import { AskSignal, initialLocations, isLit, matchItem, restoreState, setResolveById, snapshotState, takeActed, visibleItems } from './model';
+import { AskSignal, initialLocations, inventoryOf, isLit, matchItem, pickItem, restoreState, setResolveById, snapshotState, takeActed, visibleItems } from './model';
 import { whatQuestion, whichQuestion } from './ask';
 import { darknessFalls, tooDark } from './light';
 import { beginTick, beginTurn, darkLineSaid, runEventKey, runSteps, setEffectHooks, turnFree, turnHalted } from './effects';
@@ -203,7 +203,8 @@ function executeTurn(action: ParsedAction, deps: EngineDeps): EngineResult {
   // end routine (M-END) then follows it. Anything else: end routine, then one tick.
   const waiting = action.action === 'wait' && Boolean(world.wait);
   const later: string[] = [];
-  if (!waiting && !turnHalted(state)) later.push(...roomEnd(world, state));
+  // A refused move skips the room's end routine in Infocom style (V-WALK's RFATAL).
+  if (!waiting && !turnHalted(state) && !(result.fatal && world.style === 'infocom')) later.push(...roomEnd(world, state));
   // A death this turn ends it: no timers or daemons after the resurrection.
   for (let tick = 0; tick < (waiting ? world.wait!.turns : 1) && !turnHalted(state) && !state.gameOver; tick++) {
     if (tick > 0) {
@@ -269,6 +270,8 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
       if (action.target && ALL.test(action.target)) return handleAll(action, world, state);
       if (action.target && action.indirect) {
         const { target, indirect } = action;
+        // Zork's PRE-TAKE comes before anything else: what you hold, you already have.
+        if (world.style === 'infocom' && pickItem(target, inventoryOf(world, state), world, 'target', state)) return { ...ok(['You already have that!']), free: true };
         return withRules('take', action, world, state, () => handleTakeFrom(target, indirect, world, state));
       }
       return withRules('take', action, world, state, () => handleTake(action.target, world, state));

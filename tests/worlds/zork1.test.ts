@@ -798,5 +798,12 @@ describe('Zork I, natively: fast follow (C)', () => {
     say(ladder, 'climb down ladder');
     expect(ladder.currentRoom).toBe('ladder_bottom');
   });
+  it('the far basket answers more verbs, but TAKE X FROM it with X held is “You already have that!”', () => {
+    const state = at('lower_shaft', ['garlic', 'lamp']);
+    state.itemState.lamp = { ...state.itemState.lamp, on: true };
+    for (const line of ['look in basket', 'search basket', 'smell basket']) expect(say(state, line)).toEqual(['The basket is at the other end of the chain.']);
+    // The baskets start raised: here, at the bottom, is the far one.
+    expect(say(state, 'take garlic from basket')).toEqual(['You already have that!']);
+  });
 });
 

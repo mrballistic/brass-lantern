@@ -2028,7 +2028,10 @@ export const zork1: World = {
       instead: {
         raise: [{ then: 'basket_raise' }],
         lower: [{ then: 'basket_lower' }],
-        take: [{ say: ['The basket is at the other end of the chain.'] }],
+        // As the thing taken only: TAKE X FROM it meets PRE-TAKE first (“You already have that!”).
+        take: [{ as: 'target', say: ['The basket is at the other end of the chain.'] }],
+        search: [{ say: ['The basket is at the other end of the chain.'] }],
+        smell: [{ say: ['The basket is at the other end of the chain.'] }],
         open: [{ say: ['The basket is at the other end of the chain.'] }],
         close: [{ say: ['The basket is at the other end of the chain.'] }],
         put: [{ say: ['The basket is at the other end of the chain.'] }],
