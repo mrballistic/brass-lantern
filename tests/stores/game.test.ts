@@ -5,6 +5,7 @@ import { setDownload, useGameStore } from '@/stores/game';
 import { SAVE_KEY } from '@/types/game';
 import { inventoryOf } from '@/engine/model';
 import { carry } from '../helpers/state';
+import { fixtureWorld } from '../fixtures/world';
 // Plays the fixture world, so this file is the same in every repo using the engine.
 vi.mock('@/app.config', async () => (await import('../fixtures/world')).fixtureConfig);
 
@@ -646,6 +647,30 @@ describe('useGameStore', () => {
       expect(store.visibleItems).toContain('wallet');
       await store.submit('take wallet');
       expect(store.visibleItems).not.toContain('wallet');
+    });
+  });
+
+  describe('line capture', () => {
+    it('takes input before the intent server, and never traps UNDO or RESTART', async () => {
+      const room = fixtureWorld.rooms.bedroom;
+      fixtureWorld.scripts = { ...fixtureWorld.scripts, cap: (ctx) => [`${ctx.line} ${ctx.line}...`, { free: true }] };
+      room.capture = { script: 'cap' };
+      try {
+        const fetchMock = vi.fn();
+        vi.stubGlobal('fetch', fetchMock);
+        const store = freshStore();
+        store.initialize();
+        await store.submit('frobnicate');
+        expect(store.output.at(-1)?.text).toBe('frobnicate frobnicate...');
+        expect(fetchMock).not.toHaveBeenCalled();
+        await store.submit('undo');
+        expect(store.output.at(-1)?.text).not.toContain('undo undo');
+        await store.submit('restart');
+        expect(store.output.map((l) => l.text).join(' ')).not.toContain('restart restart');
+      } finally {
+        delete room.capture;
+        vi.unstubAllGlobals();
+      }
     });
   });
 });

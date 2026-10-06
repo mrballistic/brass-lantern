@@ -104,11 +104,18 @@ export function auditWorld(world: World): string[] {
       checkCondition(t.if, where);
     }
   };
+  const checkCapture = (capture: World['capture'], where: string) => {
+    if (!capture) return;
+    checkCondition(capture.if, where);
+    if (!world.scripts?.[capture.script]) problems.push(`${where}: names no script “${capture.script}”`);
+  };
+  checkCapture(world.capture, 'world capture');
   for (const [id, room] of Object.entries(world.rooms)) {
     checkTriggers(room.onEnter, `room ${id} onEnter`);
     checkTable(room.instead, 'instead', `room ${id}`);
     checkTable(room.after, 'after', `room ${id}`);
     checkCondition(room.requires, `room ${id} requires`);
+    checkCapture(room.capture, `room ${id} capture`);
     for (const [label, exit] of Object.entries(room.exits)) {
       if (typeof exit === 'string') continue;
       checkCondition(exit.if, `room ${id} exit ${label}`);

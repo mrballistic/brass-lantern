@@ -7,6 +7,7 @@ import { defaultWorldCartridge, saveKeyFor } from '@/cartridges';
 import { appName } from '@/app.config';
 import { cookiesCommand } from '@/services/cookies';
 import {
+  captureLine,
   execute,
   initialState,
   openingLines,
@@ -252,6 +253,13 @@ export const useGameStore = defineStore('game', {
         }
         // Once the game is over, one command hears that it has ended; the rest of the line is dropped.
         if (this.game.gameOver && i > 0) break;
+        // A room or the world can take input before it's parsed; taking it ends the line.
+        const captured = conversation.pending ? null : captureLine(world, this.game, command);
+        if (captured) {
+          if (captured.mutated) line.changed = true;
+          this.applyResult(captured);
+          break;
+        }
         await this.runCommand(command);
         // A question stops the line, as in Zork: the next line answers it.
         if (conversation.pending) break;

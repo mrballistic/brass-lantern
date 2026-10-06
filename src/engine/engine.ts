@@ -1,5 +1,6 @@
 import type { GameState, ParsedAction } from '@/types/game';
-import type { World } from '@/types/world';
+import type { EventStep, World } from '@/types/world';
+import { evaluateCondition } from './conditions';
 import { describeRoom } from './describe';
 import { AskSignal, initialLocations, isLit, matchItem, setResolveById, takeActed, visibleItems } from './model';
 import { whatQuestion, whichQuestion } from './ask';
@@ -23,7 +24,7 @@ import { handleGive, handleTalk } from './verbs/people';
 import { handleAttack, handleThrow } from './verbs/attack';
 import { handleBurn } from './verbs/burn';
 import { handleAsk, handleOrder } from './verbs/talk';
-import { setCommand } from './scripts';
+import { scriptSteps, setCommand } from './scripts';
 import { diagnoseLines } from './combat';
 import { handleHelp, handleHint, handleScore, handleUnknown, scoreLines } from './verbs/meta';
 
@@ -61,6 +62,30 @@ setEffectHooks({
   die: (cause, world, state) => die(cause, world, state, enterRoom),
   end: (id, world, state) => runEnding(id, world, state),
 });
+
+// The steps a capture returned, waiting for execute() to run them as a turn.
+const pendingCapture = new WeakMap<GameState, EventStep[]>();
+
+/**
+ * A room's or the world's capture taking a piece of input before it's parsed
+ * (Zork's Loud Room, a spirit's limits). The room's goes first. Returns null
+ * when no capture takes it; a capture that declines changes nothing.
+ */
+export function captureLine(world: World, state: GameState, line: string): EngineResult | null {
+  if (state.gameOver) return null;
+  for (const capture of [world.rooms[state.currentRoom]?.capture, world.capture]) {
+    if (!capture || (capture.if && !evaluateCondition(capture.if, state, world))) continue;
+    const rng = state.rng;
+    const steps = scriptSteps(capture.script, undefined, world, state, line);
+    if (steps.length === 0) {
+      state.rng = rng;
+      continue;
+    }
+    pendingCapture.set(state, steps);
+    return execute({ action: 'capture', target: line }, { world, state });
+  }
+  return null;
+}
 
 export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
   const { world, state } = deps;
@@ -189,6 +214,12 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
       return handleAsk(action, world, state);
     case 'order':
       return handleOrder(action, world, state);
+    // Internal: only captureLine dispatches it (not in the parser, HELP or the intent server).
+    case 'capture': {
+      const steps = pendingCapture.get(state) ?? [];
+      pendingCapture.delete(state);
+      return ok(runSteps(steps, world, state), true);
+    }
     case 'diagnose':
       return ok(diagnoseLines(world, state));
     case 'hint':

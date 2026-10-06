@@ -31,6 +31,14 @@ export interface Room {
   scenery?: string[];
   /** Free-form labels scripts can read (`maze`, `sacred`). The engine doesn't. */
   tags?: string[];
+  /** Takes input here before it's parsed, while `if` holds (Zork's Loud Room). See Capture. */
+  capture?: Capture;
+}
+
+/** A script that sees each piece of input first (`ctx.line`): it returns steps to take it, or nothing to let it parse. */
+export interface Capture {
+  if?: string;
+  script: string;
 }
 
 /**
@@ -366,6 +374,8 @@ export interface World {
   maxScore?: number;
   /** Brass style's header: MOVES (the default), or SCORE and MOVES. Infocom style always shows the room, score and moves. */
   statusLine?: 'moves' | 'score';
+  /** Takes input anywhere, after the room's own capture, while `if` holds (a spirit's limits). */
+  capture?: Capture;
   /** The game's full title, for VERSION and transcripts. */
   title?: string;
   /** Lines VERSION prints after the title (copyright, authors). */

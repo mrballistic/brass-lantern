@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { interpret, newConversation, remember, resolvePronouns } from '@/engine/conversation';
-import { execute, initialState, openingLines, type EngineResult } from '@/engine/engine';
+import { captureLine, execute, initialState, openingLines, type EngineResult } from '@/engine/engine';
 import { fallbackParse } from '@/engine/parser';
 import type { GameState, ParsedAction } from '@/types/game';
 import { zork1 } from '@/worlds/zork1';
@@ -84,6 +84,10 @@ export function nativeTurn(c: string, state: GameState, conv: ReturnType<typeof 
     remember(conv, action, result);
     return result;
   };
+  if (!conv.pending) {
+    const captured = captureLine(zork1, state, c);
+    if (captured) return captured.lines;
+  }
   const step = interpret(c, conv, zork1, state);
   if ('reply' in step) return step.reply;
   if ('run' in step) return run(step.run).lines;
