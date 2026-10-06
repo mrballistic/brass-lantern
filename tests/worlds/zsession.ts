@@ -117,6 +117,12 @@ export const PREFIX = [
   'east', 'up', 'take rope', 'down', 'west', 'move rug', 'open trap door', 'down', 'north', '@fight', 'east', 'east',
 ];
 
+/** Other openings a session can ask for with a first command `@prefix:<name>` (5c). */
+export const PREFIXES: Record<string, string[]> = {
+  // The garlic from the kitchen's sack, for the bat.
+  garlic: [...PREFIX.slice(0, 5), 'open sack', 'take garlic', ...PREFIX.slice(5)],
+};
+
 const died = (reply: string[]) => normalize(reply).includes('you have died');
 const trollDied = (reply: string[]) => normalize(reply).includes('almost as soon as the troll breathes his last breath');
 
@@ -127,6 +133,9 @@ export type Side = 'native' | 'original';
  * in the prefix, the troll survived, or the thief showed up anywhere.
  */
 export async function prefixed(side: Side, commands: string[], seed: number): Promise<string[][] | null> {
+  const named = commands[0]?.startsWith('@prefix:') ? commands[0].slice('@prefix:'.length) : undefined;
+  const opening = named ? PREFIXES[named] : PREFIX;
+  if (named) commands = commands.slice(1);
   let send: (c: string) => Promise<string[]> | string[];
   // The thief can steal without a word; natively that shows in the state.
   let pilfered = () => false;
@@ -139,7 +148,7 @@ export async function prefixed(side: Side, commands: string[], seed: number): Pr
     pilfered = () => Object.entries(game.state.locations).some(([id, place]) => place === 'thief' && !['stiletto', 'large_bag'].includes(id));
   }
   const seen: string[][] = [];
-  for (const c of PREFIX) {
+  for (const c of opening) {
     if (c !== '@fight') {
       seen.push(await send(c));
       if (pilfered()) return null;
@@ -177,6 +186,7 @@ export function compare(native: string[][], original: string[][], commands: stri
   const out: string[] = [];
   // SCORE's move count depends on how long each side's troll fight in PREFIX ran.
   const same = (r: string[]) => normalize(r).replace(/, in \d+ moves?\./g, ', in # moves.');
+  if (commands[0]?.startsWith('@prefix:')) commands = commands.slice(1);
   commands.forEach((command, i) => {
     if (same(native[i] ?? []) === same(original[i] ?? [])) return;
     out.push(`> ${command}\n  native:   ${(native[i] ?? []).join(' / ')}\n  original: ${(original[i] ?? []).join(' / ')}`);

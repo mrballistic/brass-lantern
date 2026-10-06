@@ -171,3 +171,9 @@ export const GRUE_SESSIONS: Record<string, string[]> = {
   // Unlit, from the dark Round Room into the dark North-South Passage: Zork's GOTO grue (PROB 80).
   grue: ['drop sword', 'drop rope', 'drop bottle', 'turn off lamp', 'drop lamp', 'north'],
 };
+
+export const MINE_SESSIONS: Record<string, string[]> = {
+  slide: [...MINE_PREFIX, 'look', 'put rope in slide', 'put slide in slide', 'climb down slide', 'look', 'take rope', 'climb up slide'],
+  'upper-rooms': [...MINE_PREFIX, 'north', 'look', 'west', 'look', 'east', 'south'],
+  garlic: ['@prefix:garlic', ...MINE_PREFIX, 'north', 'west', 'north', 'look', 'take bat', 'kill bat', 'talk to bat', 'take jade', 'east', 'look', 'take basket', 'take chain', 'examine chain'],
+};

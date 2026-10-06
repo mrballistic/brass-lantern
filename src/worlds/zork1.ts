@@ -370,6 +370,56 @@ export const zork1: World = {
   emptyInventory: 'You are empty-handed.',
 
   rooms: {
+    // Stage 5c: the coal mine, SLIDE-ROOM through MINE-ENTRANCE, in story order.
+    slide_room: {
+      name: 'Slide Room',
+      description: 'This is a small chamber, which appears to have been part of a coal mine. On the south wall of the chamber the letters “Granite Wall” are etched in the rock. To the east is a long passage, and there is a steep metal slide twisting downward. To the north is a small opening.',
+      dark: true,
+      exits: { east: 'cold_passage', north: 'mine_entrance', down: 'cellar' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      scenery: ['slide'],
+    },
+    shaft_room: {
+      name: 'Shaft Room',
+      description: 'This is a large room, in the middle of which is a small shaft descending through the floor into darkness below. To the west and the north are exits from this room. Constructed over the top of the shaft is a metal framework to which a heavy iron chain is attached.',
+      dark: true,
+      exits: { down: { denial: 'You wouldn’t fit and would die if you could.' }, west: 'bat_room', north: { denial: OFF_MAP } },
+      items: ['raised_basket'],
+      npcs: [],
+      onEnter: [],
+      scenery: ['chain'],
+    },
+    // BATS-ROOM: without the garlic, the bat carries you off (FLY-ME), unless you're a spirit.
+    bat_room: {
+      name: 'Bat Room',
+      description: 'You are in a small room which has doors only to the east and south.',
+      dark: true,
+      exits: { south: 'squeeky_room', east: 'shaft_room' },
+      items: ['jade'],
+      npcs: ['bat'],
+      onEnter: [{ if: '!has:garlic & !here:garlic & !flag:dead', then: 'bat_flight', repeat: true }],
+      tags: ['sacred'],
+    },
+    squeeky_room: {
+      name: 'Squeaky Room',
+      description: 'You are in a small room. Strange squeaky sounds may be heard coming from the passage at the north end. You may also escape to the east.',
+      dark: true,
+      exits: { north: 'bat_room', east: 'mine_entrance' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+    },
+    mine_entrance: {
+      name: 'Mine Entrance',
+      description: 'You are standing at the entrance of what might have been a coal mine. The shaft enters the west wall, and there is another exit on the south end of the room.',
+      dark: true,
+      exits: { south: 'slide_room', in: 'squeeky_room', west: 'squeeky_room' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+    },
     // Stage 5b: the canyon and the rainbow. CANYON-VIEW through ARAGAIN-FALLS, in story order.
     canyon_view: {
       name: 'Canyon View',
@@ -844,7 +894,7 @@ export const zork1: World = {
       name: 'Cold Passage',
       description: 'This is a cold and damp corridor where a long east-west passageway turns into a southward path.',
       dark: true,
-      exits: { south: 'mirror_room_1', west: { denial: 'That part of the Great Underground Empire isn’t built yet.' } },
+      exits: { south: 'mirror_room_1', west: 'slide_room' },
       items: [],
       npcs: [],
       onEnter: [],
@@ -1307,7 +1357,7 @@ export const zork1: World = {
         { if: 'open:trap_door & !flag:trap_door_barred', then: 'trap_door_slams', repeat: true },
         { if: '!flag:cellar_visited', then: 'cellar_points' },
       ],
-      scenery: ['trap_door'],
+      scenery: ['trap_door', 'slide'],
     },
     living_room: {
       tags: ['sacred'],
@@ -1660,6 +1710,52 @@ export const zork1: World = {
       tags: [],
       scenery: true,
       instead: { throw: [{ as: 'indirect', then: 'over_the_cliff' }], put: [{ as: 'indirect', then: 'over_the_cliff' }] },
+    },
+    // Stage 5c: the coal mine.
+    jade: {
+      name: 'jade figurine',
+      aliases: ['figurine', 'treasure', 'jade', 'exquisite figurine'],
+      description: 'There’s nothing special about the jade figurine.',
+      roomDescription: 'There is an exquisite jade figurine here.',
+      portable: true,
+      size: 10,
+      treasure: 5,
+      tags: [],
+    },
+    // SLIDE-FUNCTION: a local global of the Slide Room and the Cellar.
+    slide: {
+      name: 'chute',
+      aliases: ['slide', 'ramp', 'chute', 'steep slide', 'metal slide', 'twisting slide'],
+      description: 'There’s nothing special about the chute.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      instead: {
+        climb: [{ if: 'in:cellar', say: ['You try to ascend the ramp, but it is impossible, and you slide back down.'] }, { then: 'slide_down' }],
+        enter: [{ if: 'in:cellar', say: ['You try to ascend the ramp, but it is impossible, and you slide back down.'] }, { then: 'slide_down' }],
+        put: [{ as: 'indirect', then: 'slider' }],
+      },
+    },
+    // BASKET-F: the basket at the top; the lowered basket stands for it at the other end.
+    raised_basket: {
+      name: 'basket',
+      aliases: ['cage', 'dumbwaiter', 'basket'],
+      description: 'There’s nothing special about the basket.',
+      roomDescription: 'At the end of the chain is a basket.',
+      portable: false,
+      tags: [],
+      container: { open: true, weight: 50 },
+      instead: { take: [{ as: 'target', say: ['The cage is securely fastened to the iron chain.'] }] },
+    },
+    // CHAIN-PSEUDO.
+    chain: {
+      name: 'chain',
+      aliases: ['chain', 'iron chain', 'heavy chain'],
+      description: 'The chain secures a basket within the shaft.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      instead: { take: [{ say: ['The chain is secure.'] }], move: [{ say: ['The chain is secure.'] }] },
     },
     // Stage 5b: the banks.
     shovel: {
@@ -2729,6 +2825,21 @@ export const zork1: World = {
         listen: [{ say: ['The thief says nothing, as you have not been formally introduced.'] }],
       },
     },
+    // BAT-F and BAT-D: the vampire bat on the ceiling.
+    bat: {
+      name: 'bat',
+      aliases: ['bat', 'vampire', 'vampire bat', 'deranged bat'],
+      description: 'A large vampire bat, hanging from the ceiling, swoops down at you!',
+      descriptions: [{ if: 'has:garlic', text: 'In the corner of the room on the ceiling is a large vampire bat who is obviously deranged and holding his nose.' }, { if: 'here:garlic', text: 'In the corner of the room on the ceiling is a large vampire bat who is obviously deranged and holding his nose.' }],
+      instead: {
+        // BAT-F's TELL: FWEEP 6, and V-TELL's pause when nothing follows.
+        talk: [{ say: ['    Fweep!', '    Fweep!', '    Fweep!', '    Fweep!', '    Fweep!', 'The bat pauses for a moment, perhaps thinking that you should reread the manual.'] }],
+        order: [{ say: ['    Fweep!', '    Fweep!', '    Fweep!', '    Fweep!', '    Fweep!'] }],
+        take: [{ if: 'has:garlic', say: ['You can’t reach him; he’s on the ceiling.'] }, { if: 'here:garlic', say: ['You can’t reach him; he’s on the ceiling.'] }, { then: 'bat_flight' }],
+        attack: [{ if: 'has:garlic', say: ['You can’t reach him; he’s on the ceiling.'] }, { if: 'here:garlic', say: ['You can’t reach him; he’s on the ceiling.'] }, { then: 'bat_flight' }],
+        smash: [{ if: 'has:garlic', say: ['You can’t reach him; he’s on the ceiling.'] }, { if: 'here:garlic', say: ['You can’t reach him; he’s on the ceiling.'] }, { then: 'bat_flight' }],
+      },
+    },
     cyclops: {
       name: 'cyclops',
       description: 'A hungry cyclops is standing at the foot of the stairs.',
@@ -3025,6 +3136,21 @@ export const zork1: World = {
       if (word === 'echo') return [{ set: 'loud_flag' }, { set: 'unsacred_bar' }, 'The acoustics of the room change subtly.', { go: 'loud_room' }, { free: true }];
       const last = words[words.length - 1];
       return [`${last} ${last} ...`, { free: true }];
+    },
+    // FLY-ME: the bat drops you in a random part of the mine (PICK-ONE over BAT-DROPS).
+    bat_flight: (ctx) => {
+      const [steps, room] = pickOne(ctx, 'bat_drops', ['mine_1', 'mine_2', 'mine_3', 'mine_4', 'ladder_top', 'ladder_bottom', 'squeeky_room', 'mine_entrance']);
+      return ['    Fweep!', '    Fweep!', '    Fweep!', 'The bat grabs you by the scruff of your neck and lifts you away....', '', ...steps, { go: room }];
+    },
+    // SLIDER: things put in the slide end up in the Cellar.
+    slider: (ctx) => {
+      const id = ctx.command?.target;
+      if (!id) return;
+      if (!ctx.world.items[id]?.portable) {
+        const [steps, line] = pickOne(ctx, 'yuks', ['A valiant attempt.', 'You can’t be serious.', 'An interesting idea...', 'What a concept!']);
+        return [...steps, line];
+      }
+      return [`The ${ctx.world.items[id].name} falls into the slide and is gone.`, { move: id, to: 'cellar' }];
     },
     // PICK-ONE over LOUD-RUNS.
     loud_run: (ctx) => {
@@ -3552,6 +3678,9 @@ export const zork1: World = {
     sceptre_waved: [{ script: 'sceptre_waved' }],
     cross_rainbow: [{ script: 'cross_rainbow' }],
     over_the_cliff: [{ script: 'over_the_cliff' }],
+    bat_flight: [{ script: 'bat_flight' }],
+    slider: [{ script: 'slider' }],
+    slide_down: ['You tumble down the slide....', { go: 'cellar' }],
     canyon_jump: [{ if: '!aboard', then: [{ die: 'Nice view, lousy place to jump.' }] }],
     took_scarab: [{ set: 'took_scarab' }],
     dig_sand: [{ script: 'dig_sand' }],

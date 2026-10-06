@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it } from 'vitest';
 import { compare, nativeRun, originalRun, prefixed } from './zsession';
-import { BANK_SESSIONS, BOAT_SESSIONS, DAM_SESSIONS, DOME_SESSIONS, GRUE_SESSIONS, LOUD_SESSIONS, RAINBOW_SESSIONS, RIVER_SESSIONS, TEMPLE_SESSIONS } from './zork1-sessions';
+import { BANK_SESSIONS, BOAT_SESSIONS, DAM_SESSIONS, DOME_SESSIONS, GRUE_SESSIONS, MINE_SESSIONS, LOUD_SESSIONS, RAINBOW_SESSIONS, RIVER_SESSIONS, TEMPLE_SESSIONS } from './zork1-sessions';
 
 // Scripted sessions: each puzzle chain runs in native Zork I and in the real story
 // file, both seeded, and the replies are compared line by line.
@@ -41,9 +41,12 @@ async function session(name: string, commands: string[], seeds: { native: number
 // that moves the thief can need new ones; the failure says so.
 const SEEDS: Record<string, { native: number; original: number }> = {
   grue: { native: 1, original: 1 },
-  rainbow: { native: 513, original: 1 },
-  'jump-falls': { native: 83, original: 1 },
-  'rainbow-death': { native: 69, original: 1 },
+  slide: { native: 1, original: 1 },
+  'upper-rooms': { native: 1, original: 1 },
+  garlic: { native: 1, original: 1 },
+  rainbow: { native: 19, original: 1 },
+  'jump-falls': { native: 7, original: 1 },
+  'rainbow-death': { native: 7, original: 1 },
   cliffs: { native: 9, original: 1 },
   dig: { native: 9, original: 1 },
   collapse: { native: 10, original: 1 },
@@ -56,7 +59,7 @@ const SEEDS: Record<string, { native: number; original: number }> = {
   inflate: { native: 7, original: 1 },
   board: { native: 4, original: 1 },
   puncture: { native: 37, original: 1 },
-  exorcism: { native: 4, original: 1 },
+  exorcism: { native: 6, original: 1 },
   'read-first': { native: 1, original: 1 },
   tension: { native: 1, original: 1 },
   'hot-bell': { native: 1, original: 1 },
@@ -90,6 +93,7 @@ const GROUPS: Array<[string, Record<string, string[]>]> = [
   ['the river banks', BANK_SESSIONS],
   ['the rainbow and the canyon', RAINBOW_SESSIONS],
   ['a grue in the dark', GRUE_SESSIONS],
+  ['the upper coal mine', MINE_SESSIONS],
 ];
 
 for (const [title, sessions] of GROUPS) {

@@ -605,3 +605,14 @@ describe('Zork I, natively: the boat’s final-review fixes (5b)', () => {
     expect(s.aboard).toBe('inflated_boat');
   });
 });
+
+describe('Zork I, natively: the coal mine (5c)', () => {
+  it('the bat never grabs a spirit', () => {
+    const state = initialState(zork1);
+    state.currentRoom = 'squeeky_room';
+    state.npcs = { thief: { room: null } };
+    state.flags.dead = true;
+    execute({ action: 'go', target: 'north' }, { world: zork1, state });
+    expect(state.currentRoom).toBe('bat_room');
+  });
+});

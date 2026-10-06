@@ -19,7 +19,7 @@ import { withRules } from './rules';
 import { handleWorldVerb } from './verbs/world-verbs';
 import { handleAll } from './verbs/all';
 import { handleClose, handleLock, handleOpen, handlePut, handleSearch, handleTakeFrom, handleUnlock } from './verbs/containers';
-import { handleRead, handleSwitch } from './verbs/objects';
+import { handleRead, handleSwitch, notHeld } from './verbs/objects';
 import { handleGive, handleTalk } from './verbs/people';
 import { handleAttack, handleThrow } from './verbs/attack';
 import { handleBurn, handleNoEffect } from './verbs/burn';
@@ -249,13 +249,18 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
       return withRules('unlock', action, world, state, () => handleUnlock(action.target, action.indirect, world, state));
     case 'put':
       if (action.target && ALL.test(action.target)) return handleAll(action, world, state);
+      {
+        // Zork's parser checks HAVE before the verb or any rule: a thing in sight but not held.
+        const refused = notHeld(action.target, world, state);
+        if (refused) return refused;
+      }
       return withRules('put', action, world, state, () => handlePut(action.target, action.indirect, world, state, action.prep));
     case 'search':
       return withRules('search', action, world, state, () => handleSearch(action.target, world, state));
     case 'wear':
       return withRules('wear', action, world, state, () => handleWear(action.target, world, state));
     case 'talk':
-      return handleTalk(action.target, world, state);
+      return withRules('talk', action, world, state, () => handleTalk(action.target, world, state));
     case 'give':
       return withRules('give', action, world, state, () => handleGive(action.target, action.indirect, world, state));
     case 'inventory':

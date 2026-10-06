@@ -181,3 +181,18 @@ describe('combat: the player’s blow', () => {
     expect(s.locations.wallet).toBe('player');
   });
 });
+
+describe('Infocom habits found in the coal mine (5c)', () => {
+  it('ATTACK with no weapon named guesses the one held before a rule answers', () => {
+    const w: World = { ...world, npcs: { ...world.npcs, guard: { ...world.npcs.guard, instead: { attack: [{ say: ['The guard ducks.'] }] } } } };
+    const s = stateWith(w, { room: 'shed' });
+    carry(s, 'bat');
+    expect(act(s, { action: 'attack', target: 'guard' }, w)).toEqual(['(with the bat)', 'The guard ducks.']);
+  });
+  it('PUT of something in sight but not held: “You don’t have the …”, before any rule', () => {
+    const w: World = { ...world, items: { ...world.items, chute: { name: 'chute', description: '', portable: false, tags: [], scenery: true, instead: { put: [{ as: 'indirect', say: ['Whoosh.'] }] } } } };
+    const s = stateWith(w, { room: 'shed' });
+    s.locations.chute = 'shed';
+    expect(act(s, { action: 'put', target: 'chute', indirect: 'chute' }, w)).toEqual(['You don’t have the chute.']);
+  });
+});

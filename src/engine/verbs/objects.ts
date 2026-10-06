@@ -54,15 +54,18 @@ export function takeItem(itemId: string, world: World, state: GameState): Engine
   return ok([world.style === 'infocom' ? 'Taken.' : `Taken: ${item.name}.`], true);
 }
 
+/** Infocom's parser checks HAVE before the verb runs: a thing in sight but not held is “You don't have the …”, and no time passes. */
+export function notHeld(target: string | undefined, world: World, state: GameState): EngineResult | null {
+  if (world.style !== 'infocom' || !target) return null;
+  if (pickItem(target, inventoryOf(world, state), world, 'target', state)) return null;
+  const seen = pickItem(target, visibleItems(world, state), world, 'target', state);
+  return seen ? { ...ok([`You don’t have the ${world.items[seen].name}.`]), free: true } : null;
+}
+
 export function handleDrop(target: string | undefined, world: World, state: GameState): EngineResult {
   if (!target) needObject();
   const itemId = pickItem(target, inventoryOf(world, state), world, 'target', state);
-  if (!itemId) {
-    // Infocom's parser checks HAVE first: a thing in sight but not held (the boat you're in) is “You don't have”.
-    const seen = world.style === 'infocom' ? pickItem(target, visibleItems(world, state), world, 'target', state) : undefined;
-    if (seen) return { ...ok([`You don’t have the ${world.items[seen].name}.`]), free: true };
-    return miss(`You aren’t carrying a “${target}”.`);
-  }
+  if (!itemId) return notHeld(target, world, state) ?? miss(`You aren’t carrying a “${target}”.`);
 
   // Aboard, things land in the vehicle (IDROP).
   moveItem(state, itemId, state.aboard ?? state.currentRoom);

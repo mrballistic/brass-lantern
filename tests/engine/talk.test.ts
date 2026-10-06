@@ -96,3 +96,11 @@ describe('orders (review fixes)', () => {
     expect(say(s, { action: 'order', target: 'neighbor', indirect: 'talk to guard' }, ruled).lines).toEqual(['Neighbor ignores you.']);
   });
 });
+
+describe('TALK and rules (5c)', () => {
+  it('a character’s instead.talk rule answers TALK TO', () => {
+    const t: World = { ...fixtureWorld, npcs: { ...fixtureWorld.npcs, guard: { ...fixtureWorld.npcs.guard, instead: { talk: [{ say: ['Fweep!', 'Fweep!'] }] } } } };
+    const s = stateWith(t, { room: 'shed' });
+    expect(execute({ action: 'talk', target: 'guard' }, { world: t, state: s }).lines).toEqual(['Fweep!', 'Fweep!']);
+  });
+});
