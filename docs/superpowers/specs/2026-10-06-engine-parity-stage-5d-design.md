@@ -77,7 +77,7 @@
 ## 4. Docs and release
 
 - **conditions-and-events:** `score<op>N`.
-- **porting-zork:** Zork I is complete: every room, all 350 points; SCORE-UPD as a daemon on `score>=350`; FINISH as an `endings` entry; how the full-game proof works and where it falls back. What's next: the npm library plan and Office Space's world upgrades.
+- **porting-zork:** Zork I is complete: every room, all 350 points; SCORE-UPD as a daemon on `score>=350`; FINISH as an `endings` entry; how the full-game proof works and where it falls back. What's next: a Zork II and Zork III gap survey (owner's request), then the npm library plan; Office Space's world upgrades run as their own track.
 - **CHANGELOG** 1.12.0 on both repos. Office Space syncs with no world changes.
 
 ## Edge cases the review checks
@@ -91,4 +91,5 @@
 ## Out of scope
 
 - Backlog items the full game doesn't run into.
+- Zork II and Zork III. After 5d, before the npm library plan (owner's request): a survey of their ZIL against the engine, listing what each would need that the engine doesn't have yet.
 - The npm library plan; Office Space's world upgrades (separate tracks).
