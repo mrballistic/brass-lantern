@@ -149,6 +149,17 @@ function launchFrom(ctx: ScriptContext, here: string): EventStep[] {
   return ['(magic boat)', { go: to }, ...current];
 }
 
+/** SAND-FUNCTION's BDIGS. */
+const BDIGS = ['You seem to be digging a hole here.', 'The hole is getting deeper, but that’s about it.', 'You are surrounded by a wall of sand on all sides.'];
+/** Things with Zork's TOOLBIT. */
+const TOOLS = ['pump', 'screwdriver', 'wrench', 'shovel', 'putty'];
+/** V-DIG: anything but the shovel in the sand. */
+function vDig(ctx: ScriptContext, tool?: string): string {
+  if (tool === 'shovel') return 'There’s no reason to be digging here.';
+  if (!tool) return 'Digging with the pair of hands is slow and tedious.';
+  const name = ctx.world.items[tool]?.name ?? tool;
+  return TOOLS.includes(tool) ? `Digging with the ${name} is slow and tedious.` : `Digging with a ${name} is silly.`;
+}
 const NO_TREE = 'There is no tree here suitable for climbing.';
 const BOARDED = 'The windows are all boarded.';
 
@@ -358,12 +369,44 @@ export const zork1: World = {
   emptyInventory: 'You are empty-handed.',
 
   rooms: {
+    // Stage 5b: the east bank. SANDY-CAVE, SANDY-BEACH and SHORE, in story order.
+    sandy_cave: {
+      name: 'Sandy Cave',
+      description: 'This is a sand-filled cave whose exit is to the southwest.',
+      dark: true,
+      exits: { southwest: 'sandy_beach' },
+      items: ['scarab'],
+      npcs: [],
+      onEnter: [],
+      scenery: ['sand'],
+    },
+    sandy_beach: {
+      name: 'Sandy Beach',
+      description: 'You are on a large sandy beach on the east shore of the river, which is flowing quickly by. A path runs beside the river to the south here, and a passage is partially buried in sand to the northeast.',
+      dark: true,
+      exits: { northeast: 'sandy_cave', south: 'shore' },
+      items: ['shovel'],
+      npcs: [],
+      onEnter: [],
+      scenery: ['global_water'],
+      tags: ['sacred'],
+    },
+    shore: {
+      name: 'Shore',
+      description: 'You are on the east shore of the river. The water here seems somewhat treacherous. A path travels from north to south here, the south end quickly turning around a sharp corner.',
+      exits: { north: 'sandy_beach', south: { denial: 'That part of the Great Underground Empire isn’t built yet.' } },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      scenery: ['global_water'],
+      tags: ['sacred'],
+    },
     // Stage 5b: the Frigid River. RIVER-5 to RIVER-1, in story order (the White Cliffs beaches come between 4 and 3).
     river_5: {
       name: 'Frigid River',
       description: 'The sound of rushing water is nearly unbearable here. On the east shore is a large landing area.',
       water: true,
-      exits: { up: { denial: 'You cannot go upstream due to strong currents.' }, east: { denial: 'That part of the Great Underground Empire isn’t built yet.' }, land: { denial: 'That part of the Great Underground Empire isn’t built yet.' } },
+      exits: { up: { denial: 'You cannot go upstream due to strong currents.' }, east: 'shore', land: 'shore' },
       items: [],
       npcs: [],
       onEnter: [],
@@ -375,11 +418,39 @@ export const zork1: World = {
       description: 'The river is running faster here and the sound ahead appears to be that of rushing water. On the east shore is a sandy beach. A small area of beach can also be seen below the cliffs on the west shore.',
       dark: true,
       water: true,
-      exits: { up: { denial: 'You cannot go upstream due to strong currents.' }, down: 'river_5', land: { denial: 'You can land either to the east or the west.' }, west: { denial: 'That part of the Great Underground Empire isn’t built yet.' }, east: { denial: 'That part of the Great Underground Empire isn’t built yet.' } },
+      exits: { up: { denial: 'You cannot go upstream due to strong currents.' }, down: 'river_5', land: { denial: 'You can land either to the east or the west.' }, west: 'white_cliffs_south', east: 'sandy_beach' },
       items: ['buoy'],
       npcs: [],
       onEnter: [],
       scenery: ['global_water'],
+      tags: ['sacred'],
+    },
+    // Stage 5b: the White Cliffs beaches. The narrow paths take you only without the inflated boat (WHITE-CLIFFS-FUNCTION).
+    white_cliffs_south: {
+      name: 'White Cliffs Beach',
+      description: 'You are on a rocky, narrow strip of beach beside the Cliffs. A narrow path leads north along the shore.',
+      dark: true,
+      exits: { north: { to: 'white_cliffs_north', if: 'flag:deflate', denial: 'The path is too narrow.' } },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      onEnd: [{ if: 'has:inflated_boat', then: [{ clear: 'deflate' }] }, { if: '!has:inflated_boat', then: [{ set: 'deflate' }] }],
+      scenery: ['global_water', 'white_cliff'],
+      tags: ['sacred'],
+    },
+    white_cliffs_north: {
+      name: 'White Cliffs Beach',
+      description: 'You are on a narrow strip of beach which runs along the base of the White Cliffs. There is a narrow path heading south along the Cliffs and a tight passage leading west into the cliffs themselves.',
+      dark: true,
+      exits: {
+        south: { to: 'white_cliffs_south', if: 'flag:deflate', denial: 'The path is too narrow.' },
+        west: { to: 'damp_cave', if: 'flag:deflate', denial: 'The path is too narrow.' },
+      },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      onEnd: [{ if: 'has:inflated_boat', then: [{ clear: 'deflate' }] }, { if: '!has:inflated_boat', then: [{ set: 'deflate' }] }],
+      scenery: ['global_water', 'white_cliff'],
       tags: ['sacred'],
     },
     river_3: {
@@ -387,7 +458,7 @@ export const zork1: World = {
       description: 'The river descends here into a valley. There is a narrow beach on the west shore below the cliffs. In the distance a faint rumbling can be heard.',
       dark: true,
       water: true,
-      exits: { up: { denial: 'You cannot go upstream due to strong currents.' }, down: 'river_4', land: { denial: 'That part of the Great Underground Empire isn’t built yet.' }, west: { denial: 'That part of the Great Underground Empire isn’t built yet.' } },
+      exits: { up: { denial: 'You cannot go upstream due to strong currents.' }, down: 'river_4', land: 'white_cliffs_north', west: 'white_cliffs_north' },
       items: [],
       npcs: [],
       onEnter: [],
@@ -607,7 +678,7 @@ export const zork1: World = {
       name: 'Damp Cave',
       description: 'This cave has exits to the west and east, and narrows to a crack toward the south. The earth is particularly damp here.',
       dark: true,
-      exits: { west: 'loud_room', east: { denial: 'That part of the Great Underground Empire isn’t built yet.' }, south: { denial: 'It is too narrow for most insects.' } },
+      exits: { west: 'loud_room', east: 'white_cliffs_north', south: { denial: 'It is too narrow for most insects.' } },
       items: [],
       npcs: [],
       onEnter: [],
@@ -1482,6 +1553,44 @@ export const zork1: World = {
       // TORCH-OBJECT: it won't go out.
       instead: { turn_off: [{ say: ['You nearly burn your hand trying to extinguish the flame.'] }] },
       after: { take: [{ if: '!flag:took_torch', then: 'took_torch' }] },
+    },
+    // Stage 5b: the banks.
+    shovel: {
+      name: 'shovel',
+      aliases: ['tool', 'tools'],
+      description: 'There’s nothing special about the shovel.',
+      portable: true,
+      size: 15,
+      tags: [],
+    },
+    scarab: {
+      name: 'beautiful jeweled scarab',
+      aliases: ['scarab', 'bug', 'beetle', 'treasure', 'jeweled scarab', 'carved scarab'],
+      description: 'There’s nothing special about the beautiful jeweled scarab.',
+      portable: true,
+      size: 8,
+      treasure: 5,
+      tags: [],
+      after: { take: [{ if: '!flag:took_scarab', then: 'took_scarab' }] },
+    },
+    // SAND-FUNCTION.
+    sand: {
+      name: 'sand',
+      description: 'There’s nothing special about the sand.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      instead: { dig: [{ as: 'target', then: 'dig_sand' }] },
+    },
+    // WCLIF-OBJECT.
+    white_cliff: {
+      name: 'white cliffs',
+      aliases: ['cliff', 'cliffs', 'white cliff'],
+      description: 'There’s nothing special about the white cliffs.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      instead: { climb: [{ say: ['The cliff is too steep for climbing.'] }] },
     },
     // Stage 5a: the temple and Hades.
     altar: {
@@ -2697,6 +2806,21 @@ export const zork1: World = {
       if (a?.action === 'launch' && !a.target && ctx.here('inflated_boat')) return ['(magic boat)', 'You can’t launch that by saying “launch”!'];
       return;
     },
+    // SAND-FUNCTION and V-DIG: four digs with the shovel find the scarab, a fifth buries you.
+    dig_sand: (ctx) => {
+      const tool = ctx.command?.indirect;
+      if (tool !== 'shovel') return [vDig(ctx, tool)];
+      const dig = (ctx.state.vars?.beach_dig ?? -1) + 1;
+      if (dig > 3) {
+        return [
+          { setVar: 'beach_dig', to: -1 },
+          ...(ctx.holder('scarab') === ctx.room() ? [{ hide: 'scarab' } as EventStep] : []),
+          { die: 'The hole collapses, smothering you.' },
+        ];
+      }
+      if (dig === 3) return [{ setVar: 'beach_dig', to: 3 }, ...(ctx.state.itemState.scarab?.hidden ? ['You can see a scarab here in the sand.', { reveal: 'scarab' } as EventStep] : [])];
+      return [{ setVar: 'beach_dig', to: dig }, BDIGS[dig]];
+    },
     // I-RIVER: the current carries the boat down, and over the falls from the last stretch.
     river_current: (ctx) => {
       const here = ctx.room();
@@ -3091,6 +3215,7 @@ export const zork1: World = {
     breathe: { words: ['blow in', 'blow into', 'breathe in', 'breathe into'], target: 'required', reply: 'You don’t have enough lung power to inflate it.' },
     launch: { words: ['launch'], target: 'optional', reply: 'You can’t launch that by saying “launch”!' },
     land: { words: ['land'], target: 'none', go: true },
+    dig: { words: ['dig in', 'dig'], target: 'required', indirect: ['with'], reply: 'Digging with the pair of hands is slow and tedious.' },
     ring: { words: ['ring', 'peal'], target: 'required', indirect: ['with'], reply: 'How, exactly, can you ring that?' },
     pour: { words: ['pour', 'spill'], target: 'required', indirect: ['on', 'in', 'from'], held: true },
   },
@@ -3117,6 +3242,8 @@ export const zork1: World = {
     { flag: 'took_painting', points: 4 },
     { flag: 'took_trunk', points: 15 },
     { flag: 'took_emerald', points: 5 },
+    { flag: 'took_scarab', points: 5 },
+    { if: 'inside:scarab:trophy_case', points: 5 },
     { if: 'inside:emerald:trophy_case', points: 10 },
     { flag: 'took_bar', points: 10 },
     { if: 'inside:bar:trophy_case', points: 5 },
@@ -3150,7 +3277,7 @@ export const zork1: World = {
     { min: 350, title: 'Master Adventurer' },
   ],
 
-  vars: { candle_life: 75, water_level: 0, match_count: 6, lamp_fuel: 385, sword_glow: 0, troll_ldesc: 0, cyclowrath: 0 },
+  vars: { beach_dig: -1, candle_life: 75, water_level: 0, match_count: 6, lamp_fuel: 385, sword_glow: 0, troll_ldesc: 0, cyclowrath: 0 },
 
   // Zork's LAMP-TABLE: warnings after 100, 170 and 185 lit turns; out on the next.
   daemons: [
@@ -3270,6 +3397,8 @@ export const zork1: World = {
       { if: 'in:reservoir_south', then: ['You notice that the water level has risen to the point that it is impossible to cross.'] },
     ],
     took_trunk: [{ set: 'took_trunk' }],
+    took_scarab: [{ set: 'took_scarab' }],
+    dig_sand: [{ script: 'dig_sand' }],
     took_emerald: [{ set: 'took_emerald' }],
     river_current: [{ script: 'river_current' }],
     boat_inflate: [{ script: 'boat_inflate' }],
@@ -3373,6 +3502,7 @@ export const zork1: World = {
       // INVISIBLE until something reveals them.
       { hide: 'leak' },
       { hide: 'trunk' },
+      { hide: 'scarab' },
       // The torch and the candles are lit from the start (ONBIT); the hot bell waits offstage.
       { switch: 'torch', on: true },
       { switch: 'candles', on: true },

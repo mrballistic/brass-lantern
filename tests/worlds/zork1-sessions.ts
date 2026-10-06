@@ -130,3 +130,19 @@ export const RIVER_SESSIONS: Record<string, string[]> = {
   ],
   'wrong-launch': ['drop sword', ...BOAT_ROUTE, 'inflate plastic with pump', 'launch', 'board boat', 'up', 'launch', 'launch'],
 };
+
+// The current: River 1 to 2 in three turns of the clock, then 4, 3, 2 and 1. After 'look' on
+// River 2 you're on River 3; a WAIT there reaches River 4; another, River 5.
+const TO_RIVER_3 = [...ABOARD, 'launch', 'wait', 'wait', 'look'];
+const TO_RIVER_4 = [...TO_RIVER_3, 'wait'];
+
+export const BANK_SESSIONS: Record<string, string[]> = {
+  cliffs: [...TO_RIVER_3, 'land', 'look', 'south', 'disembark', 'south', 'north', 'west', 'east', 'take boat', 'south', 'drop boat', 'south', 'north'],
+  dig: [
+    ...TO_RIVER_4, 'east', 'disembark', 'look', 'take shovel', 'northeast', 'look', 'dig sand with pump',
+    'dig in sand with shovel', 'dig in sand with shovel', 'dig in sand with shovel', 'dig in sand with shovel', 'look', 'take scarab', 'score',
+  ],
+  collapse: [...TO_RIVER_4, 'east', 'disembark', 'drop pump', 'take shovel', 'northeast', ...Array<string>(5).fill('dig in sand with shovel')],
+  buoy: [...TO_RIVER_4, 'take buoy', 'east', 'examine buoy', 'open buoy', 'take emerald', 'score'],
+  shore: [...TO_RIVER_4, 'wait', 'land', 'disembark', 'look', 'north', 'look', 'south'],
+};

@@ -160,3 +160,12 @@ describe('first-seen sentences come first (PRINT-CONT) (5b)', () => {
     expect(lines.indexOf('A gem glints in the dust.')).toBeLessThan(lines.indexOf('There is a bat here.'));
   });
 });
+
+describe('EXAMINE a closed container (5b)', () => {
+  it('says it’s closed, not empty', () => {
+    const world: World = { ...w, items: { ...w.items, box: { name: 'box', description: '', portable: true, tags: [], container: { openable: true }, contains: ['marble'] } } };
+    const s = stateWith(world, { room: 'living' });
+    s.locations.box = 'living';
+    expect(run(s, { action: 'examine', target: 'box' }, world)).toEqual(['The box is closed.']);
+  });
+});

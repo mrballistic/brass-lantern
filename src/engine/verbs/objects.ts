@@ -3,9 +3,7 @@ import type { GameState } from '@/types/game';
 import type { Item, World } from '@/types/world';
 import { evaluateCondition } from '../conditions';
 import { contentsLines, describeRoom, lightNote, npcDescription, withArticle } from '../describe';
-import {
-  closedAround, inventoryOf, isCarried, matchItem, matchNpc, moveItem, needObject, pickItem, PLAYER, reachableItems, visibleItems,
-} from '../model';
+import { closedAround, inventoryOf, isCarried, isOpen, matchItem, matchNpc, moveItem, needObject, pickItem, PLAYER, reachableItems, visibleItems } from '../model';
 import { miss, ok, type EngineResult } from '../result';
 import { applyRule, findRule, runEvent } from '../rules';
 import { takeRefusal } from '../weight';
@@ -80,6 +78,8 @@ export function handleExamine(target: string | undefined, world: World, state: G
     if (item && !item.description) {
       // Zork's EXAMINE reads what's written on it.
       if (item.text && world.style === 'infocom') return ok([item.text]);
+      // Zork's EXAMINE of a closed box: it says so, rather than calling it empty.
+      if (world.style === 'infocom' && item.container && !item.container.transparent && !isOpen(world, state, matchedItem)) return ok([`The ${item.name} is closed.`]);
       if (contents.length > 0) return ok(contents);
       return ok([item.container ? `The ${item.name} is empty.` : `There’s nothing special about the ${item.name}.`]);
     }
