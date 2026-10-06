@@ -131,19 +131,28 @@ export function describeRoom(
   }
 
   // The vehicle you're in isn't listed; what's in it is, after the room's things.
-  const visibleItems = visibleItemsIn(roomId, world, state).filter((id) => id !== state.aboard);
+  const seenFirst = (id: string) => !state.itemState[id]?.moved && Boolean(world.items[id]?.initialDescription);
+  const inRoom = visibleItemsIn(roomId, world, state).filter((id) => id !== state.aboard);
+  // Infocom lists untouched things' first-seen sentences before everything else (PRINT-CONT's first pass).
+  const visibleItems = infocom ? [...inRoom.filter(seenFirst), ...inRoom.filter((id) => !seenFirst(id))] : inRoom;
   const plain: string[] = [];
+  // Aboard, Zork marks the room's things “(outside the boat)”, all but first-seen sentences (PRINT-CONT).
+  const outside = infocom && vehicle ? ` (outside the ${vehicle.name})` : '';
+  let listed = false;
   for (const id of visibleItems) {
     const sentence = itemSentence(world, state, id);
-    if (sentence) lines.push(sentence);
-    else if (infocom) lines.push(`There is ${withArticle(world, id)} here.`);
+    const firstSeen = Boolean(sentence) && sentence === world.items[id]?.initialDescription && !state.itemState[id]?.moved;
+    if (!firstSeen && (sentence || infocom)) listed = true;
+    if (sentence) lines.push(firstSeen ? sentence : sentence + outside);
+    else if (infocom) lines.push(`There is ${withArticle(world, id)} here.${outside}`);
     else plain.push(world.items[id]?.name ?? id);
     // Zork describes what's in each thing right after it.
     if (infocom) lines.push(...contentsLines(world, state, id));
   }
   if (plain.length > 0) lines.push(`You can see: ${plain.join(', ')}.`);
   if (!infocom) for (const id of visibleItems) lines.push(...contentsLines(world, state, id));
-  if (state.aboard) lines.push(...contentsLines(world, state, state.aboard));
+  // The vehicle's contents, a level deeper when anything else was listed.
+  if (state.aboard) lines.push(...contentsLines(world, state, state.aboard, infocom && listed ? 1 : 0));
   // Scenery isn't listed, but what's on or in it is (the kitchen table's sack).
   for (const id of childrenOf(world, state, roomId).filter((k) => world.items[k]?.scenery)) {
     lines.push(...contentsLines(world, state, id));

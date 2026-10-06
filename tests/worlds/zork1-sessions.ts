@@ -117,3 +117,16 @@ export const BOAT_SESSIONS: Record<string, string[]> = {
     'board boat', 'drop sword', 'look',
   ],
 };
+
+/** BOAT_ROUTE, then the boat inflated and boarded at Dam Base with nothing sharp, and only the lamp to lose. */
+const ABOARD = ['drop sword', ...BOAT_ROUTE, 'drop tube', 'inflate plastic with pump', 'board boat'];
+
+export const RIVER_SESSIONS: Record<string, string[]> = {
+  downriver: [...ABOARD, 'drop pump', 'launch', 'look', ...waits(8)],
+  landings: [...ABOARD, 'launch', 'east', 'land', 'look', 'launch', 'wait', 'land', 'west', 'up', 'look'],
+  stream: [
+    'drop sword', ...BOAT_ROUTE, 'drop tube', 'take plastic', 'up', 'west', 'west', 'drop plastic', 'inflate plastic with pump',
+    'board boat', 'launch', 'look', 'up', 'west', 'east', 'look', 'disembark', 'look',
+  ],
+  'wrong-launch': ['drop sword', ...BOAT_ROUTE, 'inflate plastic with pump', 'launch', 'board boat', 'up', 'launch', 'launch'],
+};

@@ -98,7 +98,7 @@ function boatBeg(ctx: ScriptContext): EventStep[] | undefined {
     return ['Read the label for the boat’s instructions.'];
   }
   if (a.action === 'launch') {
-    if (WATERS[here]) return [`You are on the ${WATERS[here]}, or have you forgotten?`];
+    if (WATERS[here]) return ['(magic boat)', `You are on the ${WATERS[here]}, or have you forgotten?`];
     return launchFrom(ctx, here);
   }
   const word = (w?: string) => (w ?? '').toLowerCase().replace(/^the\s+/, '');
@@ -123,11 +123,30 @@ function boatBeg(ctx: ScriptContext): EventStep[] | undefined {
   return steps;
 }
 
-/** RIVER-LAUNCH: where LAUNCH takes the boat from each bank (the river's current starts in stage 5b's river task). */
+/** RIVER-LAUNCH: where LAUNCH takes the boat from each bank. */
+const LAUNCHES: Record<string, string> = {
+  dam_base: 'river_1',
+  white_cliffs_north: 'river_3',
+  white_cliffs_south: 'river_4',
+  shore: 'river_5',
+  sandy_beach: 'river_4',
+  reservoir_south: 'reservoir',
+  reservoir_north: 'reservoir',
+  stream_view: 'in_stream',
+};
+/** RIVER-SPEEDS and RIVER-NEXT: turns between pulls of the current, and where it pulls you. */
+const RIVER_SPEEDS: Record<string, number> = { river_1: 4, river_2: 4, river_3: 3, river_4: 2, river_5: 1 };
+const RIVER_NEXT: Record<string, string> = { river_1: 'river_2', river_2: 'river_3', river_3: 'river_4', river_4: 'river_5' };
+
+/** RBOAT-FUNCTION's LAUNCH, through GO-NEXT: into the water, and the current takes over on the river. */
 function launchFrom(ctx: ScriptContext, here: string): EventStep[] {
-  void ctx;
-  void here;
-  return ['You can’t launch it here.'];
+  const to = LAUNCHES[here];
+  if (!to) return ['(magic boat)', 'You can’t launch it here.'];
+  if (!ctx.water(to)) return ['(magic boat)', 'You can’t go there in a magic boat.'];
+  const speed = RIVER_SPEEDS[to];
+  // A QUEUE from an action ticks this same turn: one less to wait, or now if that's none.
+  const current: EventStep[] = speed === undefined ? [] : speed > 1 ? [{ schedule: 'river_current', in: speed - 1 }] : [{ run: 'river_current' }];
+  return ['(magic boat)', { go: to }, ...current];
 }
 
 const NO_TREE = 'There is no tree here suitable for climbing.';
@@ -339,6 +358,65 @@ export const zork1: World = {
   emptyInventory: 'You are empty-handed.',
 
   rooms: {
+    // Stage 5b: the Frigid River. RIVER-5 to RIVER-1, in story order (the White Cliffs beaches come between 4 and 3).
+    river_5: {
+      name: 'Frigid River',
+      description: 'The sound of rushing water is nearly unbearable here. On the east shore is a large landing area.',
+      water: true,
+      exits: { up: { denial: 'You cannot go upstream due to strong currents.' }, east: { denial: 'That part of the Great Underground Empire isn’t built yet.' }, land: { denial: 'That part of the Great Underground Empire isn’t built yet.' } },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      scenery: ['global_water'],
+      tags: ['sacred'],
+    },
+    river_4: {
+      name: 'Frigid River',
+      description: 'The river is running faster here and the sound ahead appears to be that of rushing water. On the east shore is a sandy beach. A small area of beach can also be seen below the cliffs on the west shore.',
+      dark: true,
+      water: true,
+      exits: { up: { denial: 'You cannot go upstream due to strong currents.' }, down: 'river_5', land: { denial: 'You can land either to the east or the west.' }, west: { denial: 'That part of the Great Underground Empire isn’t built yet.' }, east: { denial: 'That part of the Great Underground Empire isn’t built yet.' } },
+      items: ['buoy'],
+      npcs: [],
+      onEnter: [],
+      scenery: ['global_water'],
+      tags: ['sacred'],
+    },
+    river_3: {
+      name: 'Frigid River',
+      description: 'The river descends here into a valley. There is a narrow beach on the west shore below the cliffs. In the distance a faint rumbling can be heard.',
+      dark: true,
+      water: true,
+      exits: { up: { denial: 'You cannot go upstream due to strong currents.' }, down: 'river_4', land: { denial: 'That part of the Great Underground Empire isn’t built yet.' }, west: { denial: 'That part of the Great Underground Empire isn’t built yet.' } },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      scenery: ['global_water'],
+      tags: ['sacred'],
+    },
+    river_2: {
+      name: 'Frigid River',
+      description: 'The river turns a corner here making it impossible to see the Dam. The White Cliffs loom on the east bank and large rocks prevent landing on the west.',
+      dark: true,
+      water: true,
+      exits: { up: { denial: 'You cannot go upstream due to strong currents.' }, down: 'river_3', land: { denial: 'There is no safe landing spot here.' }, east: { denial: 'The White Cliffs prevent your landing here.' }, west: { denial: 'Just in time you steer away from the rocks.' } },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      scenery: ['global_water'],
+      tags: ['sacred'],
+    },
+    river_1: {
+      name: 'Frigid River',
+      description: 'You are on the Frigid River in the vicinity of the Dam. The river flows quietly here. There is a landing on the west shore.',
+      water: true,
+      exits: { up: { denial: 'You cannot go upstream due to strong currents.' }, west: 'dam_base', land: 'dam_base', down: 'river_2', east: { denial: 'The White Cliffs prevent your landing here.' } },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      scenery: ['global_water'],
+      tags: ['sacred'],
+    },
     // Stage 5a: the dam. DAM-BASE through DEEP-CANYON, in story order.
     dam_base: {
       name: 'Dam Base',
@@ -664,6 +742,24 @@ export const zork1: World = {
       onEnter: [],
     },
     // Stage 5a: the reservoir. STREAM-VIEW through RESERVOIR-SOUTH, in story order.
+    // Stage 5b: the Stream (IN-STREAM), water.
+    in_stream: {
+      name: 'Stream',
+      description: 'You are on the gently flowing stream. The upstream route is too narrow to navigate, and the downstream route is invisible due to twisting walls. There is a narrow beach to land on.',
+      dark: true,
+      water: true,
+      exits: {
+        up: { denial: 'The channel is too narrow.' },
+        west: { denial: 'The channel is too narrow.' },
+        land: 'stream_view',
+        down: 'reservoir',
+        east: 'reservoir',
+      },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      scenery: ['global_water'],
+    },
     stream_view: {
       name: 'Stream View',
       description: 'You are standing on a path beside a gently flowing stream. The path follows the stream, which flows from west to east.',
@@ -697,11 +793,13 @@ export const zork1: World = {
       description: 'You are on the lake. Beaches can be seen north and south. Upstream a small stream enters the lake through a narrow cleft in the rocks. The dam can be seen downstream.',
       descriptions: [{ if: 'flag:low_tide', text: 'You are on what used to be a large lake, but which is now a large mud pile. There are “shores” to the north and south.' }],
       dark: true,
+      // NONLANDBIT until it drains.
+      water: '!flag:low_tide',
       exits: {
         north: 'reservoir_north',
         south: 'reservoir_south',
-        up: { denial: 'You can’t go there without a vehicle.' },
-        west: { denial: 'You can’t go there without a vehicle.' },
+        up: 'in_stream',
+        west: 'in_stream',
         down: { denial: 'The dam blocks your way.' },
       },
       items: ['trunk'],
@@ -1749,6 +1847,27 @@ export const zork1: World = {
       portable: true,
       tags: [],
     },
+    // The buoy on River 4 (TREASURE-INSIDE: opening it scores the emerald).
+    buoy: {
+      name: 'red buoy',
+      aliases: ['buoy'],
+      description: '',
+      initialDescription: 'There is a red buoy here (probably a warning).',
+      portable: true,
+      size: 10,
+      tags: [],
+      container: { openable: true, weight: 20 },
+      contains: ['emerald'],
+      after: { open: [{ if: '!flag:took_emerald', then: 'took_emerald' }] },
+    },
+    emerald: {
+      name: 'large emerald',
+      aliases: ['emerald', 'treasure'],
+      description: 'There’s nothing special about the large emerald.',
+      portable: true,
+      treasure: 10,
+      tags: [],
+    },
     // The boat (IBOAT-FUNCTION): a pile of plastic until it's inflated.
     inflatable_boat: {
       name: 'pile of plastic',
@@ -2578,6 +2697,14 @@ export const zork1: World = {
       if (a?.action === 'launch' && !a.target && ctx.here('inflated_boat')) return ['(magic boat)', 'You can’t launch that by saying “launch”!'];
       return;
     },
+    // I-RIVER: the current carries the boat down, and over the falls from the last stretch.
+    river_current: (ctx) => {
+      const here = ctx.room();
+      if (RIVER_SPEEDS[here] === undefined) return [];
+      const next = RIVER_NEXT[here];
+      if (!next) return [{ die: 'Unfortunately, the magic boat doesn’t provide protection from the rocks and boulders one meets at the bottom of waterfalls. Including this one.' }];
+      return ['The flow of the river carries you downstream.', '', { go: next }, { schedule: 'river_current', in: RIVER_SPEEDS[next] }];
+    },
     // CANDLES-FCN's LAMP-ON and BURN.
     light_candles: (ctx) => {
       if (ctx.state.flags.candles_burnt) return ['Alas, there’s not much left of the candles. Certainly not enough to burn.'];
@@ -2989,6 +3116,8 @@ export const zork1: World = {
     { if: 'inside:canary:trophy_case', points: 4 },
     { flag: 'took_painting', points: 4 },
     { flag: 'took_trunk', points: 15 },
+    { flag: 'took_emerald', points: 5 },
+    { if: 'inside:emerald:trophy_case', points: 10 },
     { flag: 'took_bar', points: 10 },
     { if: 'inside:bar:trophy_case', points: 5 },
     { flag: 'took_trident', points: 4 },
@@ -3141,6 +3270,8 @@ export const zork1: World = {
       { if: 'in:reservoir_south', then: ['You notice that the water level has risen to the point that it is impossible to cross.'] },
     ],
     took_trunk: [{ set: 'took_trunk' }],
+    took_emerald: [{ set: 'took_emerald' }],
+    river_current: [{ script: 'river_current' }],
     boat_inflate: [{ script: 'boat_inflate' }],
     boat_pump: [{ script: 'boat_pump' }],
     // RBOAT-FUNCTION's DEFLATE.

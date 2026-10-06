@@ -205,3 +205,16 @@ describe('Zork’s parser guesses the vehicle (5b)', () => {
     expect(run(none, { action: 'disembark' }).lines[0]).toBe('You’re not in that!');
   });
 });
+
+describe('Zork’s listing aboard (PRINT-CONT) (5b)', () => {
+  it('room things are “outside the raft”, and the raft’s contents go a level deeper', () => {
+    const s = stateWith(boatWorld, { room: 'living' });
+    for (const id of Object.keys(s.locations)) if (s.locations[id] === 'living') s.locations[id] = null;
+    s.locations.raft = 'living';
+    s.aboard = 'raft';
+    s.locations.shirt = 'raft';
+    expect(run(s, { action: 'look' }).lines.slice(2)).toEqual(['The raft contains:', '  A loud shirt']);
+    s.locations.bat = 'living';
+    expect(run(s, { action: 'look' }).lines.slice(2)).toEqual(['There is a bat here. (outside the raft)', '  The raft contains:', '    A loud shirt']);
+  });
+});
