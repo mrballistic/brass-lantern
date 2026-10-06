@@ -151,7 +151,29 @@ function launchFrom(ctx: ScriptContext, here: string): EventStep[] {
 /** SAND-FUNCTION's BDIGS. */
 const BDIGS = ['You seem to be digging a hole here.', 'The hole is getting deeper, but that’s about it.', 'You are surrounded by a wall of sand on all sides.'];
 /** Things with Zork's TOOLBIT. */
-const TOOLS = ['pump', 'screwdriver', 'wrench', 'shovel', 'putty'];
+// Zork's TOOLBIT things (V-DIG's “slow and tedious”, the parser's guess of a missing tool).
+const TOOLS = ['keys', 'pump', 'putty', 'rusty_knife', 'screwdriver', 'shovel', 'wrench'];
+/** SAND-FUNCTION with a tool (DIG SAND [WITH …]). */
+function digSand(ctx: ScriptContext, tool?: string): EventStep[] {
+  if (tool !== 'shovel') return [vDig(ctx, tool)];
+  const dig = (ctx.state.vars?.beach_dig ?? -1) + 1;
+  if (dig > 3) {
+    return [
+      { setVar: 'beach_dig', to: -1 },
+      ...(ctx.holder('scarab') === ctx.room() ? [{ hide: 'scarab' } as EventStep] : []),
+      { die: 'The hole collapses, smothering you.' },
+    ];
+  }
+  if (dig === 3) return [{ setVar: 'beach_dig', to: 3 }, ...(ctx.state.itemState.scarab?.hidden ? ['You can see a scarab here in the sand.', { reveal: 'scarab' } as EventStep] : [])];
+  return [{ setVar: 'beach_dig', to: dig }, BDIGS[dig]];
+}
+
+/** The parser's GWIM: the one tool (TOOLBIT) held, if exactly one. */
+function guessTool(ctx: ScriptContext): string | undefined {
+  const held = TOOLS.filter((id) => ctx.carried(id));
+  return held.length === 1 ? held[0] : undefined;
+}
+
 /** V-DIG: anything but the shovel in the sand. */
 function vDig(ctx: ScriptContext, tool?: string): string {
   if (tool === 'shovel') return 'There’s no reason to be digging here.';
@@ -167,6 +189,9 @@ const KITCHEN =
 const BEHIND = 'You are behind the white house. A path leads into the forest to the east. In one corner of the house there is a small window which is ';
 const LIVING =
   'You are in the living room. There is a doorway to the east, a wooden door with strange gothic lettering to the west, which appears to be nailed shut, a trophy case, ';
+// LIVING-ROOM-FCN once the cyclops has fled (MAGIC-FLAG).
+const LIVING_OPEN =
+  'You are in the living room. There is a doorway to the east. To the west is a cyclops-shaped opening in an old wooden door, above which is some strange gothic lettering, a trophy case, ';
 const CLEARING = 'You are in a clearing, with a forest surrounding you on all sides. A path leads south.';
 
 const outside = ['white_house', 'forest'];
@@ -217,7 +242,9 @@ function thiefTurn(ctx: ScriptContext): EventStep[] {
     for (const id of contents(from)) {
       if (untouchable(id)) continue;
       if (ctx.treasure(id) > 0 && (chance === undefined || prob(ctx, chance))) {
+        // ROB: FSET TOUCHBIT, so it's listed plainly when it turns up again.
         move(id, 'thief', true);
+        steps.push({ touch: id });
         robbed = true;
       }
     }
@@ -1489,12 +1516,15 @@ export const zork1: World = {
       name: 'Living Room',
       description: `${LIVING}and a large oriental rug in the center of the room.`,
       descriptions: [
+        { if: 'flag:magic_word & flag:rug_moved & open:trap_door', text: `${LIVING_OPEN}and a rug lying beside an open trap door.` },
+        { if: 'flag:magic_word & flag:rug_moved', text: `${LIVING_OPEN}and a closed trap door at your feet.` },
+        { if: 'flag:magic_word', text: `${LIVING_OPEN}and a large oriental rug in the center of the room.` },
         { if: 'flag:rug_moved & open:trap_door', text: `${LIVING}and a rug lying beside an open trap door.` },
         { if: 'flag:rug_moved', text: `${LIVING}and a closed trap door at your feet.` },
       ],
       exits: {
         east: 'kitchen',
-        west: { denial: 'The door is nailed shut.' },
+        west: { to: 'strange_passage', if: 'flag:magic_word', denial: 'The door is nailed shut.' },
         down: { to: 'cellar', if: 'flag:rug_moved', door: 'trap_door' },
       },
       items: ['trophy_case', 'lamp', 'sword', 'rug'],
@@ -1884,7 +1914,8 @@ export const zork1: World = {
     map: {
       name: 'ancient map',
       aliases: ['map', 'parchment', 'antique map', 'old map', 'ancient parchment'],
-      description: 'There’s nothing special about the ancient map.',
+      // Readable: EXAMINE shows its text.
+      description: '',
       initialDescription: 'In the trophy case is an ancient parchment which appears to be a map.',
       text: 'The map shows a forest with three clearings. The largest clearing contains a house. Three paths leave the large clearing. One of these paths, leading southwest, is marked “To Stone Barrow”.',
       portable: true,
@@ -3021,6 +3052,18 @@ export const zork1: World = {
       treasure: 4,
       portable: true,
       tags: [],
+      instead: { wind: [{ as: 'target', then: 'canary_wind' }] },
+      after: { take: [{ if: '!flag:took_canary', then: 'took_canary' }] },
+    },
+    // CANARY-OBJECT's songbird drops it in the forest.
+    bauble: {
+      name: 'beautiful brass bauble',
+      aliases: ['bauble', 'treasure', 'brass bauble', 'beautiful bauble'],
+      description: 'There’s nothing special about the beautiful brass bauble.',
+      portable: true,
+      treasure: 1,
+      tags: [],
+      after: { take: [{ if: '!flag:took_bauble', then: 'took_bauble' }] },
     },
     leaves: {
       name: 'pile of leaves',
@@ -3079,8 +3122,12 @@ export const zork1: World = {
     thief: {
       name: 'thief',
       aliases: ['robber', 'man', 'person', 'suspicious man', 'seedy man', 'shady man'],
-      description: 'There is a suspicious-looking individual, holding a bag, leaning against one wall. He is armed with a vicious-looking stiletto.',
-      descriptions: [{ if: '!awake:thief', text: 'There is a suspicious-looking individual lying unconscious on the ground.' }],
+      // His LDESC; once he has been knocked out and come round, ROBBER-C-DESC.
+      description: 'There is a suspicious-looking individual, holding a large bag, leaning against one wall. He is armed with a deadly stiletto.',
+      descriptions: [
+        { if: '!awake:thief', text: 'There is a suspicious-looking individual lying unconscious on the ground.' },
+        { if: 'flag:thief_revived', text: 'There is a suspicious-looking individual, holding a bag, leaning against one wall. He is armed with a vicious-looking stiletto.' },
+      ],
       hidden: true,
       holds: ['stiletto', 'large_bag'],
       refuseOrder: 'The thief is a strong, silent type.',
@@ -3315,7 +3362,15 @@ export const zork1: World = {
       if (ctx.holder('inflatable_boat') !== ctx.room()) return ['The boat must be on the ground to be inflated.'];
       const tool = ctx.command?.indirect;
       if (tool === 'pump') return inflateBoat(ctx);
-      if (!tool) return ['You don’t have enough lung power to inflate it.'];
+      if (!tool) {
+        // The parser's GWIM: the one tool (TOOLBIT) held, “(with the hand-held air pump)”.
+        const guessed = guessTool(ctx);
+        if (guessed) {
+          const name = ctx.world.items[guessed].name;
+          return [`(with the ${name})`, ...(guessed === 'pump' ? inflateBoat(ctx) : [`With a ${name}? Surely you jest!`])];
+        }
+        return ['You don’t have enough lung power to inflate it.'];
+      }
       return [`With a ${ctx.world.items[tool]?.name ?? tool}? Surely you jest!`];
     },
     // V-PUMP: PUMP UP the boat with the pump in hand.
@@ -3382,18 +3437,10 @@ export const zork1: World = {
     },
     // SAND-FUNCTION and V-DIG: four digs with the shovel find the scarab, a fifth buries you.
     dig_sand: (ctx) => {
-      const tool = ctx.command?.indirect;
-      if (tool !== 'shovel') return [vDig(ctx, tool)];
-      const dig = (ctx.state.vars?.beach_dig ?? -1) + 1;
-      if (dig > 3) {
-        return [
-          { setVar: 'beach_dig', to: -1 },
-          ...(ctx.holder('scarab') === ctx.room() ? [{ hide: 'scarab' } as EventStep] : []),
-          { die: 'The hole collapses, smothering you.' },
-        ];
-      }
-      if (dig === 3) return [{ setVar: 'beach_dig', to: 3 }, ...(ctx.state.itemState.scarab?.hidden ? ['You can see a scarab here in the sand.', { reveal: 'scarab' } as EventStep] : [])];
-      return [{ setVar: 'beach_dig', to: dig }, BDIGS[dig]];
+      // The parser guesses the one tool you hold: “(with the shovel)”.
+      const guessed = ctx.command?.indirect ? undefined : guessTool(ctx);
+      const note: EventStep[] = guessed ? [`(with the ${ctx.world.items[guessed].name})`] : [];
+      return [...note, ...digSand(ctx, ctx.command?.indirect ?? guessed)];
     },
     // I-RIVER: the current carries the boat down, and over the falls from the last stretch.
     river_current: (ctx) => {
@@ -3455,6 +3502,18 @@ export const zork1: World = {
       if (word === 'echo') return [{ set: 'loud_flag' }, { set: 'unsacred_bar' }, 'The acoustics of the room change subtly.', { go: 'loud_room' }, { free: true }];
       const last = words[words.length - 1];
       return [`${last} ${last} ...`, { free: true }];
+    },
+    // CANARY-OBJECT: wound in the forest, the songbird brings the bauble (once).
+    canary_wind: (ctx) => {
+      const here = ctx.room();
+      if (ctx.state.flags.sing_song || !['forest_1', 'forest_2', 'forest_3', 'path', 'up_a_tree'].includes(here)) {
+        return ['The canary chirps blithely, if somewhat tinnily, for a short time.'];
+      }
+      return [
+        'The canary chirps, slightly off-key, an aria from a forgotten opera. From out of the greenery flies a lovely songbird. It perches on a limb just over your head and opens its beak to sing. As it does so a beautiful brass bauble drops from its mouth, bounces off the top of your head, and lands glimmering in the grass. As the canary winds down, the songbird flies away.',
+        { set: 'sing_song' },
+        { move: 'bauble', to: here === 'up_a_tree' ? 'path' : here },
+      ];
     },
     // BASKET-F: RAISE and LOWER swap the basket and its stand-in; contents ride along.
     basket: (ctx) => {
@@ -3773,6 +3832,8 @@ export const zork1: World = {
     thief_wakes: (ctx) => {
       const room = ctx.rooms().find((r) => ctx.npcIn('thief', r));
       return [
+        // ROBBER-C-DESC from now on, seen or not.
+        { set: 'thief_revived' },
         ...(room === ctx.room()
           ? [{ npcState: 'thief', fighting: true } as EventStep, 'The robber revives, briefly feigning continued unconsciousness, and, when he sees his moment, scrambles away from you.']
           : []),
@@ -3810,7 +3871,7 @@ export const zork1: World = {
       const item = ctx.command?.target;
       if (!item || item === 'thief') return [];
       const strength = ctx.npc('thief')?.strength ?? 5;
-      const steps: EventStep[] = strength < 0 ? [{ npcState: 'thief', strength: -strength }, 'Your proposed victim suddenly recovers consciousness.'] : [];
+      const steps: EventStep[] = strength < 0 ? [{ npcState: 'thief', strength: -strength }, { set: 'thief_revived' }, 'Your proposed victim suddenly recovers consciousness.'] : [];
       steps.push({ move: item, to: 'thief' }, { hide: item });
       const name = ctx.world.items[item]?.name ?? item;
       if (ctx.treasure(item) > 0) steps.push({ npcState: 'thief', fighting: false }, `The thief is taken aback by your unexpected generosity, but accepts the ${name} and stops to admire its beauty.`);
@@ -3846,6 +3907,8 @@ export const zork1: World = {
     count: { words: ['count'], target: 'required' },
     pray: { words: ['pray'], target: 'none', reply: 'If you pray enough, your prayers may be answered.' },
     squeeze: { words: ['squeeze'], target: 'required', reply: 'How singularly useless.' },
+    // V-WIND.
+    wind: { words: ['wind up', 'wind'], target: 'required', reply: 'You cannot wind up a {target}.' },
     // V-SMELL.
     smell: { words: ['smell', 'sniff'], target: 'required', reply: 'It smells like a {target}.' },
     fill: { words: ['fill'], target: 'required', indirect: ['with'] },
@@ -3898,6 +3961,9 @@ export const zork1: World = {
     { if: 'inside:scarab:trophy_case', points: 5 },
     { if: 'inside:emerald:trophy_case', points: 10 },
     // Stage 5c: the coal mine. LIGHT-SHAFT is 13 for the first lit turn in the Lower Shaft.
+    { flag: 'took_canary', points: 6 },
+    { flag: 'took_bauble', points: 1 },
+    { if: 'inside:bauble:trophy_case', points: 1 },
     { flag: 'took_jade', points: 5 },
     { if: 'inside:jade:trophy_case', points: 5 },
     { flag: 'took_bracelet', points: 5 },
@@ -3969,6 +4035,7 @@ export const zork1: World = {
     // ALWAYS-LIT, for a spirit.
     litIf: 'flag:dead',
     look: 'It is pitch black. You are likely to be eaten by a grue.',
+    arrive: 'You have moved into a dark place.',
     tooDark: 'It’s too dark to see!',
     blunder: [{ chance: 80, then: [{ die: GRUE }], else: ['You can’t go that way.'] }],
     // GOTO, from one unlit room into another (PROB 80).
@@ -4098,6 +4165,9 @@ export const zork1: World = {
       'An almost inaudible voice whispers in your ear, “Look to your treasures for the final secret.”',
     ],
     barrow_end: [{ end: 'barrow' }],
+    took_canary: [{ set: 'took_canary' }],
+    took_bauble: [{ set: 'took_bauble' }],
+    canary_wind: [{ script: 'canary_wind' }],
     took_jade: [{ set: 'took_jade' }],
     took_bracelet: [{ set: 'took_bracelet' }],
     took_diamond: [{ set: 'took_diamond' }],

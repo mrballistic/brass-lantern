@@ -311,6 +311,8 @@ export type Effect =
   | { disembark: true }
   /** Keeps an item where it is but out of listings, or lists it again (Zork's NDESCBIT, set in play: the tied rope). */
   | { unlist: string }
+  /** Marks an item handled (Zork's TOUCHBIT): its first-seen sentence is over. */
+  | { touch: string }
   | { relist: string }
   /** Runs one of the world's scripts and the steps it returns. */
   | { script: string; arg?: string }
@@ -428,6 +430,8 @@ export interface World {
     blunder?: EventStep[];
     /** Walking from an unlit dark room into another: `chance`% of `then` instead (Zork's GOTO grue), or `aboard` in a vehicle. */
     stumble?: { chance: number; then: EventStep[]; aboard?: EventStep[] };
+    /** Said on arriving in an unlit room, before its darkness line (Zork's GOTO). */
+    arrive?: string;
     /** While this condition holds every room is lit (Zork's ALWAYS-LIT, for a spirit). Mustn't use `lit:`. */
     litIf?: string;
   };

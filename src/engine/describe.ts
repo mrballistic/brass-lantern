@@ -83,10 +83,29 @@ export function contentsLines(world: World, state: GameState, id: string, depth 
   }
   const rest = kids.filter((k) => !told.includes(k));
   if (rest.length === 0) return lines;
-  lines.push(`${'  '.repeat(depth)}${heading(world, id)}`);
+  // FIRSTER prints a heading of the world's own (the trophy case's) unindented.
+  lines.push(`${world.items[id]?.contentsHeading ? '' : '  '.repeat(depth)}${heading(world, id)}`);
   for (const k of rest) {
     lines.push(`${'  '.repeat(depth + 1)}${listed(world, k)}${lightNote(world, state, k)}`);
     lines.push(...contentsLines(world, state, k, depth + 1));
+  }
+  return lines;
+}
+
+/** A scenery surface with no heading of its own (Zork's kitchen table): Release 119 describes what's on it as if on the floor. */
+function floorLike(world: World, id: string): boolean {
+  const item = world.items[id];
+  return Boolean(item?.surface && !item.contentsHeading);
+}
+
+/** What's on a floor-like surface: first-seen sentences, then “There is a … here.” with each thing's contents. */
+function surfaceAsFloor(world: World, state: GameState, id: string): string[] {
+  const kids = childrenOf(world, state, id).filter((k) => !world.items[k]?.scenery && !state.itemState[k]?.unlisted && shown(state)(k));
+  const firstSeen = (k: string) => !state.itemState[k]?.moved && Boolean(world.items[k]?.initialDescription);
+  const lines: string[] = [];
+  for (const k of [...kids.filter(firstSeen), ...kids.filter((k) => !firstSeen(k))]) {
+    const sentence = firstSeen(k) ? world.items[k].initialDescription! : (world.items[k].roomDescription ?? `There is ${withArticle(world, k)} here${lightNote(world, state, k)}.`);
+    lines.push(sentence, ...contentsLines(world, state, k));
   }
   return lines;
 }
@@ -144,7 +163,7 @@ export function describeRoom(
     const firstSeen = Boolean(sentence) && sentence === world.items[id]?.initialDescription && !state.itemState[id]?.moved;
     if (!firstSeen && (sentence || infocom)) listed = true;
     if (sentence) lines.push(firstSeen ? sentence : sentence + outside);
-    else if (infocom) lines.push(`There is ${withArticle(world, id)} here.${outside}`);
+    else if (infocom) lines.push(`There is ${withArticle(world, id)} here${lightNote(world, state, id)}.${outside}`);
     else plain.push(world.items[id]?.name ?? id);
     // Zork describes what's in each thing right after it.
     if (infocom) lines.push(...contentsLines(world, state, id));
@@ -155,7 +174,8 @@ export function describeRoom(
   if (state.aboard) lines.push(...contentsLines(world, state, state.aboard, infocom && listed ? 1 : 0));
   // Scenery isn't listed, but what's on or in it is (the kitchen table's sack).
   for (const id of childrenOf(world, state, roomId).filter((k) => world.items[k]?.scenery)) {
-    lines.push(...contentsLines(world, state, id));
+    // Zork's PRINT-CONT: once something on the floor was listed, the rest go a level deeper.
+    lines.push(...(infocom && floorLike(world, id) ? surfaceAsFloor(world, state, id) : contentsLines(world, state, id, infocom && listed ? 1 : 0)));
   }
 
   const people = npcsSeen(world, state, roomId).filter((id) => !world.npcs[id]?.scenery);

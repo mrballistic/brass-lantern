@@ -173,3 +173,11 @@ describe('look steps (5a)', () => {
     expect(runSteps([{ look: true }], w, s).join(' ')).toContain('A living room with a table by the door.');
   });
 });
+
+describe('{ touch } (5d)', () => {
+  it('marks an item handled: its first-seen sentence is over', () => {
+    const s = stateWith(fixtureWorld, { room: 'bedroom' });
+    runSteps([{ touch: 'alarm' }], fixtureWorld, s);
+    expect(s.itemState.alarm?.moved).toBe(true);
+  });
+});

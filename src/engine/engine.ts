@@ -270,6 +270,8 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
     case 'attack':
       return handleAttack(action, world, state, () => dispatch({ ...action, action: 'smash' }, world, state));
     case 'throw':
+      // Zork's THROW X IN Y is PUT X IN Y.
+      if (action.prep === 'in' && world.style === 'infocom') return dispatch({ ...action, action: 'put' }, world, state);
       return handleThrow(action, world, state);
     case 'ask':
       return handleAsk(action, world, state);

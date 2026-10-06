@@ -16,6 +16,12 @@ const NOTHING: Record<string, string> = {
 
 /** The items ALL covers for a verb, before EXCEPT. */
 function covered(verb: string, action: ParsedAction, world: World, state: GameState): string[] {
+  // TAKE ALL FROM X: what's in X (Zork's ALL with a second object).
+  if (verb === 'take' && action.indirect) {
+    const from = pickItem(action.indirect, visibleItems(world, state), world, 'indirect', state);
+    if (!from || closedAround(world, state, from)) return [];
+    return childrenOf(world, state, from).filter((id) => shown(state)(id) && !world.items[id]?.scenery);
+  }
   if (verb === 'take' && world.style === 'infocom' && isLit(world, state)) {
     // Zork's ALL is what's directly in the room, fixed things too (each says why it can't be taken);
     // not things inside containers, nor doors and walls shared with other rooms.

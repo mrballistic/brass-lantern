@@ -157,6 +157,8 @@ function runEffect(e: Effect, world: World, state: GameState): { lines: string[]
     return { lines: [] };
   }
   if ('disembark' in e) return void (state.aboard = undefined), { lines: [] };
+  // Zork's TOUCHBIT: handled, so its first-seen sentence is over.
+  if ('touch' in e) return void (world.items[e.touch] && (itemState(state, e.touch).moved = true)), { lines: [] };
   if ('unlist' in e) return void (world.items[e.unlist] && (itemState(state, e.unlist).unlisted = true)), { lines: [] };
   if ('relist' in e) return void (world.items[e.relist] && (itemState(state, e.relist).unlisted = false)), { lines: [] };
   if ('reveal' in e) return void (world.items[e.reveal] && (itemState(state, e.reveal).hidden = false)), { lines: [] };

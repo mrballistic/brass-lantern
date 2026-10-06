@@ -130,6 +130,36 @@ const trollDied = (reply: string[]) => normalize(reply).includes('almost as soon
 
 export type Side = 'native' | 'original';
 
+/** “Almost as soon as the troll breathes his last breath…”: a character's death line in a fight. */
+const foeDied = (reply: string[], foe: string) => normalize(reply).includes(`almost as soon as the ${foe} breathes his last breath`);
+
+/**
+ * Plays commands, with fights as sync points: `@fight <foe> with <weapon>` attacks until the foe's
+ * death line (at most 15 blows), as one reply. Null if the player died in a fight or one didn't end.
+ */
+export async function playCommands(send: (c: string) => Promise<string[]> | string[], commands: string[]): Promise<string[][] | null> {
+  const replies: string[][] = [];
+  for (const c of commands) {
+    const fight = c.match(/^@fight (\w+) with (.+)$/);
+    if (!fight) {
+      replies.push(await send(c));
+      continue;
+    }
+    const [, foe, weapon] = fight;
+    const blows: string[] = [];
+    let over = false;
+    for (let i = 0; i < 15 && !over; i++) {
+      const reply = await send(`kill ${foe} with ${weapon}`);
+      blows.push(...reply);
+      if (died(reply)) return null;
+      over = foeDied(reply, foe);
+    }
+    if (!over) return null;
+    replies.push(blows);
+  }
+  return replies;
+}
+
 /** Plays an opening (PREFIX's `@fight` kills the troll); its replies, or null if the player died, the troll lived, or something was stolen. */
 export async function playPrefix(send: (c: string) => Promise<string[]> | string[], opening: string[] = PREFIX, pilfered: () => boolean = () => false): Promise<string[][] | null> {
   const seen: string[][] = [];
