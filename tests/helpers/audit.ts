@@ -110,6 +110,14 @@ export function auditWorld(world: World): string[] {
     if (!world.scripts?.[capture.script]) problems.push(`${where}: names no script “${capture.script}”`);
   };
   checkCapture(world.capture, 'world capture');
+  checkCondition(world.darkness?.litIf, 'darkness.litIf');
+  for (const m of d?.message ?? []) if (typeof m !== 'string') checkCondition(m.if, 'death.message');
+  for (const x of d?.instead ?? []) checkCondition(x.if, 'death.instead');
+  for (const v of d?.variants ?? []) {
+    checkCondition(v.if, 'death.variants');
+    if (v.respawn && !isRoom(v.respawn)) problems.push(`death.variants respawn names no room “${v.respawn}”`);
+    if (v.then && !isEvent(v.then)) problems.push(`death.variants then names no event “${v.then}”`);
+  }
   for (const [id, room] of Object.entries(world.rooms)) {
     checkTriggers(room.onEnter, `room ${id} onEnter`);
     checkTable(room.instead, 'instead', `room ${id}`);

@@ -1,5 +1,6 @@
 import type { GameState } from '@/types/game';
 import type { World } from '@/types/world';
+import { evaluateCondition } from './conditions';
 import { inventoryOf, moveItem } from './model';
 import { nextRandom } from './rng';
 import { runEventKey } from './effects';
@@ -18,7 +19,17 @@ export function die(cause: string, world: World, state: GameState, goTo: GoTo): 
     state.gameOver = true;
     return [cause];
   }
-  const lines = [cause, ...(d.message ?? [])];
+  const holds = (condition: string) => evaluateCondition(condition, state, world);
+  const instead = d.instead?.find((x) => holds(x.if));
+  if (instead) {
+    state.gameOver = true;
+    return [...instead.lines];
+  }
+  const lines = [cause, ...(d.message ?? []).flatMap((m) => (typeof m === 'string' ? [m] : holds(m.if) ? [m.text] : []))];
+  // Decided at the moment of death, before anything moves.
+  const variant = d.variants?.find((v) => holds(v.if));
+  const respawn = variant?.respawn ?? d.respawn;
+  const then = variant?.then ?? d.then;
   const vars = (state.vars ??= {});
   if (d.penalty) vars.score = (vars.score ?? 0) + d.penalty;
   const deaths = vars.deaths ?? 0;
@@ -42,8 +53,8 @@ export function die(cause: string, world: World, state: GameState, goTo: GoTo): 
     else moveItem(state, id, state.currentRoom);
   }
   state.fuses = {};
-  lines.push(...(d.resurrection ?? []));
-  if (d.respawn && world.rooms[d.respawn]) lines.push(...goTo(d.respawn, world, state));
-  if (d.then) lines.push(...runEventKey(d.then, world, state));
+  lines.push(...(variant?.resurrection ?? d.resurrection ?? []));
+  if (respawn && world.rooms[respawn]) lines.push(...goTo(respawn, world, state));
+  if (then) lines.push(...runEventKey(then, world, state));
   return lines;
 }

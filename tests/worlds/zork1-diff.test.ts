@@ -50,8 +50,8 @@ function syncNow(name: string, send: (command: string) => string[]): string[] | 
   return null;
 }
 
-async function originalOnce(commands: string[]): Promise<string[][]> {
-  const { send: raw } = await openOriginal();
+async function originalOnce(commands: string[], seed: number): Promise<string[][]> {
+  const { send: raw } = await openOriginal(seed);
   const send = async (c: string) => {
     const reply = await raw(c);
     // The thief wanders the underground at random from the start. A run he turns up in starts over.
@@ -67,7 +67,8 @@ async function originalOnce(commands: string[]): Promise<string[][]> {
 async function original(commands: string[]): Promise<string[][]> {
   for (let attempt = 0; attempt < 300; attempt++) {
     try {
-      return await originalOnce(commands);
+      // Seeded, so the run is the same every time: attempt n plays seed n.
+      return await originalOnce(commands, attempt + 1);
     } catch (e) {
       if (!(e instanceof Restart)) throw e;
       localStorage.clear();

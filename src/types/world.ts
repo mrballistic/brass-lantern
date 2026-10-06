@@ -402,13 +402,15 @@ export interface World {
     fall?: string;
     /** Run when the player tries a direction with no exit in the dark (Zork's grue). */
     blunder?: EventStep[];
+    /** While this condition holds every room is lit (Zork's ALWAYS-LIT, for a spirit). Mustn't use `lit:`. */
+    litIf?: string;
   };
   /** Named endings, played by the `end` effect: lines, then the score if `score`, then the footer. */
   endings?: Record<string, { lines: EventStep[]; score?: boolean; footer?: EventStep[] }>;
   /** What dying does. Without it, dying ends the game. */
   death?: {
-    /** Printed after the cause. */
-    message?: string[];
+    /** Printed after the cause; an entry with `if` only when its condition holds (Zork's “Bad luck, huh?”). */
+    message?: Array<string | { if: string; text: string }>;
     /** Added to the score (Zork: -10). */
     penalty?: number;
     /** Deaths survived before the final one (Zork: 2). */
@@ -422,6 +424,10 @@ export interface World {
     final?: string[];
     /** An event run after a resurrection (Zork's JIGS-UP resets things). */
     then?: string;
+    /** The first whose `if` holds replaces `resurrection`, `respawn` and `then` (Zork sends you to Hades once you've seen the Altar). */
+    variants?: Array<{ if: string; resurrection?: string[]; respawn?: string; then?: string }>;
+    /** Checked first: the first whose `if` holds prints its lines, not the cause, and ends the game (dying while already dead). */
+    instead?: Array<{ if: string; lines: string[] }>;
   };
   /** Run after every acted-on turn while their condition holds (a lamp burning down). */
   daemons?: Array<{ if: string; then: string | EventStep[] }>;

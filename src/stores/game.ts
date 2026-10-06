@@ -14,7 +14,7 @@ import {
   describeCurrentRoom,
   visibleItemsIn,
 } from '@/engine/engine';
-import { inventoryOf, isLit } from '@/engine/model';
+import { inventoryOf, isLit, npcsSeen } from '@/engine/model';
 import { scriptLines, statusText } from '@/engine/verbs/meta';
 import { migrateSave } from '@/engine/migrate';
 import { fallbackParse, splitCommands } from '@/engine/parser';
@@ -367,6 +367,7 @@ export const useGameStore = defineStore('game', {
           inventoryOf(world, this.game),
           this.visibleItems,
           !isLit(world, this.game),
+          npcsSeen(world, this.game, this.game.currentRoom),
         );
         // The intent server names things by ID, so they resolve by ID first.
         const action = { ...(await parseIntentRemote(input, ctx)), byId: true };

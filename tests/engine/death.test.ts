@@ -103,3 +103,49 @@ describe('death', () => {
     expect(lines.at(-1)).toBe('You feel new.');
   });
 });
+
+describe('death variants (5a)', () => {
+  const base = { message: [{ if: 'flag:unlucky', text: 'Bad luck, huh?' }, '**** You have died ****'], lives: 2, respawn: 'living', resurrection: ['Another chance.'] };
+  it('conditional message lines', () => {
+    const w: World = { ...world, death: base };
+    const lucky = stateWith(w, { room: 'yard' });
+    expect(runSteps([{ die: 'Splat.' }], w, lucky).slice(0, 2)).toEqual(['Splat.', '**** You have died ****']);
+    const s = stateWith(w, { room: 'yard', flags: ['unlucky'] });
+    expect(runSteps([{ die: 'Splat.' }], w, s).slice(0, 3)).toEqual(['Splat.', 'Bad luck, huh?', '**** You have died ****']);
+  });
+  it('a variant replaces the resurrection text, the room and the event', () => {
+    const w: World = { ...world, events: { ...world.events, ghosted: [{ set: 'dead' }] }, death: { ...base, variants: [{ if: 'visited:shed', resurrection: ['You find yourself before the gates.'], respawn: 'bedroom', then: 'ghosted' }] } };
+    const s = stateWith(w, { room: 'yard' });
+    s.visited.push('shed');
+    const lines = runSteps([{ die: 'Splat.' }], w, s);
+    expect(lines).toContain('You find yourself before the gates.');
+    expect(lines).not.toContain('Another chance.');
+    expect(s.currentRoom).toBe('bedroom');
+    expect(s.flags.dead).toBe(true);
+  });
+  it('without a matching variant, the block’s own fields', () => {
+    const w: World = { ...world, death: { ...base, variants: [{ if: 'flag:never', respawn: 'shed' }] } };
+    const s = stateWith(w, { room: 'yard' });
+    expect(runSteps([{ die: 'Splat.' }], w, s)).toContain('Another chance.');
+    expect(s.currentRoom).toBe('living');
+  });
+  it('dying while dead ends the game with its own lines', () => {
+    const w: World = { ...world, death: { ...base, instead: [{ if: 'flag:dead', lines: ['It takes a talented person…'] }] } };
+    const s = stateWith(w, { room: 'yard', flags: ['dead'] });
+    expect(runSteps([{ die: 'Splat.' }], w, s)).toEqual(['It takes a talented person…']);
+    expect(s.gameOver).toBe(true);
+  });
+});
+
+describe('the audit checks death variants and litIf', () => {
+  it('flags bad rooms, events and conditions', async () => {
+    const { auditWorld } = await import('../helpers/audit');
+    const w: World = {
+      ...world,
+      darkness: { ...world.darkness, litIf: 'in:nowhere1' },
+      death: { message: [{ if: 'in:nowhere2', text: 'x' }], variants: [{ if: 'in:nowhere3', respawn: 'nowhere4', then: 'nothing5' }], instead: [{ if: 'in:nowhere6', lines: [] }] },
+    };
+    const p = auditWorld(w).join('\n');
+    for (const n of ['nowhere1', 'nowhere2', 'nowhere3', 'nowhere4', 'nothing5', 'nowhere6']) expect(p).toContain(n);
+  });
+});

@@ -1,5 +1,6 @@
 import type { GameState, NpcState, Place } from '@/types/game';
 import type { World } from '@/types/world';
+import { evaluateCondition } from './conditions';
 import { fuzzyCandidates, fuzzyMatch } from './fuzzy';
 
 /** The place that means “carried by the player”. Reserved: no room or item may use it. */
@@ -233,6 +234,7 @@ function collect(world: World, state: GameState, into: (id: string) => boolean):
  */
 export function isLit(world: World, state: GameState, roomId: string = state.currentRoom): boolean {
   if (!world.rooms[roomId]?.dark) return true;
+  if (world.darkness?.litIf && evaluateCondition(world.darkness.litIf, state, world)) return true;
   return Object.keys(world.items).some((id) => {
     if (!world.items[id].light || !state.itemState[id]?.on) return false;
     const seen = new Set<string>();

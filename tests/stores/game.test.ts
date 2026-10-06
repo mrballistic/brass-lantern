@@ -189,6 +189,17 @@ describe('useGameStore', () => {
       expect(store.output.some((l) => l.text.includes('can’t go that way'))).toBe(false);
     });
 
+    it('tells the LLM only about characters the player can see', async () => {
+      const store = freshStore();
+      store.initialize();
+      store.game.currentRoom = 'yard';
+      store.game.npcs = { neighbor: { hidden: true } };
+      const fetchMock = mockIntent({ action: 'unknown' });
+      await store.submit('frobnicate the gizmo');
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+      expect(JSON.stringify(body.context.npcs)).not.toContain('neighbor');
+    });
+
     it('does not call the LLM when the regex parse succeeds', async () => {
       const store = freshStore();
       store.initialize();
