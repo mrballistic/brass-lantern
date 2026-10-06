@@ -64,6 +64,9 @@ const MATCHES = [...TO_DAM, 'north', 'take matchbook', 'south', 'south', 'southw
 /** Bell, candles and book, then down the hole to Hades. */
 const TO_HADES = ['take bell', 'south', 'take candles', 'take book', 'down', 'down'];
 
+/** From the Round Room into the coal mine's Slide Room: Mirror Room 2, rub the mirror, the Cold Passage (5c). */
+export const MINE_PREFIX = ['south', 'south', 'rub mirror', 'north', 'west'];
+
 export const TEMPLE_SESSIONS: Record<string, string[]> = {
   exorcism: [
     'drop sword', ...MATCHES, ...TO_TEMPLE, 'look', 'read prayer', ...TO_HADES, 'look', 'south', 'ring bell', 'take candles',
