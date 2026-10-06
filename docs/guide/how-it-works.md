@@ -22,20 +22,26 @@ browser                                      intent server (optional)
 
 The store (`src/stores/game.ts`) runs every line through the same steps:
 
-1. **Meta commands** (SAVE, LOAD, RESTART, COOKIES) are handled by the store itself.
+1. **Meta commands** (SAVE and RESTORE with a name, LOAD, UNDO, RESTART, COOKIES) are handled by the store itself. So is the answer to SAVE's “Save as?”.
 2. **Split.** `splitCommands` (`src/engine/parser.ts`) breaks the line into commands:
    - Clauses always split on `then`, `;` and full stops, except after `dr.`, `mr.` and the like.
    - Within a clause, `and` and commas split only when every piece is a recognized command, or an object after a list verb: `get key and wallet` becomes `get key` and `take wallet`.
    - A clause that isn't clearly a list ("could you grab my keys and wallet") stays whole.
-3. **Parse.** `fallbackParse` maps each command to an action, with synonyms, a second object ("give X to Y", "put X in Y"), and a bare word meaning GO.
-4. **Pronouns.** `it` / `them` become the last thing the engine acted on.
-5. **Execute.** `execute(action, { world, state })` returns the lines to print, whether anything changed, and `understood: false` if it couldn't make sense of the command (no such exit, no such item, no rule that applies).
-6. **Retry on a miss.** If the regex couldn't parse the command, or the engine didn't understand it, the store asks the intent server how to read it. If the LLM's reading is different and the engine can act on it, that result is shown instead; otherwise the literal reply stands.
-7. **Time passes.** After a command the engine acted on (never after a misunderstood one), timers fire, daemons run and ambient lines print, in that order (`src/engine/time.ts`). If the light changed, the reply says so.
-8. **Output.** Lines are styled by their prefix and typed out, and the game is saved if anything changed.
+3. **The conversation.** `interpret` (`src/engine/conversation.ts`) looks at the command in the light of the last one:
+   - **an answer** to a question the engine just asked (“Which door do you mean?” → `trap`) fills in the waiting command and runs it, **without** asking the intent server;
+   - **AGAIN** (`g`) runs the last command again;
+   - **OOPS *word*** swaps the word nobody understood in the last line and runs that.
+
+   Anything else is a fresh command, and drops any waiting question.
+4. **Parse.** `fallbackParse` maps each command to an action, with synonyms, a second object ("give X to Y", "put X in Y"), ALL and EXCEPT, and a bare word meaning GO.
+5. **Pronouns.** `it`, `them` and `that` become the last thing the engine acted on; `him` and `her`, the last person.
+6. **Execute.** `execute(action, { world, state })` returns the lines to print, whether anything changed, and `understood: false` if it couldn't make sense of the command (no such exit, no such item, no rule that applies). When a noun matches more than one thing, or a verb is missing its object, it returns a **question** (`ask`) instead, before touching anything. Before running a command that changes the game, the store keeps a snapshot for UNDO (the last 50, for this session only).
+7. **Retry on a miss.** If the regex couldn't parse the command, or the engine didn't understand it, the store asks the intent server how to read it. If the LLM's reading is different and the engine can act on it, that result is shown instead; otherwise the literal reply stands.
+8. **Time passes.** After a command the engine acted on (never after a misunderstood one, a question, or a command like VERBOSE that takes no time), the move counter goes up, timers fire, daemons run and ambient lines print, in that order (`src/engine/time.ts`). If the light changed, the reply says so.
+9. **Output.** Lines are styled by their prefix and typed out, and the game is saved if anything changed.
 
 ::: warning The one rule to keep
-Step 6 runs the engine on the literal reading first, and possibly again on the LLM's reading. That's only safe because **a miss never changes the game**. When you add an engine handler, decide whether you can act before you touch any state. `tests/engine/engine-hooks.test.ts` checks this.
+Step 7 runs the engine on the literal reading first, and possibly again on the LLM's reading. That's only safe because **a miss never changes the game**. When you add an engine handler, decide whether you can act before you touch any state. `tests/engine/engine-hooks.test.ts` checks this.
 :::
 
 The intent server sees the room by ID and name (`red_mug (red coffee mug)`), so its answer uses IDs the engine matches exactly. Everything still goes through the same fuzzy matcher (`src/engine/fuzzy.ts`: exact ID, then exact name, then substring, then token prefix), so a slightly-off answer still lands.
@@ -58,7 +64,7 @@ Inserting or ejecting a cartridge clears the screen.
 
 | Concept | Where in the world | Notes |
 |---|---|---|
-| Conditions | anywhere | `flag:`, `has:`, `in:`, `visited:`, `inside:`, `open:`, `locked:`, `on:`, `here:`, `!`, `&`. One parser, `src/engine/conditions.ts`. |
+| Conditions | anywhere | `flag:`, `has:`, `in:`, `visited:`, `inside:`, `open:`, `locked:`, `on:`, `here:`, `var:`, `carrying`, `lit:`, `!`, `&`. One parser, `src/engine/conditions.ts`. |
 | Rules | `instead`, `after` on items and rooms | Replace a verb's default, or follow it. `src/engine/rules.ts`. |
 | Containers, doors | `item.container`, `item.surface`, `item.door` | Open, close, lock, put in, take from. |
 | Exits | `room.exits` | A room ID, or `{ to, if, denial, door, denials }`. |
@@ -72,7 +78,8 @@ Inserting or ejecting a cartridge clears the screen.
 | Gated rooms | `room.requires`, `room.denial` | |
 | The ending | `finale` | Smash X in room Y holding Z: event, epilogue, score, footer. |
 | Timers | `ambient` | Lines every N turns while a condition holds. Turns count only commands the engine acted on. |
-| Score | `scoring`, `ranks` | Summed from flags. |
+| Score | `scoring`, `ranks`, `maxScore` | Summed from flags, conditions that hold, and the `score` variable. |
+| Status line | `style`, `statusLine` | Zork's room, score and moves in Infocom style; `MOVES: n` (or score and moves) otherwise. |
 
 When a world needs behavior the schema can't express, add a *generic* hook to `src/types/world.ts` and the engine. Never branch on a world's IDs.
 
@@ -105,9 +112,11 @@ Each output line is classified by its first characters (`src/engine/output.ts`).
 | `[` | system | instant |
 | anything else | prose | 10ms/char |
 
-A restored session renders instantly, with no typewriter replay, and its boot sequence is shortened. The header shows `appName` and the version from `package.json`, then the cartridge’s title (in builds with a menu); on the right, `MOVES: n` for a native world or the story’s own status line, and a COOKIES button when analytics are configured.
+A restored session renders instantly, with no typewriter replay, and its boot sequence is shortened. The header shows `appName` and the version from `package.json`, then the cartridge’s title (in builds with a menu); on the right, a native world's status line (`MOVES: n`, or Zork's “West of House  Score: 0  Moves: 0” in Infocom style) or the story’s own, and a COOKIES button when analytics are configured.
 
 ## Saves and analytics
 
-- **Saves** live in `localStorage` only, one per cartridge, under `<storagePrefix>:save:<cartridge id>` (or the cartridge’s `saveKey`), with up to 500 lines of history. [Cartridges and storage](../reference/cartridges#browser-storage) lists every key. They're written after every change. If storage is unavailable (private browsing), play continues and SAVE says so.
+- **Saves** live in `localStorage` only, one per cartridge, under `<storagePrefix>:save:<cartridge id>` (or the cartridge’s `saveKey`), with up to 500 lines of history. [Cartridges and storage](../reference/cartridges#browser-storage) lists every key. They're written after every change. SAVE *name* keeps an extra copy under `<save key>:<name>`, and RESTORE *name* brings it back. If storage is unavailable (private browsing), play continues and SAVE says so.
+- **UNDO** history is memory only: up to 50 snapshots, gone on reload or RESTART.
+- **SCRIPT** downloads a transcript as a text file when it stops; nothing is stored.
 - **Analytics** are off unless you set `VITE_GA_MEASUREMENT_ID` at build time. When it's set, nothing is sent and nothing is stored until the player accepts a consent banner, and Do Not Track is honored. Builds without an ID show no banner at all. Events: `page_view`, `game_start`, `session_resumed` (with a `cartridge` parameter for story files), and, for native worlds, `game_completed` with the move count.

@@ -32,6 +32,9 @@ Every field a world can use. The source of truth is [`src/types/world.ts`](https
 | `style?` | `'brass'` or `'infocom'` | Output conventions. See [Style](#style). Default `'brass'`. |
 | `emptyInventory?` | string | INVENTORY with nothing carried. Default: “You are empty-handed.” |
 | `smashRefusal?` | string | SMASH where nothing can be smashed. |
+| `title?` | string | The game's full title, for VERSION and Infocom-style transcripts (“ZORK I: The Great Underground Empire”). |
+| `credits?` | string[] | Lines VERSION prints after the title. |
+| `statusLine?` | `'moves'` or `'score'` | The header in brass style: `MOVES: n` (the default) or `SCORE: n  MOVES: n`. Infocom style always shows the room, score and moves. |
 
 ## Room
 
@@ -70,7 +73,7 @@ Message-only exits aren't listed unless `listExits` names them.
 |---|---|---|
 | `name` | string | Display name, and what event lines like `[Added to inventory: …]` match. Keep it unique. |
 | `aliases?` | string[] | Other words players might use. Matched, never shown. |
-| `description` | string | EXAMINE. |
+| `description` | string | EXAMINE. Leave it empty (`''`) and EXAMINE does what Zork does for an object with no text: a container lists what's in it or says “The *name* is empty.”; anything else is “There’s nothing special about the *name*.” |
 | `portable` | boolean | Can it be taken? |
 | `refusal?` | string | Reply to taking a non-portable item. |
 | `tags` | string[] | Free-form; the engine doesn't read them. |
@@ -167,9 +170,11 @@ verbs: {
 - **`'infocom'`** follows Zork's conventions:
   - “There is a sword here.” and “Taken.”;
   - no exit line;
-  - a room you've visited shows just its name and contents unless you LOOK;
+  - a room you've visited shows just its name and contents unless you LOOK (SUPERBRIEF shows only the name, in either style);
   - lists newest first;
   - SCORE says “Your score is 15 (total of 350 points), in 40 moves.”;
+  - the header shows the room, score and moves, like Zork's status line;
+  - questions, TAKE ALL and transcripts use Zork's wording;
   - bookkeeping lines like `[Flag set: …]` act without being shown.
 
 ## Time
@@ -190,7 +195,7 @@ daemons: [
 ],
 ```
 
-VERBOSE, BRIEF and SUPERBRIEF take no game time.
+A **move** is one of these turns: MOVES in the header and SCORE count them. Commands that take no game time (VERBOSE, BRIEF, SUPERBRIEF, UNDO, SAVE, RESTORE, SCRIPT, VERSION, a question back to the player) don't count, and nothing runs after them.
 
 ## Darkness
 

@@ -4,29 +4,14 @@ A world is data, and data rots quietly: an exit points at a renamed room, a flag
 
 ## Play it
 
-[`tests/worlds/tutorial.test.ts`](https://github.com/mrballistic/brass-lantern/blob/main/tests/worlds/tutorial.test.ts) has a `play()` helper that runs typed commands through the real parser and engine, so a test reads like a transcript:
+[`tests/helpers/play.ts`](https://github.com/mrballistic/brass-lantern/blob/main/tests/helpers/play.ts) runs typed commands through the real parser and engine, so a test reads like a transcript:
 
 ```ts
-import { tutorial as world } from '@/worlds/tutorial';
-import { execute, initialState, openingLines } from '@/engine/engine';
-import { fallbackParse, splitCommands } from '@/engine/parser';
-
-function play(lines: string[]) {
-  const state = initialState(world);
-  const log = [...openingLines(world, state)];
-  for (const line of lines) {
-    log.push(`> ${line}`);
-    for (const command of splitCommands(line)) {
-      const parsed = fallbackParse(command);
-      if (!parsed) throw new Error(`unparsed: ${command}`);
-      log.push(...execute(parsed, { world, state }).lines);
-    }
-  }
-  return { state, text: log.join('\n') };
-}
+import { play } from '../helpers/play';
+import { tutorial } from '@/worlds/tutorial';
 
 it('plays to the best ending', () => {
-  const { state, text } = play([
+  const { state, text } = play(tutorial, [
     'open drawer',
     'take stapler',
     'north',
@@ -43,32 +28,23 @@ it('plays to the best ending', () => {
 
 Write at least two: the **shortest win**, and a run that **earns every point**. When either breaks, you've changed the critical path or the scoring, on purpose or not.
 
-The helper calls the engine directly, without the store, so `it`/`them` aren't resolved and the intent server isn't consulted. Write commands the regex parser understands.
+To pin every word, compare the whole transcript: `expect(text).toMatchInlineSnapshot()` fills itself in on the first `npx vitest -u`, and from then on any change to the text fails the test until you look at it. The [example worlds](./building-worlds/) are tested this way.
+
+`play()` calls the engine directly, without the store, so pronouns, questions, AGAIN, OOPS and UNDO aren't involved and the intent server isn't consulted. Write commands the regex parser understands, naming things fully enough not to be asked “which one?”.
 
 ## Check the data
 
-Integrity checks that are worth having for any world:
+[`tests/worlds/audit.test.ts`](https://github.com/mrballistic/brass-lantern/blob/main/tests/worlds/audit.test.ts) checks every world in `cartridges` (and the examples) for mistakes that fail silently in play:
+
+- effects naming items, rooms, events or endings that don't exist, and unknown effects;
+- events named by rules, `onEnter`, `onTake`, `onWear`, `onSmash`, `onGive`, daemons and the finale that don't exist;
+- conditions of unknown kinds, or naming items and rooms that don't exist;
+- exits to nowhere, doors that aren't items, items listed in rooms or containers that don't exist;
+- a world verb word that a built-in verb already owns, and the reserved ID `player`.
+
+Your world gets these for free once it's a cartridge. A few more checks are worth writing for your own world. Every room reachable from the start:
 
 ```ts
-import { tutorial as world } from '@/worlds/tutorial';
-
-it('every exit leads to a real room', () => {
-  const broken = Object.entries(world.rooms).flatMap(([id, room]) =>
-    Object.entries(room.exits)
-      .filter(([, dest]) => !world.rooms[dest])
-      .map(([label, dest]) => `${id}.${label} → ${dest}`),
-  );
-  expect(broken).toEqual([]);
-});
-
-it('every [Flag set: …] label is mapped', () => {
-  const unmapped = Object.values(world.events)
-    .flat()
-    .map((line) => line.match(/^\[Flag set:\s*(.+?)\]$/)?.[1])
-    .filter((label): label is string => !!label && !world.flagLabels[label.toLowerCase()]);
-  expect(unmapped).toEqual([]);
-});
-
 it('every room is reachable from the start', () => {
   const seen = new Set<string>();
   const queue = [world.startRoom];
@@ -76,13 +52,16 @@ it('every room is reachable from the start', () => {
     const id = queue.shift()!;
     if (seen.has(id)) continue;
     seen.add(id);
-    queue.push(...Object.values(world.rooms[id]?.exits ?? {}));
+    for (const exit of Object.values(world.rooms[id]?.exits ?? {})) {
+      const to = typeof exit === 'string' ? exit : exit.to;
+      if (to) queue.push(to);
+    }
   }
   expect(Object.keys(world.rooms).filter((id) => !seen.has(id))).toEqual([]);
 });
 ```
 
-More along the same lines: every event a room, item, person or the finale names exists; every item a room lists exists; every flag in a `requires`, hint or scoring entry can actually be set by some event; every gated room has a `denial`; every `listExits` label is a real exit.
+More along the same lines: every `[Flag set: …]` label is in `flagLabels`; every flag in a `requires`, hint or scoring entry can actually be set by some event; every gated room has a `denial`; every `listExits` label is a real exit.
 
 **Copy style** is easy to test too. If you use curly quotes, fail on straight ones:
 

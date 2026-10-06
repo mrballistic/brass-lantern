@@ -21,7 +21,7 @@ Conditions are strings, used by `requires`, `onEnter`, use rules, dialogue keys,
 | `!…` | negates any of the above |
 | `a & b` | every part holds: `in:break_room & !flag:lunch_freed` |
 
-There's no "or". Write two rules, or two dialogue keys, instead. An unrecognized condition is false.
+There's no "or". Write two rules, or two dialogue keys, instead. An unrecognized condition is false in play, and `tests/worlds/audit.test.ts` fails on it, and on a condition naming an item or room that doesn't exist.
 
 ## Events
 
@@ -43,7 +43,7 @@ An event is a named list of steps, run in order. A string is printed. An object 
 | `{ die: 'cause' }` | Kills the player. See [Death](./world-schema#death). Nothing after it runs. |
 | `{ end: 'ending' }` | Plays an ending. See [Endings](./world-schema#endings). Nothing after it runs. |
 
-Effects print nothing unless they say so. `tests/worlds/audit.test.ts` fails on an effect naming something that doesn't exist.
+Effects print nothing unless they say so. An effect naming something that doesn't exist does nothing in play, and `tests/worlds/audit.test.ts` fails on it. The audit also checks the events named by rules, `onEnter`, `onTake`, `onWear`, `onSmash`, `onGive`, daemons and the finale.
 
 ### Bracket lines (the older form)
 

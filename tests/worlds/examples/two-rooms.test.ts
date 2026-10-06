@@ -46,4 +46,9 @@ describe('the two-room game', () => {
     expect(text).toBe(TRANSCRIPT);
     expect(state.gameOver).toBe(true);
   });
+
+  it('can be won the short way shown on the Building worlds page', () => {
+    const { state } = play(twoRooms, ['examine mat', 'take key', 'unlock door with key', 'open door', 'north', 'read letter']);
+    expect(state.gameOver).toBe(true);
+  });
 });

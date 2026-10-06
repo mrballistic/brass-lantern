@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitepress';
+import pkg from '../../package.json' with { type: 'json' };
 
 const repo = 'https://github.com/mrballistic/brass-lantern';
 
@@ -20,22 +21,32 @@ export default defineConfig({
   themeConfig: {
     nav: [
       { text: 'Guide', link: '/guide/getting-started' },
+      { text: 'Build a world', link: '/guide/building-worlds/' },
       { text: 'Story files', link: '/guide/z-machine' },
       { text: 'Reference', link: '/reference/world-schema' },
       { text: 'Play the demo', link: 'https://mrballistic.github.io/brass-lantern/demo/', target: '_self' },
+      { text: `v${pkg.version}`, link: `${repo}/blob/main/CHANGELOG.md` },
     ],
     sidebar: [
       {
         text: 'Guide',
         items: [
           { text: 'Getting started', link: '/guide/getting-started' },
-          { text: 'Your first world', link: '/guide/your-first-world' },
           { text: 'Playing story files (Zork)', link: '/guide/z-machine' },
           { text: 'Porting Zork', link: '/guide/porting-zork' },
           { text: 'How it works', link: '/guide/how-it-works' },
           { text: 'The intent server', link: '/guide/intent-server' },
-          { text: 'Testing a world', link: '/guide/testing' },
           { text: 'Deploying', link: '/guide/deploying' },
+        ],
+      },
+      {
+        text: 'Building worlds',
+        items: [
+          { text: 'Overview', link: '/guide/building-worlds/' },
+          { text: 'A two-room game', link: '/guide/building-worlds/two-rooms' },
+          { text: 'The demo game: Snack Attack', link: '/guide/your-first-world' },
+          { text: 'Recipes', link: '/guide/building-worlds/recipes' },
+          { text: 'Testing a world', link: '/guide/testing' },
         ],
       },
       {
@@ -51,6 +62,6 @@ export default defineConfig({
     socialLinks: [{ icon: 'github', link: repo }],
     editLink: { pattern: `${repo}/edit/main/docs/:path`, text: 'Edit this page on GitHub' },
     search: { provider: 'local' },
-    footer: { message: 'Released under the MIT License.', copyright: 'Copyright © 2026 Todd Greco' },
+    footer: { message: `Brass Lantern v${pkg.version} · Released under the MIT License.`, copyright: 'Copyright © 2026 Todd Greco' },
   },
 });

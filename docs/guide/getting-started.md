@@ -54,7 +54,7 @@ export const appName = 'BRASS LANTERN';
 export const storagePrefix = 'brass-lantern';
 ```
 
-Add your own world as a cartridge (and remove the others if you like: with one cartridge there’s no menu). [Your first world](./your-first-world) walks through writing one; [Playing story files](./z-machine) covers Z-machine cartridges.
+Add your own world as a cartridge (and remove the others if you like: with one cartridge there’s no menu). [Building worlds](./building-worlds/) walks through writing one, from two rooms up; [Playing story files](./z-machine) covers Z-machine cartridges.
 
 ## Checks
 
