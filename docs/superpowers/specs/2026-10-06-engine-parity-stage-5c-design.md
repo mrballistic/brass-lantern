@@ -51,7 +51,7 @@ The 14 mine rooms, in the story file's order and with its texts: Slide Room, Min
 ### The narrow passage (NO-OBJS)
 
 - Timber Room west and Lower Shaft east/out are conditional exits on `heaviest<=4`, with the ZIL's refusal text.
-- The first turn you spend in the Lower Shaft with a light scores 10 (LIGHT-SHAFT).
+- The first turn you spend in the Lower Shaft with a light scores 13 (LIGHT-SHAFT).
 
 ### The basket (BASKET-F)
 
@@ -76,7 +76,7 @@ The jade figurine (Bat Room), the sapphire bracelet (Gas Room) and the huge diam
 
 ## 3. Testing
 
-- **Scripted sessions** (seeded, both sides) for: the slide, going down it and sending an item down it; the bat carrying you off, and the garlic stopping it; the gas room exploding with a lit candle, the “aspiring adventurer” variant, and a safe pass with the lamp; the narrow passage refused with the lamp and allowed with light things; the Lower Shaft's 10 points; the basket raised, lowered, “pitch black”, and carrying things down the shaft; the machine making the diamond, making gunk, and doing nothing with the lid open; walking the maze and the ladder; the three treasures. A shared prefix walks from the start of the game into the mine, through the cellar and past the troll (steered by seed).
+- **Scripted sessions** (seeded, both sides) for: the slide, going down it and sending an item down it; the bat carrying you off, and the garlic stopping it; the gas room exploding with a lit candle, the “aspiring adventurer” variant, and a safe pass with the lamp; the narrow passage refused with the lamp and allowed with light things; the Lower Shaft's 13 points; the basket raised, lowered, “pitch black”, and carrying things down the shaft; the machine making the diamond, making gunk, and doing nothing with the lid open; walking the maze and the ladder; the three treasures. A shared prefix walks from the start of the game into the mine, through the cellar and past the troll (steered by seed).
 - **Unit tests** for `heaviest<=N` on the fixture world (including a container whose contents push it over), each generic Infocom fix, and a scoring test for the three treasures and the shaft.
 - **Seeds:** the thief's route grows by 14 rooms, so existing session seeds are re-pinned as needed.
 
