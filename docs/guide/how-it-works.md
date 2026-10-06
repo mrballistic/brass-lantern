@@ -27,6 +27,7 @@ The store (`src/stores/game.ts`) runs every line through the same steps:
    - Clauses always split on `then`, `;` and full stops, except after `dr.`, `mr.` and the like.
    - Within a clause, `and` and commas split only when every piece is a recognized command, or an object after a list verb: `get key and wallet` becomes `get key` and `take wallet`.
    - A clause that isn't clearly a list ("could you grab my keys and wallet") stays whole.
+   Each command may be **captured** first: a room's or the world's `capture` (`captureLine` in `src/engine/engine.ts`) can take it before it's parsed, which ends the line. Captured input never reaches the intent server.
 3. **The conversation.** `interpret` (`src/engine/conversation.ts`) looks at the command in the light of the last one:
    - **an answer** to a question the engine just asked (“Which door do you mean?” → `trap`) fills in the waiting command and runs it, **without** asking the intent server;
    - **AGAIN** (`g`) runs the last command again;
@@ -37,7 +38,7 @@ The store (`src/stores/game.ts`) runs every line through the same steps:
 5. **Pronouns.** `it`, `them` and `that` become the last thing the engine acted on; `him` and `her`, the last person.
 6. **Execute.** `execute(action, { world, state })` returns the lines to print, whether anything changed, and `understood: false` if it couldn't make sense of the command (no such exit, no such item, no rule that applies). When a noun matches more than one thing, or a verb is missing its object, it returns a **question** (`ask`) instead, before touching anything. Before running a command that changes the game, the store keeps a snapshot for UNDO (the last 50, for this session only).
 7. **Retry on a miss.** If the regex couldn't parse the command, or the engine didn't understand it, the store asks the intent server how to read it. If the LLM's reading is different and the engine can act on it, that result is shown instead; otherwise the literal reply stands.
-8. **Time passes.** After a command the engine acted on (never after a misunderstood one, a question, or a command like VERBOSE that takes no time), the move counter goes up, wounds heal, timers fire, daemons run, characters fight, and ambient lines print, in that order (`src/engine/time.ts`, after Zork's CLOCKER). If the light changed, the reply says so.
+8. **Time passes.** After a command the engine acted on (never after a misunderstood one, a question, or a command like VERBOSE that takes no time), the room's end routines run (`onEnd`), then the move counter goes up, wounds heal, timers fire, daemons run, characters fight, and ambient lines print, in that order (`src/engine/time.ts`, after Zork's CLOCKER). If the light changed, the reply says so.
 9. **Output.** Lines are styled by their prefix and typed out, and the game is saved if anything changed.
 
 ::: warning The one rule to keep

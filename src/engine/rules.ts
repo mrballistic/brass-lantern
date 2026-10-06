@@ -1,7 +1,7 @@
 import type { GameState, ParsedAction } from '@/types/game';
 import type { Item, NPC, Room, Rule, World } from '@/types/world';
 import { evaluateCondition } from './conditions';
-import { inventoryOf, matchNpc, pickItem, reachableItems, visibleItems } from './model';
+import { heldItems, inventoryOf, matchNpc, pickItem, reachableItems, visibleItems } from './model';
 import { setCommand } from './scripts';
 import { runEventKey, turnHalted } from './effects';
 import { ok, type EngineResult } from './result';
@@ -24,7 +24,9 @@ export function rulesFor(owner: Item | Room | NPC | undefined, phase: 'instead' 
   return own;
 }
 
-function ruleApplies(rule: Rule, other: string | null | undefined, reach: string[], world: World, state: GameState): boolean {
+function ruleApplies(rule: Rule, other: string | null | undefined, reach: string[], world: World, state: GameState, role?: 'target' | 'indirect', prep?: string): boolean {
+  if (rule.as && role && rule.as !== role) return false;
+  if (rule.prep && rule.prep !== prep) return false;
   if (rule.with) {
     if (!reach.includes(rule.with)) return false;
     if (other && other !== rule.with) return false;
@@ -38,6 +40,8 @@ export interface RuleIds {
   room: string;
   /** Characters the command names, when they aren't items (THROW AXE AT TROLL). */
   npcs?: string[];
+  /** The command's preposition (PUT … IN or ON). */
+  prep?: string;
 }
 
 /** The target item's rules, then the indirect item's, then the room's. The first that applies wins. */
@@ -49,15 +53,18 @@ export function findRule(
   ids: RuleIds,
   reach: string[],
 ): Rule | null {
-  const owners: Array<[Item | Room | NPC | undefined, string | null | undefined]> = [
-    [ids.target ? world.items[ids.target] : undefined, ids.indirect],
-    [ids.indirect ? world.items[ids.indirect] : undefined, ids.target],
-    ...(ids.npcs ?? []).map((id): [NPC | undefined, string | null | undefined] => [world.npcs[id], ids.target ?? ids.indirect]),
-    [world.rooms[ids.room], ids.indirect ?? ids.target],
+  type Role = 'target' | 'indirect' | undefined;
+  const target: [Item | undefined, string | null | undefined, Role] = [ids.target ? world.items[ids.target] : undefined, ids.indirect, 'target'];
+  const indirect: [Item | undefined, string | null | undefined, Role] = [ids.indirect ? world.items[ids.indirect] : undefined, ids.target, 'indirect'];
+  // Zork's PERFORM asks the second object before the first (PRSI, then PRSO).
+  const owners: Array<[Item | Room | NPC | undefined, string | null | undefined, Role]> = [
+    ...(world.style === 'infocom' ? [indirect, target] : [target, indirect]),
+    ...(ids.npcs ?? []).map((id): [NPC | undefined, string | null | undefined, Role] => [world.npcs[id], ids.target ?? ids.indirect, undefined]),
+    [world.rooms[ids.room], ids.indirect ?? ids.target, undefined],
   ];
-  for (const [owner, other] of owners) {
+  for (const [owner, other, role] of owners) {
     for (const rule of rulesFor(owner, phase, verb)) {
-      if (ruleApplies(rule, other, reach, world, state)) return rule;
+      if (ruleApplies(rule, other, reach, world, state, role, ids.prep)) return rule;
     }
   }
   return null;
@@ -72,6 +79,7 @@ export function applyRule(rule: Rule, world: World, state: GameState): EngineRes
 
 /** The items each built-in verb picks its target from. */
 function targetScope(verb: string, world: World, state: GameState): string[] {
+  if (world.verbs?.[verb]?.held) return heldItems(world, state);
   switch (verb) {
     case 'drop':
     case 'put':
@@ -113,7 +121,7 @@ export function withRules(
   const targetNpc = !target && action.target ? matchNpc(action.target, world, state) : null;
   const indirectNpc = !indirect && action.indirect ? matchNpc(action.indirect, world, state) : null;
   const npcs = [targetNpc, indirectNpc].filter((id): id is string => Boolean(id));
-  const ids = { target, indirect, room: state.currentRoom, npcs };
+  const ids = { target, indirect, room: state.currentRoom, npcs, prep: action.prep };
   setCommand(state, {
     verb,
     target: target ?? targetNpc ?? undefined,

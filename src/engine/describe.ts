@@ -73,7 +73,7 @@ function heading(world: World, id: string): string {
  */
 export function contentsLines(world: World, state: GameState, id: string, depth = 0): string[] {
   if (!canSeeInside(world, state, id)) return [];
-  const kids = childrenOf(world, state, id).filter((k) => !world.items[k]?.scenery && shown(state)(k));
+  const kids = childrenOf(world, state, id).filter((k) => !world.items[k]?.scenery && !state.itemState[k]?.unlisted && shown(state)(k));
   const lines: string[] = [];
   // Untouched things with a first-seen sentence describe themselves (“On the table is a brown sack.”).
   const told = kids.filter((k) => !state.itemState[k]?.moved && world.items[k]?.initialDescription);
@@ -135,9 +135,11 @@ export function describeRoom(
     if (sentence) lines.push(sentence);
     else if (infocom) lines.push(`There is ${withArticle(world, id)} here.`);
     else plain.push(world.items[id]?.name ?? id);
+    // Zork describes what's in each thing right after it.
+    if (infocom) lines.push(...contentsLines(world, state, id));
   }
   if (plain.length > 0) lines.push(`You can see: ${plain.join(', ')}.`);
-  for (const id of visibleItems) lines.push(...contentsLines(world, state, id));
+  if (!infocom) for (const id of visibleItems) lines.push(...contentsLines(world, state, id));
   // Scenery isn't listed, but what's on or in it is (the kitchen table's sack).
   for (const id of childrenOf(world, state, roomId).filter((k) => world.items[k]?.scenery)) {
     lines.push(...contentsLines(world, state, id));

@@ -9,6 +9,7 @@ import type { Effect, EventStep, Rule, RuleTable, World } from '@/types/world';
 const EFFECT_KINDS = new Set([
   'say', 'set', 'clear', 'move', 'open', 'close', 'lock', 'unlock', 'switch', 'add', 'setVar', 'score',
   'go', 'schedule', 'cancel', 'chance', 'run', 'die', 'end', 'moveNpc', 'npcState', 'script', 'hide', 'reveal',
+  'if', 'unvisit', 'free', 'noDarkLine', 'unlist', 'relist', 'look',
 ]);
 
 export function auditWorld(world: World): string[] {
@@ -27,7 +28,7 @@ export function auditWorld(world: World): string[] {
       }
       const e = step as Effect & Record<string, unknown>;
       const target = e[kind] as unknown;
-      if (['open', 'close', 'lock', 'unlock', 'switch'].includes(kind) && !isItem(target as string)) problems.push(`${where}: ${kind} names no item “${target}”`);
+      if (['open', 'close', 'lock', 'unlock', 'switch', 'unlist', 'relist'].includes(kind) && !isItem(target as string)) problems.push(`${where}: ${kind} names no item “${target}”`);
       if (kind === 'move') {
         if (!isItem(e.move as string)) problems.push(`${where}: move names no item “${e.move}”`);
         const to = e.to as string | null;
@@ -39,6 +40,12 @@ export function auditWorld(world: World): string[] {
       if ((kind === 'moveNpc' || kind === 'npcState') && !((target as string) in world.npcs)) problems.push(`${where}: ${kind} names no character “${target}”`);
       if (kind === 'moveNpc' && e.to !== null && !isRoom(e.to as string)) problems.push(`${where}: moveNpc to nowhere “${e.to}”`);
       if (kind === 'end' && !world.endings?.[target as string]) problems.push(`${where}: end names no ending “${target}”`);
+      if (kind === 'unvisit' && !isRoom(target as string)) problems.push(`${where}: unvisit names no room “${target}”`);
+      if (kind === 'if') {
+        for (const p of conditionProblems(target as string, world)) problems.push(`${where} (if): ${p}`);
+        checkSteps((e.then as EventStep[]) ?? [], `${where} (if)`);
+        checkSteps((e.else as EventStep[]) ?? [], `${where} (if)`);
+      }
       if (kind === 'chance') {
         checkSteps((e.then as EventStep[]) ?? [], `${where} (chance)`);
         checkSteps((e.else as EventStep[]) ?? [], `${where} (chance)`);
@@ -97,11 +104,33 @@ export function auditWorld(world: World): string[] {
       checkCondition(t.if, where);
     }
   };
+  const checkCapture = (capture: World['capture'], where: string) => {
+    if (!capture) return;
+    checkCondition(capture.if, where);
+    if (!world.scripts?.[capture.script]) problems.push(`${where}: names no script “${capture.script}”`);
+  };
+  checkCapture(world.capture, 'world capture');
+  checkCondition(world.darkness?.litIf, 'darkness.litIf');
+  for (const m of d?.message ?? []) if (typeof m !== 'string') checkCondition(m.if, 'death.message');
+  for (const x of d?.instead ?? []) checkCondition(x.if, 'death.instead');
+  for (const v of d?.variants ?? []) {
+    checkCondition(v.if, 'death.variants');
+    if (v.respawn && !isRoom(v.respawn)) problems.push(`death.variants respawn names no room “${v.respawn}”`);
+    if (v.then && !isEvent(v.then)) problems.push(`death.variants then names no event “${v.then}”`);
+    if (v.before && !isEvent(v.before)) problems.push(`death.variants before names no event “${v.before}”`);
+  }
   for (const [id, room] of Object.entries(world.rooms)) {
     checkTriggers(room.onEnter, `room ${id} onEnter`);
     checkTable(room.instead, 'instead', `room ${id}`);
     checkTable(room.after, 'after', `room ${id}`);
     checkCondition(room.requires, `room ${id} requires`);
+    for (const e of room.onEnd ?? []) {
+      checkCondition(e.if, `room ${id} onEnd`);
+      if (typeof e.then === 'string') {
+        if (!isEvent(e.then)) problems.push(`room ${id} onEnd names no event “${e.then}”`);
+      } else checkSteps(e.then, `room ${id} onEnd`);
+    }
+    checkCapture(room.capture, `room ${id} capture`);
     for (const [label, exit] of Object.entries(room.exits)) {
       if (typeof exit === 'string') continue;
       checkCondition(exit.if, `room ${id} exit ${label}`);

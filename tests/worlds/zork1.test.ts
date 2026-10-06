@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { execute, initialState, openingLines } from '@/engine/engine';
+import { runSteps } from '@/engine/effects';
+import { captureLine, execute, initialState, openingLines } from '@/engine/engine';
 import { fallbackParse, splitCommands, verbClashes } from '@/engine/parser';
 import { currentScore, statusText } from '@/engine/verbs/meta';
 import { zork1 } from '@/worlds/zork1';
@@ -409,3 +410,93 @@ describe('Zork I, natively: the cyclops', () => {
   });
 });
 
+
+describe('Zork I, natively: the temple and Hades (5a)', () => {
+  const at = (room: string, seed: number, setup?: (s: ReturnType<typeof initialState>) => void) => {
+    const state = initialState(zork1);
+    state.currentRoom = room;
+    state.rng = seed;
+    setup?.(state);
+    const run = (c: string) => execute(fallbackParse(c, zork1.verbs) ?? { action: 'unknown' }, { world: zork1, state }).lines;
+    return { state, run };
+  };
+  it('the tiny cave blows lit candles out half the time, far less once your luck is gone', () => {
+    const blown = (unlucky: boolean) => {
+      let n = 0;
+      for (let seed = 1; seed <= 400; seed++) {
+        const { run } = at('tiny_cave', seed, (s) => {
+          s.locations.candles = 'player';
+          s.itemState.candles = { on: true, moved: true };
+          s.flags.candles_touched = true;
+          if (unlucky) s.flags.unlucky = true;
+          s.npcs = { thief: { room: null } };
+        });
+        if (run('look').some((l) => l.includes('A gust of wind blows out your candles!'))) n++;
+      }
+      return n / 400;
+    };
+    const lucky = blown(false);
+    const unlucky = blown(true);
+    expect(lucky).toBeGreaterThan(0.4);
+    expect(lucky).toBeLessThan(0.6);
+    expect(unlucky).toBeGreaterThan(0.1);
+    expect(unlucky).toBeLessThan(0.23);
+  });
+  it('dying while dead ends the game, in Zork’s words', () => {
+    const { state } = at('entrance_to_hades', 1, (s) => {
+      s.flags.dead = true;
+    });
+    const lines = runSteps([{ die: 'Anything.' }], zork1, state);
+    expect(lines.join(' ')).toMatch(/It takes a talented person to be killed while already dead/);
+    expect(lines.join(' ')).not.toMatch(/Anything\./);
+    expect(state.gameOver).toBe(true);
+  });
+});
+
+describe('Zork I, natively: 5a’s treasures score as the ZIL says', () => {
+  // VALUE on finding, TVALUE in the trophy case (1dungeon.zil).
+  const TREASURES: Array<[string, number, number]> = [
+    ['bar', 10, 5],
+    ['trunk', 15, 5],
+    ['trident', 4, 11],
+    ['skull', 10, 10],
+    ['coffin', 10, 15],
+    ['sceptre', 4, 6],
+    ['torch', 14, 6],
+  ];
+  it.each(TREASURES)('%s: %i for taking, %i in the case', (id, value, tvalue) => {
+    const state = initialState(zork1);
+    const room = zork1.rooms.living_room ? 'living_room' : state.currentRoom;
+    state.currentRoom = room;
+    state.locations[id] = room;
+    state.itemState[id] = { ...state.itemState[id], hidden: false };
+    state.flags.unsacred_bar = true;
+    const before = currentScore(zork1, state);
+    execute({ action: 'take', target: id, byId: true }, { world: zork1, state });
+    expect(currentScore(zork1, state) - before).toBe(value);
+    state.itemState.trophy_case = { ...state.itemState.trophy_case, open: true };
+    state.locations[id] = 'trophy_case';
+    expect(currentScore(zork1, state) - before).toBe(value + tvalue);
+  });
+});
+
+describe('Zork I, natively: a spirit can’t take things, however asked (5a review)', () => {
+  const ghost = () => {
+    const state = initialState(zork1);
+    state.currentRoom = 'land_of_living_dead';
+    state.flags.dead = true;
+    state.npcs = { thief: { room: null } };
+    return state;
+  };
+  it.each(['take all', 'take everything', 'get carved skull', 'take skull'])('“%s”', (line) => {
+    const state = ghost();
+    const lines = captureLine(zork1, state, line)?.lines ?? execute(fallbackParse(line, zork1.verbs)!, { world: zork1, state }).lines;
+    expect(lines.join(' ')).toMatch(/Your hand passes through its object/);
+    expect(state.locations.skull).toBe('land_of_living_dead');
+  });
+  it('the intent server’s reading, or AGAIN, goes through the spirit’s limits too', () => {
+    const state = ghost();
+    expect(execute({ action: 'take', target: 'skull', byId: true }, { world: zork1, state }).lines).toEqual(['Your hand passes through its object.']);
+    expect(state.locations.skull).toBe('land_of_living_dead');
+  });
+});

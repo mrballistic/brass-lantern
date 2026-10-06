@@ -5,6 +5,8 @@ export type Place = string | null;
 
 /** What changes about an item during play. */
 export interface ItemState {
+  /** Present but not listed (the `unlist` effect). */
+  unlisted?: boolean;
   open?: boolean;
   locked?: boolean;
   on?: boolean;

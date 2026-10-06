@@ -2,7 +2,7 @@
 
 Brass Lantern ships Zork I twice: the original story file, run by the Z-machine interpreter, and **ZORK I · NATIVE**, a rebuild as an ordinary Brass Lantern world (`src/worlds/zork1.ts`). The native version is how the engine proves it can carry an Infocom-class game. A test plays both side by side and fails if they disagree.
 
-It covers the house, the forest, and the first rooms underground: the cellar, the chasm, the gallery and the studio, with darkness, the lamp burning down, the grue, and death; the Troll Room, the East-West Passage and the Round Room, with the troll, combat, the sword's glow and carrying weight; and the maze, the grating, the Cyclops Room and the thief's Treasure Room, with the thief (wandering, stealing, fighting) and the cyclops. The rest of the map arrives in stage 5.
+It covers the house, the forest, and the first rooms underground: the cellar, the chasm, the gallery and the studio, with darkness, the lamp burning down, the grue, and death; the Troll Room, the East-West Passage and the Round Room, with the troll, combat, the sword's glow and carrying weight; and the maze, the grating, the Cyclops Room and the thief's Treasure Room, with the thief (wandering, stealing, fighting) and the cyclops; and, from stage 5a, the underground east and south of the Round Room: the dam and the reservoir, the Loud Room, the mirrors, Atlantis, the dome, the temple and Hades, with the exorcism and ghost mode. The river, the rainbow, the coal mine and the endgame arrive in stages 5b and 5c.
 
 ## How ZIL maps to a world
 
@@ -55,6 +55,20 @@ Zork was written in ZIL, Infocom's language. Its source is MIT licensed ([histor
 | `ASK`/`TELL … ABOUT` and orders (“thief, give me the bag”) | `topics`, `refuseOrder` and `instead.order` on a character |
 | an object `ACTION` that prints and returns false, so the verb goes on | an `instead` rule with `continue: true` |
 | `JIGS-UP` resetting things (the trap door) | `death.then` |
+| a raw-input loop in a room's M-ENTER (the Loud Room) | a room's `capture`, with `{ free: true }` replies |
+| a room's M-END | the room's `onEnd` |
+| V-WAIT's three turns of the clock | `world.wait: { turns: 3 }` |
+| `FCLEAR … TOUCHBIT` on a room | `{ unvisit: 'room' }` |
+| `FSET … NDESCBIT` in play (the tied rope) | `{ unlist }` and `{ relist }` |
+| `GOTO room <>` (no description: the mirror) | `{ go: 'room', quiet: true }` |
+| `PICK-ONE` (no repeats until all are used) | a script: `pickOne` in `src/worlds/zork1.ts` |
+| `PROB n m` (ZPROB: worse odds once LUCKY is false) | a script checking the `unlucky` flag |
+| PRSI's routine before PRSO's | the rule order in Infocom style |
+| `SACREDBIT` on an object (the platinum bar) | the item tag `sacred`, which the thief script respects |
+| JIGS-UP's branches: Hades once you've seen the Altar, dying while dead, "Bad luck, huh?" | `death.variants`, `death.instead`, a conditional `death.message` line |
+| `ALWAYS-LIT` for a spirit | `darkness.litIf` |
+| DEAD-FUNCTION | a world `capture` while `flag:dead` |
+| BURN (LIGHT … WITH) and FLAMEBIT/BURNBIT | the BURN verb, `flaming` and `burnable` |
 
 `style: 'infocom'` makes the engine follow Zork's conventions:
 - “There is a sword here.”;
@@ -73,8 +87,9 @@ Zork was written in ZIL, Infocom's language. Its source is MIT licensed ([histor
   original: Opening the brown sack reveals a clove of garlic, and a lunch.
 ```
 
-- **The walkthrough** covers the stage slices: the house and forest, the cellar and the gallery with the lamp lit, the parser (a bare TAKE and its answer, “Which door do you mean?”, AGAIN, OOPS, TAKE ALL and DROP ALL), the troll, the maze, and the cyclops (ULYSSES).
-- **Fights are random,** and our dice aren't Zork's, so the walkthrough has **sync points**: walking into the Troll Room, each side retries until the troll doesn't strike first, and at the fight each side attacks until its troll is dead. The original retries by starting its session again, the native port by trying another seed. The thief wanders at random from the first move, so the original starts over whenever he shows up, and the native walkthrough keeps him offstage (his fidelity is tested on its own, below).
+- **The walkthrough** covers the early slices: the house and forest, the cellar and the gallery with the lamp lit, the parser (a bare TAKE and its answer, “Which door do you mean?”, AGAIN, OOPS, TAKE ALL and DROP ALL), the troll, the maze, and the cyclops (ULYSSES).
+- **Scripted sessions** (`tests/worlds/zork1-sessions.test.ts`) check every puzzle from stage 5a on: each is a short command list played from the Round Room in both versions and compared reply by reply, its wrong orders and side branches included (the dam, the leak, the Loud Room, the mirrors, the rope, the exorcism, the candles, ghost mode). **Both sides are seeded**: a test-only option seeds the interpreter's own generator (`new ZMachineSession(…, { seed })`), so each session plays the same way every time, with a seed pinned per side where the thief stays away.
+- **Fights are random,** and our dice aren't Zork's, so the walkthrough has **sync points**: walking into the Troll Room, each side retries until the troll doesn't strike first, and at the fight each side attacks until its troll is dead. The original retries by starting its session again, the native port by trying another seed. The thief wanders at random from the first move, so the original starts over (on the next seed) whenever he shows up, and the native walkthrough keeps him offstage (his fidelity is tested on its own, below).
 - **`tests/worlds/zork1-fight.test.ts`** checks the fight itself: it fights the real troll 300 times, collects everything it prints, and requires every line of 200 native fights to be one the original prints. It found a difference between Zork's source and its story file: the source gives a knocked-out player's foes extra rounds, and Release 119 doesn't. The story file wins.
 - **`tests/worlds/zork1-thief.test.ts`** does the same for the thief: 60 original sessions wait in the dark cellar with a treasure until he comes, and every line 100 native runs print must be one the original prints.
 - **The room order is read from the story file.** `tests/helpers/zobjects.ts` decodes `zork1.z3`'s object tree, and the native world's rooms must follow it, since the thief walks rooms in that order.
@@ -83,5 +98,6 @@ Zork was written in ZIL, Infocom's language. Its source is MIT licensed ([histor
 
 ## What's next
 
-- **Stage 5:** the rest of the map, vehicles included, and the thief's exact timing against the original.
+- **Stage 5b:** the river and the boat (vehicles), the falls, the rainbow and the canyon.
+- **Stage 5c:** the coal mine, the endgame and the barrow, all 350 points, and the thief's exact timing against the original.
 - Characters who obey orders or follow the player.

@@ -1,5 +1,6 @@
 import type { GameState, NpcState, Place } from '@/types/game';
 import type { World } from '@/types/world';
+import { evaluateCondition } from './conditions';
 import { fuzzyCandidates, fuzzyMatch } from './fuzzy';
 
 /** The place that means “carried by the player”. Reserved: no room or item may use it. */
@@ -102,6 +103,15 @@ export function isCarried(state: GameState, id: string): boolean {
   return state.locations[id] === PLAYER;
 }
 
+/** What the player holds, including things they can see inside what they hold (Zork's HELD). */
+export function heldItems(world: World, state: GameState): string[] {
+  const within = (id: string): boolean => {
+    for (let p = state.locations[id]; p; p = state.locations[p]) if (p === PLAYER) return true;
+    return false;
+  };
+  return visibleItems(world, state).filter(within);
+}
+
 export function moveItem(state: GameState, id: string, place: Place): void {
   state.locations[id] = place;
   const placed = (state.placed ??= {});
@@ -116,13 +126,14 @@ export function moveItem(state: GameState, id: string, place: Place): void {
 function fixturesIn(world: World, state: GameState, roomId: string): string[] {
   return (world.rooms[roomId]?.items ?? []).filter((id) => {
     const home = state.locations[id];
-    return world.items[id] && !world.items[id].portable && home !== roomId && home != null && home in world.rooms;
+    // Shared: it sits in another room that lists it too (a door between two rooms), not merely moved away.
+    return world.items[id] && !world.items[id].portable && home !== roomId && home != null && home in world.rooms && (world.rooms[home].items ?? []).includes(id);
   });
 }
 
 /** What a room lists: its direct contents (and fixtures it shares), minus scenery. */
 export function visibleItemsIn(roomId: string, world: World, state: GameState): string[] {
-  return [...childrenOf(world, state, roomId), ...fixturesIn(world, state, roomId)].filter((id) => !world.items[id]?.scenery && shown(state)(id));
+  return [...childrenOf(world, state, roomId), ...fixturesIn(world, state, roomId)].filter((id) => !world.items[id]?.scenery && !state.itemState[id]?.unlisted && shown(state)(id));
 }
 
 /** Fuzzy candidates for items, with aliases folded into the matchable name. */
@@ -233,6 +244,7 @@ function collect(world: World, state: GameState, into: (id: string) => boolean):
  */
 export function isLit(world: World, state: GameState, roomId: string = state.currentRoom): boolean {
   if (!world.rooms[roomId]?.dark) return true;
+  if (world.darkness?.litIf && evaluateCondition(world.darkness.litIf, state, world)) return true;
   return Object.keys(world.items).some((id) => {
     if (!world.items[id].light || !state.itemState[id]?.on) return false;
     const seen = new Set<string>();
@@ -317,8 +329,11 @@ export function setResolveById(state: GameState, on: boolean): void {
  */
 export function pickItem(target: string, ids: string[], world: World, slot: 'target' | 'indirect' = 'target', state?: GameState): string | null {
   const candidates = ids.map((id) => ({ id, name: world.items[id]?.name ?? id, aliases: world.items[id]?.aliases }));
-  const found = [...new Set(fuzzyCandidates(target, candidates, { byId: state ? byIdTurns.has(state) : false }))];
+  let found = [...new Set(fuzzyCandidates(target, candidates, { byId: state ? byIdTurns.has(state) : false }))];
   if (found.length === 0) return null;
+  // In Infocom style a room's scenery (Zork's local globals) only counts when nothing else matches.
+  const fixtures = state && world.style === 'infocom' ? (world.rooms[state.currentRoom]?.scenery ?? []) : [];
+  if (found.length > 1 && found.some((id) => !fixtures.includes(id))) found = found.filter((id) => !fixtures.includes(id));
   if (found.length === 1) {
     if (state) noteActed(state, slot, found[0]);
     return found[0];

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { containers } from '@/worlds/examples/containers';
 import { darkness } from '@/worlds/examples/darkness';
+import { echo } from '@/worlds/examples/echo';
 import { endings } from '@/worlds/examples/endings';
 import { fortune } from '@/worlds/examples/fortune';
 import { guard } from '@/worlds/examples/guard';
@@ -252,5 +253,26 @@ describe('recipes', () => {
       Exits: west.
       The cat stalks off."
     `);
+  });
+
+  it('a room that listens', () => {
+    const { text, state } = play(echo, ['in', 'hello there', 'echo', 'look', 'out']);
+    expect(text).toMatchInlineSnapshot(`
+      "📍 Ledge
+      A narrow ledge outside a cave. The cave mouth is in.
+      > in
+      📍 Echoing Cave
+      A vast cave. Every sound comes back to you, louder. The way out is out.
+      > hello there
+      there there ...
+      > echo
+      The cave falls silent.
+      > look
+      📍 Echoing Cave
+      A vast cave, quiet now. The way out is out.
+      > out
+      📍 Ledge"
+    `);
+    expect(state.moveCount).toBe(3);
   });
 });

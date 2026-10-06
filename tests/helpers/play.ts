@@ -1,4 +1,4 @@
-import { execute, initialState, openingLines } from '@/engine/engine';
+import { captureLine, execute, initialState, openingLines } from '@/engine/engine';
 import { fallbackParse, splitCommands } from '@/engine/parser';
 import type { World } from '@/types/world';
 
@@ -9,6 +9,12 @@ export function play(world: World, lines: string[]) {
   for (const line of lines) {
     log.push(`> ${line}`);
     for (const command of splitCommands(line, world.verbs)) {
+      // A capture taking a piece ends the line, as in the store.
+      const captured = captureLine(world, state, command);
+      if (captured) {
+        log.push(...captured.lines);
+        break;
+      }
       const parsed = fallbackParse(command, world.verbs);
       if (!parsed) throw new Error(`unparsed: ${command}`);
       log.push(...execute(parsed, { world, state }).lines);

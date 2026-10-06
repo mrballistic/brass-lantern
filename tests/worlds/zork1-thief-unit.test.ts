@@ -26,11 +26,11 @@ describe('Zork I, natively: the thief', () => {
   it('starts hidden in the Round Room and walks Zork’s room order, never into sacred rooms', () => {
     const { state, run } = at('living_room', 1);
     expect(thiefRoom(state)).toBe('round_room');
-    run('wait');
+    run('look');
     expect(thiefRoom(state)).toBe('ew_passage');
     const visited = new Set<string>();
     for (let i = 0; i < 60; i++) {
-      run('wait');
+      run('look');
       visited.add(thiefRoom(state)!);
     }
     for (const room of visited) expect(zork1.rooms[room].tags ?? []).not.toContain('sacred');
@@ -42,7 +42,7 @@ describe('Zork I, natively: the thief', () => {
         s.locations.painting = 'ew_passage';
         s.visited.push('ew_passage');
       });
-      run('wait');
+      run('look');
       return state.locations.painting === 'thief';
     });
   });
@@ -50,14 +50,14 @@ describe('Zork I, natively: the thief', () => {
   it('turns up in your dark room', () => {
     seedWhere((seed) => {
       const { run } = at('ew_passage', seed);
-      return run('wait').some((l) => l.startsWith('Someone carrying a large bag is casually leaning against one of the walls here.'));
+      return run('look').some((l) => l.startsWith('Someone carrying a large bag is casually leaning against one of the walls here.'));
     });
   });
 
   it('robs you in passing', () => {
     seedWhere((seed) => {
       const { state, run } = at('ew_passage', seed, (s) => (s.locations.egg = 'player'));
-      const lines = [...run('wait'), ...run('wait')];
+      const lines = [...run('look'), ...run('look')];
       // The next turn he may already have left it in his lair.
       return lines.some((l) => l.includes('quietly abstracted some valuables from your possession')) && state.locations.egg !== 'player';
     });
@@ -84,7 +84,7 @@ describe('Zork I, natively: the thief', () => {
         s.visited.push('maze_15');
         s.locations.knife = 'maze_15';
       });
-      const lines = [...run('wait'), ...run('wait')];
+      const lines = [...run('look'), ...run('look')];
       return lines.some((l) => l.startsWith('You hear, off in the distance, someone saying “My, I wonder what this fine'));
     }, 800);
   });
@@ -149,5 +149,44 @@ describe('Zork I, natively: the thief', () => {
     const asleep = () => at('cyclops_room', 2, (s) => (s.flags.cyclops_asleep = true));
     for (const c of ['talk to cyclops', 'tell cyclops about food', 'cyclops, hello']) expect(asleep().run(c)[0]).toBe('No use talking to him. He’s fast asleep.');
     expect(at('troll_room', 2).run('troll, hello')[0]).toBe('The troll isn’t much of a conversationalist.');
+  });
+
+  it('leaves sacred and hidden things alone: the platinum bar until the echo, the buried trunk', () => {
+    const robbed = (flags: string[], item: string, hidden = false) => {
+      for (let seed = 1; seed <= 200; seed++) {
+        const { state, run } = at('living_room', seed, (s) => {
+          s.npcs = { thief: { room: 'ns_passage', hidden: true } };
+          s.locations[item] = 'loud_room';
+          s.visited.push('loud_room');
+          for (const f of flags) s.flags[f] = true;
+          if (hidden) s.itemState[item] = { ...s.itemState[item], hidden: true };
+        });
+        for (let i = 0; i < 3; i++) run('look');
+        if (state.locations[item] !== 'loud_room') return true;
+      }
+      return false;
+    };
+    expect(robbed([], 'bar')).toBe(false);
+    expect(robbed(['loud_flag', 'unsacred_bar'], 'bar')).toBe(true);
+    expect(robbed([], 'trunk', true)).toBe(false);
+  });
+
+  it('taking your only light says so once: his line, not the engine’s too', () => {
+    let checked = false;
+    for (let seed = 1; seed <= 400 && !checked; seed++) {
+      const { state, run } = at('ns_passage', seed, (s) => {
+        s.locations.lamp = null;
+        s.locations.torch = 'player';
+        s.itemState.torch = { on: true, moved: true };
+        s.npcs = { thief: { room: 'ns_passage', hidden: false } };
+        s.flags.thief_here = true;
+      });
+      const lines = run('look');
+      if (state.locations.torch === 'player') continue;
+      if (!lines.some((l) => l.includes('left you in the dark'))) continue;
+      checked = true;
+      expect(lines.filter((l) => /pitch black/i.test(l))).toEqual([]);
+    }
+    expect(checked).toBe(true);
   });
 });

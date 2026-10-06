@@ -15,6 +15,29 @@ import type { EventStep, World } from '@/types/world';
 const CARRYING = 'You can’t get up there with what you’re carrying.';
 const GRUE = 'Oh, no! You have walked into the slavering fangs of a lurking grue!';
 const OFF_MAP = 'That part of the map isn’t built yet.';
+// The Maintenance Room's flood, by half-levels (Zork's DROWNINGS).
+const DROWNINGS = ['up to your ankles.', 'up to your shin.', 'up to your knees.', 'up to your hips.', 'up to your waist.', 'up to your chest.', 'up to your neck.', 'over your head.', 'high in your lungs.'];
+/**
+ * Zork's PICK-ONE: a random entry not yet used, until all have been (the order is
+ * kept in vars `<key>_1..n`, the count in `<key>`). Returns the steps that save it.
+ */
+function pickOne(ctx: ScriptContext, key: string, list: string[]): [EventStep[], string] {
+  const v = ctx.state.vars ?? {};
+  const order = list.map((_, i) => v[`${key}_${i + 1}`] ?? i);
+  const count = v[key] ?? 0;
+  const pick = count + ctx.roll(list.length - count) - 1;
+  const chosen = order[pick];
+  [order[pick], order[count]] = [order[count], chosen];
+  const next = count + 1 === list.length ? 0 : count + 1;
+  return [[...order.map((o, i): EventStep => ({ setVar: `${key}_${i + 1}`, to: o })), { setVar: key, to: next }], list[chosen]];
+}
+/** CANDLES-FCN: lighting the candles with something. */
+function lightWith(ctx: ScriptContext, tool: string): EventStep[] {
+  const lit = Boolean(ctx.state.itemState.candles?.on);
+  if (tool === 'match' && ctx.state.itemState.match?.on) return lit ? ['The candles are already lit.'] : [{ switch: 'candles', on: true }, 'The candles are lit.'];
+  if (tool === 'torch') return lit ? ['You realize, just in time, that the candles are already lighted.'] : [{ move: 'candles', to: null }, 'The heat from the torch is so intense that the candles are vaporized.'];
+  return ['You have to light them with something that’s burning, you know.'];
+}
 const NO_TREE = 'There is no tree here suitable for climbing.';
 const BOARDED = 'The windows are all boarded.';
 
@@ -64,10 +87,14 @@ function thiefTurn(ctx: ScriptContext): EventStep[] {
   const recoverStiletto = () => {
     if (where('stiletto') === rm) move('stiletto', 'thief');
   };
+  /** INVISIBLE and SACREDBIT things are never taken (an echo can lift a SACREDBIT: `unsacred_<id>`). */
+  const untouchable = (id: string) =>
+    Boolean(ctx.state.itemState[id]?.hidden) || ((ctx.world.items[id]?.tags ?? []).includes('sacred') && !ctx.state.flags[`unsacred_${id}`]);
   /** Treasures in `from` go to the thief (each at `chance`%, or all). */
   const rob = (from: string, chance?: number) => {
     let robbed = false;
     for (const id of contents(from)) {
+      if (untouchable(id)) continue;
       if (ctx.treasure(id) > 0 && (chance === undefined || prob(ctx, chance))) {
         move(id, 'thief', true);
         robbed = true;
@@ -157,7 +184,7 @@ function thiefTurn(ctx: ScriptContext): EventStep[] {
         rob(rm, 75);
         if (ctx.tags(rm).includes('maze') && ctx.tags(here).includes('maze')) {
           for (const id of contents(rm)) {
-            if (!ctx.world.items[id]?.portable || !prob(ctx, 40)) continue;
+            if (!ctx.world.items[id]?.portable || ctx.state.itemState[id]?.hidden || !prob(ctx, 40)) continue;
             steps.push(`You hear, off in the distance, someone saying “My, I wonder what this fine ${ctx.world.items[id].name} is doing here.”`);
             if (prob(ctx, 60)) move(id, 'thief', true);
             break;
@@ -165,7 +192,7 @@ function thiefTurn(ctx: ScriptContext): EventStep[] {
         } else {
           for (const id of contents(rm)) {
             const item = ctx.world.items[id];
-            if (!item?.portable || item.scenery || ctx.treasure(id) > 0) continue;
+            if (!item?.portable || item.scenery || ctx.treasure(id) > 0 || untouchable(id)) continue;
             if (id !== 'stiletto' && !prob(ctx, 10)) continue;
             move(id, 'thief', true);
             if (rm === here) steps.push(`You suddenly notice that the ${item.name} vanished.`);
@@ -220,16 +247,225 @@ export const zork1: World = {
   emptyInventory: 'You are empty-handed.',
 
   rooms: {
+    // Stage 5a: the dam. DAM-BASE through DEEP-CANYON, in story order.
+    dam_base: {
+      name: 'Dam Base',
+      description: 'You are at the base of Flood Control Dam #3, which looms above you and to the north. The river Frigid is flowing by here. Along the river are the White Cliffs which seem to form giant walls stretching from north to south along the shores of the river as it winds its way downstream.',
+      exits: { north: 'dam_room', up: 'dam_room' },
+      items: ['inflatable_boat'],
+      npcs: [],
+      onEnter: [],
+      scenery: ['global_water'],
+      tags: ['sacred'],
+    },
+    maintenance_room: {
+      name: 'Maintenance Room',
+      description: 'This is what appears to have been the maintenance room for Flood Control Dam #3. Apparently, this room has been ransacked recently, for most of the valuable equipment is gone. On the wall in front of you is a group of buttons colored blue, yellow, brown, and red. There are doorways to the west and south.',
+      dark: true,
+      exits: { south: 'dam_lobby', west: 'dam_lobby' },
+      // MUNG-ROOM: once flooded, it can't be entered.
+      requires: '!flag:maint_flooded',
+      denial: 'The room is full of water and cannot be entered.',
+      items: ['tool_chest', 'screwdriver', 'tube', 'wrench', 'maintenance_lights'],
+      npcs: [],
+      onEnter: [],
+      scenery: ['yellow_button', 'brown_button', 'red_button', 'blue_button', 'leak'],
+    },
+    dam_lobby: {
+      name: 'Dam Lobby',
+      description: 'This room appears to have been the waiting room for groups touring the dam. There are open doorways here to the north and east marked “Private”, and there is a path leading south over the top of the dam.',
+      exits: { south: 'dam_room', north: 'maintenance_room', east: 'maintenance_room' },
+      items: ['match', 'guide'],
+      npcs: [],
+      onEnter: [],
+    },
+    dam_room: {
+      name: 'Dam',
+      // DAM-ROOM-FCN's M-LOOK: the water and the bubble.
+      description: 'You are standing on the top of the Flood Control Dam #3, which was quite a tourist attraction in times far distant. There are paths to the north, south, and west, and a scramble down.\nThe sluice gates on the dam are closed. Behind the dam, there can be seen a wide reservoir. Water is pouring over the top of the now abandoned dam.\nThere is a control panel here, on which a large metal bolt is mounted. Directly above the bolt is a small green plastic bubble.',
+      descriptions: [
+        { if: 'flag:low_tide & flag:gates_open & flag:gate_flag', text: 'You are standing on the top of the Flood Control Dam #3, which was quite a tourist attraction in times far distant. There are paths to the north, south, and west, and a scramble down.\nThe water level behind the dam is low: The sluice gates have been opened. Water rushes through the dam and downstream.\nThere is a control panel here, on which a large metal bolt is mounted. Directly above the bolt is a small green plastic bubble which is glowing serenely.' },
+        { if: 'flag:low_tide & flag:gates_open & !flag:gate_flag', text: 'You are standing on the top of the Flood Control Dam #3, which was quite a tourist attraction in times far distant. There are paths to the north, south, and west, and a scramble down.\nThe water level behind the dam is low: The sluice gates have been opened. Water rushes through the dam and downstream.\nThere is a control panel here, on which a large metal bolt is mounted. Directly above the bolt is a small green plastic bubble.' },
+        { if: 'flag:gates_open & flag:gate_flag', text: 'You are standing on the top of the Flood Control Dam #3, which was quite a tourist attraction in times far distant. There are paths to the north, south, and west, and a scramble down.\nThe sluice gates are open, and water rushes through the dam. The water level behind the dam is still high.\nThere is a control panel here, on which a large metal bolt is mounted. Directly above the bolt is a small green plastic bubble which is glowing serenely.' },
+        { if: 'flag:gates_open & !flag:gate_flag', text: 'You are standing on the top of the Flood Control Dam #3, which was quite a tourist attraction in times far distant. There are paths to the north, south, and west, and a scramble down.\nThe sluice gates are open, and water rushes through the dam. The water level behind the dam is still high.\nThere is a control panel here, on which a large metal bolt is mounted. Directly above the bolt is a small green plastic bubble.' },
+        { if: 'flag:low_tide & flag:gate_flag', text: 'You are standing on the top of the Flood Control Dam #3, which was quite a tourist attraction in times far distant. There are paths to the north, south, and west, and a scramble down.\nThe sluice gates are closed. The water level in the reservoir is quite low, but the level is rising quickly.\nThere is a control panel here, on which a large metal bolt is mounted. Directly above the bolt is a small green plastic bubble which is glowing serenely.' },
+        { if: 'flag:low_tide & !flag:gate_flag', text: 'You are standing on the top of the Flood Control Dam #3, which was quite a tourist attraction in times far distant. There are paths to the north, south, and west, and a scramble down.\nThe sluice gates are closed. The water level in the reservoir is quite low, but the level is rising quickly.\nThere is a control panel here, on which a large metal bolt is mounted. Directly above the bolt is a small green plastic bubble.' },
+        { if: 'flag:gate_flag', text: 'You are standing on the top of the Flood Control Dam #3, which was quite a tourist attraction in times far distant. There are paths to the north, south, and west, and a scramble down.\nThe sluice gates on the dam are closed. Behind the dam, there can be seen a wide reservoir. Water is pouring over the top of the now abandoned dam.\nThere is a control panel here, on which a large metal bolt is mounted. Directly above the bolt is a small green plastic bubble which is glowing serenely.' },
+        { if: '!flag:gate_flag', text: 'You are standing on the top of the Flood Control Dam #3, which was quite a tourist attraction in times far distant. There are paths to the north, south, and west, and a scramble down.\nThe sluice gates on the dam are closed. Behind the dam, there can be seen a wide reservoir. Water is pouring over the top of the now abandoned dam.\nThere is a control panel here, on which a large metal bolt is mounted. Directly above the bolt is a small green plastic bubble.' },
+      ],
+      exits: { south: 'deep_canyon', down: 'dam_base', east: 'dam_base', north: 'dam_lobby', west: 'reservoir_south' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      scenery: ['bolt', 'bubble', 'dam', 'control_panel', 'global_water'],
+    },
+    // Stage 5a: the dome. TORCH-ROOM through ENGRAVINGS-CAVE, in story order (the temple and Hades come between).
+    // Stage 5a: the temple. SOUTH-TEMPLE and NORTH-TEMPLE, in story order.
+    south_temple: {
+      name: 'Altar',
+      description: 'This is the south end of a large temple. In front of you is what appears to be an altar. In one corner is a small hole in the floor which leads into darkness. You probably could not get back up it.',
+      exits: {
+        north: 'north_temple',
+        // SOUTH-TEMPLE-FCN's COFFIN-CURE.
+        down: { to: 'tiny_cave', if: '!has:coffin', denial: 'You haven’t a prayer of getting the coffin down there.' },
+      },
+      items: ['altar', 'candles'],
+      npcs: [],
+      onEnter: [],
+      tags: ['sacred'],
+      // V-PRAY: at the altar, back to the forest.
+      instead: { pray: [{ then: 'prayer_answered' }] },
+    },
+    north_temple: {
+      name: 'Temple',
+      description: 'This is the north end of a large temple. On the east wall is an ancient inscription, probably a prayer in a long-forgotten language. Below the prayer is a staircase leading down. The west wall is solid granite. The exit to the north end of the room is through huge marble pillars.',
+      exits: { down: 'egypt_room', east: 'egypt_room', north: 'torch_room', out: 'torch_room', up: 'torch_room', south: 'south_temple' },
+      items: ['bell', 'prayer'],
+      npcs: [],
+      onEnter: [],
+      tags: ['sacred'],
+    },
+    torch_room: {
+      name: 'Torch Room',
+      description: 'This is a large room with a prominent doorway leading to a down staircase. Above you is a large dome. Up around the edge of the dome (20 feet up) is a wooden railing. In the center of the room sits a white marble pedestal.',
+      // TORCH-ROOM-FCN's M-LOOK.
+      descriptions: [{ if: 'flag:dome_flag', text: 'This is a large room with a prominent doorway leading to a down staircase. Above you is a large dome. Up around the edge of the dome (20 feet up) is a wooden railing. In the center of the room sits a white marble pedestal.\nA piece of rope descends from the railing above, ending some five feet above your head.' }],
+      dark: true,
+      exits: { up: { denial: 'You cannot reach the rope.' }, south: 'north_temple', down: 'north_temple' },
+      items: ['pedestal'],
+      npcs: [],
+      onEnter: [],
+    },
+    dome_room: {
+      name: 'Dome Room',
+      description: 'You are at the periphery of a large dome, which forms the ceiling of another room below. Protecting you from a precipitous drop is a wooden railing which circles the dome.',
+      // DOME-ROOM-FCN's M-LOOK.
+      descriptions: [{ if: 'flag:dome_flag', text: 'You are at the periphery of a large dome, which forms the ceiling of another room below. Protecting you from a precipitous drop is a wooden railing which circles the dome.\nHanging down from the railing is a rope which ends about ten feet from the floor below.' }],
+      instead: { jump: [{ if: '!flag:dome_flag', then: 'jump_death' }] },
+      dark: true,
+      exits: { west: 'engravings_cave', down: { to: 'torch_room', if: 'flag:dome_flag', denial: 'You cannot go down without fracturing many bones.' } },
+      items: ['railing'],
+      npcs: [],
+      // DOME-ROOM-FCN's M-ENTER: a spirit is drawn over the railing.
+      onEnter: [{ if: 'flag:dead', then: 'spirit_falls', repeat: true }],
+    },
+    egypt_room: {
+      name: 'Egyptian Room',
+      description: 'This is a room which looks like an Egyptian tomb. There is an ascending staircase to the west.',
+      dark: true,
+      exits: { west: 'north_temple', up: 'north_temple' },
+      items: ['coffin'],
+      npcs: [],
+      onEnter: [],
+    },
+    engravings_cave: {
+      name: 'Engravings Cave',
+      description: 'You have entered a low cave with passages leading northwest and east.',
+      dark: true,
+      exits: { northwest: 'round_room', east: 'dome_room' },
+      items: ['engravings'],
+      npcs: [],
+      onEnter: [],
+    },
+    // Stage 5a: Hades. LAND-OF-LIVING-DEAD and ENTRANCE-TO-HADES, in story order.
+    land_of_living_dead: {
+      name: 'Land of the Dead',
+      description: 'You have entered the Land of the Living Dead. Thousands of lost souls can be heard weeping and moaning. In the corner are stacked the remains of dozens of previous adventurers less fortunate than yourself. A passage exits to the north.',
+      exits: { out: 'entrance_to_hades', north: 'entrance_to_hades' },
+      items: ['skull'],
+      npcs: [],
+      onEnter: [],
+      scenery: ['bodies'],
+    },
+    entrance_to_hades: {
+      name: 'Entrance to Hades',
+      // LLD-ROOM's M-LOOK.
+      description: 'You are outside a large gateway, on which is inscribed\n\n  Abandon every hope\nall ye who enter here!\n\nThe gate is open; through it you can see a desolation, with a pile of mangled bodies in one corner. Thousands of voices, lamenting some hideous fate, can be heard.\nThe way through the gate is barred by evil spirits, who jeer at your attempts to pass.',
+      descriptions: [
+        { if: 'flag:lld_flag', text: 'You are outside a large gateway, on which is inscribed\n\n  Abandon every hope\nall ye who enter here!\n\nThe gate is open; through it you can see a desolation, with a pile of mangled bodies in one corner. Thousands of voices, lamenting some hideous fate, can be heard.' },
+        { if: 'flag:dead', text: 'You are outside a large gateway, on which is inscribed\n\n  Abandon every hope\nall ye who enter here!\n\nThe gate is open; through it you can see a desolation, with a pile of mangled bodies in one corner. Thousands of voices, lamenting some hideous fate, can be heard.' },
+      ],
+      exits: {
+        up: 'tiny_cave',
+        in: { to: 'land_of_living_dead', if: 'flag:lld_flag', denial: 'Some invisible force prevents you from passing through the gate.' },
+        south: { to: 'land_of_living_dead', if: 'flag:lld_flag', denial: 'Some invisible force prevents you from passing through the gate.' },
+      },
+      items: [],
+      npcs: ['ghosts'],
+      onEnter: [],
+      // LLD-ROOM's M-END: lit candles in hand while the bell's spell holds.
+      onEnd: [{ if: 'flag:xb & has:candles & on:candles & !flag:xc', then: 'exorcism_flames' }],
+      scenery: ['bodies'],
+    },
+    chasm_room: {
+      name: 'Chasm',
+      description: 'A chasm runs southwest to northeast and the path follows it. You are on the south side of the chasm, where a crack opens into a passage.',
+      dark: true,
+      exits: { northeast: 'reservoir_south', southwest: 'ew_passage', up: 'ew_passage', south: 'ns_passage', down: { denial: 'Are you out of your mind?' } },
+      items: [],
+      npcs: [],
+      onEnter: [],
+    },
+    ns_passage: {
+      name: 'North-South Passage',
+      description: 'This is a high north-south passage, which forks to the northeast.',
+      dark: true,
+      exits: { north: 'chasm_room', northeast: 'deep_canyon', south: 'round_room' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+    },
+    loud_room: {
+      name: 'Loud Room',
+      // LOUD-ROOM-FCN's M-LOOK.
+      description: 'This is a large room with a ceiling which cannot be detected from the ground. There is a narrow passage from east to west and a stone stairway leading upward. The room is deafeningly loud with an undetermined rushing sound. The sound seems to reverberate from all of the walls, making it difficult even to think.',
+      descriptions: [
+        { if: 'flag:loud_flag', text: 'This is a large room with a ceiling which cannot be detected from the ground. There is a narrow passage from east to west and a stone stairway leading upward. The room is eerie in its quietness.' },
+        { if: '!flag:gates_open & flag:low_tide', text: 'This is a large room with a ceiling which cannot be detected from the ground. There is a narrow passage from east to west and a stone stairway leading upward. The room is eerie in its quietness.' },
+      ],
+      dark: true,
+      exits: { east: 'damp_cave', west: 'round_room', up: 'deep_canyon' },
+      items: ['bar'],
+      npcs: [],
+      onEnter: [],
+      // M-ENTER's loop: while it's loud, every line is heard as noise.
+      capture: { if: '!flag:loud_flag', script: 'loud_room_capture' },
+      // M-END: the gates open at high tide drive you out.
+      onEnd: [{ if: 'flag:gates_open & !flag:low_tide', then: 'loud_room_ejects' }],
+    },
+    damp_cave: {
+      name: 'Damp Cave',
+      description: 'This cave has exits to the west and east, and narrows to a crack toward the south. The earth is particularly damp here.',
+      dark: true,
+      exits: { west: 'loud_room', east: { denial: 'That part of the Great Underground Empire isn’t built yet.' }, south: { denial: 'It is too narrow for most insects.' } },
+      items: [],
+      npcs: [],
+      onEnter: [],
+    },
+    deep_canyon: {
+      name: 'Deep Canyon',
+      // DEEP-CANYON-F: the water below.
+      description: 'You are on the south edge of a deep canyon. Passages lead off to the east, northwest and southwest. A stairway leads down. You can hear the sound of flowing water from below.',
+      descriptions: [
+        { if: 'flag:gates_open & !flag:low_tide', text: 'You are on the south edge of a deep canyon. Passages lead off to the east, northwest and southwest. A stairway leads down. You can hear a loud roaring sound, like that of rushing water, from below.' },
+        { if: '!flag:gates_open & flag:low_tide', text: 'You are on the south edge of a deep canyon. Passages lead off to the east, northwest and southwest. A stairway leads down.' },
+      ],
+      dark: true,
+      exits: { northwest: 'reservoir_south', east: 'dam_room', southwest: 'ns_passage', down: 'loud_room' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+    },
     round_room: {
       name: 'Round Room',
       description: 'This is a circular stone room with passages in all directions. Several of them have unfortunately been blocked by cave-ins.',
       dark: true,
       exits: {
         west: 'ew_passage',
-        east: { denial: 'That part of the Great Underground Empire isn’t built yet.' },
-        north: { denial: 'That part of the Great Underground Empire isn’t built yet.' },
-        south: { denial: 'That part of the Great Underground Empire isn’t built yet.' },
-        southeast: { denial: 'That part of the Great Underground Empire isn’t built yet.' },
+        east: 'loud_room',
+        north: 'ns_passage',
+        south: 'narrow_passage',
+        southeast: 'engravings_cave',
       },
       items: [],
       npcs: ['thief'],
@@ -242,13 +478,167 @@ export const zork1: World = {
       exits: {
         east: 'round_room',
         west: 'troll_room',
-        down: { denial: 'That part of the Great Underground Empire isn’t built yet.' },
-        north: { denial: 'That part of the Great Underground Empire isn’t built yet.' },
+        down: 'chasm_room',
+        north: 'chasm_room',
       },
       items: [],
       npcs: [],
       // Zork's VALUE 5.
       onEnter: [{ if: '!flag:ew_passage_visited', then: 'ew_passage_points' }],
+    },
+    // Stage 5a: the mirrors. ATLANTIS-ROOM through MIRROR-ROOM-1, in story order.
+    atlantis_room: {
+      name: 'Atlantis Room',
+      description: 'This is an ancient room, long under water. There is an exit to the south and a staircase leading up.',
+      dark: true,
+      exits: { up: 'small_cave', south: 'reservoir_north' },
+      items: ['trident'],
+      npcs: [],
+      onEnter: [],
+    },
+    twisting_passage: {
+      name: 'Twisting Passage',
+      description: 'This is a winding passage. It seems that there are only exits on the east and north.',
+      dark: true,
+      exits: { north: 'mirror_room_1', east: 'small_cave' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+    },
+    winding_passage: {
+      name: 'Winding Passage',
+      description: 'This is a winding passage. It seems that there are only exits on the east and north.',
+      dark: true,
+      exits: { north: 'mirror_room_2', east: 'tiny_cave' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+    },
+    narrow_passage: {
+      name: 'Narrow Passage',
+      description: 'This is a long and narrow corridor where a long north-south passageway briefly narrows even further.',
+      dark: true,
+      exits: { north: 'round_room', south: 'mirror_room_2' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+    },
+    cold_passage: {
+      name: 'Cold Passage',
+      description: 'This is a cold and damp corridor where a long east-west passageway turns into a southward path.',
+      dark: true,
+      exits: { south: 'mirror_room_1', west: { denial: 'That part of the Great Underground Empire isn’t built yet.' } },
+      items: [],
+      npcs: [],
+      onEnter: [],
+    },
+    tiny_cave: {
+      name: 'Cave',
+      description: 'This is a tiny cave with entrances west and north, and a dark, forbidding staircase leading down.',
+      dark: true,
+      exits: { north: 'mirror_room_2', west: 'winding_passage', down: 'entrance_to_hades' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      // CAVE2-ROOM's M-END: a gust may blow your candles out.
+      onEnd: [{ if: 'has:candles & on:candles', then: [{ script: 'candle_gust' }] }],
+    },
+    small_cave: {
+      name: 'Cave',
+      description: 'This is a tiny cave with entrances west and north, and a staircase leading down.',
+      dark: true,
+      exits: { north: 'mirror_room_1', down: 'atlantis_room', south: 'atlantis_room', west: 'twisting_passage' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+    },
+    mirror_room_2: {
+      name: 'Mirror Room',
+      description: 'You are in a large square room with tall ceilings. On the south wall is an enormous mirror which fills the entire wall. There are exits on the other three sides of the room.',
+      descriptions: [{ if: 'flag:mirror_mung', text: 'You are in a large square room with tall ceilings. On the south wall is an enormous mirror which fills the entire wall. There are exits on the other three sides of the room.\nUnfortunately, the mirror has been destroyed by your recklessness.' }],
+      exits: { west: 'winding_passage', north: 'narrow_passage', east: 'tiny_cave' },
+      items: ['mirror_2'],
+      npcs: [],
+      onEnter: [],
+    },
+    mirror_room_1: {
+      name: 'Mirror Room',
+      description: 'You are in a large square room with tall ceilings. On the south wall is an enormous mirror which fills the entire wall. There are exits on the other three sides of the room.',
+      descriptions: [{ if: 'flag:mirror_mung', text: 'You are in a large square room with tall ceilings. On the south wall is an enormous mirror which fills the entire wall. There are exits on the other three sides of the room.\nUnfortunately, the mirror has been destroyed by your recklessness.' }],
+      dark: true,
+      exits: { north: 'cold_passage', west: 'twisting_passage', east: 'small_cave' },
+      items: ['mirror_1'],
+      npcs: [],
+      onEnter: [],
+    },
+    // Stage 5a: the reservoir. STREAM-VIEW through RESERVOIR-SOUTH, in story order.
+    stream_view: {
+      name: 'Stream View',
+      description: 'You are standing on a path beside a gently flowing stream. The path follows the stream, which flows from west to east.',
+      dark: true,
+      exits: { east: 'reservoir_south', west: { denial: 'The stream emerges from a spot too small for you to enter.' } },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      scenery: ['global_water'],
+    },
+    reservoir_north: {
+      name: 'Reservoir North',
+      description: 'You are in a large cavernous room, north of a large lake.\nThere is a slimy stairway leaving the room to the north.',
+      descriptions: [
+        { if: 'flag:low_tide & flag:gates_open', text: 'You are in a large cavernous room, the south of which was formerly a lake. However, with the water level lowered, there is merely a wide stream running through there.\nThere is a slimy stairway leaving the room to the north.' },
+        { if: 'flag:gates_open', text: 'You are in a large cavernous area. To the south is a wide lake, whose water level appears to be falling rapidly.\nThere is a slimy stairway leaving the room to the north.' },
+        { if: 'flag:low_tide', text: 'You are in a cavernous area, to the south of which is a very wide stream. The level of the stream is rising rapidly, and it appears that before long it will be impossible to cross to the other side.\nThere is a slimy stairway leaving the room to the north.' },
+      ],
+      dark: true,
+      exits: {
+        north: 'atlantis_room',
+        south: { to: 'reservoir', if: 'flag:low_tide', denial: 'You would drown.' },
+      },
+      items: ['pump'],
+      npcs: [],
+      onEnter: [],
+      scenery: ['global_water'],
+    },
+    reservoir: {
+      name: 'Reservoir',
+      description: 'You are on the lake. Beaches can be seen north and south. Upstream a small stream enters the lake through a narrow cleft in the rocks. The dam can be seen downstream.',
+      descriptions: [{ if: 'flag:low_tide', text: 'You are on what used to be a large lake, but which is now a large mud pile. There are “shores” to the north and south.' }],
+      dark: true,
+      exits: {
+        north: 'reservoir_north',
+        south: 'reservoir_south',
+        up: { denial: 'You can’t go there without a vehicle.' },
+        west: { denial: 'You can’t go there without a vehicle.' },
+        down: { denial: 'The dam blocks your way.' },
+      },
+      items: ['trunk'],
+      npcs: [],
+      onEnter: [],
+      // RESERVOIR-FCN's M-END.
+      onEnd: [{ if: '!flag:gates_open & flag:low_tide', then: ['You notice that the water level here is rising rapidly. The currents are also becoming stronger. Staying here seems quite perilous!'] }],
+      scenery: ['global_water'],
+    },
+    reservoir_south: {
+      name: 'Reservoir South',
+      description: 'You are in a long room on the south shore of a large lake, far too deep and wide for crossing.\nThere is a path along the stream to the east or west, a steep pathway climbing southwest along the edge of a chasm, and a path leading into a canyon to the southeast.',
+      descriptions: [
+        { if: 'flag:low_tide & flag:gates_open', text: 'You are in a long room, to the north of which was formerly a lake. However, with the water level lowered, there is merely a wide stream running through the center of the room.\nThere is a path along the stream to the east or west, a steep pathway climbing southwest along the edge of a chasm, and a path leading into a canyon to the southeast.' },
+        { if: 'flag:gates_open', text: 'You are in a long room. To the north is a large lake, too deep to cross. You notice, however, that the water level appears to be dropping at a rapid rate. Before long, it might be possible to cross to the other side from here.\nThere is a path along the stream to the east or west, a steep pathway climbing southwest along the edge of a chasm, and a path leading into a canyon to the southeast.' },
+        { if: 'flag:low_tide', text: 'You are in a long room, to the north of which is a wide area which was formerly a reservoir, but now is merely a stream. You notice, however, that the level of the stream is rising quickly and that before long it will be impossible to cross here.\nThere is a path along the stream to the east or west, a steep pathway climbing southwest along the edge of a chasm, and a path leading into a canyon to the southeast.' },
+      ],
+      dark: true,
+      exits: {
+        southeast: 'deep_canyon',
+        southwest: 'chasm_room',
+        east: 'dam_room',
+        west: 'stream_view',
+        north: { to: 'reservoir', if: 'flag:low_tide', denial: 'You would drown.' },
+      },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      scenery: ['global_water'],
     },
     treasure_room: {
       name: 'Treasure Room',
@@ -806,6 +1196,478 @@ export const zork1: World = {
   },
 
   items: {
+    mirror_1: {
+      name: 'mirror',
+      aliases: ['reflection', 'enormous mirror', 'enormous'],
+      description: 'There is an ugly person staring back at you.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      // MIRROR-MIRROR.
+      instead: {
+        rub: [{ if: '!flag:mirror_mung', as: 'target', then: 'mirror_rub' }],
+        examine: [{ if: 'flag:mirror_mung', say: ['The mirror is broken into many pieces.'] }],
+        search: [{ if: 'flag:mirror_mung', say: ['The mirror is broken into many pieces.'] }, { say: ['There is an ugly person staring back at you.'] }],
+        take: [{ say: ['The mirror is many times your size. Give up.'] }],
+        smash: [{ if: 'flag:mirror_mung', say: ['Haven’t you done enough damage already?'] }, { then: 'mirror_breaks' }],
+        attack: [{ if: 'flag:mirror_mung', say: ['Haven’t you done enough damage already?'] }, { then: 'mirror_breaks' }],
+        throw: [{ as: 'indirect', if: 'flag:mirror_mung', say: ['Haven’t you done enough damage already?'] }, { as: 'indirect', then: 'mirror_breaks' }],
+      },
+    },
+    mirror_2: {
+      name: 'mirror',
+      aliases: ['reflection', 'enormous mirror', 'enormous'],
+      description: 'There is an ugly person staring back at you.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      // MIRROR-MIRROR.
+      instead: {
+        rub: [{ if: '!flag:mirror_mung', as: 'target', then: 'mirror_rub' }],
+        examine: [{ if: 'flag:mirror_mung', say: ['The mirror is broken into many pieces.'] }],
+        search: [{ if: 'flag:mirror_mung', say: ['The mirror is broken into many pieces.'] }, { say: ['There is an ugly person staring back at you.'] }],
+        take: [{ say: ['The mirror is many times your size. Give up.'] }],
+        smash: [{ if: 'flag:mirror_mung', say: ['Haven’t you done enough damage already?'] }, { then: 'mirror_breaks' }],
+        attack: [{ if: 'flag:mirror_mung', say: ['Haven’t you done enough damage already?'] }, { then: 'mirror_breaks' }],
+        throw: [{ as: 'indirect', if: 'flag:mirror_mung', say: ['Haven’t you done enough damage already?'] }, { as: 'indirect', then: 'mirror_breaks' }],
+      },
+    },
+    trident: {
+      name: 'crystal trident',
+      aliases: ['trident', 'fork', 'treasure', 'poseidon’s trident', 'crystal'],
+      description: 'There’s nothing special about the crystal trident.',
+      initialDescription: 'On the shore lies Poseidon’s own crystal trident.',
+      portable: true,
+      size: 20,
+      treasure: 11,
+      tags: [],
+      after: { take: [{ if: '!flag:took_trident', then: 'took_trident' }] },
+    },
+    engravings: {
+      name: 'wall with engravings',
+      aliases: ['wall', 'engravings', 'inscription', 'old engravings', 'ancient engravings'],
+      description: '',
+      roomDescription: 'There are old engravings on the walls here.',
+      portable: false,
+      tags: ['sacred'],
+      text: 'The engravings were incised in the living rock of the cave wall by an unknown hand. They depict, in symbolic form, the beliefs of the ancient Zorkers. Skillfully interwoven with the bas reliefs are excerpts illustrating the major religious tenets of that time. Unfortunately, a later age seems to have considered them blasphemous and just as skillfully excised them.',
+    },
+    railing: {
+      name: 'wooden railing',
+      aliases: ['railing', 'rail'],
+      description: 'There’s nothing special about the wooden railing.',
+      portable: false,
+      tags: [],
+      scenery: true,
+    },
+    pedestal: {
+      name: 'pedestal',
+      aliases: ['white pedestal', 'marble pedestal'],
+      description: '',
+      portable: false,
+      tags: [],
+      scenery: true,
+      surface: true,
+      container: { open: true, weight: 30 },
+      contains: ['torch'],
+      // DUMB-CONTAINER.
+      instead: {
+        examine: [{ say: ['It looks pretty much like a pedestal.'] }],
+        open: [{ say: ['You can’t do that.'] }],
+        close: [{ say: ['You can’t do that.'] }],
+        search: [{ say: ['You can’t do that.'] }],
+      },
+    },
+    torch: {
+      name: 'torch',
+      aliases: ['ivory torch', 'ivory', 'treasure', 'flaming torch'],
+      description: 'The torch is burning.',
+      initialDescription: 'Sitting on the pedestal is a flaming torch, made of ivory.',
+      portable: true,
+      size: 20,
+      treasure: 6,
+      tags: [],
+      light: true,
+      flaming: true,
+      // TORCH-OBJECT: it won't go out.
+      instead: { turn_off: [{ say: ['You nearly burn your hand trying to extinguish the flame.'] }] },
+      after: { take: [{ if: '!flag:took_torch', then: 'took_torch' }] },
+    },
+    // Stage 5a: the temple and Hades.
+    altar: {
+      name: 'altar',
+      description: '',
+      portable: false,
+      tags: [],
+      scenery: true,
+      surface: true,
+      container: { open: true, weight: 50 },
+      contains: ['book'],
+    },
+    prayer: {
+      name: 'prayer',
+      aliases: ['inscription', 'ancient prayer', 'old prayer'],
+      description: '',
+      portable: false,
+      tags: ['sacred'],
+      scenery: true,
+      text: 'The prayer is inscribed in an ancient script, rarely used today. It seems to be a philippic against small insects, absent-mindedness, and the picking up and dropping of small objects. The final verse consigns trespassers to the land of the dead. All evidence indicates that the beliefs of the ancient Zorkers were obscure.',
+    },
+    bell: {
+      name: 'brass bell',
+      aliases: ['bell', 'small bell'],
+      description: 'There’s nothing special about the brass bell.',
+      portable: true,
+      tags: [],
+      // BELL-F, and LLD-ROOM's M-BEG.
+      instead: { ring: [{ if: 'in:entrance_to_hades & !flag:lld_flag', then: 'bell_rung' }, { say: ['Ding, dong.'] }] },
+    },
+    hot_bell: {
+      name: 'red hot brass bell',
+      aliases: ['bell', 'hot bell', 'red hot bell', 'brass bell', 'small bell'],
+      description: 'There’s nothing special about the red hot brass bell.',
+      roomDescription: 'On the ground is a red hot bell.',
+      portable: false,
+      refusal: 'The bell is very hot and cannot be taken.',
+      tags: [],
+      // HOT-BELL-F.
+      instead: {
+        take: [{ say: ['The bell is very hot and cannot be taken.'] }],
+        rub: [{ as: 'target', then: 'hot_bell_touched' }],
+        ring: [{ as: 'target', then: 'hot_bell_touched' }],
+        pour: [{ as: 'indirect', then: 'hot_bell_cooled' }],
+      },
+    },
+    candles: {
+      name: 'pair of candles',
+      aliases: ['candles', 'pair', 'burning candles', 'candle'],
+      description: 'The candles are out.',
+      initialDescription: 'On the two ends of the altar are burning candles.',
+      portable: true,
+      size: 10,
+      tags: [],
+      light: true,
+      flaming: true,
+      // CANDLES-FCN.
+      instead: {
+        turn_on: [{ as: 'target', then: 'candles_lit' }],
+        burn: [{ as: 'target', then: 'candles_lit' }],
+        turn_off: [{ then: 'candles_out' }],
+        count: [{ say: ['Let’s see, how many objects in a pair? Don’t tell me, I’ll get it.'] }],
+        examine: [{ if: 'on:candles', then: 'candles_examined_lit' }, { then: 'candles_examined' }],
+      },
+      after: { take: [{ if: '!flag:candles_touched', then: 'candles_touched' }] },
+    },
+    book: {
+      name: 'black book',
+      aliases: ['book', 'prayer book', 'page', 'books', 'large book'],
+      description: '',
+      initialDescription: 'On the altar is a large black book, open to page 569.',
+      portable: true,
+      burnable: true,
+      size: 10,
+      tags: [],
+      text: 'Commandment #12592\n\nOh ye who go about saying unto each:  “Hello sailor”:\nDost thou know the magnitude of thy sin before the gods?\nYea, verily, thou shalt be ground between two stones.\nShall the angry gods cast thy body into the whirlpool?\nSurely, thy eye shall be put out with a sharp stick!\nEven unto the ends of the earth shalt thou wander and\nUnto the land of the dead shalt thou be sent at last.\nSurely thou shalt repent of thy cunning.',
+      // BLACK-BOOK, and LLD-ROOM's M-BEG.
+      instead: {
+        read: [{ if: 'in:entrance_to_hades & flag:xc & !flag:lld_flag', then: 'exorcism_done' }],
+        open: [{ say: ['The book is already open to page 569.'] }],
+        close: [{ say: ['As hard as you try, the book cannot be closed.'] }],
+        turn: [{ say: ['Beside page 569, there is only one other page with any legible printing on it. Most of it is unreadable, but the subject seems to be the banishment of evil. Apparently, certain noises, lights, and prayers are efficacious in this regard.'] }],
+        burn: [{ as: 'target', then: 'book_burns' }],
+      },
+    },
+    coffin: {
+      name: 'gold coffin',
+      aliases: ['coffin', 'casket', 'treasure', 'solid coffin', 'gold casket'],
+      description: '',
+      roomDescription: 'The solid-gold coffin used for the burial of Ramses II is here.',
+      portable: true,
+      size: 55,
+      treasure: 15,
+      tags: ['sacred'],
+      container: { openable: true, weight: 35 },
+      contains: ['sceptre'],
+      after: { take: [{ if: '!flag:took_coffin', then: 'took_coffin' }] },
+    },
+    sceptre: {
+      name: 'sceptre',
+      aliases: ['scepter', 'treasure', 'egyptian sceptre', 'ancient sceptre'],
+      description: 'There’s nothing special about the sceptre.',
+      initialDescription: 'A sceptre, possibly that of ancient Egypt itself, is in the coffin. The sceptre is ornamented with colored enamel, and tapers to a sharp point.',
+      roomDescription: 'An ornamented sceptre, tapering to a sharp point, is here.',
+      portable: true,
+      size: 3,
+      treasure: 6,
+      weapon: true,
+      tags: [],
+      after: { take: [{ if: '!flag:took_sceptre', then: 'took_sceptre' }] },
+    },
+    skull: {
+      name: 'crystal skull',
+      aliases: ['skull', 'head', 'treasure', 'crystal'],
+      description: 'There’s nothing special about the crystal skull.',
+      initialDescription: 'Lying in one corner of the room is a beautifully carved crystal skull. It appears to be grinning at you rather nastily.',
+      portable: true,
+      treasure: 10,
+      tags: [],
+      after: { take: [{ if: '!flag:took_skull', then: 'took_skull' }] },
+    },
+    bodies: {
+      name: 'pile of bodies',
+      aliases: ['bodies', 'body', 'remains', 'pile', 'mangled bodies'],
+      description: 'There’s nothing special about the pile of bodies.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      // BODY-FUNCTION.
+      instead: {
+        take: [{ say: ['A force keeps you from taking the bodies.'] }],
+        smash: [{ then: 'bodies_defiled' }],
+        attack: [{ then: 'bodies_defiled' }],
+        burn: [{ as: 'target', then: 'bodies_defiled' }],
+      },
+    },
+    // Stage 5a: the dam and the reservoir.
+    bar: {
+      name: 'platinum bar',
+      aliases: ['bar', 'platinum', 'treasure', 'large bar', 'platinum bar'],
+      description: 'There’s nothing special about the platinum bar.',
+      roomDescription: 'On the ground is a large platinum bar.',
+      portable: true,
+      size: 20,
+      treasure: 5,
+      // SACREDBIT until the echo clears it.
+      tags: ['sacred'],
+      after: { take: [{ if: '!flag:took_bar', then: 'took_bar' }] },
+    },
+    global_water: {
+      name: 'water',
+      aliases: ['quantity', 'lake', 'reservoir', 'stream', 'river'],
+      description: 'There’s nothing special about the water.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      // WATER-F: taking it is filling the bottle.
+      instead: { take: [{ then: 'fill_bottle' }] },
+    },
+    bolt: {
+      name: 'bolt',
+      aliases: ['nut', 'metal bolt', 'large bolt'],
+      description: 'There’s nothing special about the bolt.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      instead: { turn: [{ then: 'bolt_turn' }], take: [{ say: ['It is an integral part of the control panel.'] }] },
+    },
+    bubble: {
+      name: 'green bubble',
+      aliases: ['bubble', 'small bubble', 'plastic bubble', 'green plastic bubble'],
+      description: 'There’s nothing special about the green bubble.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      instead: { take: [{ say: ['It is an integral part of the control panel.'] }] },
+    },
+    dam: {
+      name: 'dam',
+      aliases: ['gate', 'gates', 'fcd#3'],
+      description: 'There’s nothing special about the dam.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      instead: {
+        open: [{ say: ['Sounds reasonable, but this isn’t how.'] }],
+        close: [{ say: ['Sounds reasonable, but this isn’t how.'] }],
+        plug: [{ as: 'target', then: 'dam_plug' }],
+      },
+    },
+    control_panel: {
+      name: 'control panel',
+      aliases: ['panel'],
+      description: 'There’s nothing special about the control panel.',
+      portable: false,
+      tags: [],
+      scenery: true,
+    },
+    tool_chest: {
+      name: 'group of tool chests',
+      aliases: ['chest', 'chests', 'group', 'toolchests', 'tool chests', 'tool chest'],
+      description: 'The chests are all empty.',
+      portable: false,
+      tags: ['sacred'],
+      container: { open: true },
+      instead: {
+        take: [{ then: 'chests_crumble' }],
+        open: [{ then: 'chests_crumble' }],
+        put: [{ then: 'chests_crumble' }],
+      },
+    },
+    yellow_button: {
+      name: 'yellow button',
+      aliases: ['button', 'switch', 'buttons', 'yellow switch'],
+      description: 'There’s nothing special about the yellow button.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      instead: { use: [{ then: 'gate_flag_on' }], read: [{ say: ['They’re greek to you.'] }] },
+    },
+    brown_button: {
+      name: 'brown button',
+      aliases: ['button', 'switch', 'buttons', 'brown switch'],
+      description: 'There’s nothing special about the brown button.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      instead: { use: [{ then: 'gate_flag_off' }], read: [{ say: ['They’re greek to you.'] }] },
+    },
+    red_button: {
+      name: 'red button',
+      aliases: ['button', 'switch', 'buttons', 'red switch'],
+      description: 'There’s nothing special about the red button.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      instead: {
+        use: [{ if: 'on:maintenance_lights', then: 'lights_off' }, { then: 'lights_on' }],
+        read: [{ say: ['They’re greek to you.'] }],
+      },
+    },
+    blue_button: {
+      name: 'blue button',
+      aliases: ['button', 'switch', 'buttons', 'blue switch'],
+      description: 'There’s nothing special about the blue button.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      instead: {
+        use: [{ if: 'var:water_level=0', then: 'leak_starts' }, { say: ['The blue button appears to be jammed.'] }],
+        read: [{ say: ['They’re greek to you.'] }],
+      },
+    },
+    // The Maintenance Room's own lights (its ONBIT), switched by the red button.
+    maintenance_lights: {
+      name: 'ceiling lights',
+      description: 'There’s nothing special about the ceiling lights.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      switchable: true,
+      light: true,
+    },
+    leak: {
+      name: 'leak',
+      aliases: ['drip', 'pipe'],
+      description: 'There’s nothing special about the leak.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      // LEAK-FUNCTION: only while the water's rising.
+      instead: {
+        put: [{ if: 'var:water_level>0', with: 'putty', then: 'leak_fixed' }],
+        plug: [{ if: 'var:water_level>0', with: 'putty', then: 'leak_fixed' }, { if: 'var:water_level>0', as: 'target', then: 'with_tell' }],
+      },
+    },
+    tube: {
+      name: 'tube',
+      aliases: ['tooth', 'paste', 'toothpaste', 'tube of toothpaste'],
+      description: '',
+      roomDescription: 'There is an object which looks like a tube of toothpaste here.',
+      portable: true,
+      size: 5,
+      tags: [],
+      text: '---> Frobozz Magic Gunk Company <---\n  All-Purpose Gunk',
+      container: { openable: true, weight: 7 },
+      contains: ['putty'],
+      instead: { squeeze: [{ then: 'squeeze_tube' }], put: [{ as: 'indirect', say: ['The tube refuses to accept anything.'] }] },
+    },
+    putty: {
+      name: 'viscous material',
+      aliases: ['material', 'gunk', 'viscous gunk'],
+      description: 'There’s nothing special about the viscous material.',
+      portable: true,
+      size: 6,
+      tags: [],
+      // PUTTY-FCN: PUT (in), not PUT ON.
+      instead: { put: [{ if: '!var:water_level>0', as: 'target', prep: 'in', say: ['The all-purpose gunk isn’t a lubricant.'] }] },
+    },
+    screwdriver: {
+      name: 'screwdriver',
+      aliases: ['tool', 'tools', 'driver', 'screw driver'],
+      description: 'There’s nothing special about the screwdriver.',
+      portable: true,
+      tags: [],
+    },
+    wrench: {
+      name: 'wrench',
+      aliases: ['tool', 'tools'],
+      description: 'There’s nothing special about the wrench.',
+      portable: true,
+      size: 10,
+      tags: [],
+    },
+    match: {
+      name: 'matchbook',
+      aliases: ['match', 'matches', 'match book'],
+      description: 'The matchbook isn’t very interesting, except for what’s written on it.',
+      roomDescription: 'There is a matchbook whose cover says “Visit Beautiful FCD#3” here.',
+      portable: true,
+      size: 2,
+      tags: [],
+      switchable: true,
+      flaming: true,
+      light: true,
+      text: '\n(Close cover before striking)\n\nYOU too can make BIG MONEY in the exciting field of PAPER SHUFFLING!\n\nMr. Anderson of Muddle, Mass. says: “Before I took this course I was a lowly bit twiddler. Now with what I learned at GUE Tech I feel really important and can obfuscate and confuse with the best.”\n\nDr. Blank had this to say: “Ten short days ago all I could look forward to was a dead-end job as a doctor. Now I have a promising future and make really big Zorkmids.”\n\nGUE Tech can’t promise these fantastic results to everyone. But when you earn your degree from GUE Tech, your future will be brighter.',
+      // MATCH-FUNCTION.
+      instead: {
+        turn_on: [{ as: 'target', then: 'strike_match' }],
+        burn: [{ as: 'target', then: 'strike_match' }],
+        turn_off: [{ if: 'on:match', then: 'match_out_now' }],
+        count: [{ then: 'count_matches' }],
+        open: [{ then: 'count_matches' }],
+        examine: [{ if: 'on:match', say: ['The match is burning.'] }],
+      },
+    },
+    guide: {
+      name: 'tour guidebook',
+      aliases: ['guide', 'book', 'books', 'guidebook', 'guidebooks', 'tour guide'],
+      description: '',
+      initialDescription: 'Some guidebooks entitled “Flood Control Dam #3” are on the reception desk.',
+      portable: true,
+      burnable: true,
+      tags: [],
+      text: '“\tFlood Control Dam #3\n\nFCD#3 was constructed in year 783 of the Great Underground Empire to harness the mighty Frigid River. This work was supported by a grant of 37 million zorkmids from your omnipotent local tyrant Lord Dimwit Flathead the Excessive. This impressive structure is composed of 370,000 cubic feet of concrete, is 256 feet tall at the center, and 193 feet wide at the top. The lake created behind the dam has a volume of 1.7 billion cubic feet, an area of 12 million square feet, and a shore line of 36 thousand feet.\n\nThe construction of FCD#3 took 112 days from ground breaking to the dedication. It required a work force of 384 slaves, 34 slave drivers, 12 engineers, 2 turtle doves, and a partridge in a pear tree. The work was managed by a command team composed of 2345 bureaucrats, 2347 secretaries (at least two of whom could type), 12,256 paper shufflers, 52,469 rubber stampers, 245,193 red tape processors, and nearly one million dead trees.\n\nWe will now point out some of the more interesting features of FCD#3 as we conduct you on a guided tour of the facilities:\n\n        1) You start your tour here in the Dam Lobby. You will notice on your right that....',
+    },
+    trunk: {
+      name: 'trunk of jewels',
+      aliases: ['trunk', 'chest', 'jewels', 'treasure', 'old trunk'],
+      description: 'There’s nothing special about the trunk of jewels.',
+      initialDescription: 'Lying half buried in the mud is an old trunk, bulging with jewels.',
+      roomDescription: 'There is an old trunk here, bulging with assorted jewels.',
+      portable: true,
+      size: 35,
+      treasure: 5,
+      tags: [],
+      after: { take: [{ if: '!flag:took_trunk', then: 'took_trunk' }] },
+    },
+    pump: {
+      name: 'hand-held air pump',
+      aliases: ['pump', 'air-pump', 'air pump', 'tool', 'tools', 'small pump', 'hand-held pump'],
+      description: 'There’s nothing special about the hand-held air pump.',
+      portable: true,
+      tags: [],
+    },
+    // The boat, folded: it inflates in stage 5b.
+    inflatable_boat: {
+      name: 'pile of plastic',
+      aliases: ['boat', 'pile', 'plastic', 'valve', 'plastic pile'],
+      description: 'There’s nothing special about the pile of plastic.',
+      roomDescription: 'There is a folded pile of plastic here which has a small valve attached.',
+      portable: true,
+      size: 20,
+      burnable: true,
+      tags: [],
+    },
     // West of House
     mailbox: {
       name: 'small mailbox',
@@ -928,12 +1790,15 @@ export const zork1: World = {
     bottle: {
       name: 'glass bottle',
       aliases: ['bottle', 'clear bottle', 'container'],
-      description: 'The glass bottle contains:\n  A quantity of water',
+      // EXAMINE lists what's in it, or says it's empty.
+      description: '',
       initialDescription: 'A bottle is sitting on the table.',
       portable: true,
       tags: [],
       container: { openable: true, transparent: true, weight: 4 },
       contains: ['water'],
+      // PRE-FILL: from the water here, if there is any.
+      instead: { fill: [{ if: 'here:global_water', then: 'fill_bottle' }, { say: ['There is nothing to fill it with.'] }] },
     },
     water: {
       name: 'quantity of water',
@@ -942,6 +1807,14 @@ export const zork1: World = {
       portable: true,
       size: 4,
       tags: [],
+      // WATER-F: POUR is DROP, and TAKE fills the bottle.
+      instead: {
+        take: [{ then: 'fill_bottle' }],
+        pour: [
+          { if: 'inside:water:bottle & !open:bottle', say: ['The bottle is closed.'] },
+          { then: 'water_spills' },
+        ],
+      },
     },
     chimney: {
       name: 'chimney',
@@ -968,7 +1841,18 @@ export const zork1: World = {
       initialDescription: 'A large coil of rope is lying in the corner.',
       portable: true,
       size: 10,
-      tags: [],
+      tags: ['sacred'],
+      // ROPE-FUNCTION.
+      instead: {
+        tie: [
+          { if: '!in:dome_room', as: 'target', then: 'rope_tie_elsewhere' },
+          { if: 'flag:dome_flag', as: 'target', with: 'railing', say: ['The rope is already tied to it.'] },
+          { as: 'target', with: 'railing', then: 'rope_tied' },
+        ],
+        untie: [{ if: 'flag:dome_flag & in:dome_room', then: 'rope_untied' }, { say: ['It is not tied to anything.'] }],
+        drop: [{ if: 'in:dome_room & !flag:dome_flag', then: 'rope_drops' }],
+        take: [{ if: 'flag:dome_flag & in:dome_room', say: ['The rope is tied to the railing.'] }],
+      },
     },
     knife: {
       name: 'nasty knife',
@@ -1272,6 +2156,21 @@ export const zork1: World = {
   },
 
   npcs: {
+    // GHOSTS-F: the spirits barring Hades.
+    ghosts: {
+      name: 'number of ghosts',
+      aliases: ['ghosts', 'spirits', 'fiends', 'force', 'evil spirits', 'invisible force'],
+      description: 'You seem unable to interact with these spirits.',
+      scenery: true,
+      refuseOrder: 'The spirits jeer loudly and ignore you.',
+      instead: {
+        attack: [{ say: ['How can you attack a spirit with material objects?'] }],
+        smash: [{ say: ['How can you attack a spirit with material objects?'] }],
+        take: [{ say: ['You seem unable to interact with these spirits.'] }],
+        give: [{ say: ['You seem unable to interact with these spirits.'] }],
+        throw: [{ say: ['You seem unable to interact with these spirits.'] }],
+      },
+    },
     thief: {
       name: 'thief',
       aliases: ['robber', 'man', 'person', 'suspicious man', 'seedy man', 'shady man'],
@@ -1430,6 +2329,7 @@ export const zork1: World = {
     },
   },
   dialogue: {
+    ghosts: { default: 'The spirits jeer loudly and ignore you.' },
     cyclops: { default: 'The cyclops prefers eating to making conversation.', 'flag:cyclops_asleep': 'No use talking to him. He’s fast asleep.' },
     troll: { default: 'The troll isn’t much of a conversationalist.' },
     thief: { default: 'The thief is a strong, silent type.' },
@@ -1490,6 +2390,179 @@ export const zork1: World = {
   carry: { limit: 100, self: 5, fumble: { over: 7, chance: 8 } },
 
   scripts: {
+    // CANDLES-FCN's LAMP-ON and BURN.
+    light_candles: (ctx) => {
+      if (ctx.state.flags.candles_burnt) return ['Alas, there’s not much left of the candles. Certainly not enough to burn.'];
+      const tool = ctx.command?.indirect;
+      const matchLit = Boolean(ctx.state.itemState.match?.on);
+      if (!tool) {
+        if (!matchLit) return ['You should say what to light them with.'];
+        return ['(with the match)', ...lightWith(ctx, 'match')];
+      }
+      return lightWith(ctx, tool);
+    },
+    // CANDLES-FCN's LAMP-OFF.
+    candles_out: (ctx) => {
+      if (!ctx.state.itemState.candles?.on) return ['The candles are not lighted.'];
+      const dark = !ctx.world.rooms[ctx.room()]?.dark ? false : !['lamp', 'torch', 'match'].some((id) => ctx.state.itemState[id]?.on && ctx.here(id));
+      return [{ switch: 'candles', on: false }, { noDarkLine: true }, `The flame is extinguished.${dark ? ' It’s really dark in here....' : ''}`];
+    },
+    // CAVE2-ROOM: ZPROB 50 (worse odds once your luck is gone).
+    candle_gust: (ctx) => {
+      if (ctx.roll(ctx.state.flags.unlucky ? 300 : 100) >= 50) return [];
+      const dark = !['lamp', 'torch', 'match'].some((id) => ctx.state.itemState[id]?.on && ctx.here(id));
+      return [{ switch: 'candles', on: false }, { noDarkLine: true }, 'A gust of wind blows out your candles!', ...(dark ? ['It is now completely dark.'] : [])];
+    },
+    // HOT-BELL-F: RUB, or RING WITH something.
+    hot_bell_touched: (ctx) => {
+      const tool = ctx.command?.indirect;
+      // With no tool there's no HANDS to blame: RUB finds it too intense.
+      if (!tool) return [ctx.command?.verb === 'ring' ? 'The bell is too hot to reach.' : 'The heat from the bell is too intense.'];
+      const item = ctx.world.items[tool];
+      if (item?.burnable) return [`The ${item.name} burns and is consumed.`, { move: tool, to: null }];
+      return ['The heat from the bell is too intense.'];
+    },
+    // DEAD-FUNCTION: a spirit's limits, before the parser's own verbs.
+    dead_function: (ctx) => {
+      // The line as typed, or a command already parsed (AGAIN, the intent server's reading).
+      const a = ctx.action ?? ctx.parse(ctx.line ?? '');
+      if (!a) return;
+      const verb = a.action;
+      if (['go', 'verbose', 'brief', 'superbrief', 'version', 'save', 'restore', 'load', 'quit', 'restart', 'undo', 'again', 'oops', 'unknown', 'capture'].includes(verb)) return;
+      if (['attack', 'smash'].includes(verb)) return ['All such attacks are vain in your condition.'];
+      if (['open', 'close', 'eat', 'drink', 'inflate', 'deflate', 'turn', 'burn', 'tie', 'untie', 'rub'].includes(verb)) return ['Even such an action is beyond your capabilities.'];
+      if (verb === 'wait') return ['Might as well. You’ve got an eternity.'];
+      if (verb === 'turn_on') return ['You need no light to guide you.'];
+      if (verb === 'score') return ['You’re dead! How can you think of your score?'];
+      if (verb === 'take') return ['Your hand passes through its object.'];
+      if (['drop', 'throw', 'inventory'].includes(verb)) return ['You have no possessions.'];
+      if (verb === 'diagnose') return ['You are dead.'];
+      if (verb === 'look') {
+        const lit = !ctx.world.rooms[ctx.room()]?.dark;
+        return ['The room looks strange and unearthly and objects appear indistinct.', ...(lit ? [] : ['Although there is no light, the room seems dimly illuminated.']), '', { look: true }];
+      }
+      if (verb === 'pray') {
+        if (ctx.room() !== 'south_temple') return ['Your prayers are not heard.'];
+        return [
+          { clear: 'dead' },
+          'From the distance the sound of a lone trumpet is heard. The room becomes very bright and you feel disembodied. In a moment, the brightness fades and you find yourself rising as if from a long sleep, deep in the woods. In the distance you can faintly hear a songbird and the sounds of the forest.',
+          '',
+          { go: 'forest_1' },
+        ];
+      }
+      return ['You can’t even do that.'];
+    },
+    // LOUD-ROOM-FCN's loop: the first word (after GO or SAY) decides; anything else echoes.
+    loud_room_capture: (ctx) => {
+      // The loop reads raw input; a command that arrived already parsed isn't for it.
+      if (ctx.line === undefined) return;
+      const flags = ctx.state.flags;
+      // Only while it's loud: gates and tide both one way or both the other.
+      if (Boolean(flags.gates_open) !== Boolean(flags.low_tide)) return;
+      const words = (ctx.line ?? '').toLowerCase().trim().split(/\s+/).filter(Boolean);
+      if (words.length === 0) return ['I beg your pardon?', { free: true }];
+      let word = words[0];
+      if (['go', 'walk', 'run'].includes(word)) word = words[1] ?? '';
+      else if (word === 'say') word = words[2] ?? '';
+      if (['save', 'restore', 'q', 'quit'].includes(word)) return;
+      const exits: Record<string, string> = { w: 'round_room', west: 'round_room', e: 'damp_cave', east: 'damp_cave', u: 'deep_canyon', up: 'deep_canyon' };
+      if (exits[word]) return [{ go: exits[word] }, { free: true }];
+      if (word === 'bug') return ['That’s only your opinion.', { free: true }];
+      // The loop ends, and the arrival it interrupted describes the room.
+      if (word === 'echo') return [{ set: 'loud_flag' }, { set: 'unsacred_bar' }, 'The acoustics of the room change subtly.', { go: 'loud_room' }, { free: true }];
+      const last = words[words.length - 1];
+      return [`${last} ${last} ...`, { free: true }];
+    },
+    // PICK-ONE over LOUD-RUNS.
+    loud_run: (ctx) => {
+      const [steps, room] = pickOne(ctx, 'loud_runs', ['damp_cave', 'round_room', 'deep_canyon']);
+      return [...steps, { go: room }];
+    },
+    // V-LEAP where there's no way down: PICK-ONE over JUMPLOSS.
+    jump_loss: (ctx) => {
+      const [steps, line] = pickOne(ctx, 'jumploss', ['You should have looked before you leaped.', 'In the movies, your life would be passing before your eyes.', 'Geronimo...']);
+      return [...steps, { die: line }];
+    },
+    // MIRROR-MIRROR: the two rooms swap everything in them, and you're in the other one.
+    mirror_rub: (ctx) => {
+      const tool = ctx.command?.indirect;
+      if (tool) return [`You feel a faint tingling transmitted through the ${ctx.world.items[tool]?.name ?? tool}.`];
+      const here = ctx.room();
+      const there = here === 'mirror_room_2' ? 'mirror_room_1' : 'mirror_room_2';
+      const steps: EventStep[] = [];
+      for (const id of ctx.children(here)) steps.push({ move: id, to: there });
+      for (const id of ctx.children(there)) steps.push({ move: id, to: here });
+      for (const id of Object.keys(ctx.world.npcs)) {
+        if (ctx.npcIn(id, here)) steps.push({ moveNpc: id, to: there });
+        else if (ctx.npcIn(id, there)) steps.push({ moveNpc: id, to: here });
+      }
+      return [...steps, { go: there, quiet: true }, 'There is a rumble from deep within the earth and the room shakes.'];
+    },
+    // BOLT-F: TURN BOLT WITH WRENCH, while the yellow button's gate flag is set.
+    bolt_turn: (ctx) => {
+      const tool = ctx.command?.indirect;
+      if (tool !== 'wrench') return [`The bolt won’t turn using the ${tool ? ctx.world.items[tool]?.name : 'nothing'}.`];
+      if (!ctx.state.flags.gate_flag) return ['The bolt won’t turn with your best effort.'];
+      if (ctx.state.flags.gates_open)
+        return [
+          { unvisit: 'reservoir_south' },
+          { clear: 'gates_open' },
+          { unvisit: 'loud_room' },
+          'The sluice gates close and water starts to collect behind the dam.',
+          { schedule: 'reservoir_fills', in: 7 },
+          { cancel: 'reservoir_empties' },
+        ];
+      return [
+        { unvisit: 'reservoir_south' },
+        { set: 'gates_open' },
+        'The sluice gates open and water pours through the dam.',
+        { schedule: 'reservoir_empties', in: 7 },
+        { cancel: 'reservoir_fills' },
+      ];
+    },
+    // DAM-FUNCTION's PLUG.
+    dam_plug: (ctx) => [`With a ${ctx.world.items[ctx.command?.indirect ?? '']?.name ?? 'thing'}? Do you know how big this dam is? You could only stop a tiny leak with that.`],
+    // WITH-TELL.
+    with_tell: (ctx) => [`With a ${ctx.world.items[ctx.command?.indirect ?? '']?.name ?? 'thing'}?`],
+    // TUBE-FUNCTION's SQUEEZE.
+    squeeze_tube: (ctx) => {
+      const open = ctx.state.itemState.tube?.open;
+      if (open && ctx.holder('putty') === 'tube') return [{ move: 'putty', to: 'player' }, 'The viscous material oozes into your hand.'];
+      return [open ? 'The tube is apparently empty.' : 'The tube is closed.'];
+    },
+    // I-MAINT-ROOM, every turn while the leak runs.
+    maint_rising: (ctx) => {
+      const level = ctx.state.vars?.water_level ?? 0;
+      const here = ctx.room() === 'maintenance_room';
+      const steps: EventStep[] = [];
+      if (here) steps.push(`The water level here is now ${DROWNINGS[Math.floor(level / 2)]}`);
+      steps.push({ setVar: 'water_level', to: level + 1 });
+      if (level + 1 >= 14) {
+        steps.push({ set: 'maint_flooded' }, { clear: 'leaking' });
+        if (here) steps.push({ die: 'I’m afraid you have done drowned yourself.' });
+      }
+      return steps;
+    },
+    // MATCH-FUNCTION's LAMP-ON and BURN.
+    strike_match: (ctx) => {
+      if (ctx.command?.target !== 'match') return [];
+      const count = Math.max((ctx.state.vars?.match_count ?? 0) - 1, 0);
+      const steps: EventStep[] = [{ setVar: 'match_count', to: count }];
+      if (count <= 0) return [...steps, 'I’m afraid that you have run out of matches.'];
+      return [...steps, { switch: 'match', on: true }, { schedule: 'match_out', in: 1 }, 'One of the matches starts to burn.'];
+    },
+    // MATCH-FUNCTION's COUNT.
+    count_matches: (ctx) => {
+      const n = (ctx.state.vars?.match_count ?? 0) - 1;
+      return [`You have ${n > 0 ? n : 'no'} match${n === 1 ? '' : 'es'}.`];
+    },
+    // WATER-F's FILL: PUT WATER IN BOTTLE.
+    fill_bottle: (ctx) => {
+      if (!ctx.carried('bottle')) return [ctx.holder('water') === 'bottle' && ctx.command?.target === 'water' ? 'It’s in the bottle. Perhaps you should take that instead.' : 'The water slips through your fingers.'];
+      if (!ctx.state.itemState.bottle?.open) return ['The bottle is closed.'];
+      if (ctx.children('bottle').length > 0) return ['The water slips through your fingers.'];
+      return [{ move: 'water', to: 'bottle' }, 'The bottle is now full of water.'];
+    },
     // TROLL-FCN's F-BUSY?: picks his axe back up (75%), or cowers.
     troll_busy: (ctx) =>
       ctx.holder('axe') === 'troll_room' && ctx.roll(100) < 75
@@ -1629,7 +2702,7 @@ export const zork1: World = {
     },
     chimney_climbed: (ctx) => (ctx.state.itemState.trap_door?.open ? [] : [{ clear: 'trap_door_barred' }]),
     thief_turn: thiefTurn,
-    thief_stole_light: (ctx) => (ctx.arg === 'lit' && !ctx.lit() ? ['The thief seems to have left you in the dark.'] : []),
+    thief_stole_light: (ctx) => (ctx.arg === 'lit' && !ctx.lit() ? ['The thief seems to have left you in the dark.', { noDarkLine: true }] : []),
     // TREASURE-ROOM-FCN: he rushes in, fights, and his treasures vanish.
     thief_lair: (ctx) => [
       ...(ctx.npcIn('thief', 'treasure_room')
@@ -1721,6 +2794,14 @@ export const zork1: World = {
     listen: { words: ['listen to', 'listen'], target: 'required', reply: 'At the moment, there is nothing to hear.' },
     count: { words: ['count'], target: 'required' },
     pray: { words: ['pray'], target: 'none', reply: 'If you pray enough, your prayers may be answered.' },
+    squeeze: { words: ['squeeze'], target: 'required', reply: 'How singularly useless.' },
+    fill: { words: ['fill'], target: 'required', indirect: ['with'] },
+    rub: { words: ['rub', 'touch', 'feel', 'pat', 'pet'], target: 'required', indirect: ['with'], reply: 'Fiddling with that doesn’t seem to work.' },
+    tie: { words: ['tie', 'fasten', 'secure'], target: 'required', indirect: ['to'], reply: 'You can’t tie that to that.' },
+    untie: { words: ['untie', 'unfasten', 'unhook'], target: 'required', indirect: ['from'], reply: 'This cannot be tied, so it cannot be untied!' },
+    jump: { words: ['jump', 'leap', 'dive'], target: 'none', reply: 'Wheeeeeeeeee!!!!!' },
+    ring: { words: ['ring', 'peal'], target: 'required', indirect: ['with'], reply: 'How, exactly, can you ring that?' },
+    pour: { words: ['pour', 'spill'], target: 'required', indirect: ['on', 'in', 'from'], held: true },
   },
 
   flagLabels: {
@@ -1743,10 +2824,28 @@ export const zork1: World = {
     { if: 'inside:egg:trophy_case', points: 5 },
     { if: 'inside:canary:trophy_case', points: 4 },
     { flag: 'took_painting', points: 4 },
+    { flag: 'took_trunk', points: 15 },
+    { flag: 'took_bar', points: 10 },
+    { if: 'inside:bar:trophy_case', points: 5 },
+    { flag: 'took_trident', points: 4 },
+    { if: 'inside:trident:trophy_case', points: 11 },
+    { flag: 'took_torch', points: 14 },
+    { if: 'inside:torch:trophy_case', points: 6 },
+    { flag: 'took_coffin', points: 10 },
+    { if: 'inside:coffin:trophy_case', points: 15 },
+    { flag: 'took_sceptre', points: 4 },
+    { if: 'inside:sceptre:trophy_case', points: 6 },
+    { flag: 'took_skull', points: 10 },
+    { if: 'inside:skull:trophy_case', points: 10 },
+    { if: 'inside:trunk:trophy_case', points: 5 },
     // Treasures count while they're in the trophy case.
     { if: 'inside:painting:trophy_case', points: 6 },
   ],
   maxScore: 350,
+  // DEAD-FUNCTION: what a spirit can and can't do.
+  capture: { if: 'flag:dead', script: 'dead_function' },
+  // V-WAIT: three turns of the clock, or fewer if something happens.
+  wait: { turns: 3 },
   ranks: [
     { min: 0, title: 'Beginner' },
     { min: 26, title: 'Amateur Adventurer' },
@@ -1758,17 +2857,26 @@ export const zork1: World = {
     { min: 350, title: 'Master Adventurer' },
   ],
 
-  vars: { lamp_fuel: 185, sword_glow: 0, troll_ldesc: 0, cyclowrath: 0 },
+  vars: { candle_life: 75, water_level: 0, match_count: 6, lamp_fuel: 385, sword_glow: 0, troll_ldesc: 0, cyclowrath: 0 },
 
   // Zork's LAMP-TABLE: warnings after 100, 170 and 185 lit turns; out on the next.
   daemons: [
+    // I-MAINT-ROOM.
+    { if: 'flag:leaking', then: [{ script: 'maint_rising' }] },
     // I-CYCLOPS: queued during play, so it's the newest interrupt and runs first.
     { if: 'flag:cyclops_daemon', then: [{ script: 'cyclops_turn' }] },
     { if: 'on:lamp', then: [{ add: 'lamp_fuel', by: -1 }] },
-    { if: 'on:lamp & var:lamp_fuel=85 & here:lamp', then: ['The lamp appears a bit dimmer.'] },
-    { if: 'on:lamp & var:lamp_fuel=15 & here:lamp', then: ['The lamp is definitely dimmer now.'] },
-    { if: 'on:lamp & var:lamp_fuel=0 & here:lamp', then: ['The lamp is nearly out.'] },
-    { if: 'on:lamp & var:lamp_fuel<0', then: 'lamp_dies' },
+    // I-LANTERN and LAMP-TABLE: 200 turns of light, then 100, 70 and 15.
+    { if: 'on:lamp & var:lamp_fuel=185 & here:lamp', then: ['The lamp appears a bit dimmer.'] },
+    { if: 'on:lamp & var:lamp_fuel=85 & here:lamp', then: ['The lamp is definitely dimmer now.'] },
+    { if: 'on:lamp & var:lamp_fuel=15 & here:lamp', then: ['The lamp is nearly out.'] },
+    { if: 'on:lamp & var:lamp_fuel=0', then: 'lamp_dies' },
+    // I-CANDLES and CANDLE-TABLE: 40 turns once touched, then 20, 10 and 5, while lit.
+    { if: 'on:candles & flag:candles_touched', then: [{ add: 'candle_life', by: -1 }] },
+    { if: 'on:candles & flag:candles_touched & var:candle_life=35 & here:candles', then: ['The candles grow shorter.'] },
+    { if: 'on:candles & flag:candles_touched & var:candle_life=15 & here:candles', then: ['The candles are becoming quite short.'] },
+    { if: 'on:candles & flag:candles_touched & var:candle_life=5 & here:candles', then: ['The candles won’t last long now.'] },
+    { if: 'on:candles & flag:candles_touched & var:candle_life=0', then: 'candles_burn_out' },
     // I-THIEF: GO queues it after the sword and before the lantern, so it runs between them.
     { if: 'alive:thief & awake:thief', then: [{ script: 'thief_turn' }] },
     // I-SWORD, which runs after the lantern and before the fight.
@@ -1776,13 +2884,15 @@ export const zork1: World = {
   ],
 
   darkness: {
+    // ALWAYS-LIT, for a spirit.
+    litIf: 'flag:dead',
     look: 'It is pitch black. You are likely to be eaten by a grue.',
     tooDark: 'It’s too dark to see!',
     blunder: [{ chance: 80, then: [{ die: GRUE }], else: ['You can’t go that way.'] }],
   },
 
   death: {
-    message: ['', '****  You have died  ****', ''],
+    message: [{ if: 'flag:unlucky', text: 'Bad luck, huh?' }, '', '****  You have died  ****', ''],
     penalty: -10,
     lives: 2,
     respawn: 'forest_1',
@@ -1792,6 +2902,22 @@ export const zork1: World = {
       'Now, let’s take a look here... Well, you probably deserve another chance. I can’t quite fix you up completely, but you can’t have everything.',
     ],
     scatter: ['west_of_house', 'north_of_house', 'south_of_house', 'east_of_house', 'forest_1', 'forest_2', 'forest_3', 'path', 'clearing', 'grating_clearing'],
+    // JIGS-UP: once you've seen the Altar, you wake as a spirit before the gates of Hell.
+    variants: [
+      {
+        if: 'visited:south_temple',
+        resurrection: ['As you take your last breath, you feel relieved of your burdens. The feeling passes as you find yourself before the gates of Hell, where the spirits jeer at you and deny you entry. Your senses are disturbed. The objects in the dungeon appear indistinct, bleached of color, even unreal.', ''],
+        respawn: 'entrance_to_hades',
+        // DEAD is set before the GOTO, so Hades is described as a spirit sees it.
+        before: 'ghost_begins',
+      },
+    ],
+    instead: [
+      {
+        if: 'flag:dead',
+        lines: ['', 'It takes a talented person to be killed while already dead. YOU are such a talent. Unfortunately, it takes a talented person to deal with it. I am not such a talent. Sorry.'],
+      },
+    ],
     final: [
       'You clearly are a suicidal maniac. We don’t allow psychotics in the cave, since they may harm other adventurers. Your remains will be installed in the Land of the Living Dead, where your fellow adventurers may gloat over them.',
     ],
@@ -1801,13 +2927,139 @@ export const zork1: World = {
   idle: 'Time passes...',
 
   events: {
+    // BUTTON-F.
+    gate_flag_on: [{ unvisit: 'dam_room' }, { set: 'gate_flag' }, 'Click.'],
+    gate_flag_off: [{ unvisit: 'dam_room' }, { clear: 'gate_flag' }, 'Click.'],
+    lights_on: [{ switch: 'maintenance_lights', on: true }, 'The lights within the room come on.'],
+    lights_off: [{ switch: 'maintenance_lights', on: false }, 'The lights within the room shut off.'],
+    leak_starts: [
+      { reveal: 'leak' },
+      'There is a rumbling sound and a stream of water appears to burst from the east wall of the room (apparently, a leak has occurred in a pipe).',
+      { setVar: 'water_level', to: 1 },
+      { set: 'leaking' },
+    ],
+    // FIX-MAINT-LEAK.
+    leak_fixed: [{ setVar: 'water_level', to: -1 }, { clear: 'leaking' }, 'By some miracle of Zorkian technology, you have managed to stop the leak in the dam.'],
+    // TOOL-CHEST-FCN.
+    chests_crumble: [{ move: 'tool_chest', to: null }, 'The chests are so rusty and corroded that they crumble when you touch them.'],
+    // I-MATCH.
+    match_out: ['The match has gone out.', { switch: 'match', on: false }],
+    match_out_now: ['The match is out.', { switch: 'match', on: false }, { cancel: 'match_out' }],
+    // I-REMPTY.
+    reservoir_empties: [
+      { unvisit: 'deep_canyon' },
+      { unvisit: 'loud_room' },
+      { reveal: 'trunk' },
+      { set: 'low_tide' },
+      { if: 'in:deep_canyon', then: ['The roar of rushing water is quieter now.'] },
+      { if: 'in:reservoir_north', then: ['The water level is now quite low here and you could easily cross over to the other side.'] },
+      { if: 'in:reservoir_south', then: ['The water level is now quite low here and you could easily cross over to the other side.'] },
+    ],
+    // I-RFILL.
+    reservoir_fills: [
+      { unvisit: 'deep_canyon' },
+      { unvisit: 'loud_room' },
+      { if: 'inside:trunk:reservoir', then: [{ hide: 'trunk' }] },
+      { clear: 'low_tide' },
+      {
+        if: 'in:reservoir',
+        then: [{ die: 'You are lifted up by the rising river! You try to swim, but the currents are too strong. You come closer, closer to the awesome structure of Flood Control Dam #3. The dam beckons to you. The roar of the water nearly deafens you, but you remain conscious as you tumble over the dam toward your certain doom among the rocks at its base.' }],
+      },
+      { if: 'in:deep_canyon', then: ['A sound, like that of flowing water, starts to come from below.'] },
+      { if: 'in:loud_room', then: ['All of a sudden, an alarmingly loud roaring sound fills the room. Filled with fear, you scramble away.', { script: 'loud_run' }] },
+      { if: 'in:reservoir_north', then: ['You notice that the water level has risen to the point that it is impossible to cross.'] },
+      { if: 'in:reservoir_south', then: ['You notice that the water level has risen to the point that it is impossible to cross.'] },
+    ],
+    took_trunk: [{ set: 'took_trunk' }],
+    took_bar: [{ set: 'took_bar' }],
+    took_trident: [{ set: 'took_trident' }],
+    took_coffin: [{ set: 'took_coffin' }],
+    took_sceptre: [{ set: 'took_sceptre' }],
+    took_skull: [{ set: 'took_skull' }],
+    prayer_answered: [{ go: 'forest_1' }],
+    // LLD-ROOM's M-BEG: RING BELL.
+    bell_rung: [
+      { set: 'xb' },
+      { move: 'bell', to: null },
+      { move: 'hot_bell', to: 'here' },
+      'The bell suddenly becomes red hot and falls to the ground. The wraiths, as if paralyzed, stop their jeering and slowly turn to face you. On their ashen faces, the expression of a long-forgotten terror takes shape.',
+      { if: 'has:candles', then: ['In your confusion, the candles drop to the ground (and they are out).', { move: 'candles', to: 'here' }, { switch: 'candles', on: false }] },
+      { schedule: 'xb_ends', in: 5 },
+      { schedule: 'hot_bell_cools', in: 19 },
+    ],
+    // LLD-ROOM's M-END.
+    exorcism_flames: [
+      { set: 'xc' },
+      'The flames flicker wildly and appear to dance. The earth beneath your feet trembles, and your legs nearly buckle beneath you. The spirits cower at your unearthly power.',
+      { cancel: 'xb_ends' },
+      { schedule: 'xc_ends', in: 2 },
+    ],
+    // LLD-ROOM's M-BEG: READ BOOK.
+    exorcism_done: [
+      'Each word of the prayer reverberates through the hall in a deafening confusion. As the last word fades, a voice, loud and commanding, speaks: “Begone, fiends!” A heart-stopping scream fills the cavern, and the spirits, sensing a greater power, flee through the walls.',
+      { moveNpc: 'ghosts', to: null },
+      { set: 'lld_flag' },
+      { cancel: 'xc_ends' },
+    ],
+    // I-XB.
+    xb_ends: [{ if: '!flag:xc & in:entrance_to_hades', then: ['The tension of this ceremony is broken, and the wraiths, amused but shaken at your clumsy attempt, resume their hideous jeering.'] }, { clear: 'xb' }],
+    // I-XC.
+    xc_ends: [{ clear: 'xc' }, { run: 'xb_ends' }],
+    // I-XBH.
+    hot_bell_cools: [{ move: 'hot_bell', to: null }, { move: 'bell', to: 'entrance_to_hades' }, { if: 'in:entrance_to_hades', then: ['The bell appears to have cooled down.'] }],
+    hot_bell_touched: [{ script: 'hot_bell_touched' }],
+    hot_bell_cooled: [{ move: 'water', to: null }, 'The water cools the bell and is evaporated.', { cancel: 'hot_bell_cools' }, { run: 'hot_bell_cools' }],
+    candles_touched: [{ set: 'candles_touched' }],
+    candles_lit: [{ set: 'candles_touched' }, { script: 'light_candles' }],
+    candles_out: [{ set: 'candles_touched' }, { script: 'candles_out' }],
+    candles_examined_lit: [{ set: 'candles_touched' }, 'The candles are burning.'],
+    candles_examined: [{ set: 'candles_touched' }, 'The candles are out.'],
+    // I-CANDLES at its last turn.
+    candles_burn_out: [{ switch: 'candles', on: false }, { set: 'candles_burnt' }, { if: 'here:candles', then: ['You’d better have more light than from the pair of candles.'] }],
+    book_burns: [{ move: 'book', to: null }, { die: 'A booming voice says “Wrong, cretin!” and you notice that you have turned into a pile of dust. How, I can’t imagine.' }],
+    bodies_defiled: [{ die: 'The voice of the guardian of the dungeon booms out from the darkness, “Your disrespect costs you your life!” and places your head on a sharp pole.' }],
+    // JIGS-UP after the Altar: a spirit now.
+    ghost_begins: [{ set: 'dead' }],
+    spirit_falls: ['As you enter the dome you feel a strong pull as if from a wind drawing you over the railing and down.', { go: 'torch_room', quiet: true }],
+    took_torch: [{ set: 'took_torch' }],
+    mirror_rub: [{ script: 'mirror_rub' }],
+    mirror_breaks: [{ set: 'mirror_mung' }, { set: 'unlucky' }, 'You have broken the mirror. I hope you have a seven years’ supply of good luck handy.'],
+    rope_tie_elsewhere: [{ clear: 'dome_flag' }, 'You can’t tie the rope to that.'],
+    rope_tied: [
+      'The rope drops over the side and comes within ten feet of the floor.',
+      { set: 'dome_flag' },
+      { unlist: 'rope' },
+      { if: 'has:rope', then: [{ move: 'rope', to: 'here' }] },
+    ],
+    rope_untied: [{ clear: 'dome_flag' }, { relist: 'rope' }, 'The rope is now untied.'],
+    rope_drops: [{ move: 'rope', to: 'torch_room' }, 'The rope drops gently to the floor below.'],
+    jump_death: ['This was not a very safe place to try jumping.', { script: 'jump_loss' }],
+    loud_room_ejects: [
+      'It is unbearably loud here, with an ear-splitting roar seeming to come from all around you. There is a pounding in your head which won’t stop. With a tremendous effort, you scramble out of the room.',
+      '',
+      { script: 'loud_run' },
+    ],
+    fill_bottle: [{ script: 'fill_bottle' }],
+    bolt_turn: [{ script: 'bolt_turn' }],
+    dam_plug: [{ script: 'dam_plug' }],
+    with_tell: [{ script: 'with_tell' }],
+    squeeze_tube: [{ script: 'squeeze_tube' }],
+    strike_match: [{ script: 'strike_match' }],
+    count_matches: [{ script: 'count_matches' }],
+    water_spills: [{ move: 'water', to: null }, 'The water spills to the floor and evaporates immediately.'],
     intro: [
       'ZORK I: The Great Underground Empire',
       'Infocom interactive fiction - a fantasy story',
       'Copyright (c) 1981, 1982, 1983, 1984, 1985, 1986 Infocom, Inc. All rights reserved.',
       'ZORK is a registered trademark of Infocom, Inc.',
       'Release 119 / Serial number 880429',
-      '[A native Brass Lantern port: the house, the forest, the first rooms below and the troll. The rest comes later.]',
+      '[A native Brass Lantern port. Still to come: the river, the rainbow, the coal mine and the barrow.]',
+      // INVISIBLE until something reveals them.
+      { hide: 'leak' },
+      { hide: 'trunk' },
+      // The torch and the candles are lit from the start (ONBIT); the hot bell waits offstage.
+      { switch: 'torch', on: true },
+      { switch: 'candles', on: true },
     ],
     rug_moved: [
       'With a great effort, the rug is moved to one side of the room, revealing the dusty cover of a closed trap door.',

@@ -63,6 +63,11 @@ export function handleOpen(target: string | undefined, world: World, state: Game
   const inside = childrenOf(world, state, id).filter((k) => !world.items[k]?.scenery && shown(state)(k));
   if (item.container.opened) return ok([item.container.opened], true);
   if (item.door || inside.length === 0 || item.container.transparent) return ok(['Opened.'], true);
+  // Zork's V-OPEN: one untouched thing with a first-seen sentence speaks for itself.
+  const only = world.items[inside[0]];
+  if (world.style === 'infocom' && inside.length === 1 && only?.initialDescription && !state.itemState[inside[0]]?.moved) {
+    return ok([`The ${item.name} opens.`, only.initialDescription], true);
+  }
   return ok([`Opening the ${item.name} reveals ${listPhrase(world, inside)}.`], true);
 }
 
@@ -117,6 +122,7 @@ export function handlePut(
   indirect: string | undefined,
   world: World,
   state: GameState,
+  prep?: string,
 ): EngineResult {
   if (!target) needObject();
   const id = pickItem(target, inventoryOf(world, state), world, 'target', state);
@@ -137,7 +143,8 @@ export function handlePut(
   if (sealed) return sealed;
   const d = world.items[dest];
   if ((!d.container || d.door) && !d.surface) {
-    return useFallback(id, dest, world, state) ?? ok(['You can’t put things there.']);
+    const refusal = world.style === 'infocom' && prep === 'on' ? `There’s no good surface on the ${d.name}.` : 'You can’t put things there.';
+    return useFallback(id, dest, world, state) ?? ok([refusal]);
   }
   if (dest === id || isInside(state, dest, id)) return ok([`You can’t put the ${name(world, id)} inside itself.`]);
   if (!canReachInside(world, state, dest)) return ok([`The ${d.name} is closed.`]);

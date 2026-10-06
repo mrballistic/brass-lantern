@@ -95,3 +95,16 @@ describe('darkness', () => {
     expect(evaluateCondition('lit:shed', s, world)).toBe(true);
   });
 });
+
+describe('litIf (5a)', () => {
+  it('lights every room while its condition holds', async () => {
+    const { isLit } = await import('@/engine/model');
+    const { fixtureWorld } = await import('../fixtures/world');
+    const { stateWith } = await import('../helpers/state');
+    const w = { ...fixtureWorld, darkness: { ...fixtureWorld.darkness, litIf: 'flag:dead' } };
+    const s = stateWith(w, { room: 'cellar' });
+    expect(isLit(w, s)).toBe(false);
+    s.flags.dead = true;
+    expect(isLit(w, s)).toBe(true);
+  });
+});

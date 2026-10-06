@@ -7,13 +7,14 @@ import { defaultWorldCartridge, saveKeyFor } from '@/cartridges';
 import { appName } from '@/app.config';
 import { cookiesCommand } from '@/services/cookies';
 import {
+  captureLine,
   execute,
   initialState,
   openingLines,
   describeCurrentRoom,
   visibleItemsIn,
 } from '@/engine/engine';
-import { inventoryOf, isLit } from '@/engine/model';
+import { inventoryOf, isLit, npcsSeen } from '@/engine/model';
 import { scriptLines, statusText } from '@/engine/verbs/meta';
 import { migrateSave } from '@/engine/migrate';
 import { fallbackParse, splitCommands } from '@/engine/parser';
@@ -252,6 +253,13 @@ export const useGameStore = defineStore('game', {
         }
         // Once the game is over, one command hears that it has ended; the rest of the line is dropped.
         if (this.game.gameOver && i > 0) break;
+        // A room or the world can take input before it's parsed; taking it ends the line.
+        const captured = conversation.pending ? null : captureLine(world, this.game, command);
+        if (captured) {
+          if (captured.mutated) line.changed = true;
+          this.applyResult(captured);
+          break;
+        }
         await this.runCommand(command);
         // A question stops the line, as in Zork: the next line answers it.
         if (conversation.pending) break;
@@ -359,6 +367,7 @@ export const useGameStore = defineStore('game', {
           inventoryOf(world, this.game),
           this.visibleItems,
           !isLit(world, this.game),
+          npcsSeen(world, this.game, this.game.currentRoom),
         );
         // The intent server names things by ID, so they resolve by ID first.
         const action = { ...(await parseIntentRemote(input, ctx)), byId: true };

@@ -60,3 +60,28 @@ describe('instead and after rules', () => {
   });
 });
 
+
+describe('rules by role and preposition (5a)', () => {
+  const w = {
+    ...world,
+    items: {
+      ...world.items,
+      jar: { ...world.items.jar, instead: { put: [{ as: 'indirect' as const, say: ['The jar refuses.'] }] } },
+      wallet: { ...world.items.wallet, instead: { put: [{ as: 'target' as const, prep: 'in', say: ['Not in there.'] }] } },
+    },
+  };
+  it('`as` limits a rule to its owner’s role in the command', () => {
+    const s = stateWith(w, { room: 'shed', carrying: ['wallet', 'key'] });
+    s.locations.jar = 'shed';
+    s.itemState.jar = { open: true };
+    expect(execute({ action: 'put', target: 'key', indirect: 'jar', prep: 'in' }, { world: w, state: s }).lines).toEqual(['The jar refuses.']);
+    const t = stateWith(w, { room: 'shed', carrying: ['jar'] });
+    expect(execute({ action: 'put', target: 'jar', indirect: 'shelf', prep: 'on' }, { world: w, state: t }).lines).not.toEqual(['The jar refuses.']);
+  });
+  it('`prep` limits a rule to IN or ON', () => {
+    const s = stateWith(w, { room: 'shed', carrying: ['wallet'] });
+    s.itemState.chest = { open: true, locked: false };
+    expect(execute({ action: 'put', target: 'wallet', indirect: 'chest', prep: 'in' }, { world: w, state: s }).lines).toEqual(['Not in there.']);
+    expect(execute({ action: 'put', target: 'wallet', indirect: 'shelf', prep: 'on' }, { world: w, state: s }).lines).not.toEqual(['Not in there.']);
+  });
+});

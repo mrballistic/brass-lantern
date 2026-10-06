@@ -31,6 +31,16 @@ export interface Room {
   scenery?: string[];
   /** Free-form labels scripts can read (`maze`, `sacred`). The engine doesn't. */
   tags?: string[];
+  /** Takes input here before it's parsed, while `if` holds (Zork's Loud Room). See Capture. */
+  capture?: Capture;
+  /** Run at the end of every command here, after the action and before the clock (Zork's M-END). */
+  onEnd?: Array<{ if: string; then: string | EventStep[] }>;
+}
+
+/** A script that sees each piece of input first (`ctx.line`): it returns steps to take it, or nothing to let it parse. */
+export interface Capture {
+  if?: string;
+  script: string;
 }
 
 /**
@@ -47,6 +57,10 @@ export interface Rule {
   say?: string[];
   /** An instead rule that runs, then lets the verb's default go on (Zork's “print, then RFALSE”). */
   continue?: boolean;
+  /** Only when its item is the command's object (`target`) or second object (`indirect`): Zork's PRSO and PRSI. */
+  as?: 'target' | 'indirect';
+  /** Only for this preposition (PUT … `in` or `on`). */
+  prep?: string;
 }
 
 /** Verb → rules. */
@@ -61,6 +75,8 @@ export interface WorldVerb {
   indirect?: string[];
   /** Printed when no rule applies. Defaults to “Nothing happens.” */
   reply?: string;
+  /** The object must be something you're carrying (Zork's HELD): POUR WATER means the water in your bottle. */
+  held?: boolean;
   /** Treat it as GO: through the target exit, or the exit labeled with the verb's ID when bare. */
   go?: boolean;
 }
@@ -114,6 +130,10 @@ export interface Item {
   size?: number;
   /** Something to fight with. */
   weapon?: boolean;
+  /** BURN can set it alight (Zork's BURNBIT). */
+  burnable?: boolean;
+  /** It can set things alight: always, or while switched on if it switches (Zork's FLAMEBIT). */
+  flaming?: boolean;
   /** What it's worth (Zork's TVALUE). The engine doesn't read it; scripts and scoring can. */
   treasure?: number;
   /** Makes the item a container; doors use the same block for openable/open/locked/key. */
@@ -280,6 +300,9 @@ export type Effect =
   /** Hides an item where it is, or reveals it again (Zork's INVISIBLE). */
   | { hide: string }
   | { reveal: string }
+  /** Keeps an item where it is but out of listings, or lists it again (Zork's NDESCBIT, set in play: the tied rope). */
+  | { unlist: string }
+  | { relist: string }
   /** Runs one of the world's scripts and the steps it returns. */
   | { script: string; arg?: string }
   | { open: string }
@@ -291,8 +314,18 @@ export type Effect =
   | { setVar: string; to: number }
   /** Adds to the `score` variable. */
   | { score: number }
-  /** Moves the player there and describes it. */
-  | { go: string }
+  /** Moves the player there and describes it; `quiet` moves without describing (Zork's mirror). */
+  | { go: string; quiet?: boolean }
+  /** Runs `then` if the condition holds, else `else`. */
+  | { if: string; then: EventStep[]; else?: EventStep[] }
+  /** Forgets the player has been there, so the next arrival shows the full description (Zork clears TOUCHBIT). */
+  | { unvisit: string }
+  /** This turn takes no time: no move counted, no fuses or daemons (Zork's raw-input loops). */
+  | { free: true }
+  /** A line already said the light went out, so the engine doesn't add its own. */
+  | { noDarkLine: true }
+  /** Describes the player's room in full, as LOOK does. */
+  | { look: true }
   /** Runs an event after this many acted-on turns. */
   | { schedule: string; in: number }
   | { cancel: string }
@@ -354,6 +387,10 @@ export interface World {
   maxScore?: number;
   /** Brass style's header: MOVES (the default), or SCORE and MOVES. Infocom style always shows the room, score and moves. */
   statusLine?: 'moves' | 'score';
+  /** Takes input anywhere, after the room's own capture, while `if` holds (a spirit's limits). */
+  capture?: Capture;
+  /** WAIT runs the clock up to `turns` times, stopping after a tick that did something (Zork's V-WAIT: 3). */
+  wait?: { turns: number };
   /** The game's full title, for VERSION and transcripts. */
   title?: string;
   /** Lines VERSION prints after the title (copyright, authors). */
@@ -380,13 +417,15 @@ export interface World {
     fall?: string;
     /** Run when the player tries a direction with no exit in the dark (Zork's grue). */
     blunder?: EventStep[];
+    /** While this condition holds every room is lit (Zork's ALWAYS-LIT, for a spirit). Mustn't use `lit:`. */
+    litIf?: string;
   };
   /** Named endings, played by the `end` effect: lines, then the score if `score`, then the footer. */
   endings?: Record<string, { lines: EventStep[]; score?: boolean; footer?: EventStep[] }>;
   /** What dying does. Without it, dying ends the game. */
   death?: {
-    /** Printed after the cause. */
-    message?: string[];
+    /** Printed after the cause; an entry with `if` only when its condition holds (Zork's “Bad luck, huh?”). */
+    message?: Array<string | { if: string; text: string }>;
     /** Added to the score (Zork: -10). */
     penalty?: number;
     /** Deaths survived before the final one (Zork: 2). */
@@ -400,6 +439,10 @@ export interface World {
     final?: string[];
     /** An event run after a resurrection (Zork's JIGS-UP resets things). */
     then?: string;
+    /** The first whose `if` holds replaces `resurrection`, `respawn` and `then` (Zork sends you to Hades once you've seen the Altar); its `before` runs ahead of the respawn. */
+    variants?: Array<{ if: string; resurrection?: string[]; respawn?: string; then?: string; before?: string }>;
+    /** Checked first: the first whose `if` holds prints its lines, not the cause, and ends the game (dying while already dead). */
+    instead?: Array<{ if: string; lines: string[] }>;
   };
   /** Run after every acted-on turn while their condition holds (a lamp burning down). */
   daemons?: Array<{ if: string; then: string | EventStep[] }>;

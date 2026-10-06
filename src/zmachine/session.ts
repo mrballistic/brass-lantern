@@ -19,14 +19,22 @@ export interface SessionEvents {
  * the terminal through BrowserGlkOte. Autosaves every turn, and resumes from
  * the autosave when a session for the same story starts again.
  */
+export interface SessionOptions {
+  /** Tests only: seeds the interpreter's generator (ifvms's xorshift), so a story replays exactly. */
+  seed?: number;
+}
+
 export class ZMachineSession {
   private readonly glkote: BrowserGlkOte;
   private filePrompt: FilePrompt | null = null;
+  private vm: unknown = null;
+  private seeded = false;
 
   constructor(
     private readonly story: Uint8Array,
     private readonly dialog: LocalStorageDialog,
     private readonly events: SessionEvents,
+    private readonly options: SessionOptions = {},
   ) {
     this.glkote = new BrowserGlkOte({
       onLines: (lines) => {
@@ -36,6 +44,11 @@ export class ZMachineSession {
       onStatus: (status) => events.onStatus(status),
       onInput: () => {
         this.reportFailedWrite();
+        // ifvms zeroes the seed while starting, so it's set at the first prompt.
+        if (this.options.seed && !this.seeded && this.vm) {
+          (this.vm as { xorshift_seed: number }).xorshift_seed = this.options.seed;
+          this.seeded = true;
+        }
         events.onWaiting();
       },
       onFilePrompt: (prompt) => this.askForFile(prompt),
@@ -58,6 +71,7 @@ export class ZMachineSession {
     // ifvms uses the buffer it's given as game memory, which changes the
     // game's signature. A fresh copy per session keeps saves matching.
     vm.prepare(new Uint8Array(this.story), options);
+    this.vm = vm;
     Glk.init(options);
   }
 

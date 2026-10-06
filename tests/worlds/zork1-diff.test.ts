@@ -1,33 +1,14 @@
 // @vitest-environment happy-dom
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { interpret, newConversation, remember, resolvePronouns } from '@/engine/conversation';
-import { execute, initialState, openingLines, type EngineResult } from '@/engine/engine';
-import type { GameState, ParsedAction } from '@/types/game';
-import { fallbackParse } from '@/engine/parser';
+import { newConversation } from '@/engine/conversation';
+import { initialState, openingLines } from '@/engine/engine';
 import { zork1 } from '@/worlds/zork1';
-import { LocalStorageDialog } from '@/zmachine/dialog';
-import { ZMachineSession } from '@/zmachine/session';
-import { ALLOWED, RANDOM_LINES, SYNC, WALKTHROUGH } from './zork1-allowlist';
+import { nativeTurn, normalize, openOriginal, THIEF } from './zsession';
+import { ALLOWED, SYNC, WALKTHROUGH } from './zork1-allowlist';
 
 // Native Zork I against the real story file, reply by reply. The yardstick for
 // the engine-parity work: a mismatch here is either a bug in the native world
 // or the engine, or a known gap listed (with its reason) in the allowlist.
-
-const story = new Uint8Array(readFileSync(resolve(import.meta.dirname, '../fixtures/zork1.z3')));
-
-/** Same text, give or take case, spacing, quote style and the room marker. */
-function normalize(lines: string[]): string {
-  return lines
-    .join('\n')
-    .replace(/📍 /g, '')
-    .replace(/[“”]/g, '"')
-    .replace(/[‘’]/g, "'")
-    .replace(/\s+/g, ' ')
-    .trim()
-    .toLowerCase();
-}
 
 const TROLL_BLOWS = Object.values(zork1.npcs.troll.combat?.messages ?? {})
   .flat()
@@ -37,8 +18,6 @@ const died = (reply: string[]) => normalize(reply).includes('you have died');
 const trollDied = (reply: string[]) => normalize(reply).includes('almost as soon as the troll breathes his last breath');
 
 class Restart extends Error {}
-
-const THIEF = /large bag|seedy-looking|\bthief\b/i;
 
 /** Plays one sync point on a side, through `send`; throws Restart if this attempt can't satisfy it. */
 async function sync(name: string, send: (command: string) => Promise<string[]> | string[]): Promise<string[]> {
@@ -71,41 +50,15 @@ function syncNow(name: string, send: (command: string) => string[]): string[] | 
   return null;
 }
 
-async function originalOnce(commands: string[]): Promise<string[][]> {
-  const replies: string[][] = [];
-  let lines: string[] = [];
-  let waiting = false;
-  const session = new ZMachineSession(story, new LocalStorageDialog('diff'), {
-    onLines: (l) => lines.push(...l),
-    onStatus: () => {},
-    onExit: () => {},
-    onWaiting: () => {
-      waiting = true;
-    },
-    onError: (m) => {
-      throw new Error(m);
-    },
-  });
-  const settle = async () => {
-    const start = Date.now();
-    while (!waiting) {
-      if (Date.now() - start > 4000) throw new Error('the original stopped answering');
-      await new Promise((r) => setTimeout(r, 5));
-    }
-    waiting = false;
-    const out = lines;
-    lines = [];
-    return out;
-  };
+async function originalOnce(commands: string[], seed: number): Promise<string[][]> {
+  const { send: raw } = await openOriginal(seed);
   const send = async (c: string) => {
-    session.submit(c);
-    const reply = (await settle()).filter((l) => !RANDOM_LINES.includes(l));
-    // The thief wanders the underground at random from the start; he's stage 4b. A run he turns up in starts over.
+    const reply = await raw(c);
+    // The thief wanders the underground at random from the start. A run he turns up in starts over.
     if (THIEF.test(reply.join(' '))) throw new Restart();
     return reply;
   };
-  session.start();
-  await settle(); // the banner and the first room
+  const replies: string[][] = [];
   for (const c of commands) replies.push(c in SYNC ? await sync(c, send) : await send(c));
   return replies;
 }
@@ -114,7 +67,8 @@ async function originalOnce(commands: string[]): Promise<string[][]> {
 async function original(commands: string[]): Promise<string[][]> {
   for (let attempt = 0; attempt < 300; attempt++) {
     try {
-      return await originalOnce(commands);
+      // Seeded, so the run is the same every time: attempt n plays seed n.
+      return await originalOnce(commands, attempt + 1);
     } catch (e) {
       if (!(e instanceof Restart)) throw e;
       localStorage.clear();
@@ -143,20 +97,7 @@ function nativeOnce(commands: string[], seed: number): string[][] | null {
   state.npcs = { thief: { room: null } };
   openingLines(zork1, state);
   let conv = newConversation();
-  const turn = (c: string, st: GameState, cv: ReturnType<typeof newConversation>): string[] => {
-    const run = (action: ParsedAction): EngineResult => {
-      const result = execute(action, { world: zork1, state: st });
-      remember(cv, action, result);
-      return result;
-    };
-    const step = interpret(c, cv, zork1, st);
-    if ('reply' in step) return step.reply;
-    if ('run' in step) return run(step.run).lines;
-    const parsed = fallbackParse(step.parse, zork1.verbs);
-    const result = run(parsed ? resolvePronouns(parsed, cv) : { action: 'unknown' });
-    cv.lastUnknown = result.understood === false ? step.parse : null;
-    return [...(step.note ?? []), ...result.lines];
-  };
+  const turn = nativeTurn;
   const replies: string[][] = [];
   for (const c of commands) {
     const pilfered = () => Object.entries(state.locations).some(([id, place]) => place === 'thief' && !['stiletto', 'large_bag'].includes(id));
@@ -225,7 +166,9 @@ describe('native Zork I against the original', () => {
       console.warn('The original never died in 20 tries; skipping the death-text comparison.');
       return;
     }
-    const ours = [...(zork1.death?.message ?? []), ...(zork1.death?.resurrection ?? [])];
+    // The luck line only shows once the mirror's broken.
+    const message = (zork1.death?.message ?? []).filter((m): m is string => typeof m === 'string');
+    const ours = [...message, ...(zork1.death?.resurrection ?? [])];
     expect(normalize(death)).toContain(normalize(ours));
   }, 180_000);
 });

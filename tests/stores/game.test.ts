@@ -5,6 +5,7 @@ import { setDownload, useGameStore } from '@/stores/game';
 import { SAVE_KEY } from '@/types/game';
 import { inventoryOf } from '@/engine/model';
 import { carry } from '../helpers/state';
+import { fixtureWorld } from '../fixtures/world';
 // Plays the fixture world, so this file is the same in every repo using the engine.
 vi.mock('@/app.config', async () => (await import('../fixtures/world')).fixtureConfig);
 
@@ -186,6 +187,17 @@ describe('useGameStore', () => {
       expect(fetchMock).toHaveBeenCalledOnce();
       expect(store.game.currentRoom).toBe('living');
       expect(store.output.some((l) => l.text.includes('can’t go that way'))).toBe(false);
+    });
+
+    it('tells the LLM only about characters the player can see', async () => {
+      const store = freshStore();
+      store.initialize();
+      store.game.currentRoom = 'yard';
+      store.game.npcs = { neighbor: { hidden: true } };
+      const fetchMock = mockIntent({ action: 'unknown' });
+      await store.submit('frobnicate the gizmo');
+      const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+      expect(JSON.stringify(body.context.npcs)).not.toContain('neighbor');
     });
 
     it('does not call the LLM when the regex parse succeeds', async () => {
@@ -646,6 +658,30 @@ describe('useGameStore', () => {
       expect(store.visibleItems).toContain('wallet');
       await store.submit('take wallet');
       expect(store.visibleItems).not.toContain('wallet');
+    });
+  });
+
+  describe('line capture', () => {
+    it('takes input before the intent server, and never traps UNDO or RESTART', async () => {
+      const room = fixtureWorld.rooms.bedroom;
+      fixtureWorld.scripts = { ...fixtureWorld.scripts, cap: (ctx) => [`${ctx.line} ${ctx.line}...`, { free: true }] };
+      room.capture = { script: 'cap' };
+      try {
+        const fetchMock = vi.fn();
+        vi.stubGlobal('fetch', fetchMock);
+        const store = freshStore();
+        store.initialize();
+        await store.submit('frobnicate');
+        expect(store.output.at(-1)?.text).toBe('frobnicate frobnicate...');
+        expect(fetchMock).not.toHaveBeenCalled();
+        await store.submit('undo');
+        expect(store.output.at(-1)?.text).not.toContain('undo undo');
+        await store.submit('restart');
+        expect(store.output.map((l) => l.text).join(' ')).not.toContain('restart restart');
+      } finally {
+        delete room.capture;
+        vi.unstubAllGlobals();
+      }
     });
   });
 });
