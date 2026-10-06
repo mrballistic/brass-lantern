@@ -118,7 +118,7 @@ function runEffect(e: Effect, world: World, state: GameState): { lines: string[]
   if (thing !== null && !world.items[thing]) return { lines: [] };
   if ('move' in e) return void moveItem(state, e.move, (e.to === 'here' ? state.currentRoom : e.to) as Place), { lines: [] };
   if ('moveNpc' in e) {
-    if (world.npcs[e.moveNpc]) npcStateOf(state, e.moveNpc).room = e.to;
+    if (world.npcs[e.moveNpc]) Object.assign(npcStateOf(state, e.moveNpc), { room: e.to, arrived: state.turns });
     return { lines: [] };
   }
   if ('npcState' in e) {

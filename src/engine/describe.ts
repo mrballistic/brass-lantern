@@ -155,6 +155,10 @@ export function describeRoom(
   // Infocom lists untouched things' first-seen sentences before everything else (PRINT-CONT's first pass).
   const visibleItems = infocom ? [...inRoom.filter(seenFirst), ...inRoom.filter((id) => !seenFirst(id))] : inRoom;
   const plain: string[] = [];
+  // Zork lists a room's contents newest first: a character who moved in this turn comes before its things.
+  const people = npcsSeen(world, state, roomId).filter((id) => !world.npcs[id]?.scenery);
+  const justArrived = infocom ? people.filter((id) => state.npcs?.[id]?.arrived === state.turns) : [];
+  for (const id of justArrived) lines.push(npcDescription(world, state, id));
   // Aboard, Zork marks the room's things “(outside the boat)”, all but first-seen sentences (PRINT-CONT).
   const outside = infocom && vehicle ? ` (outside the ${vehicle.name})` : '';
   let listed = false;
@@ -178,9 +182,8 @@ export function describeRoom(
     lines.push(...(infocom && floorLike(world, id) ? surfaceAsFloor(world, state, id) : contentsLines(world, state, id, infocom && listed ? 1 : 0)));
   }
 
-  const people = npcsSeen(world, state, roomId).filter((id) => !world.npcs[id]?.scenery);
   // Infocom style: each character's own line, as Zork's LDESC; brass: a list.
-  if (infocom) for (const id of people) lines.push(npcDescription(world, state, id));
+  if (infocom) for (const id of people.filter((p) => !justArrived.includes(p))) lines.push(npcDescription(world, state, id));
   else if (people.length > 0) lines.push(`Present: ${people.map((id) => world.npcs[id]?.name ?? id).join(', ')}.`);
 
   const exits = exitList(room);

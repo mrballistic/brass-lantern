@@ -251,3 +251,21 @@ describe('a scenery container’s contents go a level deeper after floor items (
     expect(lines).toEqual(expect.arrayContaining(['Your collection of treasures consists of:', '    A gem']));
   });
 });
+
+describe('a character who just arrived is listed before the room’s things (object order) (5d)', () => {
+  it('moved in this turn: first', async () => {
+    const { runSteps } = await import('@/engine/effects');
+    const s = stateWith(w, { room: 'shed' });
+    s.locations.note = 'shed';
+    s.itemState.note = { moved: true };
+    s.npcs = { guard: { room: null } };
+    const { describeCurrentRoom } = await import('@/engine/engine');
+    runSteps([{ moveNpc: 'guard', to: 'shed' }], w, s);
+    // Described in the same turn he arrived (the thief rushing into his lair as you climb up).
+    const lines = describeCurrentRoom(w, s);
+    const guard = lines.findIndex((l) => l.startsWith('A guard'));
+    const note = lines.indexOf('There is a note here.');
+    expect(guard).toBeGreaterThan(-1);
+    expect(guard).toBeLessThan(note);
+  });
+});
