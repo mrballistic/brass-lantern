@@ -297,6 +297,8 @@ export interface Rank {
 export interface Carry {
   /** The total weight the player can carry when healthy. */
   limit: number;
+  /** The player's own weight, counted in the load (Zork's ADVENTURER SIZE, 5). Default 0. */
+  self?: number;
   /** Carrying more than `over` things, each TAKE has `count × chance` percent to fumble. */
   fumble?: { over: number; chance: number };
   tooHeavy?: string;

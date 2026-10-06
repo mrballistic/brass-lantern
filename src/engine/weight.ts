@@ -14,7 +14,7 @@ export function weightOf(world: World, state: GameState, id: string): number {
 }
 
 export function carriedWeight(world: World, state: GameState): number {
-  return inventoryOf(world, state).reduce((sum, id) => sum + weightOf(world, state, id), 0);
+  return inventoryOf(world, state).reduce((sum, id) => sum + weightOf(world, state, id), world.carry?.self ?? 0);
 }
 
 /** What the player can carry now: the world's limit, lowered by wounds. */
