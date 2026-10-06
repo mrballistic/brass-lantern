@@ -1,3 +1,5 @@
+import type { Script } from '@/engine/scripts';
+
 export interface Room {
   name: string;
   description: string;
@@ -180,6 +182,8 @@ export type Effect =
   | { moveNpc: string; to: string | null }
   /** Sets a character's combat state. */
   | { npcState: string; fighting?: boolean; staggered?: boolean; strength?: number }
+  /** Runs one of the world's scripts and the steps it returns. */
+  | { script: string; arg?: string }
   | { open: string }
   | { close: string }
   | { lock: string }
@@ -297,6 +301,8 @@ export interface World {
   emptyInventory?: string;
   /** SMASH where nothing can be smashed. */
   smashRefusal?: string;
+  /** The code hatch: named functions that return steps. See `src/engine/scripts.ts`. */
+  scripts?: Record<string, Script>;
 }
 
 /**
