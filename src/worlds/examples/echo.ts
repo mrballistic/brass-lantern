@@ -32,7 +32,9 @@ export const echo: World = {
   // #region script
   scripts: {
     echo: (ctx) => {
-      const words = (ctx.line ?? '').toLowerCase().trim().split(/\s+/);
+      // Captures also see commands that arrive already parsed (AGAIN); this one only hears raw words.
+      if (ctx.line === undefined) return;
+      const words = ctx.line.toLowerCase().trim().split(/\s+/);
       // Declining (returning nothing) lets the line be parsed as usual: OUT still works.
       if (words[0] === 'out') return;
       if (words[0] === 'echo') return [{ set: 'quiet' }, 'The cave falls silent.', { free: true }];

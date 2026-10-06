@@ -2424,19 +2424,11 @@ export const zork1: World = {
     },
     // DEAD-FUNCTION: a spirit's limits, before the parser's own verbs.
     dead_function: (ctx) => {
-      const a = ctx.parse(ctx.line ?? '');
+      // The line as typed, or a command already parsed (AGAIN, the intent server's reading).
+      const a = ctx.action ?? ctx.parse(ctx.line ?? '');
       if (!a) return;
-      const seen = (word?: string) => {
-        if (!word) return false;
-        const w = word.toLowerCase().replace(/^the\s+/, '');
-        return Object.entries(ctx.world.items).some(
-          ([id, it]) => (it.name === w || (it.aliases ?? []).includes(w) || id === w) && (ctx.here(id) || (ctx.world.rooms[ctx.room()]?.scenery ?? []).includes(id)),
-        );
-      };
       const verb = a.action;
-      if (['go', 'verbose', 'brief', 'superbrief', 'version', 'save', 'restore', 'load', 'quit', 'restart', 'undo', 'again', 'oops'].includes(verb)) return;
-      // The parser speaks first about things that aren't here.
-      if (a.target && !['pray'].includes(verb) && !seen(a.target)) return;
+      if (['go', 'verbose', 'brief', 'superbrief', 'version', 'save', 'restore', 'load', 'quit', 'restart', 'undo', 'again', 'oops', 'unknown', 'capture'].includes(verb)) return;
       if (['attack', 'smash'].includes(verb)) return ['All such attacks are vain in your condition.'];
       if (['open', 'close', 'eat', 'drink', 'inflate', 'deflate', 'turn', 'burn', 'tie', 'untie', 'rub'].includes(verb)) return ['Even such an action is beyond your capabilities.'];
       if (verb === 'wait') return ['Might as well. You’ve got an eternity.'];
@@ -2462,6 +2454,8 @@ export const zork1: World = {
     },
     // LOUD-ROOM-FCN's loop: the first word (after GO or SAY) decides; anything else echoes.
     loud_room_capture: (ctx) => {
+      // The loop reads raw input; a command that arrived already parsed isn't for it.
+      if (ctx.line === undefined) return;
       const flags = ctx.state.flags;
       // Only while it's loud: gates and tide both one way or both the other.
       if (Boolean(flags.gates_open) !== Boolean(flags.low_tide)) return;

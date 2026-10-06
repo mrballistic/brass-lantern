@@ -74,7 +74,7 @@ export function handleExamine(target: string | undefined, world: World, state: G
     // No description of its own: a container shows what's in it, as Zork's EXAMINE does.
     if (item && !item.description) {
       // Zork's EXAMINE reads what's written on it.
-      if (item.text) return ok([item.text]);
+      if (item.text && world.style === 'infocom') return ok([item.text]);
       if (contents.length > 0) return ok(contents);
       return ok([item.container ? `The ${item.name} is empty.` : `There’s nothing special about the ${item.name}.`]);
     }
@@ -195,7 +195,8 @@ export function handleRead(target: string | undefined, world: World, state: Game
   // Zork's READ takes the thing first (its syntax's TAKE flag).
   if (world.style === 'infocom' && item.portable && !isCarried(state, id)) {
     const took = takeItem(id, world, state);
-    if (!took.mutated) return took;
+    // A take that fails is silent: READ reads anyway (ITAKE-CHECK; READ's syntax has TAKE, not HAVE).
+    if (!took.mutated) return ok([text]);
     return ok(['(Taken)', text], true);
   }
   return ok([text]);

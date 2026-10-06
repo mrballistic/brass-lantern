@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { runSteps } from '@/engine/effects';
-import { execute, initialState, openingLines } from '@/engine/engine';
+import { captureLine, execute, initialState, openingLines } from '@/engine/engine';
 import { fallbackParse, splitCommands, verbClashes } from '@/engine/parser';
 import { currentScore, statusText } from '@/engine/verbs/meta';
 import { zork1 } from '@/worlds/zork1';
@@ -477,5 +477,26 @@ describe('Zork I, natively: 5a’s treasures score as the ZIL says', () => {
     state.itemState.trophy_case = { ...state.itemState.trophy_case, open: true };
     state.locations[id] = 'trophy_case';
     expect(currentScore(zork1, state) - before).toBe(value + tvalue);
+  });
+});
+
+describe('Zork I, natively: a spirit can’t take things, however asked (5a review)', () => {
+  const ghost = () => {
+    const state = initialState(zork1);
+    state.currentRoom = 'land_of_living_dead';
+    state.flags.dead = true;
+    state.npcs = { thief: { room: null } };
+    return state;
+  };
+  it.each(['take all', 'take everything', 'get carved skull', 'take skull'])('“%s”', (line) => {
+    const state = ghost();
+    const lines = captureLine(zork1, state, line)?.lines ?? execute(fallbackParse(line, zork1.verbs)!, { world: zork1, state }).lines;
+    expect(lines.join(' ')).toMatch(/Your hand passes through its object/);
+    expect(state.locations.skull).toBe('land_of_living_dead');
+  });
+  it('the intent server’s reading, or AGAIN, goes through the spirit’s limits too', () => {
+    const state = ghost();
+    expect(execute({ action: 'take', target: 'skull', byId: true }, { world: zork1, state }).lines).toEqual(['Your hand passes through its object.']);
+    expect(state.locations.skull).toBe('land_of_living_dead');
   });
 });

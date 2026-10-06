@@ -345,7 +345,7 @@ A script gets a read-only view of the game and returns ordinary steps, which the
 - `children(place)`, what's directly in a room, item or character, in listing order;
 - `treasure(id)`, an item's `treasure` value or 0;
 - `playerStrength()`, the player's fight strength now;
-- `line`, the raw input, when a [capture](#capture) runs the script; `parse(text)`, which reads a command with the world's verbs as the parser would;
+- `line`, the raw input, and `action`, the parsed command, when a [capture](#capture) runs the script; `parse(text)`, which reads a command with the world's verbs as the parser would;
 - `arg`, from `{ script, arg }`;
 - `command`, the command being run with its objects resolved to IDs, when a rule ran the script. `command.words` keeps the words typed for objects that didn't resolve.
 
@@ -358,6 +358,8 @@ capture: { if: '!flag:quiet', script: 'echo' },
 ```
 
 A room's capture, then the world's, sees each command of a line before it's parsed, while its `if` holds. The script reads `ctx.line` and returns steps to take it, or nothing to let it parse as usual. Add `{ free: true }` for a reply that takes no time.
+
+It also sees commands that arrive already parsed (AGAIN, OOPS, an answer to a question, the intent server's reading), with `ctx.line` unset and `ctx.action` holding the command, so a limit like a spirit's can't be slipped past. A capture that only cares about raw words returns nothing when `ctx.line` is unset.
 
 - Taking a command ends the line: the rest is dropped, as Zork's Loud Room drops it.
 - It runs ahead of the intent server, so captured input is never sent to the LLM.

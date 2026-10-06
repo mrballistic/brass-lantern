@@ -22,7 +22,7 @@ import { handleClose, handleLock, handleOpen, handlePut, handleSearch, handleTak
 import { handleRead, handleSwitch } from './verbs/objects';
 import { handleGive, handleTalk } from './verbs/people';
 import { handleAttack, handleThrow } from './verbs/attack';
-import { handleBurn } from './verbs/burn';
+import { handleBurn, handleNoEffect } from './verbs/burn';
 import { handleAsk, handleOrder } from './verbs/talk';
 import { scriptSteps, setCommand } from './scripts';
 import { diagnoseLines } from './combat';
@@ -83,6 +83,17 @@ const pendingCapture = new WeakMap<GameState, EventStep[]>();
  * (Zork's Loud Room, a spirit's limits). The room's goes first. Returns null
  * when no capture takes it; a capture that declines changes nothing.
  */
+function parsedCapture(world: World, state: GameState, action: ParsedAction): EventStep[] | null {
+  for (const capture of [world.rooms[state.currentRoom]?.capture, world.capture]) {
+    if (!capture || (capture.if && !evaluateCondition(capture.if, state, world))) continue;
+    const rng = state.rng;
+    const steps = scriptSteps(capture.script, undefined, world, state, undefined, action);
+    if (steps.length > 0) return steps;
+    state.rng = rng;
+  }
+  return null;
+}
+
 export function captureLine(world: World, state: GameState, line: string): EngineResult | null {
   if (state.gameOver) return null;
   for (const capture of [world.rooms[state.currentRoom]?.capture, world.capture]) {
@@ -104,6 +115,14 @@ export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
 
   if (state.gameOver && action.action !== 'restart' && action.action !== 'help') {
     return ok(['The game has ended. Type RESTART to play again.']);
+  }
+  // A capture sees parsed commands too (`ctx.action`), however they arrived: a spirit can't take things by AGAIN.
+  if (action.action !== 'capture') {
+    const steps = parsedCapture(world, state, action);
+    if (steps) {
+      pendingCapture.set(state, steps);
+      return execute({ action: 'capture', target: action.target }, deps);
+    }
   }
 
   beginTurn(state);
@@ -181,9 +200,9 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
       return withRules('burn', action, world, state, () => handleBurn(action, world, state));
     // Zork's V-TURN and V-PLUG: a rule on the thing does the work.
     case 'turn':
-      return withRules('turn', action, world, state, () => ok(['This has no effect.']));
+      return withRules('turn', action, world, state, () => handleNoEffect(action, world, state));
     case 'plug':
-      return withRules('plug', action, world, state, () => ok(['This has no effect.']));
+      return withRules('plug', action, world, state, () => handleNoEffect(action, world, state));
     case 'turn_off':
       return withRules('turn_off', action, world, state, () => handleSwitch(action.target, false, world, state));
     case 'enter':

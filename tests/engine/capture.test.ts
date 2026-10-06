@@ -10,7 +10,8 @@ const w: World = {
   rooms: { ...fixtureWorld.rooms, shed: { ...fixtureWorld.rooms.shed, requires: undefined, capture: { if: '!flag:quiet', script: 'echo' } } },
   scripts: {
     echo: (ctx) => {
-      const line = ctx.line!.trim().toLowerCase();
+      if (ctx.line === undefined) return; // a command already parsed: not for this capture
+      const line = ctx.line.trim().toLowerCase();
       if (line === 'south' || line === 'out') return; // declines: normal parsing
       if (line === 'roll') {
         ctx.roll(6);

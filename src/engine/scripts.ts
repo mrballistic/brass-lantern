@@ -44,8 +44,10 @@ export interface ScriptContext {
   playerStrength(): number;
   /** Is the character hidden? */
   hidden(id: string): boolean;
-  /** The raw input, when a capture runs this script. */
+  /** The raw input, when a capture runs this script on a line. */
   line?: string;
+  /** The command, when a capture runs this script on one already parsed (AGAIN, an answer, the intent server's reading). */
+  action?: ParsedAction;
   /** Reads a command with the world's verbs, as the parser would (null if it can't). */
   parse(text: string): ParsedAction | null;
   /** The command being run, with its objects resolved to IDs, when a rule ran this script. */
@@ -87,7 +89,7 @@ function deepFreeze<T>(value: T): T {
 }
 
 /** The steps a world's script returns. A missing script returns none. */
-export function scriptSteps(name: string, arg: string | undefined, world: World, state: GameState, line?: string): EventStep[] {
+export function scriptSteps(name: string, arg: string | undefined, world: World, state: GameState, line?: string, action?: ParsedAction): EventStep[] {
   const script = world.scripts?.[name];
   if (!script) return [];
   // A JSON copy: the store's state is a reactive proxy, which structuredClone can't copy.
@@ -114,6 +116,7 @@ export function scriptSteps(name: string, arg: string | undefined, world: World,
     playerStrength: () => fightStrength(world, state),
     hidden: (id) => isNpcHidden(world, state, id),
     line,
+    action,
     parse: (text) => fallbackParse(text, world.verbs),
   });
   return steps ?? [];

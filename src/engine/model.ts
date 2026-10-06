@@ -331,8 +331,8 @@ export function pickItem(target: string, ids: string[], world: World, slot: 'tar
   const candidates = ids.map((id) => ({ id, name: world.items[id]?.name ?? id, aliases: world.items[id]?.aliases }));
   let found = [...new Set(fuzzyCandidates(target, candidates, { byId: state ? byIdTurns.has(state) : false }))];
   if (found.length === 0) return null;
-  // A room's scenery (Zork's local globals) only counts when nothing else matches.
-  const fixtures = state ? (world.rooms[state.currentRoom]?.scenery ?? []) : [];
+  // In Infocom style a room's scenery (Zork's local globals) only counts when nothing else matches.
+  const fixtures = state && world.style === 'infocom' ? (world.rooms[state.currentRoom]?.scenery ?? []) : [];
   if (found.length > 1 && found.some((id) => !fixtures.includes(id))) found = found.filter((id) => !fixtures.includes(id));
   if (found.length === 1) {
     if (state) noteActed(state, slot, found[0]);

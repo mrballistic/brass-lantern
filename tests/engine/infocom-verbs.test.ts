@@ -117,3 +117,29 @@ describe('more of Zork’s habits (5a)', () => {
     expect(lines[jug + 1]).toMatch(/jug contains/);
   });
 });
+
+describe('final review fixes (5a)', () => {
+  it('TURN and PLUG … WITH miss on words that name nothing, and take no turn', () => {
+    const s = stateWith(w, { room: 'living' });
+    const before = JSON.stringify(s);
+    expect(run(s, { action: 'turn', target: 'xyzzy', indirect: 'foo' }).length).toBeGreaterThan(0);
+    expect(execute({ action: 'turn', target: 'xyzzy', indirect: 'foo' }, { world: w, state: s }).understood).toBe(false);
+    expect(execute({ action: 'plug', target: 'foo', indirect: 'bar' }, { world: w, state: s }).understood).toBe(false);
+    expect(JSON.stringify(s)).toBe(before);
+  });
+  it('READ still reads when the take it tries fails', () => {
+    const world: World = { ...w, carry: { limit: 1 }, items: { ...w.items, note: { ...w.items.note, size: 5 } } };
+    const s = stateWith(world, { room: 'living' });
+    s.locations.note = 'living';
+    expect(run(s, { action: 'read', target: 'note' }, world)).toEqual(['“Back soon.”']);
+    expect(s.locations.note).toBe('living');
+  });
+  it('brass worlds keep their own EXAMINE and questions', () => {
+    const brass: World = { ...w, style: 'brass', items: { ...w.items, kite: { name: 'kite', aliases: ['sky'], description: 'A kite.', portable: true, tags: [] } } };
+    const s = stateWith(brass, { room: 'living' });
+    s.locations.note = 'living';
+    expect(run(s, { action: 'examine', target: 'note' }, brass)).toEqual(['There’s nothing special about the note.']);
+    const t = stateWith(brass, { room: 'yard', carrying: ['kite'] });
+    expect(run(t, { action: 'examine', target: 'sky' }, brass).join(' ')).toMatch(/Which/);
+  });
+});

@@ -272,6 +272,7 @@ A cave that hears everything you say as an echo, until you say the magic word.
 
 - **`capture`** sees each command before the parser does, while its `if` holds. The script reads the raw words from `ctx.line`.
 - **Returning steps takes the command**, and drops the rest of the line. **Returning nothing declines**: the command is parsed as usual, so OUT still leaves.
+- **A capture also sees commands that arrive already parsed** (AGAIN, the intent server's reading), with `ctx.line` unset; this one only hears raw words, so it returns nothing then.
 - **`{ free: true }`** makes the reply take no time. The transcript below counts three moves: IN, LOOK and OUT.
 - Captured words never reach the intent server, and SAVE, UNDO and RESTART are handled before any capture, so a player can't get stuck.
 
