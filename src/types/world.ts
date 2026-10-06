@@ -187,6 +187,8 @@ export interface NPC {
   noTopic?: string;
   /** Its answer to an order (“thief, give me the bag”). Default: “Name ignores you.” */
   refuseOrder?: string;
+  /** Present but not listed in the room: the room's own description mentions it (Zork's NDESCBIT). */
+  scenery?: boolean;
 }
 
 /** What a blow did (Zork's blow results). */

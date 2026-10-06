@@ -89,7 +89,14 @@ export const zork1: World = {
     },
     cyclops_room: {
       name: 'Cyclops Room',
-      description: 'This room has an exit on the northwest, and a staircase leading up.',
+      // CYCLOPS-ROOM-FCN's M-LOOK: his mood is the room.
+      description: 'This room has an exit on the northwest, and a staircase leading up. A cyclops, who looks prepared to eat horses (much less mere adventurers), blocks the staircase. From his state of health, and the bloodstains on the walls, you gather that he is not very friendly, though he likes people.',
+      descriptions: [
+        { if: 'flag:magic_word', text: 'This room has an exit on the northwest, and a staircase leading up. The east wall, previously solid, now has a cyclops-sized opening in it.' },
+        { if: 'flag:cyclops_asleep', text: 'This room has an exit on the northwest, and a staircase leading up. The cyclops is sleeping blissfully at the foot of the stairs.' },
+        { if: 'var:cyclowrath>0', text: 'This room has an exit on the northwest, and a staircase leading up. The cyclops is standing in the corner, eyeing you closely. I don’t think he likes you very much. He looks extremely hungry, even for a cyclops.' },
+        { if: 'var:cyclowrath<0', text: 'This room has an exit on the northwest, and a staircase leading up. The cyclops, having eaten the hot peppers, appears to be gasping. His enflamed tongue protrudes from his man-sized mouth.' },
+      ],
       dark: true,
       exits: {
         northwest: 'maze_15',
@@ -97,8 +104,10 @@ export const zork1: World = {
         up: { to: 'treasure_room', denials: [{ if: '!flag:cyclops_asleep & !flag:magic_word', text: 'The cyclops doesn’t look like he’ll let you past.' }] },
       },
       items: [],
-      npcs: [],
-      onEnter: [],
+      npcs: ['cyclops'],
+      // M-ENTER: an angry or gasping cyclops picks up where he left off.
+      onEnter: [{ if: '!var:cyclowrath=0 & alive:cyclops & !flag:cyclops_asleep', then: 'cyclops_wakes_up', repeat: true }],
+      instead: { ulysses: [{ if: 'with:cyclops & !flag:cyclops_asleep', then: 'cyclops_flees' }] },
     },
     maze_15: {
       name: 'Maze',
@@ -1060,6 +1069,23 @@ export const zork1: World = {
   },
 
   npcs: {
+    cyclops: {
+      name: 'cyclops',
+      description: 'A hungry cyclops is standing at the foot of the stairs.',
+      descriptions: [{ if: 'flag:cyclops_asleep', text: 'The cyclops is sleeping like a baby, albeit a very ugly one.' }],
+      // NDESCBIT: his room describes him.
+      scenery: true,
+      refuseOrder: 'The cyclops prefers eating to making conversation.',
+      instead: {
+        give: [{ then: 'cyclops_gift' }],
+        throw: [{ if: '!flag:cyclops_asleep', then: 'cyclops_shrugs' }],
+        attack: [{ if: 'flag:cyclops_asleep', then: 'cyclops_woken' }, { then: 'cyclops_shrugs' }],
+        smash: [{ if: 'flag:cyclops_asleep', then: 'cyclops_woken' }, { then: 'cyclops_dodges' }],
+        take: [{ say: ['The cyclops doesn’t take kindly to being grabbed.'] }],
+        listen: [{ say: ['You can hear his stomach rumbling.'] }],
+        order: [{ if: 'flag:cyclops_asleep', say: ['No use talking to him. He’s fast asleep.'] }],
+      },
+    },
     troll: {
       name: 'troll',
       description: 'A nasty-looking troll, brandishing a bloody axe, blocks all passages out of the room.',
@@ -1132,6 +1158,7 @@ export const zork1: World = {
     },
   },
   dialogue: {
+    cyclops: { default: 'The cyclops prefers eating to making conversation.' },
     troll: { default: 'The troll isn’t much of a conversationalist.' },
   },
 
@@ -1244,6 +1271,71 @@ export const zork1: World = {
     },
     // F-DEAD / F-UNCONSCIOUS: the axe falls only if he was holding it.
     troll_drops_axe: (ctx) => (ctx.holder('axe') === 'troll' ? [{ move: 'axe', to: 'troll_room' }] : []),
+    // I-CYCLOPS: each turn with you he grows angrier (or more parched), and past 5 he eats you.
+    cyclops_turn: (ctx) => {
+      if (ctx.state.flags.cyclops_asleep || !ctx.npcIn('cyclops', ctx.room())) return ctx.npcIn('cyclops', ctx.room()) ? [] : [{ clear: 'cyclops_daemon' }];
+      const wrath = ctx.state.vars?.cyclowrath ?? 0;
+      if (Math.abs(wrath) > 5) {
+        return [
+          { clear: 'cyclops_daemon' },
+          { die: 'The cyclops, tired of all of your games and trickery, grabs you firmly. As he licks his chops, he says “Mmm. Just like Mom used to make ’em.” It’s nice to be appreciated.' },
+        ];
+      }
+      const next = wrath < 0 ? wrath - 1 : wrath + 1;
+      const mad = [
+        'The cyclops seems somewhat agitated.',
+        'The cyclops appears to be getting more agitated.',
+        'The cyclops is moving about the room, looking for something.',
+        'The cyclops was looking for salt and pepper. No doubt they are condiments for his upcoming snack.',
+        'The cyclops is moving toward you in an unfriendly manner.',
+        'You have two choices: 1. Leave  2. Become dinner.',
+      ];
+      return [{ setVar: 'cyclowrath', to: next }, mad[Math.abs(next) - 1]];
+    },
+    // CYCLOPS-FCN's GIVE: the lunch makes him thirsty; then a drink puts him to sleep.
+    cyclops_gift: (ctx) => {
+      const item = ctx.command?.target;
+      const words = ctx.command?.words?.target ?? '';
+      const wrath = ctx.state.vars?.cyclowrath ?? 0;
+      const isWater = item === 'water' || (item === 'bottle' && ctx.holder('water') === 'bottle') || /water/.test(words);
+      if (item === 'lunch') {
+        if (wrath < 0) return [{ set: 'cyclops_daemon' }];
+        return [
+          { move: 'lunch', to: null },
+          'The cyclops says “Mmm Mmm. I love hot peppers! But oh, could I use a drink. Perhaps I could drink the blood of that thing.”  From the gleam in his eye, it could be surmised that you are “that thing”.',
+          { setVar: 'cyclowrath', to: Math.min(-1, -wrath) },
+          { set: 'cyclops_daemon' },
+        ];
+      }
+      if (isWater) {
+        if (wrath >= 0) return ['The cyclops apparently is not thirsty and refuses your generous offer.'];
+        return [
+          { move: 'water', to: null },
+          { move: 'bottle', to: 'here' },
+          { open: 'bottle' },
+          { set: 'cyclops_asleep' },
+          'The cyclops takes the bottle, checks that it’s open, and drinks the water. A moment later, he lets out a yawn that nearly blows you over, and then falls fast asleep (what did you put in that drink, anyway?).',
+        ];
+      }
+      if (item === 'garlic') return ['The cyclops may be hungry, but there is a limit.'];
+      return ['The cyclops is not so stupid as to eat THAT!'];
+    },
+    // THROW or ATTACK: a shrug, and his patience starts to run out.
+    cyclops_shrugs: (ctx) => {
+      const thrown = ctx.command?.verb === 'throw' ? ctx.command.target : undefined;
+      return [
+        { set: 'cyclops_daemon' },
+        'The cyclops shrugs but otherwise ignores your pitiful attempt.',
+        ...(thrown ? [{ move: thrown, to: 'here' } as EventStep] : []),
+      ];
+    },
+    // Woken by violence: back on his feet, as angry as before.
+    cyclops_woken: (ctx) => [
+      'The cyclops yawns and stares at the thing that woke him up.',
+      { clear: 'cyclops_asleep' },
+      { setVar: 'cyclowrath', to: Math.abs(ctx.state.vars?.cyclowrath ?? 0) },
+      { set: 'cyclops_daemon' },
+    ],
     // GRATE-FUNCTION's OPEN: daylight below, and the leaves fall on your head the first time.
     grate_opens: (ctx) => {
       const below = ctx.room() !== 'grating_clearing';
@@ -1289,6 +1381,7 @@ export const zork1: World = {
   },
 
   verbs: {
+    ulysses: { words: ['ulysses', 'odysseus'], target: 'none', reply: 'Wasn’t he a sailor?' },
     move: { words: ['move', 'shift', 'roll'], target: 'required' },
     listen: { words: ['listen to', 'listen'], target: 'required', reply: 'At the moment, there is nothing to hear.' },
     count: { words: ['count'], target: 'required' },
@@ -1330,10 +1423,12 @@ export const zork1: World = {
     { min: 350, title: 'Master Adventurer' },
   ],
 
-  vars: { lamp_fuel: 185, sword_glow: 0, troll_ldesc: 0 },
+  vars: { lamp_fuel: 185, sword_glow: 0, troll_ldesc: 0, cyclowrath: 0 },
 
   // Zork's LAMP-TABLE: warnings after 100, 170 and 185 lit turns; out on the next.
   daemons: [
+    // I-CYCLOPS: queued during play, so it's the newest interrupt and runs first.
+    { if: 'flag:cyclops_daemon', then: [{ script: 'cyclops_turn' }] },
     { if: 'on:lamp', then: [{ add: 'lamp_fuel', by: -1 }] },
     { if: 'on:lamp & var:lamp_fuel=85 & here:lamp', then: ['The lamp appears a bit dimmer.'] },
     { if: 'on:lamp & var:lamp_fuel=15 & here:lamp', then: ['The lamp is definitely dimmer now.'] },
@@ -1386,6 +1481,18 @@ export const zork1: World = {
     trap_door_slams: [{ close: 'trap_door' }, { set: 'trap_door_barred' }, 'The trap door crashes shut, and you hear someone barring it.'],
     chimney_climbed: [{ script: 'chimney_climbed' }],
     death_resets: [{ clear: 'trap_door_barred' }],
+    cyclops_wakes_up: [{ set: 'cyclops_daemon' }],
+    cyclops_gift: [{ script: 'cyclops_gift' }],
+    cyclops_shrugs: [{ script: 'cyclops_shrugs' }],
+    cyclops_dodges: [{ set: 'cyclops_daemon' }, '“Do you think I’m as stupid as my father was?”, he says, dodging.'],
+    cyclops_woken: [{ script: 'cyclops_woken' }],
+    cyclops_turn: [{ script: 'cyclops_turn' }],
+    cyclops_flees: [
+      { set: 'magic_word' },
+      { clear: 'cyclops_daemon' },
+      'The cyclops, hearing the name of his father’s deadly nemesis, flees the room by knocking down the wall on the east of the room.',
+      { moveNpc: 'cyclops', to: null },
+    ],
     maze_diode: ['You won’t be able to get back up to the tunnel you are going through when it gets to the next room.'],
     grate_unlocked: [{ unlock: 'grate' }, 'The grate is unlocked.'],
     grate_opens: [{ script: 'grate_opens' }],

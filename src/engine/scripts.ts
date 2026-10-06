@@ -46,6 +46,8 @@ export interface Command {
   verb: string;
   target?: string;
   indirect?: string;
+  /** The words typed, for objects that didn't resolve (water inside a carried bottle). */
+  words?: { target?: string; indirect?: string };
 }
 
 const commands = new WeakMap<GameState, Command | null>();

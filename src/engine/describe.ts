@@ -143,7 +143,7 @@ export function describeRoom(
     lines.push(...contentsLines(world, state, id));
   }
 
-  const people = npcsSeen(world, state, roomId);
+  const people = npcsSeen(world, state, roomId).filter((id) => !world.npcs[id]?.scenery);
   // Infocom style: each character's own line, as Zork's LDESC; brass: a list.
   if (infocom) for (const id of people) lines.push(npcDescription(world, state, id));
   else if (people.length > 0) lines.push(`Present: ${people.map((id) => world.npcs[id]?.name ?? id).join(', ')}.`);
