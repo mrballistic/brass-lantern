@@ -22,6 +22,8 @@ export interface NpcState {
   staggered?: boolean;
   /** Percent chance to wake next turn while unconscious (Zork's V-PROB). */
   wake?: number;
+  /** In the room but unseen: not listed, matched, reached or fought (Zork's INVISIBLE). */
+  hidden?: boolean;
 }
 
 /** The player's condition, once anything has hurt them. */

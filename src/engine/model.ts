@@ -41,6 +41,11 @@ export function npcsIn(world: World, state: GameState, roomId: string): string[]
   return [...listed.filter((id) => here.includes(id)), ...here.filter((id) => !listed.includes(id)).sort()];
 }
 
+/** The characters in a room the player can see: present and not hidden. */
+export function npcsSeen(world: World, state: GameState, roomId: string): string[] {
+  return npcsIn(world, state, roomId).filter((id) => !state.npcs?.[id]?.hidden);
+}
+
 /** A character's state, created on first use. */
 export function npcStateOf(state: GameState, id: string): NpcState {
   return ((state.npcs ??= {})[id] ??= {});
@@ -127,7 +132,7 @@ export function matchItem(target: string, ids: string[], world: World): string |
 }
 
 export function matchNpc(target: string, world: World, state: GameState): string | null {
-  const present = npcsIn(world, state, state.currentRoom);
+  const present = npcsSeen(world, state, state.currentRoom);
   const id = fuzzyMatch(
     target,
     present.map((id) => ({ id, name: world.npcs[id]?.name ?? id })),

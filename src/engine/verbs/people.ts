@@ -1,12 +1,12 @@
 import type { GameState } from '@/types/game';
 import type { World } from '@/types/world';
 import { evaluateCondition } from '../conditions';
-import { inventoryOf, matchNpc, moveItem, needObject, npcsIn, pickItem } from '../model';
+import { inventoryOf, matchNpc, moveItem, needObject, npcsSeen, pickItem } from '../model';
 import { miss, ok, type EngineResult } from '../result';
 import { runEvent } from '../rules';
 
 export function handleTalk(target: string | undefined, world: World, state: GameState): EngineResult {
-  const present = npcsIn(world, state, state.currentRoom);
+  const present = npcsSeen(world, state, state.currentRoom);
   if (!target) {
     if (present.length !== 1) return ok(['Talk to whom?']);
     target = present[0];
@@ -35,7 +35,7 @@ export function handleGive(
   const itemId = pickItem(target, inventoryOf(world, state), world, 'target', state);
   if (!itemId) return miss(`You aren’t carrying a “${target}”.`);
 
-  const present = npcsIn(world, state, state.currentRoom);
+  const present = npcsSeen(world, state, state.currentRoom);
   let npcId: string | null;
   if (indirect) {
     npcId = matchNpc(indirect, world, state);

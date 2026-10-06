@@ -1,6 +1,6 @@
 import type { GameState } from '@/types/game';
 import type { World } from '@/types/world';
-import { isAlive, isAwake, isLit, isLocked, isNpcIn, isOn, isOpen, isReachable } from './model';
+import { isAlive, isAwake, isLit, isLocked, isNpcIn, isOn, isOpen, isReachable, npcsSeen } from './model';
 
 /**
  * Evaluate a condition string against the current game state.
@@ -96,6 +96,9 @@ export function evaluateCondition(condition: string, state: GameState, world?: W
     case 'with':
       result = world ? isNpcIn(world, state, value, state.currentRoom) : false;
       break;
+    case 'seen':
+      result = world ? npcsSeen(world, state, state.currentRoom).includes(value) : false;
+      break;
     default:
       return false;
   }
@@ -134,6 +137,7 @@ export function conditionProblems(condition: string, world: World): string[] {
       case 'awake':
       case 'fighting':
       case 'with':
+      case 'seen':
         if (!(value in world.npcs)) problems.push(`“${body}” names no character “${value}”`);
         break;
       case 'lit':

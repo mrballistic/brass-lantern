@@ -29,6 +29,8 @@ export interface Room {
   after?: RuleTable;
   /** Items present here without being in the room: doors, windows, the sky. Never listed. */
   scenery?: string[];
+  /** Free-form labels scripts can read (`maze`, `sacred`). The engine doesn't. */
+  tags?: string[];
 }
 
 /**
@@ -110,6 +112,8 @@ export interface Item {
   size?: number;
   /** Something to fight with. */
   weapon?: boolean;
+  /** What it's worth (Zork's TVALUE). The engine doesn't read it; scripts and scoring can. */
+  treasure?: number;
   /** Makes the item a container; doors use the same block for openable/open/locked/key. */
   container?: Container;
   /** Things can be put on it, and what's on it is always visible and reachable. */
@@ -256,7 +260,7 @@ export type Effect =
   /** A character to a room, or null (gone). */
   | { moveNpc: string; to: string | null }
   /** Sets a character's combat state. */
-  | { npcState: string; fighting?: boolean; staggered?: boolean; strength?: number }
+  | { npcState: string; fighting?: boolean; staggered?: boolean; strength?: number; hidden?: boolean }
   /** Runs one of the world's scripts and the steps it returns. */
   | { script: string; arg?: string }
   | { open: string }

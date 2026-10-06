@@ -74,4 +74,13 @@ describe('scripts', () => {
     expect(() => runSteps([{ script: 'kill' }], w, s)).toThrow();
     expect(s.npcs.guard.strength).toBe(2);
   });
+
+  it('can read characters’ rooms, room order, visits, treasures, tags, light and contents', () => {
+    const w: World = {
+      ...world,
+      rooms: { ...world.rooms, cellar: { ...world.rooms.cellar, tags: ['deep'] } },
+      scripts: { look: (ctx) => [`${ctx.npcIn('guard', 'shed')} ${ctx.rooms()[0]} ${ctx.visited('bedroom')} ${ctx.treasure('coin')} ${ctx.tags('cellar').join()} ${ctx.lit('bedroom')} ${ctx.children('chest').join()}`] },
+    };
+    expect(runSteps([{ script: 'look' }], w, stateWith(w))).toEqual(['true bedroom true 2 deep true coin']);
+  });
 });

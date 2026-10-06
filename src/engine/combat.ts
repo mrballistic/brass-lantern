@@ -294,7 +294,7 @@ export function fightTurn(world: World, state: GameState): string[] {
     const combat = npc.combat;
     if (!combat || !isAlive(world, state, id)) continue;
     const s = state.npcs?.[id];
-    if (isNpcIn(world, state, id, state.currentRoom)) {
+    if (isNpcIn(world, state, id, state.currentRoom) && !s?.hidden) {
       if ((s?.strength ?? 0) < 0) {
         const p = s?.wake ?? 0;
         if (p > 0 && prob(state, p)) lines.push(...awaken(world, state, id));

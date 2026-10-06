@@ -151,7 +151,7 @@ export const fixtureWorld: World = {
       container: { openable: true, locked: true, key: 'key', capacity: 2 },
       contains: ['coin'],
     },
-    coin: { name: 'gold coin', aliases: ['coin'], description: 'A gold coin.', portable: true, tags: [] },
+    coin: { name: 'gold coin', aliases: ['coin'], description: 'A gold coin.', portable: true, tags: [], treasure: 2 },
     jar: {
       name: 'glass jar',
       aliases: ['jar'],

@@ -1,6 +1,6 @@
 import type { GameState, NpcState, Place } from '@/types/game';
 import type { EventStep, World } from '@/types/world';
-import { isCarried, isReachable, parentOf } from './model';
+import { childrenOf, isCarried, isLit, isNpcIn, isReachable, parentOf } from './model';
 import { nextRandom, roll } from './rng';
 
 // The code hatch: a world's own functions for behavior its data can't express.
@@ -25,6 +25,19 @@ export interface ScriptContext {
   /** The player's room. */
   room(): string;
   npc(id: string): Readonly<NpcState> | undefined;
+  /** Is the character in this room (hidden or not)? */
+  npcIn(id: string, room: string): boolean;
+  /** The world's room IDs, in its order. */
+  rooms(): string[];
+  /** Has the player been in this room? */
+  visited(room: string): boolean;
+  /** An item's treasure value (0 if none). */
+  treasure(id: string): number;
+  tags(room: string): string[];
+  /** Is the room (default: the player's) lit? */
+  lit(room?: string): boolean;
+  /** What's directly in a room, item or character, in listing order. */
+  children(place: string): string[];
   /** The command being run, with its objects resolved to IDs, when a rule ran this script. */
   command?: Command;
 }
@@ -79,6 +92,13 @@ export function scriptSteps(name: string, arg: string | undefined, world: World,
     room: () => state.currentRoom,
     npc: (id) => view.npcs?.[id],
     command: commands.get(state) ?? undefined,
+    npcIn: (id, room) => isNpcIn(world, state, id, room),
+    rooms: () => Object.keys(world.rooms),
+    visited: (room) => state.visited.includes(room),
+    treasure: (id) => world.items[id]?.treasure ?? 0,
+    tags: (room) => world.rooms[room]?.tags ?? [],
+    lit: (room) => isLit(world, state, room ?? state.currentRoom),
+    children: (place) => childrenOf(world, state, place),
   });
   return steps ?? [];
 }

@@ -2,7 +2,7 @@ import type { GameState } from '@/types/game';
 import type { Room, World } from '@/types/world';
 import { evaluateCondition } from './conditions';
 import { darknessLook } from './light';
-import { canSeeInside, childrenOf, isLit, npcsIn, visibleItemsIn } from './model';
+import { canSeeInside, childrenOf, isLit, npcsSeen, visibleItemsIn } from './model';
 
 export const COMPASS = ['north', 'south', 'east', 'west', 'northeast', 'northwest', 'southeast', 'southwest', 'up', 'down'];
 
@@ -143,7 +143,7 @@ export function describeRoom(
     lines.push(...contentsLines(world, state, id));
   }
 
-  const people = npcsIn(world, state, roomId);
+  const people = npcsSeen(world, state, roomId);
   // Infocom style: each character's own line, as Zork's LDESC; brass: a list.
   if (infocom) for (const id of people) lines.push(npcDescription(world, state, id));
   else if (people.length > 0) lines.push(`Present: ${people.map((id) => world.npcs[id]?.name ?? id).join(', ')}.`);
