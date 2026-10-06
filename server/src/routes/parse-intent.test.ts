@@ -181,6 +181,13 @@ describe('POST /api/parse-intent', () => {
     });
   });
 
+  it('accepts burn, turn and plug with a second object', async () => {
+    for (const action of ['burn', 'turn', 'plug']) {
+      fetchMock.mockResolvedValueOnce(geminiReply(`{"action":"${action}","target":"candles","indirect":"match"}`));
+      expect((await post({ input: `${action} candles with match`, context: makeContext() })).body).toEqual({ action, target: 'candles', indirect: 'match' });
+    }
+  });
+
   it('normalizes spaced and dashed targets to snake_case', async () => {
     fetchMock.mockResolvedValueOnce(geminiReply('{"action":"take","target":"Red Mug"}'));
     const res = await post({ input: 'take the red mug', context: makeContext() });

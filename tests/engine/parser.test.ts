@@ -354,3 +354,19 @@ describe('verbs a world declares (formerly built in)', () => {
     expect(fallbackParse('take wallet', verbs)).toEqual({ action: 'take', target: 'wallet' });
   });
 });
+
+describe('with-objects for built-in verbs (5a)', () => {
+  it('parses LIGHT/BURN X WITH Y as burn, and bare LIGHT as turn_on', () => {
+    expect(fallbackParse('light candles with match')).toEqual({ action: 'burn', target: 'candles', indirect: 'match' });
+    expect(fallbackParse('burn the book with the torch')).toEqual({ action: 'burn', target: 'book', indirect: 'torch' });
+    expect(fallbackParse('burn down leaflet with match')).toEqual({ action: 'burn', target: 'leaflet', indirect: 'match' });
+    expect(fallbackParse('ignite leaflet')).toEqual({ action: 'burn', target: 'leaflet' });
+    expect(fallbackParse('light lamp')).toEqual({ action: 'turn_on', target: 'lamp' });
+  });
+  it('parses TURN X WITH Y, TURN ON X WITH Y and PLUG X WITH Y', () => {
+    expect(fallbackParse('turn bolt with wrench')).toEqual({ action: 'turn', target: 'bolt', indirect: 'wrench' });
+    expect(fallbackParse('turn on lamp with match')).toEqual({ action: 'turn_on', target: 'lamp', indirect: 'match' });
+    expect(fallbackParse('plug leak with putty')).toEqual({ action: 'plug', target: 'leak', indirect: 'putty' });
+    expect(fallbackParse('plug cord into socket')).toEqual({ action: 'put', target: 'cord', indirect: 'socket', prep: 'in' });
+  });
+});

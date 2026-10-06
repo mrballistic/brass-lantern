@@ -20,7 +20,7 @@ export const ACTION_VOCAB = [
   'go', 'take', 'drop', 'use', 'examine', 'look', 'talk', 'inventory',
   'smash', 'wear', 'give', 'sit', 'wait', 'hint', 'score', 'help',
   'open', 'close', 'lock', 'unlock', 'put', 'search', 'enter', 'climb', 'read', 'turn_on', 'turn_off', 'verbose', 'brief', 'superbrief', 'undo', 'again',
-  'restart', 'quit', 'save', 'restore', 'load', 'script', 'unscript', 'version', 'attack', 'throw', 'diagnose', 'ask', 'order', 'unknown',
+  'restart', 'quit', 'save', 'restore', 'load', 'script', 'unscript', 'version', 'attack', 'throw', 'diagnose', 'ask', 'order', 'burn', 'turn', 'plug', 'unknown',
 ] as const;
 
 const ACTIONS: ReadonlySet<string> = new Set(ACTION_VOCAB);
@@ -87,6 +87,9 @@ function buildSystemInstruction(ctx: IntentContext): string {
     '- Hitting or breaking a thing with an item is smash, with the item as indirect.',
     '- Fighting a person or creature is attack: target is the person, indirect is the weapon (omit it if none was named).',
     '- Throwing something is throw: target is the thing thrown, indirect is what it is thrown at.',
+    '- Setting fire to something is burn: target is what burns, indirect is what lights it (light candles with match).',
+    '- Turning something with a tool is turn: target is the thing, indirect is the tool (turn bolt with wrench).',
+    '- Plugging something with something is plug: target is the hole or leak, indirect is what plugs it.',
     '- Asking how hurt or healthy the player is is diagnose.',
     '- Asking or telling someone about something is ask: target is the person, indirect is the topic.',
     '- Telling someone to do something is order: target is the person, indirect is what they were told to do.',

@@ -21,6 +21,7 @@ import { handleClose, handleLock, handleOpen, handlePut, handleSearch, handleTak
 import { handleRead, handleSwitch } from './verbs/objects';
 import { handleGive, handleTalk } from './verbs/people';
 import { handleAttack, handleThrow } from './verbs/attack';
+import { handleBurn } from './verbs/burn';
 import { handleAsk, handleOrder } from './verbs/talk';
 import { setCommand } from './scripts';
 import { diagnoseLines } from './combat';
@@ -122,6 +123,13 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
       return withRules('read', action, world, state, () => handleRead(action.target, world, state));
     case 'turn_on':
       return withRules('turn_on', action, world, state, () => handleSwitch(action.target, true, world, state));
+    case 'burn':
+      return withRules('burn', action, world, state, () => handleBurn(action, world, state));
+    // Zork's V-TURN and V-PLUG: a rule on the thing does the work.
+    case 'turn':
+      return withRules('turn', action, world, state, () => ok(['This has no effect.']));
+    case 'plug':
+      return withRules('plug', action, world, state, () => ok(['This has no effect.']));
     case 'turn_off':
       return withRules('turn_off', action, world, state, () => handleSwitch(action.target, false, world, state));
     case 'enter':

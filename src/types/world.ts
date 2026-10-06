@@ -114,6 +114,10 @@ export interface Item {
   size?: number;
   /** Something to fight with. */
   weapon?: boolean;
+  /** BURN can set it alight (Zork's BURNBIT). */
+  burnable?: boolean;
+  /** It can set things alight: always, or while switched on if it switches (Zork's FLAMEBIT). */
+  flaming?: boolean;
   /** What it's worth (Zork's TVALUE). The engine doesn't read it; scripts and scoring can. */
   treasure?: number;
   /** Makes the item a container; doors use the same block for openable/open/locked/key. */
