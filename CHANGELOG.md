@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.1 (2026-10-05)
+
+- **UNDO keeps the screen.** Taking back a move no longer clears the terminal and types everything out again; the lines that stay are shown at once and only “[Previous turn undone.]” types.
+
 ## 1.6.0 (2026-10-05)
 
 Engine parity, stage 3: the parser.
