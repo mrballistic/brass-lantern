@@ -263,3 +263,76 @@ describe('Zork I, natively: the troll', () => {
     expect(state.flags.trap_door_barred).toBeFalsy();
   });
 });
+
+describe('Zork I, natively: the maze and the cyclops’s rooms', () => {
+  function at(room: string, seed = 1) {
+    const state = initialState(zork1);
+    state.currentRoom = room;
+    state.locations.lamp = 'player';
+    state.itemState.lamp = { on: true, moved: true };
+    state.rng = seed;
+    const run = (c: string) => execute(fallbackParse(c, zork1.verbs) ?? { action: 'unknown' }, { world: zork1, state }).lines;
+    return { state, run };
+  }
+
+  it('the maze goes where the ZIL says', () => {
+    expect(zork1.rooms.maze_1.exits).toMatchObject({ east: 'troll_room', north: 'maze_1', south: 'maze_2', west: 'maze_4' });
+    expect(zork1.rooms.maze_15.exits).toMatchObject({ west: 'maze_14', south: 'maze_7', southeast: 'cyclops_room' });
+    expect(zork1.rooms.dead_end_1.exits).toMatchObject({ south: 'maze_4' });
+    expect(zork1.rooms.maze_1.tags).toContain('maze');
+  });
+
+  it('a one-way drop warns you first', () => {
+    const { state, run } = at('maze_2');
+    const lines = run('down');
+    expect(lines[0]).toBe('You won’t be able to get back up to the tunnel you are going through when it gets to the next room.');
+    expect(state.currentRoom).toBe('maze_4');
+  });
+
+  it('the skeleton, the lantern, the knife, the key and the coins lie in MAZE-5', () => {
+    for (const id of ['bones', 'burned_out_lantern', 'rusty_knife', 'keys', 'bag_of_coins']) expect(initialState(zork1).locations[id]).toBe('maze_5');
+    expect(zork1.items.bag_of_coins.treasure).toBe(5);
+    expect(zork1.items.rusty_knife.weapon).toBe(true);
+  });
+
+  it('the grating unlocks from below with the skeleton key, opens to daylight, and drops the leaves', () => {
+    const { state, run } = at('grating_room');
+    state.locations.keys = 'player';
+    expect(run('open grating')[0]).toBe('The grating is locked.');
+    expect(run('unlock grating with key')[0]).toBe('The grate is unlocked.');
+    const lines = run('open grating');
+    expect(lines[0]).toBe('The grating opens to reveal trees above you.');
+    expect(lines).toContain('A pile of leaves falls onto your head and to the ground.');
+    expect(run('up')[0]).toBe('📍 Clearing');
+  });
+
+  it('from above, the lock is out of reach', () => {
+    const { state, run } = at('grating_clearing');
+    state.flags.grate_revealed = true;
+    state.locations.keys = 'player';
+    expect(run('unlock grating with key')[0]).toBe('You can’t reach the lock from here.');
+  });
+
+  it('the Treasure Room is worth 25 points, once', () => {
+    const { state, run } = at('cyclops_room');
+    state.flags.cyclops_asleep = true;
+    const before = currentScore(zork1, state);
+    run('up');
+    run('down');
+    run('up');
+    expect(currentScore(zork1, state) - before).toBe(25);
+  });
+
+  it('the Strange Passage leads east into the living room', () => {
+    expect(zork1.rooms.strange_passage.exits).toMatchObject({ west: 'cyclops_room', east: 'living_room' });
+  });
+
+  it('touching the skeleton brings the ghost, who curses your valuables away', () => {
+    const { state, run } = at('maze_5');
+    state.locations.painting = 'player';
+    expect(run('take skeleton')[0]).toMatch(/^A ghost appears in the room and is appalled/);
+    expect(state.locations.painting).toBe(null);
+    expect(state.locations.bag_of_coins).toBe(null);
+  });
+});
+
