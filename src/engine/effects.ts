@@ -157,17 +157,32 @@ function runEffect(e: Effect, world: World, state: GameState): { lines: string[]
     const hit = nextRandom(state) * 100 < e.chance;
     return { lines: runSteps((hit ? e.then : e.else) ?? [], world, state), stop: state.gameOver };
   }
-  if ('hide' in e) return void (world.items[e.hide] && (itemState(state, e.hide).hidden = true)), { lines: [] };
+  if ('hide' in e) {
+    if (world.items[e.hide]) itemState(state, e.hide).hidden = true;
+    return { lines: [] };
+  }
   if ('board' in e) {
     if (world.items[e.board]?.vehicle && state.locations[e.board] === state.currentRoom) state.aboard = e.board;
     return { lines: [] };
   }
   if ('disembark' in e) return void (state.aboard = undefined), { lines: [] };
   // Zork's TOUCHBIT: handled, so its first-seen sentence is over.
-  if ('touch' in e) return void (world.items[e.touch] && (itemState(state, e.touch).moved = true)), { lines: [] };
-  if ('unlist' in e) return void (world.items[e.unlist] && (itemState(state, e.unlist).unlisted = true)), { lines: [] };
-  if ('relist' in e) return void (world.items[e.relist] && (itemState(state, e.relist).unlisted = false)), { lines: [] };
-  if ('reveal' in e) return void (world.items[e.reveal] && (itemState(state, e.reveal).hidden = false)), { lines: [] };
+  if ('touch' in e) {
+    if (world.items[e.touch]) itemState(state, e.touch).moved = true;
+    return { lines: [] };
+  }
+  if ('unlist' in e) {
+    if (world.items[e.unlist]) itemState(state, e.unlist).unlisted = true;
+    return { lines: [] };
+  }
+  if ('relist' in e) {
+    if (world.items[e.relist]) itemState(state, e.relist).unlisted = false;
+    return { lines: [] };
+  }
+  if ('reveal' in e) {
+    if (world.items[e.reveal]) itemState(state, e.reveal).hidden = false;
+    return { lines: [] };
+  }
   if ('script' in e) return { lines: runSteps(scriptSteps(e.script, e.arg, world, state), world, state), stop: state.gameOver || halted.has(state) };
   if ('run' in e) return { lines: world.events[e.run] ? runEventKey(e.run, world, state) : [], stop: state.gameOver };
   if ('go' in e) return { lines: hooks.go ? hooks.go(e.go, world, state, { quiet: e.quiet }) : [] };

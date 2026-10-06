@@ -28,7 +28,7 @@ The verbs are fixed; a world gives them things to act on. Anything the regex par
 | GIVE *item* TO *person* | `hand` `offer` `return` | With one person present, GIVE *item* is enough. |
 | TALK TO *person* | `speak/chat with`, `question` | With one person present, TALK is enough. |
 | ASK *person* ABOUT *topic* | `tell … about …` | The person's answer on that topic, if the world gives it [topics](./world-schema#npc); otherwise what TALK TO says. |
-| *person*, *command* | `tell/order/ask … to …` | An order. People answer orders; they don't carry them out yet. |
+| *person*, *command* | `tell/order/ask … to …` | An order (a bare TELL *person* is one too). People answer orders; they don't carry them out yet. |
 | WEAR *item* | `put on` | |
 | SMASH *thing* [WITH *item*] | `break` `destroy` `wreck` `whack` `beat` | |
 | ATTACK *someone* WITH *weapon* | `kill` `hit` `fight` `stab` | At a character who fights, combat; at anything else, SMASH (in a world without combat). In Infocom style, `kill troll` picks the one weapon you hold, or asks. |
