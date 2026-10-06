@@ -24,11 +24,24 @@ export function handleAttack(action: ParsedAction, world: World, state: GameStat
 
 function attackNpc(npc: string, indirect: string | undefined, world: World, state: GameState): EngineResult {
   const defender = world.npcs[npc].name;
-  if (!indirect) return ok([combatText(world, 'bareHands', { defender })]);
+  const infocom = world.style === 'infocom';
+  if (!indirect) {
+    if (!infocom) return ok([combatText(world, 'bareHands', { defender })]);
+    // Zork's parser: the one weapon you hold, “(with the sword)”, or ask which.
+    const held = inventoryOf(world, state).filter((id) => world.items[id]?.weapon);
+    if (held.length !== 1) needObject('indirect');
+    const result = attackNpc(npc, held[0], world, state);
+    return { ...result, lines: [`(with the ${world.items[held[0]].name})`, ...result.lines] };
+  }
+  if (/^(?:my\s+|bare\s+)?hands?$/i.test(indirect)) return ok([combatText(world, 'bareHands', { defender })]);
   const weapon = pickItem(indirect, visibleItems(world, state), world, 'indirect', state);
   if (!weapon) return miss(`You don’t see a “${indirect}” here.`);
   const fields = { defender, weapon: world.items[weapon].name };
-  if (!isCarried(state, weapon)) return ok([combatText(world, 'notHolding', fields)]);
+  if (!isCarried(state, weapon)) {
+    // Zork's parser refuses before the verb runs, so no time passes.
+    if (infocom) return { ...ok([`You don’t have the ${fields.weapon}.`]), free: true };
+    return ok([combatText(world, 'notHolding', fields)]);
+  }
   if (!world.items[weapon].weapon) return ok([combatText(world, 'notWeapon', fields)]);
   if (!world.npcs[npc].combat) return ok([combatText(world, 'notCombatant', { defender })]);
   return ok(heroBlow(world, state, npc, weapon), true);

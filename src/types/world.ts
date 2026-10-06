@@ -72,11 +72,15 @@ export interface Exit {
   door?: string;
   /** Refusals with their own reasons, checked first: the first whose `if` holds refuses with `text`. */
   denials?: Array<{ if: string; text: string }>;
+  /** An event run as the player goes through, before arriving (Zork's exit routines). */
+  then?: string;
 }
 
 export interface EventTrigger {
   if: string;
   then: string;
+  /** Fire every time the condition holds, not just once per game. */
+  repeat?: boolean;
 }
 
 /** One way an item can be used: a Rule, under its older name. */

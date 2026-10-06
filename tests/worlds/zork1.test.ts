@@ -168,14 +168,15 @@ describe('Zork I, natively: the troll', () => {
     expect(run('west')[0]).toBe('The troll fends you off with a menacing gesture.');
   });
 
-  it('bare hands, then a fight the troll can lose: the fog, the axe on the floor, the way east open', () => {
+  it('a fight the troll can lose: the fog, the axe on the floor, the way east open', () => {
     expect(cellar().run('north').join('\n')).toContain('A nasty-looking troll, brandishing a bloody axe, blocks all passages out of the room.');
     let won = false;
     for (let seed = 1; seed < 400 && !won; seed++) {
       const { state, run } = cellar(seed);
       run('north');
       if (state.currentRoom !== 'troll_room') continue;
-      expect(run('kill troll')[0]).toBe('Trying to attack a troll with your bare hands is suicidal.');
+      // Zork's parser picks the one weapon you hold.
+      expect(run('kill troll')[0]).toBe('(with the sword)');
       for (let i = 0; i < 20 && state.currentRoom === 'troll_room'; i++) {
         const lines = run('kill troll with sword');
         if (lines.some((l) => l.startsWith('Almost as soon as the troll breathes his last breath'))) {

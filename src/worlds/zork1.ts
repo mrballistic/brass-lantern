@@ -260,7 +260,8 @@ export const zork1: World = {
       npcs: [],
       // The first time down, the trap door slams behind you. Zork's VALUE 25: points for getting here.
       onEnter: [
-        { if: 'open:trap_door', then: 'trap_door_slams' },
+        // CELLAR-FCN: slams whenever it's open and “someone” hasn't barred it since you last came round by the chimney.
+        { if: 'open:trap_door & !flag:trap_door_barred', then: 'trap_door_slams', repeat: true },
         { if: '!flag:cellar_visited', then: 'cellar_points' },
       ],
       scenery: ['trap_door'],
@@ -341,6 +342,8 @@ export const zork1: World = {
         south: 'gallery',
         up: {
           to: 'kitchen',
+          // UP-CHIMNEY-FUNCTION: coming round this way with the trap door shut un-bars it.
+          then: 'chimney_climbed',
           denials: [
             { if: 'carrying<=0', text: 'Going up empty-handed is a bad idea.' },
             { if: '!has:lamp', text: CARRYING },
@@ -896,6 +899,7 @@ export const zork1: World = {
       }
       return [...wake, { move: item, to: null }, `${opening} and not having the most discriminating tastes, gleefully eats it.`];
     },
+    chimney_climbed: (ctx) => (ctx.state.itemState.trap_door?.open ? [] : [{ clear: 'trap_door_barred' }]),
     // AWAKEN: a knocked-out troll comes round when you meddle with him.
     troll_wake_if_out: (ctx) => {
       const strength = ctx.npc('troll')?.strength ?? 0;
@@ -1007,7 +1011,8 @@ export const zork1: World = {
     ],
     took_egg: ['[Flag set: took egg]'],
     kitchen_points: ['[Flag set: kitchen visited]'],
-    trap_door_slams: [{ close: 'trap_door' }, 'The trap door crashes shut, and you hear someone barring it.'],
+    trap_door_slams: [{ close: 'trap_door' }, { set: 'trap_door_barred' }, 'The trap door crashes shut, and you hear someone barring it.'],
+    chimney_climbed: [{ script: 'chimney_climbed' }],
     cellar_points: [{ set: 'cellar_visited' }],
     ew_passage_points: [{ set: 'ew_passage_visited' }],
     troll_drops_axe: [{ move: 'axe', to: 'troll_room' }],

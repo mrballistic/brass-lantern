@@ -105,6 +105,7 @@ export function auditWorld(world: World): string[] {
     for (const [label, exit] of Object.entries(room.exits)) {
       if (typeof exit === 'string') continue;
       checkCondition(exit.if, `room ${id} exit ${label}`);
+      checkEvent(exit.then, `room ${id} exit ${label}`);
       for (const d of exit.denials ?? []) checkCondition(d.if, `room ${id} exit ${label}`);
     }
   }

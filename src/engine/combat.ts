@@ -226,7 +226,7 @@ function attackWeapon(world: World, state: GameState): string | undefined {
  * Returns the result, 'staggered' when it spent the blow getting up, or null
  * when the player died.
  */
-function villainBlow(world: World, state: GameState, npc: string, out: boolean, lines: string[]): BlowResult | 'staggered' | null {
+function villainBlow(world: World, state: GameState, npc: string, lines: string[]): BlowResult | 'staggered' | null {
   const player = (state.player ??= {});
   player.staggered = false;
   const s = npcStateOf(state, npc);
@@ -242,7 +242,6 @@ function villainBlow(world: World, state: GameState, npc: string, out: boolean, 
   const od = fightStrength(world, state, false);
   const mine = weaponHeldBy(world, state, 'player');
   let result = blow(state, att, def);
-  if (out) result = result === 'stagger' ? 'hesitate' : 'sittingDuck';
   if (result === 'stagger' && mine && prob(state, 25)) result = 'loseWeapon';
   const fields = { defender: name, weapon: mine ? world.items[mine].name : '' };
   lines.push(blowMessage(state, world.npcs[npc].combat?.messages?.[result], BRASS_VILLAIN[result], fields));
@@ -313,25 +312,19 @@ export function fightTurn(world: World, state: GameState): string[] {
       lines.push(...awaken(world, state, id));
     }
   }
-  if (fighters.length === 0) return lines;
-  // A blow that knocks the player out gives the fighters 1–3 more rounds.
-  let out = 0;
-  for (;;) {
-    for (const id of fighters) {
-      if (!isAwake(world, state, id) || !state.npcs?.[id]?.fighting) continue;
-      const combat = world.npcs[id].combat!;
-      if (combat.weapon && combat.onBusy && state.locations[combat.weapon] !== id) {
-        lines.push(...runEventKey(combat.onBusy, world, state));
-        continue;
-      }
-      const result = villainBlow(world, state, id, out > 0, lines);
-      if (result === null || turnHalted(state) || state.gameOver) return lines;
-      if (result === 'unconscious') out = 1 + roll(state, 3);
+  // One round. (Zork's source gives a knocked-out player's foes 1–3 more rounds,
+  // but Release 119, the story file, doesn't: a knock-out is just a blow.)
+  for (const id of fighters) {
+    if (!isAwake(world, state, id) || !state.npcs?.[id]?.fighting) continue;
+    const combat = world.npcs[id].combat!;
+    if (combat.weapon && combat.onBusy && state.locations[combat.weapon] !== id) {
+      lines.push(...runEventKey(combat.onBusy, world, state));
+      continue;
     }
-    if (out === 0) return lines;
-    out -= 1;
-    if (out === 0) return lines;
+    const result = villainBlow(world, state, id, lines);
+    if (result === null || turnHalted(state) || state.gameOver) return lines;
   }
+  return lines;
 }
 
 /** One turn of healing (Zork's I-CURE). */

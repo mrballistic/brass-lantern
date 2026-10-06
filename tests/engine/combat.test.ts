@@ -58,20 +58,43 @@ describe('combat: the player’s blow', () => {
     expect(fightStrength(world, s, false)).toBe(7);
   });
 
-  it('refuses in Zork’s order and words, changing nothing', () => {
+  it('in Infocom style, guesses the one weapon you hold, as Zork’s parser does', () => {
     const s = stateWith(world, { room: 'shed' });
+    carry(s, 'bat');
+    expect(attack(s, 'guard')[0]).toBe('(with the bat)');
+  });
+
+  it('in Infocom style, asks what to attack with when you hold no weapon', () => {
+    const s = stateWith(world, { room: 'shed' });
+    const r = execute({ action: 'attack', target: 'guard' }, { world, state: s });
+    expect(r.lines).toEqual(['What do you want to attack the guard with?']);
+    expect(r.ask?.kind).toBe('what');
+    expect(r.free).toBe(true);
+  });
+
+  it('in Infocom style, a weapon you don’t have is the parser’s refusal: no turn passes', () => {
+    const s = stateWith(world, { room: 'yard' });
+    const r = execute({ action: 'attack', target: 'neighbor', indirect: 'bat' }, { world, state: s });
+    expect(r.lines).toEqual(['You don’t have the bat.']);
+    expect(r.free).toBe(true);
+    expect(s.moveCount).toBe(0);
+  });
+
+  it('refuses in Zork’s order and words, changing nothing', () => {
+    const s = stateWith(fixtureWorld, { room: 'shed' });
     carry(s, 'wallet');
     const before = structuredClone(s);
-    expect(attack(s, 'guard')).toEqual(['Trying to attack a guard with your bare hands is suicidal.']);
+    expect(attack(s, 'guard', undefined, fixtureWorld)).toEqual(['You can’t fight the guard with your bare hands.']);
+    expect(attack(s, 'guard', 'hands')).toEqual(['Trying to attack a guard with your bare hands is suicidal.']);
     expect(execute({ action: 'attack', target: 'guard', indirect: 'bat' }, { world, state: s }).understood).toBe(false); // no bat here: a miss
     expect(attack(s, 'guard', 'wallet')).toEqual(['Trying to attack the guard with a wallet is suicidal.']);
     expect(attack(s, 'crate', 'wallet')).toEqual(['I’ve known strange people, but fighting a crate?']);
     expect({ ...s, turns: 0, moveCount: 0 }).toEqual({ ...before, turns: 0, moveCount: 0 });
   });
 
-  it('not holding the weapon, and characters with no fight in them', () => {
+  it('not holding the weapon (brass), and characters with no fight in them', () => {
     const s = stateWith(world, { room: 'yard' });
-    expect(attack(s, 'neighbor', 'bat')).toEqual(['You aren’t even holding the bat.']);
+    expect(attack(stateWith(fixtureWorld, { room: 'yard' }), 'neighbor', 'bat', fixtureWorld)[0]).toBe('You aren’t holding the bat.');
     carry(s, 'bat');
     expect(attack(s, 'neighbor', 'bat')[0]).toBe('Neighbor won’t fight you.');
   });

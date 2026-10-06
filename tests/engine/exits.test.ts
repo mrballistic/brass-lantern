@@ -99,4 +99,29 @@ describe('exits', () => {
     execute({ action: 'go', target: 'up' }, { world: w, state: s });
     expect(s.currentRoom).toBe('living');
   });
+
+  it('an exit can run an event as you pass through it, before you arrive', () => {
+    const w = {
+      ...world,
+      rooms: { ...world.rooms, yard: { ...world.rooms.yard, exits: { ...world.rooms.yard.exits, north: { to: 'bedroom', then: 'squeeze' } } } },
+      events: { ...world.events, squeeze: ['You squeeze through.', { set: 'squeezed' }] },
+    };
+    const s = stateWith(w, { room: 'yard' });
+    const lines = execute({ action: 'go', target: 'north' }, { world: w, state: s }).lines;
+    expect(lines[0]).toBe('You squeeze through.');
+    expect(s.flags.squeezed).toBe(true);
+    expect(s.currentRoom).toBe('bedroom');
+  });
+
+  it('a repeating arrival trigger fires every time its condition holds', () => {
+    const w = {
+      ...world,
+      rooms: { ...world.rooms, bedroom: { ...world.rooms.bedroom, onEnter: [{ if: 'flag:paid', then: 'creak', repeat: true }] } },
+      events: { ...world.events, creak: ['The floor creaks.'] },
+    };
+    const s = stateWith(w, { room: 'living', flags: ['paid'] });
+    expect(execute({ action: 'go', target: 'east' }, { world: w, state: s }).lines).toContain('The floor creaks.');
+    execute({ action: 'go', target: 'west' }, { world: w, state: s });
+    expect(execute({ action: 'go', target: 'east' }, { world: w, state: s }).lines).toContain('The floor creaks.');
+  });
 });
