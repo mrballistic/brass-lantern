@@ -1,13 +1,11 @@
 import type { GameState } from '@/types/game';
-import type { ScoreEntry, World } from '@/types/world';
+import type { World } from '@/types/world';
 import { evaluateCondition } from '../conditions';
 import { ok, type EngineResult } from '../result';
 
 /** The score so far: scoring entries earned, plus the `score` var. */
-export function currentScore(world: World, state: GameState): number {
-  const earned = (s: ScoreEntry) => (s.flag ? Boolean(state.flags[s.flag]) : s.if ? evaluateCondition(s.if, state, world) : false);
-  return (world.scoring ?? []).reduce((sum, s) => sum + (earned(s) ? s.points : 0), 0) + (state.vars?.score ?? 0);
-}
+export { currentScore } from '../score';
+import { currentScore } from '../score';
 
 /** The header's status: Zork's room, score and moves in Infocom style; MOVES (or SCORE and MOVES) in brass. */
 export function statusText(world: World, state: GameState): string {

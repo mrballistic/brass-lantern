@@ -179,3 +179,21 @@ describe('heaviest<=N (5c)', () => {
     expect(conditionProblems('heaviest<4x', fixtureWorld)).not.toEqual([]);
   });
 });
+
+describe('score<op>N (5d)', () => {
+  it('is the score SCORE prints, vars.score included', () => {
+    const w: World = { ...fixtureWorld, scoring: [{ flag: 'a', points: 10 }, { if: 'flag:b', points: 5 }] };
+    const s = stateWith(w, { room: 'bedroom' });
+    expect(evaluateCondition('score=0', s, w)).toBe(true);
+    s.flags.a = true;
+    s.flags.b = true;
+    s.vars = { ...s.vars, score: 3 };
+    expect(evaluateCondition('score>=18', s, w)).toBe(true);
+    expect(evaluateCondition('score>18', s, w)).toBe(false);
+    expect(evaluateCondition('!score<18', s, w)).toBe(true);
+  });
+  it('the audit knows the form and catches a malformed one', () => {
+    expect(conditionProblems('score>=350', fixtureWorld)).toEqual([]);
+    expect(conditionProblems('score>=x', fixtureWorld)).not.toEqual([]);
+  });
+});

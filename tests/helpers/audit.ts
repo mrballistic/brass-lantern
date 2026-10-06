@@ -173,7 +173,11 @@ export function auditWorld(world: World): string[] {
   }
   for (const [i, d] of (world.daemons ?? []).entries()) checkCondition(d.if, `daemon ${i}`);
   for (const h of world.hints ?? []) checkCondition(h.if, 'hint');
-  for (const s of world.scoring ?? []) checkCondition(s.if, 'scoring');
+  for (const s of world.scoring ?? []) {
+    checkCondition(s.if, 'scoring');
+    // The score is the sum of these entries: one that tests it would recurse.
+    if (s.if && /(^|[!&\s])score\s*[<>=]/.test(s.if)) problems.push(`scoring: “${s.if}”: a scoring condition can’t use the score`);
+  }
   if (world.finale) {
     checkEvent(world.finale.event, 'finale');
     checkEvent(world.finale.bareHanded, 'finale');

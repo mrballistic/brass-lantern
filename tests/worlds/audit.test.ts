@@ -93,4 +93,9 @@ describe('world audit', () => {
       ]),
     );
   });
+
+  it('a scoring condition can’t use the score (5d)', () => {
+    const w: World = { ...fixtureWorld, scoring: [{ if: 'score>=1', points: 1 }] };
+    expect(auditWorld(w).some((p) => p.includes('score'))).toBe(true);
+  });
 });
