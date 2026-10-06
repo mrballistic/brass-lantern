@@ -1,0 +1,121 @@
+import { describe, expect, it } from 'vitest';
+import { fightStrength, pickTable, TABLES } from '@/engine/combat';
+import { execute } from '@/engine/engine';
+import type { GameState, ParsedAction } from '@/types/game';
+import type { World } from '@/types/world';
+import { carry, stateWith } from '../helpers/state';
+import { fixtureWorld } from '../fixtures/world';
+
+// An Infocom-style fixture with combat rules, so Zork's wording applies.
+const world: World = {
+  ...fixtureWorld,
+  style: 'infocom',
+  maxScore: 350,
+  combat: {
+    strength: { min: 2, max: 7 },
+    cureWait: 30,
+    messages: {
+      missed: ['Your {weapon} misses the {defender} by an inch.'],
+      killed: ['The fatal blow strikes the {defender} square in the heart: He dies.'],
+    },
+  },
+  npcs: {
+    ...fixtureWorld.npcs,
+    guard: {
+      ...fixtureWorld.npcs.guard,
+      instead: { throw: [{ say: ['The guard catches it and hands it back.'] }] },
+    },
+  },
+};
+const act = (s: GameState, a: ParsedAction, w: World = world) => execute(a, { world: w, state: s }).lines;
+const attack = (s: GameState, target: string, indirect?: string, w: World = world) =>
+  act(s, indirect ? { action: 'attack', target, indirect } : { action: 'attack', target }, w);
+
+describe('combat: the player’s blow', () => {
+  it('picks Zork’s table from the two strengths', () => {
+    expect(pickTable(1, 1)).toEqual(TABLES.DEF1);
+    expect(pickTable(5, 1)).toEqual(TABLES.DEF1.slice(2));
+    expect(pickTable(1, 2)).toEqual(TABLES.DEF2A);
+    expect(pickTable(2, 2)).toEqual(TABLES.DEF2B);
+    expect(pickTable(9, 2)).toEqual(TABLES.DEF2B.slice(2));
+    expect(pickTable(2, 4)).toEqual(TABLES.DEF3A);
+    expect(pickTable(3, 4)).toEqual(TABLES.DEF3A.slice(1));
+    expect(pickTable(4, 4)).toEqual(TABLES.DEF3B);
+    expect(pickTable(5, 4)).toEqual(TABLES.DEF3B.slice(1));
+    expect(pickTable(9, 4)).toEqual(TABLES.DEF3C);
+    for (const [a, d] of [[1, 1], [3, 1], [1, 2], [4, 2], [1, 5], [9, 3]]) expect(pickTable(a, d).length).toBeGreaterThanOrEqual(9);
+  });
+
+  it('player strength grows with score and falls with wounds', () => {
+    const s = stateWith(world);
+    expect(fightStrength(world, s)).toBe(2);
+    s.vars = { ...s.vars, score: 140 };
+    expect(fightStrength(world, s)).toBe(4);
+    s.vars.score = 350;
+    expect(fightStrength(world, s)).toBe(7);
+    s.player = { wounds: 2 };
+    expect(fightStrength(world, s)).toBe(5);
+    expect(fightStrength(world, s, false)).toBe(7);
+  });
+
+  it('refuses in Zork’s order and words, changing nothing', () => {
+    const s = stateWith(world, { room: 'shed' });
+    carry(s, 'wallet');
+    const before = structuredClone(s);
+    expect(attack(s, 'guard')).toEqual(['Trying to attack a guard with your bare hands is suicidal.']);
+    expect(execute({ action: 'attack', target: 'guard', indirect: 'bat' }, { world, state: s }).understood).toBe(false); // no bat here: a miss
+    expect(attack(s, 'guard', 'wallet')).toEqual(['Trying to attack the guard with a wallet is suicidal.']);
+    expect(attack(s, 'crate', 'wallet')).toEqual(['I’ve known strange people, but fighting a crate?']);
+    expect({ ...s, turns: 0, moveCount: 0 }).toEqual({ ...before, turns: 0, moveCount: 0 });
+  });
+
+  it('not holding the weapon, and characters with no fight in them', () => {
+    const s = stateWith(world, { room: 'yard' });
+    expect(attack(s, 'neighbor', 'bat')).toEqual(['You aren’t even holding the bat.']);
+    carry(s, 'bat');
+    expect(attack(s, 'neighbor', 'bat')[0]).toBe('Neighbor won’t fight you.');
+  });
+
+  it('a blow follows the seed, and the same seed replays it', () => {
+    const a = stateWith(world, { room: 'shed' });
+    carry(a, 'bat');
+    const b = structuredClone(a);
+    expect(attack(a, 'guard', 'bat')).toEqual(attack(b, 'guard', 'bat'));
+    expect(a.npcs?.guard).toEqual(b.npcs?.guard);
+    expect(attack(a, 'guard', 'bat')).toEqual(attack(b, 'guard', 'bat'));
+  });
+
+  it('an unarmed defender dies at once, and onDeath runs', () => {
+    const w: World = { ...world, events: { ...world.events, guard_dies: [{ move: 'cudgel', to: 'here' }] } };
+    w.npcs = { ...w.npcs, guard: { ...w.npcs.guard, combat: { ...w.npcs.guard.combat!, onDeath: 'guard_dies' } } };
+    const s = stateWith(w, { room: 'shed' });
+    carry(s, 'bat');
+    s.locations.cudgel = null;
+    const lines = attack(s, 'guard', 'bat', w);
+    expect(lines[0]).toBe('The unarmed guard cannot defend himself: He dies.');
+    expect(lines[1]).toMatch(/^Almost as soon as the guard breathes his last breath/);
+    expect(s.npcs?.guard?.strength).toBe(0);
+    expect(s.locations.cudgel).toBe('shed'); // onDeath ran
+  });
+
+  it('brass worlds get short defaults', () => {
+    const s = stateWith(fixtureWorld, { room: 'shed' });
+    carry(s, 'bat');
+    s.locations.cudgel = null;
+    expect(attack(s, 'guard', 'bat', fixtureWorld)).toEqual(['The guard can’t defend themselves.', 'The guard is dead.']);
+  });
+
+  it('SMASH and ATTACK at things still smash in a world without combat', () => {
+    const s = stateWith(fixtureWorld);
+    expect(attack(s, 'alarm', undefined, fixtureWorld)).toContain('🔨 You smash the alarm clock.');
+  });
+
+  it('THROW: a character’s rule, or the thing lands on the floor', () => {
+    const s = stateWith(world, { room: 'shed' });
+    carry(s, 'wallet', 'shirt');
+    expect(act(s, { action: 'throw', target: 'wallet', indirect: 'guard' })).toEqual(['The guard catches it and hands it back.']);
+    expect(act(s, { action: 'throw', target: 'shirt' })).toEqual(['Thrown.']);
+    expect(s.locations.shirt).toBe('shed');
+    expect(execute({ action: 'throw', target: 'lamp' }, { world, state: s }).understood).toBe(false);
+  });
+});

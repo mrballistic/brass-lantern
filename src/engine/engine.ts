@@ -20,6 +20,8 @@ import { handleAll } from './verbs/all';
 import { handleClose, handleLock, handleOpen, handlePut, handleSearch, handleTakeFrom, handleUnlock } from './verbs/containers';
 import { handleRead, handleSwitch } from './verbs/objects';
 import { handleGive, handleTalk } from './verbs/people';
+import { handleAttack, handleThrow } from './verbs/attack';
+import { setCommand } from './scripts';
 import { handleHelp, handleHint, handleScore, handleUnknown, scoreLines } from './verbs/meta';
 
 export type { EngineResult } from './result';
@@ -65,6 +67,7 @@ export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
   }
 
   beginTurn(state);
+  setCommand(state, null);
   const pendingFuses = new Set(Object.keys(state.fuses ?? {}));
   const roomBefore = state.currentRoom;
   const litBefore = isLit(world, state);
@@ -166,6 +169,10 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
       return handleInventory(world, state);
     case 'smash':
       return withRules('smash', action, world, state, () => handleSmash(action.target, world, state));
+    case 'attack':
+      return handleAttack(action, world, state, () => dispatch({ ...action, action: 'smash' }, world, state));
+    case 'throw':
+      return handleThrow(action, world, state);
     case 'hint':
       return handleHint(world, state);
     case 'score':

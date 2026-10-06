@@ -10,7 +10,7 @@ const world: World = {
   scripts: {
     coin_flip: (ctx) => (ctx.random() < 0.5 ? ['Heads.'] : ['Tails.']),
     greet: (ctx) => [`Hello, ${ctx.arg}.`, { set: 'greeted' }],
-    where: (ctx) => [`${ctx.room()} ${ctx.holder('club')} ${ctx.carried('wallet')} ${ctx.npc('guard')?.strength ?? 'unhurt'}`],
+    where: (ctx) => [`${ctx.room()} ${ctx.holder('cudgel')} ${ctx.carried('wallet')} ${ctx.npc('guard')?.strength ?? 'unhurt'}`],
     meddle: (ctx) => {
       (ctx.state as { currentRoom: string }).currentRoom = 'yard';
       return [];

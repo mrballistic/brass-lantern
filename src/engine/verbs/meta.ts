@@ -81,6 +81,8 @@ export function handleHelp(world: World): EngineResult {
     'TALK TO <npc>            Speak with someone (synonyms: ASK)',
     'INVENTORY / I            List what you are carrying',
     'SMASH <target>           Apply violence',
+    'ATTACK <someone> WITH <weapon>  Fight (also KILL, STAB)',
+    'THROW <item> [AT <target>]      Throw something',
     'WAIT / Z                 Let time pass',
     'HINT                     A nudge in the right direction',
     'SCORE                    Your score so far',

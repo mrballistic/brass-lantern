@@ -25,6 +25,21 @@ export interface ScriptContext {
   /** The player's room. */
   room(): string;
   npc(id: string): Readonly<NpcState> | undefined;
+  /** The command being run, with its objects resolved to IDs, when a rule ran this script. */
+  command?: Command;
+}
+
+export interface Command {
+  verb: string;
+  target?: string;
+  indirect?: string;
+}
+
+const commands = new WeakMap<GameState, Command | null>();
+
+/** Records the command a rule is running for, so scripts can see it. */
+export function setCommand(state: GameState, command: Command | null): void {
+  commands.set(state, command);
 }
 
 export type Script = (ctx: ScriptContext) => EventStep[] | void;
@@ -57,6 +72,7 @@ export function scriptSteps(name: string, arg: string | undefined, world: World,
     holder: (id) => parentOf(state, id),
     room: () => state.currentRoom,
     npc: (id) => state.npcs?.[id],
+    command: commands.get(state) ?? undefined,
   });
   return steps ?? [];
 }

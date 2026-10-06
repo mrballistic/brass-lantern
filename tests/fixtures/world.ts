@@ -122,6 +122,7 @@ export const fixtureWorld: World = {
     bat: {
       name: 'bat',
       aliases: ['club'],
+      weapon: true,
       description: 'A wooden bat.',
       portable: true,
       tags: [],
@@ -166,7 +167,7 @@ export const fixtureWorld: World = {
     fence: { name: 'fence', description: 'A white picket fence.', portable: false, tags: [], scenery: true },
     sky: { name: 'sky', description: 'Blue, mostly.', portable: false, tags: [] },
     barrel: { name: 'barrel', description: 'An old barrel.', portable: false, tags: [] },
-    club: { name: 'club', description: 'A heavy wooden club.', portable: true, tags: [] },
+    cudgel: { name: 'cudgel', description: 'A heavy wooden cudgel.', portable: true, tags: [], weapon: true },
     crate: { name: 'crate', aliases: ['box'], description: 'A nailed-shut crate.', portable: false, refusal: 'It is too heavy.', tags: [] },
   },
 
@@ -175,7 +176,8 @@ export const fixtureWorld: World = {
       name: 'guard',
       description: 'A guard watches you.',
       descriptions: [{ if: '!awake:guard', text: 'A guard snores in the corner.' }],
-      holds: ['club'],
+      holds: ['cudgel'],
+      combat: { strength: 2, weapon: 'cudgel', fears: { item: 'bat', by: 1 }, wake: 25, firstStrike: 0 },
     },
     neighbor: {
       name: 'Neighbor',

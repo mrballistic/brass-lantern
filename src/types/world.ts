@@ -104,6 +104,8 @@ export interface Item {
   contains?: string[];
   /** Weight, for worlds with `carry` (Zork's SIZE). Default 5. */
   size?: number;
+  /** Something to fight with. */
+  weapon?: boolean;
   /** Makes the item a container; doors use the same block for openable/open/locked/key. */
   container?: Container;
   /** Things can be put on it, and what's on it is always visible and reachable. */
@@ -164,6 +166,71 @@ export interface NPC {
   holds?: string[];
   /** Descriptions that depend on the state of things; the first whose condition holds wins. */
   descriptions?: Array<{ if: string; text: string }>;
+  /** Rules for verbs aimed at this character (THROW X AT it, GIVE, ATTACK…). */
+  instead?: RuleTable;
+  after?: RuleTable;
+  /** Makes it someone the player can fight. */
+  combat?: Combatant;
+}
+
+/** What a blow did (Zork's blow results). */
+export type BlowResult =
+  | 'missed'
+  | 'unconscious'
+  | 'killed'
+  | 'lightWound'
+  | 'seriousWound'
+  | 'stagger'
+  | 'loseWeapon'
+  | 'hesitate'
+  | 'sittingDuck';
+
+/** For each result, the messages one is picked from. `{weapon}` and `{defender}` are filled in. */
+export type BlowMessages = Partial<Record<BlowResult, string[]>>;
+
+/** A character's side of a fight (Zork's VILLAINS table and its ACTION modes). */
+export interface Combatant {
+  strength: number;
+  /** The item it fights with, while it holds it. */
+  weapon?: string;
+  /** The player's weapon that weakens it, and by how much. */
+  fears?: { item: string; by: number };
+  /** Percent added each turn to its chance of waking while unconscious. */
+  wake?: number;
+  /** Percent chance each turn to start a fight while the player is here. */
+  firstStrike?: number;
+  /** Its blows at the player. */
+  messages?: BlowMessages;
+  /** Events run when it dies, is knocked out, wakes, or would swing but its weapon is on the floor. */
+  onDeath?: string;
+  onUnconscious?: string;
+  onWake?: string;
+  onBusy?: string;
+}
+
+/** Fixed lines of a fight, overridable per world. */
+export type CombatText =
+  | 'bareHands'
+  | 'notHolding'
+  | 'notWeapon'
+  | 'notPerson'
+  | 'notCombatant'
+  | 'recovering'
+  | 'defenceless'
+  | 'dies'
+  | 'regainsFeet'
+  | 'stillHave'
+  | 'death';
+
+/** The player's side of fights. */
+export interface CombatRules {
+  /** The player's blows. */
+  messages?: BlowMessages;
+  /** Strength from `min` at no score to `max` at `maxScore`. */
+  strength?: { min: number; max: number };
+  /** Acted-on turns for one wound to heal. */
+  cureWait?: number;
+  texts?: Partial<Record<CombatText, string>>;
 }
 
 export interface NPCDialogue {
@@ -321,6 +388,8 @@ export interface World {
   scripts?: Record<string, Script>;
   /** Carrying weight. Without it there's no limit. */
   carry?: Carry;
+  /** Fights: the player's blows, strength and healing. */
+  combat?: CombatRules;
 }
 
 /**

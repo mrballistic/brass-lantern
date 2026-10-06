@@ -20,7 +20,7 @@ export const ACTION_VOCAB = [
   'go', 'take', 'drop', 'use', 'examine', 'look', 'talk', 'inventory',
   'smash', 'wear', 'give', 'sit', 'wait', 'hint', 'score', 'help',
   'open', 'close', 'lock', 'unlock', 'put', 'search', 'enter', 'climb', 'read', 'turn_on', 'turn_off', 'verbose', 'brief', 'superbrief', 'undo', 'again',
-  'restart', 'quit', 'save', 'restore', 'load', 'script', 'unscript', 'version', 'unknown',
+  'restart', 'quit', 'save', 'restore', 'load', 'script', 'unscript', 'version', 'attack', 'throw', 'unknown',
 ] as const;
 
 const ACTIONS: ReadonlySet<string> = new Set(ACTION_VOCAB);

@@ -19,9 +19,9 @@ describe('characters', () => {
 
   it('hold things the player can neither see nor take', () => {
     const s = stateWith(world, { room: 'shed' });
-    expect(s.locations.club).toBe('guard');
-    expect(visibleItems(world, s)).not.toContain('club');
-    expect(execute({ action: 'take', target: 'club' }, { world, state: s }).understood).toBe(false);
+    expect(s.locations.cudgel).toBe('guard');
+    expect(visibleItems(world, s)).not.toContain('cudgel');
+    expect(execute({ action: 'take', target: 'cudgel' }, { world, state: s }).understood).toBe(false);
   });
 
   it('describe themselves by state, and the conditions follow', () => {
@@ -39,8 +39,8 @@ describe('characters', () => {
 
   it('move with “here” puts a thing in the player’s room', () => {
     const s = stateWith(world, { room: 'shed' });
-    runSteps([{ move: 'club', to: 'here' }], world, s);
-    expect(s.locations.club).toBe('shed');
+    runSteps([{ move: 'cudgel', to: 'here' }], world, s);
+    expect(s.locations.cudgel).toBe('shed');
   });
 
   it('in Infocom style a character in the room prints its own line', () => {
