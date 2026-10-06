@@ -1,5 +1,6 @@
 import type { GameState } from '@/types/game';
 import type { World } from '@/types/world';
+import { weightOf } from './weight';
 import { isAlive, isAwake, isLit, isLocked, isNpcIn, isOn, isOpen, isReachable, isWater, npcsSeen } from './model';
 
 /**
@@ -15,6 +16,7 @@ import { isAlive, isAwake, isLit, isLocked, isNpcIn, isOn, isOpen, isReachable, 
  *   here:X          the player can reach X (needs `world`)
  *   var:NAME<=N     a numeric variable compared (=, <, >, <=, >=); unset is 0
  *   carrying<=N     how many things the player holds directly
+ *   heaviest<=N     the heaviest thing the player holds, contents included
  *   lit:here, lit:ROOM  the room has light (needs `world`)
  * Unrecognized strings evaluate to false.
  */
@@ -30,6 +32,13 @@ function carrying(state: GameState): number {
   return Object.values(state.locations).filter((p) => p === 'player').length;
 }
 
+/** The heaviest thing held directly, its contents included (Zork's EMPTY-HANDED check). */
+function heaviest(state: GameState, world?: World): number {
+  if (!world) return 0;
+  const held = Object.keys(state.locations).filter((id) => state.locations[id] === 'player');
+  return Math.max(0, ...held.map((id) => weightOf(world, state, id)));
+}
+
 export function evaluateCondition(condition: string, state: GameState, world?: World): boolean {
   // "flag:a & !flag:b": every part must hold.
   if (condition.includes('&')) {
@@ -42,11 +51,11 @@ export function evaluateCondition(condition: string, state: GameState, world?: W
   const negated = trimmed.startsWith('!');
   const body = negated ? trimmed.slice(1) : trimmed;
 
-  // var:NAME<=N and carrying<=N (with =, <, >, <=, >=)
-  const compare = body.match(/^(?:var:(\w+)|carrying)\s*(<=|>=|=|<|>)\s*(-?\d+)$/);
+  // var:NAME<=N, carrying<=N and heaviest<=N (with =, <, >, <=, >=)
+  const compare = body.match(/^(?:var:(\w+)|(carrying|heaviest))\s*(<=|>=|=|<|>)\s*(-?\d+)$/);
   if (compare) {
-    const [, name, op, n] = compare;
-    const value = name === undefined ? carrying(state) : (state.vars?.[name] ?? 0);
+    const [, name, count, op, n] = compare;
+    const value = count === 'heaviest' ? heaviest(state, world) : count ? carrying(state) : (state.vars?.[name] ?? 0);
     const result = COMPARE[op](value, Number(n));
     return negated ? !result : result;
   }
@@ -119,7 +128,7 @@ export function conditionProblems(condition: string, world: World): string[] {
   const problems: string[] = [];
   for (const part of condition.split('&')) {
     const body = part.trim().replace(/^!/, '');
-    if (/^(?:var:\w+|carrying)\s*(<=|>=|=|<|>)\s*-?\d+$/.test(body)) continue;
+    if (/^(?:var:\w+|carrying|heaviest)\s*(<=|>=|=|<|>)\s*-?\d+$/.test(body)) continue;
     const [kind, value = '', extra] = body.split(':');
     const item = (id: string) => id in world.items || id in world.npcs;
     const room = (id: string) => id in world.rooms;

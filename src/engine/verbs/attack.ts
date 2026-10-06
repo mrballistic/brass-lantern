@@ -4,7 +4,6 @@ import { combatText, heroBlow } from '../combat';
 import { inventoryOf, isCarried, matchNpc, moveItem, needObject, pickItem, visibleItems } from '../model';
 import { miss, ok, type EngineResult } from '../result';
 import { withRules } from '../rules';
-import { setCommand } from '../scripts';
 
 /**
  * ATTACK, KILL, FIGHT, STAB. At a character it's combat; at anything else,
@@ -15,6 +14,14 @@ export function handleAttack(action: ParsedAction, world: World, state: GameStat
   if (!action.target) needObject();
   // A world without combat keeps ATTACK as SMASH, people included (Office Space).
   if (!world.combat) return smash();
+  // Zork's parser guesses the one weapon you hold, “(with the sword)”, before the verb or any rule runs (GWIM).
+  if (world.style === 'infocom' && !action.indirect) {
+    const held = inventoryOf(world, state).filter((id) => world.items[id]?.weapon);
+    if (held.length === 1) {
+      const result = handleAttack({ ...action, indirect: held[0] }, world, state, smash);
+      return result.understood === false ? result : { ...result, lines: [`(with the ${world.items[held[0]].name})`, ...result.lines] };
+    }
+  }
   const npc = matchNpc(action.target, world, state);
   if (!npc) {
     const thing = pickItem(action.target, visibleItems(world, state), world, 'target', state);
@@ -31,13 +38,8 @@ function attackNpc(npc: string, indirect: string | undefined, world: World, stat
   if (!world.npcs[npc].combat) return ok([combatText(world, 'notCombatant', { defender })]);
   if (!indirect) {
     if (!infocom) return ok([combatText(world, 'bareHands', { defender })]);
-    // Zork's parser: the one weapon you hold, “(with the sword)”, or ask which.
-    const held = inventoryOf(world, state).filter((id) => world.items[id]?.weapon);
-    if (held.length !== 1) needObject('indirect');
-    // Zork's GWIM sets PRSI: the guessed weapon is the command's, for the defender's fears too.
-    setCommand(state, { verb: 'attack', target: npc, indirect: held[0] });
-    const result = attackNpc(npc, held[0], world, state);
-    return { ...result, lines: [`(with the ${world.items[held[0]].name})`, ...result.lines] };
+    // Zork's parser asks which weapon (one held is guessed in handleAttack).
+    needObject('indirect');
   }
   if (/^(?:my\s+|bare\s+)?hands?$/i.test(indirect)) return ok([combatText(world, 'bareHands', { defender })]);
   const weapon = pickItem(indirect, visibleItems(world, state), world, 'indirect', state);

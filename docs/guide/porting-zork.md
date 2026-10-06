@@ -2,7 +2,7 @@
 
 Brass Lantern ships Zork I twice: the original story file, run by the Z-machine interpreter, and **ZORK I · NATIVE**, a rebuild as an ordinary Brass Lantern world (`src/worlds/zork1.ts`). The native version is how the engine proves it can carry an Infocom-class game. A test plays both side by side and fails if they disagree.
 
-It covers the house, the forest, and the first rooms underground: the cellar, the chasm, the gallery and the studio, with darkness, the lamp burning down, the grue, and death; the Troll Room, the East-West Passage and the Round Room, with the troll, combat, the sword's glow and carrying weight; and the maze, the grating, the Cyclops Room and the thief's Treasure Room, with the thief (wandering, stealing, fighting) and the cyclops; and, from stage 5a, the underground east and south of the Round Room: the dam and the reservoir, the Loud Room, the mirrors, Atlantis, the dome, the temple and Hades, with the exorcism and ghost mode; and, from stage 5b, the magic boat on the Frigid River, the White Cliffs, Sandy Beach and its scarab, Aragain Falls, the rainbow and the canyon. The coal mine and the endgame arrive in stage 5c.
+It covers the house, the forest, and the first rooms underground: the cellar, the chasm, the gallery and the studio, with darkness, the lamp burning down, the grue, and death; the Troll Room, the East-West Passage and the Round Room, with the troll, combat, the sword's glow and carrying weight; and the maze, the grating, the Cyclops Room and the thief's Treasure Room, with the thief (wandering, stealing, fighting) and the cyclops; and, from stage 5a, the underground east and south of the Round Room: the dam and the reservoir, the Loud Room, the mirrors, Atlantis, the dome, the temple and Hades, with the exorcism and ghost mode; and, from stage 5b, the magic boat on the Frigid River, the White Cliffs, Sandy Beach and its scarab, Aragain Falls, the rainbow and the canyon; and, from stage 5c, the coal mine: the slide, the bat, the gas room, the mine's maze and ladder, the narrow passage, the basket on its chain and the machine that turns coal into a diamond. The mountains, the barrow and the endgame arrive in stage 5d.
 
 ## How ZIL maps to a world
 
@@ -75,6 +75,12 @@ Zork was written in ZIL, Infocom's language. Its source is MIT licensed ([histor
 | I-RIVER, RIVER-SPEEDS, RIVER-LAUNCH | a self-requeuing fuse and LAUNCH's table, in scripts |
 | GOTO's grue from one dark room into another | `darkness.stumble` |
 | PRINT-CONT's “(outside the magic boat)” and first-seen-first order | built in, Infocom style |
+| EMPTY-HANDED and WEIGHT (the narrow passage: nothing heavier than 4) | an exit's `if: 'heaviest<=4'` |
+| a room's M-ENTER that acts before you look (the bat's FLY-ME) | `onEnter` with `{ look: true }` first, then a script that picks a room |
+| a room's M-END that checks the turn's command (BOOM-ROOM) | the room's `onEnd` running a script that reads `ctx.command` |
+| two objects standing for one thing at two places (the basket on its chain) | two items swapped by the RAISE and LOWER rules; things inside travel with the real one |
+| NO-OBJS' LIGHT-SHAFT score on the first lit turn | the room's `onEnd` setting a flag that `scoring` counts |
+| HACK-HACK's random endings (V-WAVE, V-RAISE) | a world verb's fixed `reply`, naming its object with `{target}` |
 
 `style: 'infocom'` makes the engine follow Zork's conventions:
 - “There is a sword here.”;
@@ -104,5 +110,5 @@ Zork was written in ZIL, Infocom's language. Its source is MIT licensed ([histor
 
 ## What's next
 
-- **Stage 5c:** the coal mine, the endgame and the barrow, all 350 points, and the thief's exact timing against the original.
+- **Stage 5d:** the mountains, the barrow and the endgame, the thief's exact timing, and a full 350-point game played against the original.
 - Characters who obey orders or follow the player.

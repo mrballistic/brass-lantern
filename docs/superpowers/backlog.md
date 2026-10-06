@@ -2,6 +2,13 @@
 
 Known gaps the reviews found and deferred. Each stage's spec picks up the ones it touches; strike an item through (or delete it) when it ships. Newest first.
 
+## From stage 5c (1.11.0)
+
+- **CLIMB UP/DOWN** *a thing* walks for any visible thing (“climb down lamp” goes down; Zork: “The brass lantern doesn't lead downward.”), and with no exit says “You can't climb that way.” where Zork says “You can't go that way.”
+- **TURN SWITCH WITH SCREWDRIVER** works with the screwdriver on the floor, or shut in the machine (“It's not clear how…”); Zork's parser wants it held, or says it can't see one.
+- **The far basket** gives the chain line only for TAKE, OPEN, CLOSE, PUT, RAISE, LOWER and EXAMINE; LOOK IN, SEARCH, SMELL and KICK get defaults. TAKE X FROM BASKET with X already held gets the chain line, not “You already have that!”
+- **Items dropped on death** land in different places from the story file's (seen in a 5c review probe).
+
 ## From stage 5b (1.10.0)
 
 - **BOARD of a second vehicle while aboard** switches vehicles; PRE-BOARD says “You are already in the <current>!”.

@@ -17,6 +17,7 @@ Conditions are strings, used by `requires`, exits (`if`, `denials`), room `descr
 | `here:ITEM` | the player can reach it (in the room, carried, or in something open) |
 | `var:NAME<op>N` | a numeric variable compared with `=`, `<`, `>`, `<=` or `>=` (unset is 0) |
 | `carrying<op>N` | how many things the player holds directly |
+| `heaviest<op>N` | the weight of the heaviest thing the player holds directly, counting what's inside it (Zork's narrow passage: `heaviest<=4`) |
 | `lit:here`, `lit:ROOM` | the room has light |
 | `alive:NPC` | the character isn't dead |
 | `awake:NPC` | alive and conscious |

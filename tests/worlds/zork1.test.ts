@@ -605,3 +605,48 @@ describe('Zork I, natively: the boat’s final-review fixes (5b)', () => {
     expect(s.aboard).toBe('inflated_boat');
   });
 });
+
+describe('Zork I, natively: the coal mine (5c)', () => {
+  it('the bat never grabs a spirit', () => {
+    const state = initialState(zork1);
+    state.currentRoom = 'squeeky_room';
+    state.npcs = { thief: { room: null } };
+    state.flags.dead = true;
+    execute({ action: 'go', target: 'north' }, { world: zork1, state });
+    expect(state.currentRoom).toBe('bat_room');
+  });
+  it('without the garlic, the bat carries you off to one of BAT-DROPS', () => {
+    const state = initialState(zork1);
+    state.currentRoom = 'squeeky_room';
+    state.npcs = { thief: { room: null } };
+    state.locations.lamp = 'player';
+    state.itemState.lamp = { ...state.itemState.lamp, on: true };
+    execute({ action: 'go', target: 'north' }, { world: zork1, state });
+    expect(['mine_1', 'mine_2', 'mine_3', 'mine_4', 'ladder_top', 'ladder_bottom', 'squeeky_room', 'mine_entrance']).toContain(state.currentRoom);
+  });
+});
+
+describe('Zork I, natively: 5c’s scoring', () => {
+  it('scores the jade, the bracelet and the diamond for taking and in the case, and the lit Lower Shaft once', () => {
+    const state = initialState(zork1);
+    state.currentRoom = 'living_room';
+    state.npcs = { thief: { room: null } };
+    const score = () => currentScore(zork1, state);
+    for (const [id, value, tvalue] of [['jade', 5, 5], ['bracelet', 5, 5], ['diamond', 10, 10]] as const) {
+      state.locations[id] = 'living_room';
+      const before = score();
+      execute({ action: 'take', target: id, byId: true }, { world: zork1, state });
+      expect(score() - before).toBe(value);
+      state.itemState.trophy_case = { ...state.itemState.trophy_case, open: true };
+      state.locations[id] = 'trophy_case';
+      expect(score() - before).toBe(value + tvalue);
+    }
+    const before = score();
+    state.currentRoom = 'lower_shaft';
+    state.locations.lamp = 'player';
+    state.itemState.lamp = { ...state.itemState.lamp, on: true };
+    execute({ action: 'look' }, { world: zork1, state });
+    execute({ action: 'look' }, { world: zork1, state });
+    expect(score() - before).toBe(13);
+  });
+});

@@ -135,9 +135,15 @@ export function handleEnter(target: string | undefined, world: World, state: Gam
   return miss('You can’t enter that.');
 }
 
-export function handleClimb(target: string | undefined, world: World, state: GameState): EngineResult {
+export function handleClimb(target: string | undefined, world: World, state: GameState, direction?: 'up' | 'down'): EngineResult {
   const room = world.rooms[state.currentRoom];
   if (!room) return ok(['You are nowhere.']);
+  // CLIMB DOWN LADDER: a thing here, climbed in a direction (Zork's V-CLIMB-DOWN walks that way).
+  if (direction && target && matchItem(target, visibleItems(world, state), world)) {
+    // Climbing up something takes the room's climbing exit when there's no up exit.
+    const exit = room.exits[direction] ?? (direction === 'up' ? room.exits.climb : undefined);
+    return exit ? followExit(exit, world, state) : miss('You can’t climb that way.');
+  }
   if (target === 'up' || target === 'down') {
     return room.exits[target] ? followExit(room.exits[target], world, state) : miss('You can’t climb that way.');
   }

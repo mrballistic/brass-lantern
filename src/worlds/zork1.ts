@@ -370,6 +370,182 @@ export const zork1: World = {
   emptyInventory: 'You are empty-handed.',
 
   rooms: {
+    // Stage 5c: the coal mine, SLIDE-ROOM through MINE-ENTRANCE, in story order.
+    slide_room: {
+      name: 'Slide Room',
+      description: 'This is a small chamber, which appears to have been part of a coal mine. On the south wall of the chamber the letters “Granite Wall” are etched in the rock. To the east is a long passage, and there is a steep metal slide twisting downward. To the north is a small opening.',
+      dark: true,
+      exits: { east: 'cold_passage', north: 'mine_entrance', down: 'cellar' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      scenery: ['slide'],
+    },
+    mine_4: {
+      name: 'Coal Mine',
+      description: 'This is a nondescript part of a coal mine.',
+      dark: true,
+      exits: { north: 'mine_3', west: 'mine_4', down: 'ladder_top' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+    },
+    mine_3: {
+      name: 'Coal Mine',
+      description: 'This is a nondescript part of a coal mine.',
+      dark: true,
+      exits: { south: 'mine_3', southwest: 'mine_4', east: 'mine_2' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+    },
+    mine_2: {
+      name: 'Coal Mine',
+      description: 'This is a nondescript part of a coal mine.',
+      dark: true,
+      exits: { north: 'mine_2', south: 'mine_1', southeast: 'mine_3' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+    },
+    mine_1: {
+      name: 'Coal Mine',
+      description: 'This is a nondescript part of a coal mine.',
+      dark: true,
+      exits: { north: 'gas_room', east: 'mine_1', northeast: 'mine_2' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+    },
+    // MACHINE-ROOM-FCN: the lid's state ends the description.
+    machine_room: {
+      name: 'Machine Room',
+      description: 'This is a large, cold room whose sole exit is to the north. In one corner there is a machine which is reminiscent of a clothes dryer. On its face is a switch which is labelled “START”. The switch does not appear to be manipulable by any human hand (unless the fingers are about 1/16 by 1/4 inch). On the front of the machine is a large lid, which is closed.',
+      descriptions: [{ if: 'open:machine', text: 'This is a large, cold room whose sole exit is to the north. In one corner there is a machine which is reminiscent of a clothes dryer. On its face is a switch which is labelled “START”. The switch does not appear to be manipulable by any human hand (unless the fingers are about 1/16 by 1/4 inch). On the front of the machine is a large lid, which is open.' }],
+      dark: true,
+      exits: { north: 'lower_shaft' },
+      items: ['machine', 'machine_switch'],
+      npcs: [],
+      onEnter: [],
+    },
+    // NO-OBJS: only the empty-handed fit through; the first turn here with a light scores (LIGHT-SHAFT).
+    lower_shaft: {
+      name: 'Drafty Room',
+      description: 'This is a small drafty room in which is the bottom of a long shaft. To the south is a passageway and to the east a very narrow passage. In the shaft can be seen a heavy iron chain.',
+      dark: true,
+      exits: {
+        south: 'machine_room',
+        out: { to: 'timber_room', if: 'heaviest<=4', denial: 'You cannot fit through this passage with that load.' },
+        east: { to: 'timber_room', if: 'heaviest<=4', denial: 'You cannot fit through this passage with that load.' },
+      },
+      items: ['lowered_basket'],
+      npcs: [],
+      onEnter: [],
+      onEnd: [{ if: 'lit:here & !flag:light_shaft', then: [{ set: 'light_shaft' }] }],
+      scenery: ['chain'],
+      tags: ['sacred'],
+    },
+    timber_room: {
+      name: 'Timber Room',
+      description: 'This is a long and narrow passage, which is cluttered with broken timbers. A wide passage comes from the east and turns at the west end of the room into a very narrow passageway. From the west comes a strong draft.',
+      dark: true,
+      exits: { east: 'ladder_bottom', west: { to: 'lower_shaft', if: 'heaviest<=4', denial: 'You cannot fit through this passage with that load.' } },
+      items: ['timbers'],
+      npcs: [],
+      onEnter: [],
+      tags: ['sacred'],
+    },
+    dead_end_5: {
+      name: 'Dead End',
+      description: 'You have come to a dead end in the mine.',
+      dark: true,
+      exits: { north: 'ladder_bottom' },
+      items: ['coal'],
+      npcs: [],
+      onEnter: [],
+    },
+    ladder_bottom: {
+      name: 'Ladder Bottom',
+      description: 'This is a rather wide room. On one side is the bottom of a narrow wooden ladder. To the west and the south are passages leaving the room.',
+      dark: true,
+      exits: { south: 'dead_end_5', west: 'timber_room', up: 'ladder_top' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      scenery: ['ladder'],
+    },
+    ladder_top: {
+      name: 'Ladder Top',
+      description: 'This is a very small room. In the corner is a rickety wooden ladder, leading downward. It might be safe to descend. There is also a staircase leading upward.',
+      dark: true,
+      exits: { down: 'ladder_bottom', up: 'mine_4' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      scenery: ['ladder'],
+    },
+    // BOOM-ROOM: a flame here at the end of a turn ignites the coal gas.
+    gas_room: {
+      name: 'Gas Room',
+      description: 'This is a small room which smells strongly of coal gas. There is a short climb up some stairs and a narrow tunnel leading east.',
+      dark: true,
+      exits: { up: 'smelly_room', east: 'mine_1' },
+      items: ['bracelet'],
+      npcs: [],
+      onEnter: [],
+      onEnd: [{ if: 'in:gas_room', then: [{ script: 'gas_check' }] }],
+      scenery: ['coal_gas'],
+      tags: ['sacred'],
+    },
+    smelly_room: {
+      name: 'Smelly Room',
+      description: 'This is a small nondescript room. However, from the direction of a small descending staircase a foul odor can be detected. To the south is a narrow tunnel.',
+      dark: true,
+      exits: { down: 'gas_room', south: 'shaft_room' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      scenery: ['coal_gas'],
+    },
+    shaft_room: {
+      name: 'Shaft Room',
+      description: 'This is a large room, in the middle of which is a small shaft descending through the floor into darkness below. To the west and the north are exits from this room. Constructed over the top of the shaft is a metal framework to which a heavy iron chain is attached.',
+      dark: true,
+      exits: { down: { denial: 'You wouldn’t fit and would die if you could.' }, west: 'bat_room', north: 'smelly_room' },
+      items: ['raised_basket'],
+      npcs: [],
+      onEnter: [],
+      scenery: ['chain'],
+    },
+    // BATS-ROOM: without the garlic, the bat carries you off (FLY-ME), unless you're a spirit.
+    bat_room: {
+      name: 'Bat Room',
+      description: 'You are in a small room which has doors only to the east and south.',
+      dark: true,
+      exits: { south: 'squeeky_room', east: 'shaft_room' },
+      items: ['jade'],
+      npcs: ['bat'],
+      onEnter: [{ if: '!has:garlic & !here:garlic & !flag:dead', then: 'bat_arrival', repeat: true }],
+      tags: ['sacred'],
+    },
+    squeeky_room: {
+      name: 'Squeaky Room',
+      description: 'You are in a small room. Strange squeaky sounds may be heard coming from the passage at the north end. You may also escape to the east.',
+      dark: true,
+      exits: { north: 'bat_room', east: 'mine_entrance' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+    },
+    mine_entrance: {
+      name: 'Mine Entrance',
+      description: 'You are standing at the entrance of what might have been a coal mine. The shaft enters the west wall, and there is another exit on the south end of the room.',
+      dark: true,
+      exits: { south: 'slide_room', in: 'squeeky_room', west: 'squeeky_room' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+    },
     // Stage 5b: the canyon and the rainbow. CANYON-VIEW through ARAGAIN-FALLS, in story order.
     canyon_view: {
       name: 'Canyon View',
@@ -844,7 +1020,7 @@ export const zork1: World = {
       name: 'Cold Passage',
       description: 'This is a cold and damp corridor where a long east-west passageway turns into a southward path.',
       dark: true,
-      exits: { south: 'mirror_room_1', west: { denial: 'That part of the Great Underground Empire isn’t built yet.' } },
+      exits: { south: 'mirror_room_1', west: 'slide_room' },
       items: [],
       npcs: [],
       onEnter: [],
@@ -1307,7 +1483,7 @@ export const zork1: World = {
         { if: 'open:trap_door & !flag:trap_door_barred', then: 'trap_door_slams', repeat: true },
         { if: '!flag:cellar_visited', then: 'cellar_points' },
       ],
-      scenery: ['trap_door'],
+      scenery: ['trap_door', 'slide'],
     },
     living_room: {
       tags: ['sacred'],
@@ -1661,6 +1837,172 @@ export const zork1: World = {
       scenery: true,
       instead: { throw: [{ as: 'indirect', then: 'over_the_cliff' }], put: [{ as: 'indirect', then: 'over_the_cliff' }] },
     },
+    // Stage 5c: the coal mine.
+    jade: {
+      name: 'jade figurine',
+      aliases: ['figurine', 'treasure', 'jade', 'exquisite figurine'],
+      description: 'There’s nothing special about the jade figurine.',
+      roomDescription: 'There is an exquisite jade figurine here.',
+      portable: true,
+      size: 10,
+      treasure: 5,
+      tags: [],
+      after: { take: [{ if: '!flag:took_jade', then: 'took_jade' }] },
+    },
+    bracelet: {
+      name: 'sapphire-encrusted bracelet',
+      aliases: ['bracelet', 'jewel', 'sapphire', 'treasure', 'sapphire bracelet'],
+      description: 'There’s nothing special about the sapphire-encrusted bracelet.',
+      portable: true,
+      size: 10,
+      treasure: 5,
+      tags: [],
+      after: { take: [{ if: '!flag:took_bracelet', then: 'took_bracelet' }] },
+    },
+    coal: {
+      name: 'small pile of coal',
+      aliases: ['coal', 'pile', 'heap', 'small pile', 'pile of coal'],
+      description: 'There’s nothing special about the small pile of coal.',
+      portable: true,
+      size: 20,
+      burnable: true,
+      tags: [],
+    },
+    ladder: {
+      name: 'wooden ladder',
+      aliases: ['ladder', 'wooden ladder', 'rickety ladder', 'narrow ladder'],
+      description: 'There’s nothing special about the wooden ladder.',
+      portable: false,
+      tags: [],
+      scenery: true,
+    },
+    // GAS-PSEUDO.
+    coal_gas: {
+      name: 'gas',
+      aliases: ['gas', 'odor', 'coal gas'],
+      description: 'There’s nothing special about the gas.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      instead: { smell: [{ say: ['It smells like coal gas in here.'] }], breathe: [{ say: ['There is too much gas to blow away.'] }] },
+    },
+    // SLIDE-FUNCTION: a local global of the Slide Room and the Cellar.
+    slide: {
+      name: 'chute',
+      aliases: ['slide', 'ramp', 'chute', 'steep slide', 'metal slide', 'twisting slide'],
+      description: 'There’s nothing special about the chute.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      instead: {
+        climb: [{ if: 'in:cellar', say: ['You try to ascend the ramp, but it is impossible, and you slide back down.'] }, { then: 'slide_down' }],
+        enter: [{ if: 'in:cellar', say: ['You try to ascend the ramp, but it is impossible, and you slide back down.'] }, { then: 'slide_down' }],
+        put: [{ as: 'indirect', then: 'slider' }],
+      },
+    },
+    // BASKET-F: the basket at the top; the lowered basket stands for it at the other end.
+    raised_basket: {
+      name: 'basket',
+      aliases: ['cage', 'dumbwaiter', 'basket'],
+      description: 'There’s nothing special about the basket.',
+      roomDescription: 'At the end of the chain is a basket.',
+      portable: false,
+      tags: [],
+      container: { open: true, weight: 50 },
+      instead: {
+        take: [{ as: 'target', say: ['The cage is securely fastened to the iron chain.'] }],
+        raise: [{ then: 'basket_raise' }],
+        lower: [{ then: 'basket_lower' }],
+      },
+    },
+    lowered_basket: {
+      name: 'basket',
+      aliases: ['cage', 'dumbwaiter', 'basket', 'lowered basket'],
+      description: 'The basket is at the other end of the chain.',
+      roomDescription: 'From the chain is suspended a basket.',
+      portable: false,
+      tags: [],
+      instead: {
+        raise: [{ then: 'basket_raise' }],
+        lower: [{ then: 'basket_lower' }],
+        take: [{ say: ['The basket is at the other end of the chain.'] }],
+        open: [{ say: ['The basket is at the other end of the chain.'] }],
+        close: [{ say: ['The basket is at the other end of the chain.'] }],
+        put: [{ say: ['The basket is at the other end of the chain.'] }],
+      },
+    },
+    timbers: {
+      name: 'broken timber',
+      aliases: ['timbers', 'pile', 'timber', 'wooden timber', 'broken timbers'],
+      description: 'There’s nothing special about the broken timber.',
+      portable: true,
+      size: 50,
+      tags: [],
+    },
+    // MACHINE-F.
+    machine: {
+      name: 'machine',
+      aliases: ['machine', 'pdp10', 'dryer', 'lid'],
+      description: 'There’s nothing special about the machine.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      container: { openable: true, open: false, weight: 50 },
+      instead: {
+        take: [{ as: 'target', say: ['It is far too large to carry.'] }],
+        open: [{ as: 'target', then: 'machine_open' }],
+        close: [{ as: 'target', then: 'machine_close' }],
+        turn_on: [{ as: 'target', then: 'machine_on' }],
+      },
+    },
+    // MSWITCH-FUNCTION.
+    machine_switch: {
+      name: 'switch',
+      aliases: ['switch'],
+      description: 'There’s nothing special about the switch.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      instead: { turn: [{ as: 'target', then: 'machine_switch' }] },
+    },
+    diamond: {
+      name: 'huge diamond',
+      aliases: ['diamond', 'treasure', 'huge diamond', 'enormous diamond'],
+      description: 'There’s nothing special about the huge diamond.',
+      roomDescription: 'There is an enormous diamond (perfectly cut) here.',
+      portable: true,
+      treasure: 10,
+      tags: [],
+      after: { take: [{ if: '!flag:took_diamond', then: 'took_diamond' }] },
+    },
+    // GUNK-FUNCTION: it crumbles at a touch.
+    gunk: {
+      name: 'small piece of vitreous slag',
+      aliases: ['gunk', 'piece', 'slag', 'small piece', 'vitreous slag'],
+      description: 'There’s nothing special about the small piece of vitreous slag.',
+      portable: true,
+      size: 10,
+      tags: [],
+      instead: {
+        take: [{ then: 'gunk_crumbles' }],
+        examine: [{ then: 'gunk_crumbles' }],
+      },
+    },
+    // CHAIN-PSEUDO.
+    chain: {
+      name: 'chain',
+      aliases: ['chain', 'iron chain', 'heavy chain'],
+      description: 'The chain secures a basket within the shaft.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      instead: {
+        take: [{ say: ['The chain is secure.'] }],
+        move: [{ say: ['The chain is secure.'] }],
+        raise: [{ say: ['Perhaps you should do that to the basket.'] }],
+        lower: [{ say: ['Perhaps you should do that to the basket.'] }],
+      },
+    },
     // Stage 5b: the banks.
     shovel: {
       name: 'shovel',
@@ -1808,7 +2150,7 @@ export const zork1: World = {
       weapon: true,
       tags: [],
       // SCEPTRE-FUNCTION.
-      instead: { wave: [{ as: 'target', then: 'sceptre_waved' }] },
+      instead: { wave: [{ as: 'target', then: 'sceptre_waved' }], raise: [{ as: 'target', then: 'sceptre_waved' }] },
       after: { take: [{ if: '!flag:took_sceptre', then: 'took_sceptre' }] },
     },
     skull: {
@@ -2729,6 +3071,21 @@ export const zork1: World = {
         listen: [{ say: ['The thief says nothing, as you have not been formally introduced.'] }],
       },
     },
+    // BAT-F and BAT-D: the vampire bat on the ceiling.
+    bat: {
+      name: 'bat',
+      aliases: ['bat', 'vampire', 'vampire bat', 'deranged bat'],
+      description: 'A large vampire bat, hanging from the ceiling, swoops down at you!',
+      descriptions: [{ if: 'has:garlic', text: 'In the corner of the room on the ceiling is a large vampire bat who is obviously deranged and holding his nose.' }, { if: 'here:garlic', text: 'In the corner of the room on the ceiling is a large vampire bat who is obviously deranged and holding his nose.' }],
+      instead: {
+        // BAT-F's TELL: FWEEP 6, and V-TELL's pause when nothing follows.
+        talk: [{ say: ['    Fweep!', '    Fweep!', '    Fweep!', '    Fweep!', '    Fweep!', 'The bat pauses for a moment, perhaps thinking that you should reread the manual.'] }],
+        order: [{ say: ['    Fweep!', '    Fweep!', '    Fweep!', '    Fweep!', '    Fweep!'] }],
+        take: [{ if: 'has:garlic', say: ['You can’t reach him; he’s on the ceiling.'] }, { if: 'here:garlic', say: ['You can’t reach him; he’s on the ceiling.'] }, { then: 'bat_flight' }],
+        attack: [{ if: 'has:garlic', say: ['You can’t reach him; he’s on the ceiling.'] }, { if: 'here:garlic', say: ['You can’t reach him; he’s on the ceiling.'] }, { then: 'bat_flight' }],
+        smash: [{ if: 'has:garlic', say: ['You can’t reach him; he’s on the ceiling.'] }, { if: 'here:garlic', say: ['You can’t reach him; he’s on the ceiling.'] }, { then: 'bat_flight' }],
+      },
+    },
     cyclops: {
       name: 'cyclops',
       description: 'A hungry cyclops is standing at the foot of the stairs.',
@@ -3025,6 +3382,72 @@ export const zork1: World = {
       if (word === 'echo') return [{ set: 'loud_flag' }, { set: 'unsacred_bar' }, 'The acoustics of the room change subtly.', { go: 'loud_room' }, { free: true }];
       const last = words[words.length - 1];
       return [`${last} ${last} ...`, { free: true }];
+    },
+    // BASKET-F: RAISE and LOWER swap the basket and its stand-in; contents ride along.
+    basket: (ctx) => {
+      const raise = ctx.arg === 'raise';
+      const top = !ctx.state.flags.cage_bottom;
+      if (raise === top) {
+        const [steps, line] = pickOne(ctx, 'dummy', ['Look around.', 'Too late for that.', 'Have your eyes checked.']);
+        return [...steps, line];
+      }
+      if (raise) return [{ move: 'raised_basket', to: 'shaft_room' }, { move: 'lowered_basket', to: 'lower_shaft' }, { clear: 'cage_bottom' }, 'The basket is raised to the top of the shaft.'];
+      // A light riding in the basket goes with it; the engine says “It is now pitch black.”
+      return [{ move: 'raised_basket', to: 'lower_shaft' }, { move: 'lowered_basket', to: 'shaft_room' }, 'The basket is lowered to the bottom of the shaft.', { set: 'cage_bottom' }];
+    },
+    // MACHINE-F's OPEN and CLOSE.
+    machine_lid: (ctx) => {
+      const open = Boolean(ctx.state.itemState.machine?.open);
+      if (ctx.arg === 'close') {
+        if (open) return [{ close: 'machine' }, 'The lid closes.'];
+      } else if (!open) {
+        const inside = ctx.children('machine');
+        if (!inside.length) return [{ open: 'machine' }, 'The lid opens.'];
+        const names = inside.map((id) => `${/^[aeiou]/i.test(ctx.world.items[id].name) ? 'an' : 'a'} ${ctx.world.items[id].name}`);
+        return [{ open: 'machine' }, `The lid opens, revealing ${names.join(', ')}.`];
+      }
+      const [steps, line] = pickOne(ctx, 'dummy', ['Look around.', 'Too late for that.', 'Have your eyes checked.']);
+      return [...steps, line];
+    },
+    // MSWITCH-FUNCTION: coal becomes a diamond; anything else, slag.
+    machine_switch: (ctx) => {
+      const tool = ctx.command?.indirect;
+      if (!tool) return ['It’s not clear how to turn it on with your bare hands.'];
+      if (tool !== 'screwdriver') return [`It seems that a ${ctx.world.items[tool]?.name ?? tool} won’t do.`];
+      if (ctx.state.itemState.machine?.open) return ['The machine doesn’t seem to want to do anything.'];
+      const inside = ctx.children('machine');
+      const made: EventStep[] = inside.includes('coal')
+        ? [{ move: 'coal', to: null }, { move: 'diamond', to: 'machine' }]
+        : [...inside.map((id): EventStep => ({ move: id, to: null })), { move: 'gunk', to: 'machine' }];
+      return ['The machine comes to life (figuratively) with a dazzling display of colored lights and bizarre noises. After a few moments, the excitement abates.', ...made];
+    },
+    // BOOM-ROOM's M-END: a flame held here ignites the gas, more pointedly if you just lit it.
+    gas_check: (ctx) => {
+      const flames = ['candles', 'torch', 'match'];
+      if (!flames.some((id) => ctx.carried(id) && ctx.state.itemState[id]?.on)) return;
+      const c = ctx.command;
+      const lit = c && ['turn_on', 'burn'].includes(c.verb) && c.target && flames.includes(c.target) ? c.target : undefined;
+      return [
+        lit
+          ? `How sad for an aspiring adventurer to light a ${ctx.world.items[lit].name} in a room which reeks of gas. Fortunately, there is justice in the world.`
+          : 'Oh dear. It appears that the smell coming from this room was coal gas. I would have thought twice about carrying flaming objects in here.',
+        { die: '\n      ** BOOOOOOOOOOOM **' },
+      ];
+    },
+    // FLY-ME: the bat drops you in a random part of the mine (PICK-ONE over BAT-DROPS).
+    bat_flight: (ctx) => {
+      const [steps, room] = pickOne(ctx, 'bat_drops', ['mine_1', 'mine_2', 'mine_3', 'mine_4', 'ladder_top', 'ladder_bottom', 'squeeky_room', 'mine_entrance']);
+      return ['    Fweep!', '    Fweep!', '    Fweep!', 'The bat grabs you by the scruff of your neck and lifts you away....', '', ...steps, { go: room }];
+    },
+    // SLIDER: things put in the slide end up in the Cellar.
+    slider: (ctx) => {
+      const id = ctx.command?.target;
+      if (!id) return;
+      if (!ctx.world.items[id]?.portable) {
+        const [steps, line] = pickOne(ctx, 'yuks', ['A valiant attempt.', 'You can’t be serious.', 'An interesting idea...', 'What a concept!']);
+        return [...steps, line];
+      }
+      return [`The ${ctx.world.items[id].name} falls into the slide and is gone.`, { move: id, to: 'cellar' }];
     },
     // PICK-ONE over LOUD-RUNS.
     loud_run: (ctx) => {
@@ -3350,6 +3773,8 @@ export const zork1: World = {
     count: { words: ['count'], target: 'required' },
     pray: { words: ['pray'], target: 'none', reply: 'If you pray enough, your prayers may be answered.' },
     squeeze: { words: ['squeeze'], target: 'required', reply: 'How singularly useless.' },
+    // V-SMELL.
+    smell: { words: ['smell', 'sniff'], target: 'required', reply: 'It smells like a {target}.' },
     fill: { words: ['fill'], target: 'required', indirect: ['with'] },
     rub: { words: ['rub', 'touch', 'feel', 'pat', 'pet'], target: 'required', indirect: ['with'], reply: 'Fiddling with that doesn’t seem to work.' },
     tie: { words: ['tie', 'fasten', 'secure'], target: 'required', indirect: ['to'], reply: 'You can’t tie that to that.' },
@@ -3361,7 +3786,10 @@ export const zork1: World = {
     breathe: { words: ['blow in', 'blow into', 'breathe in', 'breathe into'], target: 'required', reply: 'You don’t have enough lung power to inflate it.' },
     launch: { words: ['launch'], target: 'optional', reply: 'You can’t launch that by saying “launch”!' },
     land: { words: ['land'], target: 'none', go: true },
-    wave: { words: ['wave', 'raise', 'brandish'], target: 'required', reply: 'Waving that has no effect.' },
+    wave: { words: ['wave', 'brandish'], target: 'required', reply: 'Waving that has no effect.' },
+    // V-RAISE and V-LOWER (HACK-HACK's line, fixed, as WAVE's is).
+    raise: { words: ['raise', 'lift', 'raise up'], target: 'required', reply: 'Playing in this way with the {target} has no effect.' },
+    lower: { words: ['lower'], target: 'required', reply: 'Playing in this way with the {target} has no effect.' },
     cross: { words: ['cross', 'ford'], target: 'required', reply: 'You can’t cross that!' },
     look_under: { words: ['look under'], target: 'required', reply: 'There is nothing but dust there.' },
     dig: { words: ['dig in', 'dig'], target: 'required', indirect: ['with'], reply: 'Digging with the pair of hands is slow and tedious.' },
@@ -3396,6 +3824,14 @@ export const zork1: World = {
     { if: 'inside:pot_of_gold:trophy_case', points: 10 },
     { if: 'inside:scarab:trophy_case', points: 5 },
     { if: 'inside:emerald:trophy_case', points: 10 },
+    // Stage 5c: the coal mine. LIGHT-SHAFT is 13 for the first lit turn in the Lower Shaft.
+    { flag: 'took_jade', points: 5 },
+    { if: 'inside:jade:trophy_case', points: 5 },
+    { flag: 'took_bracelet', points: 5 },
+    { if: 'inside:bracelet:trophy_case', points: 5 },
+    { flag: 'took_diamond', points: 10 },
+    { if: 'inside:diamond:trophy_case', points: 10 },
+    { flag: 'light_shaft', points: 13 },
     { flag: 'took_bar', points: 10 },
     { if: 'inside:bar:trophy_case', points: 5 },
     { flag: 'took_trident', points: 4 },
@@ -3552,8 +3988,23 @@ export const zork1: World = {
     sceptre_waved: [{ script: 'sceptre_waved' }],
     cross_rainbow: [{ script: 'cross_rainbow' }],
     over_the_cliff: [{ script: 'over_the_cliff' }],
+    // BATS-ROOM's M-ENTER describes the room before FLY-ME; TAKE BAT doesn't.
+    bat_arrival: [{ look: true }, { script: 'bat_flight' }],
+    gunk_crumbles: [{ move: 'gunk', to: null }, 'The slag was rather insubstantial, and crumbles into dust at your touch.'],
+    basket_raise: [{ script: 'basket', arg: 'raise' }],
+    basket_lower: [{ script: 'basket', arg: 'lower' }],
+    machine_open: [{ script: 'machine_lid', arg: 'open' }],
+    machine_close: [{ script: 'machine_lid', arg: 'close' }],
+    machine_on: [{ script: 'machine_switch' }],
+    machine_switch: [{ script: 'machine_switch' }],
+    bat_flight: [{ script: 'bat_flight' }],
+    slider: [{ script: 'slider' }],
+    slide_down: ['You tumble down the slide....', { go: 'cellar' }],
     canyon_jump: [{ if: '!aboard', then: [{ die: 'Nice view, lousy place to jump.' }] }],
     took_scarab: [{ set: 'took_scarab' }],
+    took_jade: [{ set: 'took_jade' }],
+    took_bracelet: [{ set: 'took_bracelet' }],
+    took_diamond: [{ set: 'took_diamond' }],
     dig_sand: [{ script: 'dig_sand' }],
     took_emerald: [{ set: 'took_emerald' }],
     river_current: [{ script: 'river_current' }],

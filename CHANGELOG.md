@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.11.0 (2026-10-06)
+
+Engine parity, stage 5c: the coal mine.
+
+- **`heaviest<=N`:** a condition on the heaviest thing the player holds, counting what's inside it (Zork's narrow passage).
+- **CLIMB UP / CLIMB DOWN** *a thing* (a ladder) keeps its direction and walks that way.
+- **TALK runs through rules,** so a character's `instead.talk` can answer.
+- **A world verb's `reply`** can name its object: `{target}`, `{a target}`.
+- **Infocom style:** ATTACK with no weapon named guesses the one you hold (“(with the sword)”) before anything answers; PUT of something you can see but aren't holding is “You don't have the X.”
+- **Zork I · Native** gains the coal mine: the Slide Room and the slide down to the Cellar, the bat that carries you off unless you have the garlic, the gas room that explodes around a flame, the mine's maze and ladder, the narrow passage only the empty-handed fit through, the basket on its chain, and the machine that turns coal into a diamond. Three treasures (the jade figurine, the sapphire bracelet, the huge diamond) and 13 points for lighting the shaft. SMELL, RAISE and LOWER.
+- **Tests:** seeded sessions for every new puzzle, against the real story file; sessions can start from another opening (`@prefix:garlic`).
+
 ## 1.10.0 (2026-10-06)
 
 Engine parity, stage 5b: the river, the boat, the rainbow and the canyon.

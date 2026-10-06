@@ -75,7 +75,7 @@ export interface WorldVerb {
   target: 'none' | 'optional' | 'required';
   /** Prepositions that introduce a second object ("with", "on"). */
   indirect?: string[];
-  /** Printed when no rule applies. Defaults to “Nothing happens.” */
+  /** Printed when no rule applies. Defaults to “Nothing happens.” `{a target}` is the object with its article, `{target}` its name. */
   reply?: string;
   /** The object must be something you're carrying (Zork's HELD): POUR WATER means the water in your bottle. */
   held?: boolean;

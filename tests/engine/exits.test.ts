@@ -125,3 +125,23 @@ describe('exits', () => {
     expect(execute({ action: 'go', target: 'east' }, { world: w, state: s }).lines).toContain('The floor creaks.');
   });
 });
+
+describe('climbing a thing up or down (5c)', () => {
+  it('CLIMB DOWN LADDER keeps the direction and takes the down exit', () => {
+    expect(fallbackParse('climb down ladder')).toEqual({ action: 'climb', target: 'ladder', direction: 'down' });
+    expect(fallbackParse('climb up the ladder')).toEqual({ action: 'climb', target: 'ladder', direction: 'up' });
+    expect(fallbackParse('climb down')).toEqual({ action: 'climb', target: 'down' });
+    const w = { ...world, items: { ...world.items, ladder: { name: 'ladder', description: '', portable: false, tags: [], scenery: true } } };
+    const s = stateWith(w, { room: 'shed' });
+    s.locations.ladder = 'shed';
+    execute({ action: 'climb', target: 'ladder', direction: 'down' }, { world: w, state: s });
+    expect(s.currentRoom).toBe('cellar');
+  });
+});
+
+describe('final review fixes (5c)', () => {
+  it('CLIMB UP a thing takes the room’s climb exit when there’s no up exit', () => {
+    const s = stateWith(world, { room: 'yard' });
+    expect(execute(fallbackParse('climb up fence')!, { world, state: s }).lines).toEqual(['The fence is too high to climb.']);
+  });
+});

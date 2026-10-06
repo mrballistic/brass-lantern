@@ -64,6 +64,9 @@ const MATCHES = [...TO_DAM, 'north', 'take matchbook', 'south', 'south', 'southw
 /** Bell, candles and book, then down the hole to Hades. */
 const TO_HADES = ['take bell', 'south', 'take candles', 'take book', 'down', 'down'];
 
+/** From the Round Room into the coal mine's Slide Room: Mirror Room 2, rub the mirror, the Cold Passage (5c). */
+export const MINE_PREFIX = ['south', 'south', 'rub mirror', 'north', 'west'];
+
 export const TEMPLE_SESSIONS: Record<string, string[]> = {
   exorcism: [
     'drop sword', ...MATCHES, ...TO_TEMPLE, 'look', 'read prayer', ...TO_HADES, 'look', 'south', 'ring bell', 'take candles',
@@ -167,4 +170,56 @@ export const RAINBOW_SESSIONS: Record<string, string[]> = {
 export const GRUE_SESSIONS: Record<string, string[]> = {
   // Unlit, from the dark Round Room into the dark North-South Passage: Zork's GOTO grue (PROB 80).
   grue: ['drop sword', 'drop rope', 'drop bottle', 'turn off lamp', 'drop lamp', 'north'],
+};
+
+export const MINE_SESSIONS: Record<string, string[]> = {
+  slide: [...MINE_PREFIX, 'look', 'put rope in slide', 'put slide in slide', 'climb down slide', 'look', 'take rope', 'climb up slide'],
+  'upper-rooms': [...MINE_PREFIX, 'north', 'look', 'west', 'look', 'east', 'south'],
+  garlic: ['@prefix:garlic', ...MINE_PREFIX, 'north', 'west', 'north', 'look', 'take bat', 'kill bat', 'talk to bat', 'take jade', 'east', 'look', 'take basket', 'take chain', 'examine chain'],
+};
+
+/** From the Slide Room past the bat (with the garlic) down to the Gas Room. */
+const TO_GAS = ['north', 'west', 'north', 'east', 'north', 'down'];
+/** The lit torch from the Torch Room, then out by the temple, the Tiny Cave and the mirror, into the Slide Room. */
+const TORCH_TO_MINE = ['southeast', 'east', 'tie rope to railing', 'down', 'take torch', 'south', 'south', 'down', 'north', 'rub mirror', 'north', 'west'];
+
+export const GAS_SESSIONS: Record<string, string[]> = {
+  'gas-safe': [
+    '@prefix:garlic', 'drop sword', ...MINE_PREFIX, ...TO_GAS, 'look', 'take bracelet', 'smell gas', 'smell bracelet', 'east', 'look', 'northeast', 'southeast', 'southwest',
+    'down', 'look', 'climb down ladder', 'look', 'south', 'take coal', 'look', 'north', 'up', 'up',
+  ],
+  'gas-arrive': ['@prefix:garlic', 'drop sword', ...TORCH_TO_MINE, ...TO_GAS],
+  'gas-light': ['@prefix:garlic', 'drop sword', ...MATCHES, ...MINE_PREFIX, ...TO_GAS, 'light match'],
+  maze: [
+    '@prefix:garlic', ...MINE_PREFIX, ...TO_GAS, 'east', 'east', 'northeast', 'north', 'southeast', 'south', 'southwest', 'west', 'north', 'east',
+    'south', 'north', 'look',
+  ],
+  'bat-flight': [...MINE_PREFIX, 'north', 'west', 'north', 'look'],
+};
+
+/** The screwdriver from the Maintenance Room and the lit torch, to the Shaft Room past the bat (with the garlic). */
+const TO_SHAFT = [
+  'drop sword', 'drop bottle', ...TO_DAM, 'north', 'north', 'take screwdriver', 'south', 'south', 'south', 'southwest', 'south',
+  ...TORCH_TO_MINE, 'north', 'west', 'north', 'east',
+];
+/** The torch down in the basket, the coal fetched and sent after it with the screwdriver, then on foot to the Timber Room. */
+const TO_TIMBER = [
+  ...TO_SHAFT, 'put torch in basket', 'north', 'down', 'east', 'northeast', 'southeast', 'southwest', 'down', 'down', 'south', 'take coal',
+  'north', 'up', 'up', 'north', 'east', 'south', 'north', 'up', 'south', 'put coal in basket', 'put screwdriver in basket', 'lower basket',
+  'north', 'down', 'east', 'northeast', 'southeast', 'southwest', 'down', 'down', 'west',
+];
+
+export const SHAFT_SESSIONS: Record<string, string[]> = {
+  basket: [
+    '@prefix:garlic', ...TO_SHAFT, 'look', 'take basket', 'put torch in basket', 'turn off lamp', 'lower basket', 'look',
+    'lower basket', 'take basket', 'raise basket', 'look', 'turn on lamp', 'take chain', 'raise chain', 'examine chain',
+  ],
+  // DUMMY's line is PICK-ONE's: the seed finder matches the last reply.
+  'basket-dummy': ['@prefix:garlic', ...TO_SHAFT, 'raise basket'],
+  machine: [
+    '@prefix:garlic', ...TO_TIMBER, 'look', 'west', 'drop lamp', 'west', 'look', 'score', 'take coal', 'take screwdriver', 'take torch',
+    'take basket', 'south', 'look', 'take machine', 'open lid', 'put coal in machine', 'turn switch with screwdriver', 'close lid',
+    'turn switch with torch', 'turn switch with screwdriver', 'open lid', 'look', 'take diamond', 'score', 'put garlic in machine',
+    'close lid', 'turn switch with screwdriver', 'open lid', 'take gunk', 'look', 'north', 'east',
+  ],
 };
