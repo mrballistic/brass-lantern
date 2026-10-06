@@ -1,6 +1,6 @@
 {
   "name": "brass-lantern-intent-server",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "author": "Todd Greco <mrballistic@gmail.com>",
   "private": true,
   "description": "Optional intent server for brass-lantern: one Express route that asks Gemini to map loose player input onto the engine’s verbs.",

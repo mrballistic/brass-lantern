@@ -194,4 +194,23 @@ describe('Terminal.vue', () => {
     expect(text).toContain('TEST HOUSE');
     expect(text).not.toContain('> west');
   });
+
+  it('UNDO keeps the lines still on screen instead of typing them all out again', async () => {
+    const wrapper = mount(Terminal);
+    await vi.advanceTimersByTimeAsync(60_000);
+    const input = wrapper.find<HTMLInputElement>('.terminal-input-bar input');
+    await input.setValue('west');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+    await vi.runAllTimersAsync();
+    await input.setValue('undo');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+    // No time for typing: the opening is still there in full, and the west move is gone.
+    const text = wrapper.find('.terminal-output').text();
+    expect(text).toContain('A small bedroom.');
+    expect(text).not.toContain('> west');
+    await vi.runAllTimersAsync();
+    expect(wrapper.find('.terminal-output').text()).toContain('[Previous turn undone.]');
+  });
 });
