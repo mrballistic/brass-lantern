@@ -40,11 +40,11 @@ Today the `light` pattern swallows “candles with match” as the target, and `
 capture?: { if?: string; script: string }   // on a Room, and on the World
 ```
 
-Before a line is split or parsed, the engine asks the player's room's capture, then the world's, whose `if` holds. The script gets the raw line as `ctx.line` and returns steps, or nothing to decline. A capture's result may set `free: true` (no move, no daemons), with the step `{ free: true }`.
+After a line is split into commands and before each piece is parsed, the engine asks the player's room's capture, then the world's, whose `if` holds. The script gets the raw line as `ctx.line` and returns steps, or nothing to decline. A capture's result may set `free: true` (no move, no daemons), with the step `{ free: true }`.
 
 - One engine entry point, `captureLine(world, state, line)`, returns a result or `null`. The store, `tests/helpers/play.ts` and the diff test call it first; on `null` the normal regex → engine → LLM flow runs.
 - It runs ahead of the LLM, so captured input is never sent to it, as Zork's raw loop never parsed it.
-- A capture that takes the line ends the line: the rest of a compound line is dropped (Zork's Loud Room drops it).
+- A capture that takes a piece ends the line: the rest of a compound line is dropped (Zork's Loud Room drops it). Capture runs per piece so ghost mode can refuse `take lamp` in `north. take lamp` while letting `north` through; scripts get `ctx.parse(text)` to read a piece with the world's verbs.
 - UNDO, SAVE, RESTORE, RESTART and the other store commands are checked before capture, so a capture can't trap the player.
 
 ### Quiet moves
@@ -59,13 +59,22 @@ Before a line is split or parsed, the engine asks the player's room's capture, t
 
 `{ if: 'condition', then: [...], else: [...] }`: the same shape as `chance`, decided by a condition string through `conditions.ts`. `else` is optional.
 
+### Death variants and always-lit (for ghost mode)
+
+`death.then` runs after the resurrection text, so it can't change it. The death block gains:
+- `message` entries may be `{ if, text }` (Zork's “Bad luck, huh?” when your luck is gone);
+- `variants: [{ if, resurrection?, respawn?, then? }]`: the first that holds replaces those fields (a death after visiting the Altar sends you to Hades with Zork's text);
+- `instead: [{ if, lines }]`: checked first; prints its lines and ends the game (dying while already dead).
+
+`darkness.litIf` (a condition): every room is lit while it holds (Zork's ALWAYS-LIT for spirits).
+
 ### Seeding the original (tests only)
 
 `tests/helpers/zseed.ts` sets `xorshift_seed` on a `ZMachineSession`'s VM before the first input. Nothing ships in the app.
 
 ### Backlog items picked up
 
-- **The thief taking the last light** prints his line and then the engine's “It is now pitch black.” The torch is the first light he can steal, so 5a fixes it: a step that already reported the darkness suppresses the engine's line.
+- **The thief taking the last light** prints his line and then the engine's “It is now pitch black.” The torch is the first light he can steal, so 5a fixes it: a step that already reported the darkness suppresses the engine's line (`{ noDarkLine: true }`).
 - **The intent context** sends `room.npcs` as authored; it sends `npcsSeen` instead, so hidden and departed characters don't reach the LLM.
 
 ## 2. The Zork content
@@ -105,7 +114,7 @@ All text from the ZIL source, checked against the story file by the sessions in 
 - **Rooms:** the Entrance to Hades, the Land of the Dead (the crystal skull).
 - **The exorcism**, by Zork's timers: RING BELL makes it a hot bell on the floor and drops held candles, unlit; lighting the candles with a match within its window, then READ BOOK within the next, drives the spirits off and opens the way. The wrong orders, the tension breaking, the hot bell (it burns what touches it; POUR WATER cools it; otherwise it cools in 20 turns) and the deaths (burning the book) are Zork's.
 - **Candles** burn 40, 20, 10, then 5 turns while lit, with Zork's lines; burnt out they can't be relit. **Matches** give five lights of two turns each; COUNT says how many are left.
-- **Ghost mode:** a death after the Altar has been visited sends you to Hades as a spirit (a `death.then` script). A world capture refuses most verbs in Zork's words, everything is lit, the Dome pulls you down, and PRAY at the Altar brings you back. When your luck is gone Zork adds “Bad luck, huh?” after the cause.
+- **Ghost mode:** a death after the Altar has been visited sends you to Hades as a spirit (a death variant). A world capture refuses most verbs in Zork's words, everything is lit, the Dome pulls you down, and PRAY at the Altar brings you back. When your luck is gone Zork adds “Bad luck, huh?” after the cause.
 
 ### Scoring and the thief
 
