@@ -123,9 +123,20 @@ async function original(commands: string[]): Promise<string[][]> {
   throw new Error('the original never got through the sync points');
 }
 
-/** The game store's turn, minus the LLM: questions, AGAIN and OOPS included. */
+/** The native replies, from a fixed seed; a run the native thief turns up in starts over with the next. */
 function native(commands: string[]): string[][] {
+  for (let seed = 1; seed <= 400; seed++) {
+    const replies = nativeOnce(commands, seed);
+    if (replies && !replies.some((reply) => THIEF.test(reply.join(' ')))) return replies;
+  }
+  throw new Error('the native thief turned up in every run');
+}
+
+/** The game store's turn, minus the LLM: questions, AGAIN and OOPS included. */
+/** Null when the thief took anything along the way (he can do it unseen). */
+function nativeOnce(commands: string[], seed: number): string[][] | null {
   let state = initialState(zork1);
+  state.rng = seed;
   openingLines(zork1, state);
   let conv = newConversation();
   const turn = (c: string, st: GameState, cv: ReturnType<typeof newConversation>): string[] => {
@@ -144,8 +155,10 @@ function native(commands: string[]): string[][] {
   };
   const replies: string[][] = [];
   for (const c of commands) {
+    const pilfered = () => Object.entries(state.locations).some(([id, place]) => place === 'thief' && !['stiletto', 'large_bag'].includes(id));
     if (!(c in SYNC)) {
       replies.push(turn(c, state, conv));
+      if (pilfered()) return null;
       continue;
     }
     // Try seeds until this side gets through, then carry on from there.

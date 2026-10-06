@@ -1,3 +1,4 @@
+import type { ScriptContext } from '@/engine/scripts';
 import type { EventStep, World } from '@/types/world';
 
 /**
@@ -27,6 +28,187 @@ const CLEARING = 'You are in a clearing, with a forest surrounding you on all si
 const outside = ['white_house', 'forest'];
 const inForest = ['tree', 'forest', 'white_house'];
 
+// The thief (1actions.zil: I-THIEF, THIEF-VS-ADVENTURER, ROB, STEAL-JUNK,
+// ROB-MAZE, DROP-JUNK, DEPOSIT-BOOTY, HACK-TREASURES, RECOVER-STILETTO).
+// A script returns its steps all at once, so the thief's turn works on a
+// local view of where things are, and emits the moves as it goes.
+
+const LAIR = 'treasure_room';
+const KEEPS = ['stiletto', 'large_bag'];
+
+/** Zork's <PROB n>: n > RANDOM 100. */
+const prob = (ctx: ScriptContext, n: number) => n > ctx.roll(100);
+
+function thiefTurn(ctx: ScriptContext): EventStep[] {
+  const steps: EventStep[] = [];
+  const moved = new Map<string, string | null>();
+  const where = (id: string) => (moved.has(id) ? moved.get(id) : ctx.holder(id));
+  const contents = (place: string) => [
+    ...ctx.children(place).filter((id) => !moved.has(id)),
+    ...[...moved].filter(([, to]) => to === place).map(([id]) => id),
+  ];
+  const move = (id: string, to: string | null, hide?: boolean) => {
+    moved.set(id, to);
+    steps.push({ move: id, to });
+    if (hide) steps.push({ hide: id });
+  };
+  const here = ctx.room();
+  const lit = ctx.lit();
+  let rm = ctx.rooms().find((room) => ctx.npcIn('thief', room)) ?? LAIR;
+  let seen = !ctx.hidden('thief');
+  let announced = Boolean(ctx.state.flags.thief_here);
+  const hideThief = () => {
+    steps.push({ npcState: 'thief', hidden: true });
+    seen = false;
+  };
+  const recoverStiletto = () => {
+    if (where('stiletto') === rm) move('stiletto', 'thief');
+  };
+  /** Treasures in `from` go to the thief (each at `chance`%, or all). */
+  const rob = (from: string, chance?: number) => {
+    let robbed = false;
+    for (const id of contents(from)) {
+      if (ctx.treasure(id) > 0 && (chance === undefined || prob(ctx, chance))) {
+        move(id, 'thief', true);
+        robbed = true;
+      }
+    }
+    return robbed;
+  };
+  const stoleLight = () => steps.push({ script: 'thief_stole_light', arg: lit ? 'lit' : 'dark' });
+  /** THIEF-VS-ADVENTURER. True: he stays with you this turn. */
+  const versus = (): boolean => {
+    if (here === LAIR) return false;
+    if (!announced) {
+      if (!seen && prob(ctx, 30)) {
+        if (where('stiletto') === 'thief') {
+          steps.push({ npcState: 'thief', hidden: false }, { set: 'thief_here' },
+            'Someone carrying a large bag is casually leaning against one of the walls here. He does not speak, but it is clear from his aspect that the bag will be taken only over his dead body.');
+          return true;
+        }
+        return false;
+      }
+      const fighting = Boolean(ctx.npc('thief')?.fighting);
+      if (seen && fighting && !winning(ctx)) {
+        steps.push('Your opponent, determining discretion to be the better part of valor, decides to terminate this little contretemps. With a rueful nod of his head, he steps backward into the gloom and disappears.',
+          { npcState: 'thief', fighting: false });
+        hideThief();
+        recoverStiletto();
+        return true;
+      }
+      if (seen && fighting && prob(ctx, 90)) return false;
+      if (seen && prob(ctx, 30)) {
+        steps.push('The holder of the large bag just left, looking disgusted. Fortunately, he took nothing.');
+        hideThief();
+        recoverStiletto();
+        return true;
+      }
+      if (prob(ctx, 70)) return false;
+      const robbed = rob(here, 100) ? 'room' : rob('player') ? 'player' : null;
+      steps.push({ set: 'thief_here' });
+      announced = true;
+      if (robbed && !seen) {
+        steps.push(`A seedy-looking individual with a large bag just wandered through the room. On the way through, he quietly abstracted some valuables from ${robbed === 'room' ? 'the room' : 'your possession'}, mumbling something about “Doing unto others before...”`);
+        stoleLight();
+        return false;
+      }
+      if (seen) {
+        recoverStiletto();
+        if (robbed) {
+          steps.push(`The thief just left, still carrying his large bag. You may not have noticed that he ${robbed === 'player' ? 'robbed you blind first.' : 'appropriated the valuables in the room.'}`);
+          stoleLight();
+        } else steps.push('The thief, finding nothing of value, left disgusted.');
+        hideThief();
+        return true;
+      }
+      steps.push('A “lean and hungry” gentleman just wandered through, carrying a large bag. Finding nothing of value, he left disgruntled.');
+      return true;
+    }
+    if (seen && prob(ctx, 30)) {
+      const robbed = rob(here, 100) ? 'room' : rob('player') ? 'player' : null;
+      if (robbed) {
+        steps.push(`The thief just left, still carrying his large bag. You may not have noticed that he ${robbed === 'player' ? 'robbed you blind first.' : 'appropriated the valuables in the room.'}`);
+        stoleLight();
+      } else steps.push('The thief, finding nothing of value, left disgusted.');
+      hideThief();
+      recoverStiletto();
+    }
+    return false;
+  };
+
+  for (let pass = 0; pass < 2; pass++) {
+    if (rm === LAIR && rm !== here) {
+      if (seen) {
+        recoverStiletto();
+        hideThief();
+        for (const id of contents(LAIR)) steps.push({ reveal: id });
+      }
+      // DEPOSIT-BOOTY: his treasures go into the lair, silently. The egg comes back open.
+      for (const id of contents('thief')) {
+        if (KEEPS.includes(id) || ctx.treasure(id) <= 0) continue;
+        move(id, LAIR);
+        if (id === 'egg') steps.push({ open: 'egg' }, { set: 'egg_solved' });
+      }
+    } else if (rm === here && ctx.world.rooms[rm]?.dark && !ctx.npcIn('troll', here)) {
+      if (versus()) return steps;
+    } else {
+      if (seen) hideThief();
+      if (ctx.visited(rm)) {
+        rob(rm, 75);
+        if (ctx.tags(rm).includes('maze') && ctx.tags(here).includes('maze')) {
+          for (const id of contents(rm)) {
+            if (!ctx.world.items[id]?.portable || !prob(ctx, 40)) continue;
+            steps.push(`You hear, off in the distance, someone saying “My, I wonder what this fine ${ctx.world.items[id].name} is doing here.”`);
+            if (prob(ctx, 60)) move(id, 'thief', true);
+            break;
+          }
+        } else {
+          for (const id of contents(rm)) {
+            const item = ctx.world.items[id];
+            if (!item?.portable || item.scenery || ctx.treasure(id) > 0) continue;
+            if (id !== 'stiletto' && !prob(ctx, 10)) continue;
+            move(id, 'thief', true);
+            if (rm === here) steps.push(`You suddenly notice that the ${item.name} vanished.`);
+            break;
+          }
+        }
+      }
+    }
+    if (pass === 1 || seen) break;
+    // Move on: the next room in Zork's order that isn't sacred.
+    recoverStiletto();
+    const rooms = ctx.rooms();
+    let next = rooms.indexOf(rm);
+    do next = (next + 1) % rooms.length; while (ctx.tags(rooms[next]).includes('sacred'));
+    rm = rooms[next];
+    steps.push({ moveNpc: 'thief', to: rm }, { npcState: 'thief', fighting: false, hidden: true }, { clear: 'thief_here' });
+    seen = false;
+    announced = false;
+  }
+  // DROP-JUNK: worthless things fall out of his bag.
+  if (rm !== LAIR) {
+    let said = false;
+    for (const id of contents('thief')) {
+      if (KEEPS.includes(id) || ctx.treasure(id) > 0 || !prob(ctx, 30)) continue;
+      move(id, rm);
+      steps.push({ reveal: id });
+      if (rm === here && !said) {
+        steps.push('The robber, rummaging through his bag, dropped a few items he found valueless.');
+        said = true;
+      }
+    }
+  }
+  return steps;
+}
+
+/** Zork's WINNING?: is the thief getting the better of you? */
+function winning(ctx: ScriptContext): boolean {
+  const vs = ctx.npc('thief')?.strength ?? 5;
+  const ps = vs - ctx.playerStrength();
+  const chance = ps > 3 ? 90 : ps > 0 ? 75 : ps === 0 ? 50 : vs > 1 ? 25 : 10;
+  return prob(ctx, chance);
+}
+
 export const zork1: World = {
   style: 'infocom',
   title: 'ZORK I: The Great Underground Empire',
@@ -50,7 +232,7 @@ export const zork1: World = {
         southeast: { denial: 'That part of the Great Underground Empire isn’t built yet.' },
       },
       items: [],
-      npcs: [],
+      npcs: ['thief'],
       onEnter: [],
     },
     ew_passage: {
@@ -75,8 +257,11 @@ export const zork1: World = {
       exits: { down: 'cyclops_room' },
       items: ['chalice'],
       npcs: [],
-      // Zork's VALUE 25.
-      onEnter: [{ if: '!flag:treasure_room_visited', then: 'treasure_room_points' }],
+      // Zork's VALUE 25; and TREASURE-ROOM-FCN: the thief rushes to his lair's defence.
+      onEnter: [
+        { if: '!flag:treasure_room_visited', then: 'treasure_room_points' },
+        { if: 'alive:thief & awake:thief', then: 'thief_lair', repeat: true },
+      ],
     },
     strange_passage: {
       name: 'Strange Passage',
@@ -922,6 +1107,24 @@ export const zork1: World = {
       tags: [],
       container: { weight: 5 },
       after: { take: [{ if: '!flag:took_chalice', then: 'took_chalice' }] },
+      // CHALICE-FCN: not while its owner is fighting for it.
+      instead: { take: [{ if: 'inside:chalice:treasure_room & seen:thief & fighting:thief', say: ['You’d be stabbed in the back first.'] }] },
+    },
+    stiletto: {
+      name: 'stiletto',
+      aliases: ['vicious stiletto'],
+      description: 'There’s nothing special about the stiletto.',
+      portable: true,
+      size: 10,
+      weapon: true,
+      tags: [],
+    },
+    large_bag: {
+      name: 'large bag',
+      aliases: ['bag', 'thiefs bag'],
+      description: 'There’s nothing special about the large bag.',
+      portable: false,
+      tags: [],
     },
     rug: {
       name: 'carpet',
@@ -1069,6 +1272,74 @@ export const zork1: World = {
   },
 
   npcs: {
+    thief: {
+      name: 'thief',
+      aliases: ['robber', 'man', 'person', 'suspicious man', 'seedy man', 'shady man'],
+      description: 'There is a suspicious-looking individual, holding a bag, leaning against one wall. He is armed with a vicious-looking stiletto.',
+      descriptions: [{ if: '!awake:thief', text: 'There is a suspicious-looking individual lying unconscious on the ground.' }],
+      hidden: true,
+      holds: ['stiletto', 'large_bag'],
+      refuseOrder: 'The thief is a strong, silent type.',
+      combat: {
+        strength: 5,
+        weapon: 'stiletto',
+        fears: { item: 'knife', by: 1 },
+        firstStrike: 20,
+        onBusy: 'thief_busy',
+        onDeath: 'thief_dies',
+        onUnconscious: 'thief_out',
+        onWake: 'thief_wakes',
+        messages: {
+          missed: [
+            'The thief stabs nonchalantly with his stiletto and misses.',
+            'You dodge as the thief comes in low.',
+            'You parry a lightning thrust, and the thief salutes you with a grim nod.',
+            'The thief tries to sneak past your guard, but you twist away.',
+          ],
+          unconscious: ['Shifting in the midst of a thrust, the thief knocks you unconscious with the haft of his stiletto.', 'The thief knocks you out.'],
+          killed: [
+            'Finishing you off, the thief inserts his blade into your heart.',
+            'The thief comes in from the side, feints, and inserts the blade into your ribs.',
+            'The thief bows formally, raises his stiletto, and with a wry grin, ends the battle and your life.',
+          ],
+          lightWound: [
+            'A quick thrust pinks your left arm, and blood starts to trickle down.',
+            'The thief draws blood, raking his stiletto across your arm.',
+            'The stiletto flashes faster than you can follow, and blood wells from your leg.',
+            'The thief slowly approaches, strikes like a snake, and leaves you wounded.',
+          ],
+          seriousWound: [
+            'The thief strikes like a snake! The resulting wound is serious.',
+            'The thief stabs a deep cut in your upper arm.',
+            'The stiletto touches your forehead, and the blood obscures your vision.',
+            'The thief strikes at your wrist, and suddenly your grip is slippery with blood.',
+          ],
+          stagger: [
+            'The butt of his stiletto cracks you on the skull, and you stagger back.',
+            'The thief rams the haft of his blade into your stomach, leaving you out of breath.',
+            'The thief attacks, and you fall back desperately.',
+          ],
+          loseWeapon: [
+            'A long, theatrical slash. You catch it on your {weapon}, but the thief twists his knife, and the {weapon} goes flying.',
+            'The thief neatly flips your {weapon} out of your hands, and it drops to the floor.',
+            'You parry a low thrust, and your {weapon} slips out of your hand.',
+          ],
+        },
+      },
+      instead: {
+        throw: [{ if: '!fighting:thief', with: 'knife', then: 'thief_knife' }, { then: 'thief_gift' }],
+        give: [{ then: 'thief_gift' }],
+        take: [{ say: ['Once you got him, what would you do with him?'] }],
+        examine: [
+          {
+            say: [
+              'The thief is a slippery character with beady eyes that flit back and forth. He carries, along with an unmistakable arrogance, a large bag over his shoulder and a vicious stiletto, whose blade is aimed menacingly in your direction. I’d watch out if I were you.',
+            ],
+          },
+        ],
+        listen: [{ say: ['The thief says nothing, as you have not been formally introduced.'] }],
+      },
+    },
     cyclops: {
       name: 'cyclops',
       description: 'A hungry cyclops is standing at the foot of the stairs.',
@@ -1355,6 +1626,71 @@ export const zork1: World = {
       ];
     },
     chimney_climbed: (ctx) => (ctx.state.itemState.trap_door?.open ? [] : [{ clear: 'trap_door_barred' }]),
+    thief_turn: thiefTurn,
+    thief_stole_light: (ctx) => (ctx.arg === 'lit' && !ctx.lit() ? ['The thief seems to have left you in the dark.'] : []),
+    // TREASURE-ROOM-FCN: he rushes in, fights, and his treasures vanish.
+    thief_lair: (ctx) => [
+      ...(ctx.npcIn('thief', 'treasure_room')
+        ? []
+        : ['You hear a scream of anguish as you violate the robber’s hideaway. Using passages unknown to you, he rushes to its defense.', { moveNpc: 'thief', to: 'treasure_room' } as EventStep]),
+      { npcState: 'thief', fighting: true, hidden: false },
+      'The thief gestures mysteriously, and the treasures in the room suddenly vanish.',
+      ...ctx.children('treasure_room').filter((id) => id !== 'chalice').map((id): EventStep => ({ hide: id })),
+    ],
+    // F-BUSY?: he picks his stiletto back up.
+    thief_busy: (ctx) => {
+      const room = ctx.rooms().find((r) => ctx.npcIn('thief', r));
+      if (!room || ctx.holder('stiletto') !== room) return [];
+      return [{ move: 'stiletto', to: 'thief' }, ...(room === ctx.room() ? ['The robber, somewhat surprised at this turn of events, nimbly retrieves his stiletto.'] : [])];
+    },
+    // F-CONSCIOUS.
+    thief_wakes: (ctx) => {
+      const room = ctx.rooms().find((r) => ctx.npcIn('thief', r));
+      return [
+        ...(room === ctx.room()
+          ? [{ npcState: 'thief', fighting: true } as EventStep, 'The robber revives, briefly feigning continued unconsciousness, and, when he sees his moment, scrambles away from you.']
+          : []),
+        ...(room && ctx.holder('stiletto') === room ? [{ move: 'stiletto', to: 'thief' } as EventStep] : []),
+      ];
+    },
+    // F-DEAD: his stiletto and booty drop; in his lair, his magic fails.
+    thief_dies: (ctx) => {
+      const here = ctx.room();
+      const steps: EventStep[] = [{ move: 'stiletto', to: 'here' }, { reveal: 'stiletto' }];
+      const booty = ctx.children('thief').filter((id) => !['stiletto', 'large_bag'].includes(id) && ctx.treasure(id) > 0);
+      for (const id of booty) steps.push({ move: id, to: 'here' }, { reveal: id });
+      if (here === 'treasure_room') {
+        const hidden = ctx.children('treasure_room').filter((id) => id !== 'chalice' && ctx.state.itemState[id]?.hidden);
+        if (hidden.length > 0) steps.push('As the thief dies, the power of his magic decreases, and his treasures reappear:');
+        for (const id of hidden) steps.push({ reveal: id }, `  A ${ctx.world.items[id].name}`);
+        steps.push('The chalice is now safe to take.');
+      } else if (booty.length > 0) steps.push('His booty remains.');
+      return steps;
+    },
+    // Throwing the knife at him.
+    thief_knife: (ctx) => {
+      const steps: EventStep[] = [{ move: 'knife', to: 'here' }];
+      if (prob(ctx, 10)) {
+        const loot = ctx.children('thief').filter((id) => !['stiletto', 'large_bag'].includes(id));
+        for (const id of loot) steps.push({ move: id, to: 'here' }, { reveal: id });
+        steps.push(`You evidently frightened the robber, though you didn’t hit him. He flees${loot.length ? ', but the contents of his bag fall on the floor.' : '.'}`, { npcState: 'thief', hidden: true });
+      } else {
+        steps.push('You missed. The thief makes no attempt to take the knife, though it would be a fine addition to the collection in his bag. He does seem angered by your attempt.', { npcState: 'thief', fighting: true });
+      }
+      return steps;
+    },
+    // A gift: a treasure stops him in his tracks; anything else goes in the bag.
+    thief_gift: (ctx) => {
+      const item = ctx.command?.target;
+      if (!item || item === 'thief') return [];
+      const strength = ctx.npc('thief')?.strength ?? 5;
+      const steps: EventStep[] = strength < 0 ? [{ npcState: 'thief', strength: -strength }, 'Your proposed victim suddenly recovers consciousness.'] : [];
+      steps.push({ move: item, to: 'thief' }, { hide: item });
+      const name = ctx.world.items[item]?.name ?? item;
+      if (ctx.treasure(item) > 0) steps.push({ npcState: 'thief', fighting: false }, `The thief is taken aback by your unexpected generosity, but accepts the ${name} and stops to admire its beauty.`);
+      else steps.push(`The thief places the ${name} in his bag and thanks you politely.`);
+      return steps;
+    },
     // AWAKEN: a knocked-out troll comes round when you meddle with him.
     troll_wake_if_out: (ctx) => {
       const strength = ctx.npc('troll')?.strength ?? 0;
@@ -1362,12 +1698,9 @@ export const zork1: World = {
     },
     // I-SWORD: the sword glows near living monsters, brightly beside one.
     sword_glow: (ctx) => {
+      // INFESTED?: a living, visible character in the room.
       const infested = (room: string) =>
-        Object.keys(ctx.world.npcs).some((id) => {
-          const s = ctx.npc(id);
-          const where = s?.room !== undefined ? s.room : Object.entries(ctx.world.rooms).find(([, r]) => r.npcs.includes(id))?.[0];
-          return where === room && s?.strength !== 0;
-        });
+        Object.keys(ctx.world.npcs).some((id) => ctx.npcIn(id, room) && ctx.npc(id)?.strength !== 0 && !ctx.hidden(id));
       const here = ctx.room();
       const next = Object.values(ctx.world.rooms[here]?.exits ?? {}).some((e) => {
         const to = typeof e === 'string' ? e : e.to;
@@ -1434,6 +1767,8 @@ export const zork1: World = {
     { if: 'on:lamp & var:lamp_fuel=15 & here:lamp', then: ['The lamp is definitely dimmer now.'] },
     { if: 'on:lamp & var:lamp_fuel=0 & here:lamp', then: ['The lamp is nearly out.'] },
     { if: 'on:lamp & var:lamp_fuel<0', then: 'lamp_dies' },
+    // I-THIEF: GO queues it after the sword and before the lantern, so it runs between them.
+    { if: 'alive:thief & awake:thief', then: [{ script: 'thief_turn' }] },
     // I-SWORD, which runs after the lantern and before the fight.
     { if: 'has:sword', then: [{ script: 'sword_glow' }] },
   ],
@@ -1481,6 +1816,13 @@ export const zork1: World = {
     trap_door_slams: [{ close: 'trap_door' }, { set: 'trap_door_barred' }, 'The trap door crashes shut, and you hear someone barring it.'],
     chimney_climbed: [{ script: 'chimney_climbed' }],
     death_resets: [{ clear: 'trap_door_barred' }],
+    thief_lair: [{ script: 'thief_lair' }],
+    thief_busy: [{ script: 'thief_busy' }],
+    thief_dies: [{ script: 'thief_dies' }],
+    thief_out: [{ move: 'stiletto', to: 'here' }, { clear: 'thief_here' }],
+    thief_wakes: [{ script: 'thief_wakes' }],
+    thief_knife: [{ script: 'thief_knife' }],
+    thief_gift: [{ script: 'thief_gift' }],
     cyclops_wakes_up: [{ set: 'cyclops_daemon' }],
     cyclops_gift: [{ script: 'cyclops_gift' }],
     cyclops_shrugs: [{ script: 'cyclops_shrugs' }],

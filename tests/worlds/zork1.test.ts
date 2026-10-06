@@ -377,7 +377,8 @@ describe('Zork I, natively: the cyclops', () => {
     expect(run('give lunch to cyclops')[0]).toMatch(/^The cyclops says “Mmm Mmm. I love hot peppers!/);
     expect(run('give water to cyclops')[0]).toMatch(/^The cyclops takes the bottle, checks that it’s open, and drinks the water./);
     expect(run('look').join(' ')).toContain('The cyclops is sleeping blissfully at the foot of the stairs.');
-    expect(run('up')[0]).toBe('📍 Treasure Room');
+    // Up the stairs: the thief rushes to defend his lair.
+    expect(run('up')).toContain('📍 Treasure Room');
   });
 
   it('refuses garlic and anything else', () => {
