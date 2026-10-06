@@ -231,3 +231,15 @@ export const END_SESSIONS: Record<string, string[]> = {
     'climb mountains', 'west',
   ],
 };
+
+/** From the Round Room through the maze to the Cyclops Room. */
+const TO_CYCLOPS = ['west', 'west', 'west', 'west', 'west', 'up', 'southwest', 'east', 'south', 'southeast'];
+
+// The cyclops's rarer lines, against the story file (4b checked them only against the ZIL).
+export const CYCLOPS_SESSIONS: Record<string, string[]> = {
+  'cyclops-feed': ['@prefix:lunch', ...TO_CYCLOPS, 'give lunch to cyclops', 'look', 'give water to cyclops', 'look', 'examine cyclops'],
+  // The garlic refused; then, fed but never given the drink, his temper runs out.
+  'cyclops-garlic': ['@prefix:garlic', ...TO_CYCLOPS, 'give garlic to cyclops', 'look'],
+  'cyclops-wrath': ['@prefix:lunch', ...TO_CYCLOPS, 'give lunch to cyclops', ...waits(10)],
+};
+

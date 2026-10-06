@@ -2,15 +2,19 @@
 
 Known gaps the reviews found and deferred. Each stage's spec picks up the ones it touches; strike an item through (or delete it) when it ships. Newest first.
 
+## Open after the 1.12.5 clear-out
+
+- **ROB-MAZE never fires in Release 119.** Its text (“You hear, off in the distance, someone saying …”) is in zork1.z3 (around byte 56032) and every condition in the source holds when the thief stands in a maze room with things while you wait in another, yet the original never says it (38 runs of 120–400 turns, lamp on or off); natively it does, so `tests/worlds/zork1-thief-maze.test.ts` lists it as a known difference. Finding the real condition means decompiling that routine from the story file.
+
 ## From the 1.12.5 fast follow
 
-- **A refused move** should drop the rest of a compound line (Zork's M-FATAL clears P-CONT); the room's end routine is skipped, but “north. take lamp” after a refused north still takes the lamp.
-- **KICK** isn't a native Zork verb, so the far basket (and everything else) can't answer it.
-- **The dark-room walk** on death advances before testing; Zork re-tests the room the last treasure landed in, so two can share it.
-- **READ's automatic take** runs after-take rules without the once-only guard `onTake` gets through withRules.
-- **V-CLIMB-UP's other replies:** “The stairs don't lead downward.” (plural), “There are no climbable trees here.”, “Climbing the walls is to no avail.”
-- **WAIT's fired-timer mark** survives a throw inside afterTurn (the next WAIT would stop after one tick).
-- **The changed check** (stateKey) leaves out firedEvents, placed and verbosity: a capture that only fires a once-event isn't saved.
+- ~~**A refused move**~~ (1.12.5) should drop the rest of a compound line (Zork's M-FATAL clears P-CONT); the room's end routine is skipped, but “north. take lamp” after a refused north still takes the lamp.
+- ~~**KICK**~~ (1.12.5) isn't a native Zork verb, so the far basket (and everything else) can't answer it.
+- ~~**The dark-room walk**~~ (1.12.5) on death advances before testing; Zork re-tests the room the last treasure landed in, so two can share it.
+- ~~**READ's automatic take**~~ (1.12.5) runs after-take rules without the once-only guard `onTake` gets through withRules.
+- ~~**V-CLIMB-UP's other replies:**~~ (1.12.5) “The stairs don't lead downward.” (plural), “There are no climbable trees here.”, “Climbing the walls is to no avail.”
+- ~~**WAIT's fired-timer mark**~~ (1.12.5) survives a throw inside afterTurn (the next WAIT would stop after one tick).
+- ~~**The changed check**~~ (1.12.5) (stateKey) leaves out firedEvents, placed and verbosity: a capture that only fires a once-event isn't saved.
 - Notes on items closed above: ENTER of an ambiguous non-vehicle keeps its question (Zork's parser asks too); the 350 whisper already lands where Zork's does for every reachable win; a failed conditional exit does cost a turn in Zork (only M-END and the rest of the line are skipped); the switch accepts a screwdriver on the floor in Zork too.
 
 ## From stage 5d (1.12.0)
@@ -45,11 +49,11 @@ Known gaps the reviews found and deferred. Each stage's spec picks up the ones i
 - ~~**A capture that throws**~~ (1.12.5) leaves the seed advanced (no try/finally around the script).
 - ~~**BURN's scopes:**~~ (1.12.5) the tool comes from things in reach (Zork's syntax requires holding it) while withRules resolves it from things in sight; BURN TROLL WITH TORCH misses instead of “You can’t burn a troll.”
 - ~~**BURN's refusal**~~ (1.12.5) uses Zork's fixed “a” (“With a alarm clock??!?”); brass worlds would want the right article.
-- **Not ported in 5a:** “The rest of your commands have been lost in the noise.” (entering the Loud Room mid-line); a spirit passing the troll (TROLL-FLAG); EXORCISE; V-LEAP outside the Dome; Zork's random V-SKIP and HACK-HACK replies (native uses one fixed line each).
+- ~~**Not ported in 5a:**~~ (1.12.5) “The rest of your commands have been lost in the noise.” (entering the Loud Room mid-line); a spirit passing the troll (TROLL-FLAG); EXORCISE; V-LEAP outside the Dome; Zork's random V-SKIP and HACK-HACK replies (native uses one fixed line each).
 
 ## From stage 4b (1.8.0)
 
-- **Differential coverage of the thief's and cyclops's rarer lines:** the lair (scream, vanish), his death and treasures reappearing, the maze “off in the distance” line, the junk lines, and the cyclops's food, sleep and eats-you lines are checked against ZIL-derived unit tests, not `zork1.z3`. Stage 5's full map should let a scripted original session reach them.
+- ~~**Differential coverage of the thief's and cyclops's rarer lines:**~~ (1.12.5) the lair (scream, vanish), his death and treasures reappearing, the maze “off in the distance” line, the junk lines, and the cyclops's food, sleep and eats-you lines are checked against ZIL-derived unit tests, not `zork1.z3`. Stage 5's full map should let a scripted original session reach them.
 - ~~**The thief taking the last light**~~ (1.9.0) prints his line and then the engine's generic “It is now pitch black.”; Zork prints only his. No trigger until the torch (a treasure) arrives.
 - ~~**A `continue` rule**~~ (1.12.5) applies (and may run `then`) before the verb's default; if the default then misses or asks a question, state changed under `understood: false`. No current rule hits it.
 - ~~**The intent context**~~ (1.9.0) sends `room.npcs` as authored, so hidden or departed characters reach the LLM. Use `npcsSeen`.
@@ -62,10 +66,10 @@ Known gaps the reviews found and deferred. Each stage's spec picks up the ones i
 - ~~**DIAGNOSE in a world without combat**~~ (1.8.0) says “You can be killed by a serious wound.” after “You are in perfect health.” A world with no `combat` should get just the health line. (Seen live in Office Space.)
 - ~~**A script that throws**~~ (1.12.5) leaves its turn half-applied in production (no guard or snapshot around the turn). Tests surface the error; players would see a half-finished turn.
 - ~~**The `sword_glow` script**~~ (1.8.0) in `src/worlds/zork1.ts` finds characters its own way (the first room listing them) instead of `isNpcIn`. Scripts could get `ctx.npcIn(id, room)`.
-- **Fidelity gaps against zork1.z3:**
-  - worn things don't count 1 toward weight (there's no worn state yet), and CCOUNT's worn exclusion for the fumble count isn't ported;
+- ~~**Fidelity gaps against zork1.z3:**~~ (all closed by 1.12.5)
+  - ~~worn things don't count 1 toward weight~~ (1.12.5) (there's no worn state yet), and CCOUNT's worn exclusion for the fumble count isn't ported;
   - ~~the player's weapon (FIND-WEAPON) is the first in `world.items` order, not the most recently taken~~ (1.8.0);
-  - the troll's first strike (F-FIRST?) doesn't cancel the rest of a compound command (P-CONT);
+  - ~~the troll's first strike (F-FIRST?) doesn't cancel the rest of a compound command (P-CONT)~~ (1.12.5);
   - ~~waking the troll while you're away resets his wake counter; Zork's AWAKEN doesn't~~ (1.8.0);
   - ~~the trap door doesn't re-bar after a death~~ (1.8.0: `death.then`).
 - ~~**The world audit**~~ (1.8.0) doesn't check characters' combat hooks (`onDeath`, `onBusy`, `onWake`, `onUnconscious`), `combat.weapon`, `fears.item`, `holds`, `descriptions[].if`, or characters' `instead`/`after` rules. A typo there silently does nothing.

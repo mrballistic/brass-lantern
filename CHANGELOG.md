@@ -10,6 +10,7 @@ A fast follow that works through the backlog.
 - **`death.treasures: 'dark'`:** treasures carried at a death go to an unlit room (Zork's RANDOMIZE-OBJECTS).
 - **Zork I · Native:** ENTER HOUSE and ENTER TRAP DOOR; the far basket's other verbs; the coffin goes home to the Egyptian Room when you die.
 - **Tidy-ups:** HELP's vehicle line, plainer effect steps, and the docs on a bare TELL.
+- **The rest of the backlog:** a `{ stopLine }` step drops the rest of a command line (Zork's P-CONT), which a refused move and a first strike also do in Infocom style, with Zork's “The rest of your commands have been lost in the noise.” on entering the Loud Room; a world verb's `reply` can be a list, picked at random (HACK-HACK, V-SKIP); an item's `climbRefusal`, and “Climbing the walls is to no avail.”; worn things weigh 1; Zork gains KICK, SKIP, EXORCISE and V-LEAP, and a spirit passes the troll; the cyclops's food, sleep and wrath, and the thief's maze and junk lines, are now checked against the story file.
 
 ## 1.12.0 (2026-10-06)
 
