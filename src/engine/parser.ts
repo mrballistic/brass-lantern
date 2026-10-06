@@ -49,7 +49,9 @@ const RE = {
   wear: /^(?:wear|put\s+on)\s+(?:the\s+)?(.+)$/i,
   talk: /^(?:talk|speak|chat)\s+(?:to|with)\s+(?:the\s+)?(.+)$/i,
   ask: /^(?:ask|question)\s+(?:the\s+)?(.+?)(?:\s+about\s+.+)?$/i,
-  smash: /^(?:smash|destroy|break|kill|hit|attack|wreck|whack|beat)\s+(?:up\s+)?(?:the\s+)?(.+?)(?:\s+with\s+(?:the\s+)?(.+))?$/i,
+  smash: /^(?:smash|destroy|break|wreck|whack|beat)\s+(?:up\s+)?(?:the\s+)?(.+?)(?:\s+with\s+(?:the\s+)?(.+))?$/i,
+  attack: /^(?:kill|hit|attack|fight|stab|murder|slay)\s+(?:the\s+)?(.+?)(?:\s+with\s+(?:the\s+|a\s+|my\s+)?(.+))?$/i,
+  throw: /^(?:throw|toss|hurl)\s+(?:the\s+)?(.+?)(?:\s+(?:at|to)\s+(?:the\s+)?(.+))?$/i,
   sit: /^(?:sit(?:\s+down)?|relax)$/i,
   wait: /^(?:wait|z)$/i,
 };
@@ -58,13 +60,15 @@ const RE = {
 const BARE_VERBS: Record<string, string> = {
   take: 'take', get: 'take', grab: 'take', drop: 'drop', examine: 'examine', x: 'examine', inspect: 'examine',
   read: 'read', open: 'open', close: 'close', shut: 'close', lock: 'lock', unlock: 'unlock', put: 'put',
-  give: 'give', wear: 'wear', use: 'use', search: 'search', smash: 'smash', break: 'smash', attack: 'smash',
+  give: 'give', wear: 'wear', use: 'use', search: 'search', smash: 'smash', break: 'smash', attack: 'attack',
+  kill: 'attack', fight: 'attack', stab: 'attack', throw: 'throw',
 };
 
 const SINGLE_WORD: Record<string, ParsedAction> = {
   look: { action: 'look' },
   l: { action: 'look' },
   talk: { action: 'talk' },
+  diagnose: { action: 'diagnose' },
   inventory: { action: 'inventory' },
   inv: { action: 'inventory' },
   i: { action: 'inventory' },
@@ -113,10 +117,12 @@ const VERB_PATTERNS: ReadonlyArray<readonly [RegExp, string, ('in' | 'on')?]> = 
   [RE.putIn, 'put', 'in'],
   [RE.putOn, 'put', 'on'],
   [RE.insert, 'use'],
+  [RE.throw, 'throw'],
   [RE.give, 'give'],
   [RE.talk, 'talk'],
   [RE.ask, 'talk'],
   [RE.smash, 'smash'],
+  [RE.attack, 'attack'],
 ];
 
 /**
@@ -129,7 +135,7 @@ export const BUILT_IN_WORDS: ReadonlySet<string> = new Set([
   'push', 'pull', 'press', 'insert', 'put', 'slide', 'stick', 'feed', 'plug', 'attach', 'give', 'hand',
   'offer', 'return', 'wear', 'put on', 'close', 'shut', 'lock', 'unlock', 'place', 'set', 'remove',
   'search', 'look in', 'look inside', 'climb', 'go into', 'turn', 'switch', 'light', 'talk', 'speak', 'chat', 'ask', 'question', 'smash', 'destroy',
-  'break', 'kill', 'hit', 'attack', 'wreck', 'whack', 'beat', 'sit', 'sit down', 'relax', 'wait', 'z',
+  'break', 'kill', 'hit', 'attack', 'fight', 'stab', 'murder', 'slay', 'throw', 'toss', 'hurl', 'wreck', 'whack', 'beat', 'sit', 'sit down', 'relax', 'wait', 'z',
   ...Object.keys(SINGLE_WORD),
   ...Object.keys(DIRECTIONS),
 ]);

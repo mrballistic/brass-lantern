@@ -1,7 +1,8 @@
 import type { GameState, ParsedAction } from '@/types/game';
-import type { Item, Room, Rule, World } from '@/types/world';
+import type { Item, NPC, Room, Rule, World } from '@/types/world';
 import { evaluateCondition } from './conditions';
-import { inventoryOf, pickItem, reachableItems, visibleItems } from './model';
+import { inventoryOf, matchNpc, pickItem, reachableItems, visibleItems } from './model';
+import { setCommand } from './scripts';
 import { runEventKey, turnHalted } from './effects';
 import { ok, type EngineResult } from './result';
 
@@ -14,7 +15,7 @@ export function runEvent(key: string, world: World, state: GameState): string[] 
 
 /** First applicable use rule on `itemId`, given what else is in reach. */
 /** An owner's rules for a verb, with the older hooks folded in: onUse is instead.use, onTake is after.take. */
-export function rulesFor(owner: Item | Room | undefined, phase: 'instead' | 'after', verb: string): Rule[] {
+export function rulesFor(owner: Item | Room | NPC | undefined, phase: 'instead' | 'after', verb: string): Rule[] {
   if (!owner) return [];
   const own = owner[phase]?.[verb] ?? [];
   const item = owner as Item;
@@ -35,6 +36,8 @@ export interface RuleIds {
   target?: string | null;
   indirect?: string | null;
   room: string;
+  /** Characters the command names, when they aren't items (THROW AXE AT TROLL). */
+  npcs?: string[];
 }
 
 /** The target item's rules, then the indirect item's, then the room's. The first that applies wins. */
@@ -46,9 +49,10 @@ export function findRule(
   ids: RuleIds,
   reach: string[],
 ): Rule | null {
-  const owners: Array<[Item | Room | undefined, string | null | undefined]> = [
+  const owners: Array<[Item | Room | NPC | undefined, string | null | undefined]> = [
     [ids.target ? world.items[ids.target] : undefined, ids.indirect],
     [ids.indirect ? world.items[ids.indirect] : undefined, ids.target],
+    ...(ids.npcs ?? []).map((id): [NPC | undefined, string | null | undefined] => [world.npcs[id], ids.target ?? ids.indirect]),
     [world.rooms[ids.room], ids.indirect ?? ids.target],
   ];
   for (const [owner, other] of owners) {
@@ -105,7 +109,13 @@ export function withRules(
   // belong to the item the verb actually acts on.
   const target = action.target ? pickItem(action.target, targetScope(verb, world, state), world, 'target', state) : null;
   const indirect = action.indirect ? pickItem(action.indirect, visibleItems(world, state), world, 'indirect', state) : null;
-  const ids = { target, indirect, room: state.currentRoom };
+  // Words that aren't items may name characters, whose rules count too.
+  const npcs = [
+    !target && action.target ? matchNpc(action.target, world, state) : null,
+    !indirect && action.indirect ? matchNpc(action.indirect, world, state) : null,
+  ].filter((id): id is string => Boolean(id));
+  const ids = { target, indirect, room: state.currentRoom, npcs };
+  setCommand(state, { verb, target: target ?? npcs[0], indirect: indirect ?? (target ? npcs[0] : npcs[1]) });
   const instead = findRule(world, state, 'instead', verb, ids, reach);
   if (instead) return applyRule(instead, world, state);
   const result = run();

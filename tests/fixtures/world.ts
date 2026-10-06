@@ -63,7 +63,7 @@ export const fixtureWorld: World = {
       exits: { south: 'yard', out: 'yard', northeast: { to: 'loft', door: 'hatch' }, up: { to: 'loft', door: 'hatch' }, down: 'cellar' },
       listExits: ['out'],
       items: ['crate', 'socket', 'chest', 'jar', 'shelf'],
-      npcs: [],
+      npcs: ['guard'],
       onEnter: [],
       scenery: ['sky', 'hatch'],
       requires: 'has:key',
@@ -122,6 +122,7 @@ export const fixtureWorld: World = {
     bat: {
       name: 'bat',
       aliases: ['club'],
+      weapon: true,
       description: 'A wooden bat.',
       portable: true,
       tags: [],
@@ -166,10 +167,18 @@ export const fixtureWorld: World = {
     fence: { name: 'fence', description: 'A white picket fence.', portable: false, tags: [], scenery: true },
     sky: { name: 'sky', description: 'Blue, mostly.', portable: false, tags: [] },
     barrel: { name: 'barrel', description: 'An old barrel.', portable: false, tags: [] },
+    cudgel: { name: 'cudgel', description: 'A heavy wooden cudgel.', portable: true, tags: [], weapon: true },
     crate: { name: 'crate', aliases: ['box'], description: 'A nailed-shut crate.', portable: false, refusal: 'It is too heavy.', tags: [] },
   },
 
   npcs: {
+    guard: {
+      name: 'guard',
+      description: 'A guard watches you.',
+      descriptions: [{ if: '!awake:guard', text: 'A guard snores in the corner.' }],
+      holds: ['cudgel'],
+      combat: { strength: 2, weapon: 'cudgel', fears: { item: 'bat', by: 1 }, wake: 25, firstStrike: 0 },
+    },
     neighbor: {
       name: 'Neighbor',
       description: 'Your neighbor, leaning on the fence.',

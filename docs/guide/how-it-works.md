@@ -37,7 +37,7 @@ The store (`src/stores/game.ts`) runs every line through the same steps:
 5. **Pronouns.** `it`, `them` and `that` become the last thing the engine acted on; `him` and `her`, the last person.
 6. **Execute.** `execute(action, { world, state })` returns the lines to print, whether anything changed, and `understood: false` if it couldn't make sense of the command (no such exit, no such item, no rule that applies). When a noun matches more than one thing, or a verb is missing its object, it returns a **question** (`ask`) instead, before touching anything. Before running a command that changes the game, the store keeps a snapshot for UNDO (the last 50, for this session only).
 7. **Retry on a miss.** If the regex couldn't parse the command, or the engine didn't understand it, the store asks the intent server how to read it. If the LLM's reading is different and the engine can act on it, that result is shown instead; otherwise the literal reply stands.
-8. **Time passes.** After a command the engine acted on (never after a misunderstood one, a question, or a command like VERBOSE that takes no time), the move counter goes up, timers fire, daemons run and ambient lines print, in that order (`src/engine/time.ts`). If the light changed, the reply says so.
+8. **Time passes.** After a command the engine acted on (never after a misunderstood one, a question, or a command like VERBOSE that takes no time), the move counter goes up, wounds heal, timers fire, daemons run, characters fight, and ambient lines print, in that order (`src/engine/time.ts`, after Zork's CLOCKER). If the light changed, the reply says so.
 9. **Output.** Lines are styled by their prefix and typed out, and the game is saved if anything changed.
 
 ::: warning The one rule to keep
@@ -64,13 +64,17 @@ Inserting or ejecting a cartridge clears the screen.
 
 | Concept | Where in the world | Notes |
 |---|---|---|
-| Conditions | anywhere | `flag:`, `has:`, `in:`, `visited:`, `inside:`, `open:`, `locked:`, `on:`, `here:`, `var:`, `carrying`, `lit:`, `!`, `&`. One parser, `src/engine/conditions.ts`. |
+| Conditions | anywhere | `flag:`, `has:`, `in:`, `visited:`, `inside:`, `open:`, `locked:`, `on:`, `here:`, `var:`, `carrying`, `lit:`, `alive:`, `awake:`, `fighting:`, `with:`, `!`, `&`. One parser, `src/engine/conditions.ts`. |
 | Rules | `instead`, `after` on items and rooms | Replace a verb's default, or follow it. `src/engine/rules.ts`. |
 | Containers, doors | `item.container`, `item.surface`, `item.door` | Open, close, lock, put in, take from. |
 | Exits | `room.exits` | A room ID, or `{ to, if, denial, door, denials }`. |
 | Effects | `events` | Lines and typed effects: flags, moves, variables, timers, chance, death, endings (`src/engine/effects.ts`). |
 | Darkness | `room.dark`, `item.light`, `world.darkness` | In an unlit dark room you can only find what you carry (`src/engine/model.ts` `isLit`). |
 | Death, endings | `world.death`, `world.endings` | `src/engine/death.ts`, `src/engine/endings.ts`. |
+| Characters | `npcs`, `room.npcs` | Places, held things, states and descriptions (`GameState.npcs`, read through `src/engine/model.ts`). |
+| Combat, health | `npc.combat`, `world.combat` | Zork's blows, tables, wounds and healing (`src/engine/combat.ts`). |
+| Weight | `world.carry`, `item.size` | `src/engine/weight.ts`. |
+| Scripts | `world.scripts` | The code hatch: functions that return steps (`src/engine/scripts.ts`). |
 | Events | `events` | Line lists. `[Flag set: …]`, `[Added to inventory: …]` and `[… consumed]` lines change state. Events from `onEnter`, `onTake`, `onWear`, `onSmash` and `bareHanded` fire once; use-rule and gift events run every time. |
 | Flags | `flagLabels` | The friendly label in an event line, mapped to a flag ID. |
 | Use rules | `item.onUse` | The older form of `instead.use`. |

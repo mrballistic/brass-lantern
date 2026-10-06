@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.7.0 (2026-10-05)
+
+Engine parity, stage 4a: characters, weight, combat and the code hatch.
+
+- **Characters** have places, things they hold, states (fighting, staggered, out cold, dead) and descriptions that follow them. New conditions `alive:`, `awake:`, `fighting:`, `with:`; effects `moveNpc`, `npcState`, and `move … to: 'here'`. Characters can carry `instead`/`after` rules, so THROW, GIVE and world verbs aimed at them get answers.
+- **Weight** (opt-in with `carry`): item `size`, a carry limit, Zork's fumble rule, and containers that hold by weight.
+- **Combat**, ported from Zork I: ATTACK/KILL/STAB/FIGHT *someone* WITH *a weapon*, Zork's six blow tables, strength that grows with score, staggering, disarming, knock-outs, first strikes, and fighters swinging back after each turn. Worlds supply the numbers and words; brass worlds get short defaults. In Infocom style, `kill troll` picks the one weapon you hold, as Zork's parser does.
+- **Health:** wounds lower your strength and carry limit and heal with time; dying goes through the death system. **DIAGNOSE** reports it.
+- **THROW** *item* [AT *target*].
+- **The code hatch:** `scripts`, named functions that see the game read-only and return ordinary steps, with the seeded generator and the running command to hand.
+- **Exits** can run an event as you go through (`then`), and arrival triggers can repeat (`repeat: true`).
+- **Zork I · Native** reaches the Troll Room, the East-West Passage and the Round Room: the troll, his axe and his moods, the sword's glow, Zork's weights (with the canary in the egg), and the trap door that re-bars after the chimney. The walkthrough fights the troll on both sides and matches the original before and after; a second test fights the real troll 300 times and requires every line of 200 native fights to be one the original prints.
+- **Docs:** recipes for a guard to fight and for scripts; the world schema's Weight, Combat and Scripts.
+
 ## 1.6.2 (2026-10-05)
 
 - **RESTART works after the game ends.** In 1.6.1 a finished game ignored every command, RESTART included (a regression from 1.6.0’s compound-line changes). Now RESTART and the other store commands always work, and anything else says “The game has ended. Type RESTART to play again.”

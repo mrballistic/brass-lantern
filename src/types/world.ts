@@ -1,3 +1,5 @@
+import type { Script } from '@/engine/scripts';
+
 export interface Room {
   name: string;
   description: string;
@@ -70,11 +72,15 @@ export interface Exit {
   door?: string;
   /** Refusals with their own reasons, checked first: the first whose `if` holds refuses with `text`. */
   denials?: Array<{ if: string; text: string }>;
+  /** An event run as the player goes through, before arriving (Zork's exit routines). */
+  then?: string;
 }
 
 export interface EventTrigger {
   if: string;
   then: string;
+  /** Fire every time the condition holds, not just once per game. */
+  repeat?: boolean;
 }
 
 /** One way an item can be used: a Rule, under its older name. */
@@ -100,6 +106,10 @@ export interface Item {
   onWear?: string;
   /** Items that start inside or on this one. */
   contains?: string[];
+  /** Weight, for worlds with `carry` (Zork's SIZE). Default 5. */
+  size?: number;
+  /** Something to fight with. */
+  weapon?: boolean;
   /** Makes the item a container; doors use the same block for openable/open/locked/key. */
   container?: Container;
   /** Things can be put on it, and what's on it is always visible and reachable. */
@@ -139,6 +149,8 @@ export interface Container {
   transparent?: boolean;
   /** How many items fit directly inside. */
   capacity?: number;
+  /** The total weight it holds (Zork's CAPACITY). */
+  weight?: number;
   /** Printed when it opens, instead of the default. */
   opened?: string;
   /** Printed when it closes, instead of the default. */
@@ -154,6 +166,75 @@ export interface NPC {
   refuse?: Record<string, string>;
   /** Shown when the player offers something not in `onGive` or `refuse`. */
   refuseGift?: string;
+  /** Items it holds at the start. Things a character holds aren't visible or reachable. */
+  holds?: string[];
+  /** Descriptions that depend on the state of things; the first whose condition holds wins. */
+  descriptions?: Array<{ if: string; text: string }>;
+  /** Rules for verbs aimed at this character (THROW X AT it, GIVE, ATTACK…). */
+  instead?: RuleTable;
+  after?: RuleTable;
+  /** Makes it someone the player can fight. */
+  combat?: Combatant;
+}
+
+/** What a blow did (Zork's blow results). */
+export type BlowResult =
+  | 'missed'
+  | 'unconscious'
+  | 'killed'
+  | 'lightWound'
+  | 'seriousWound'
+  | 'stagger'
+  | 'loseWeapon'
+  | 'hesitate'
+  | 'sittingDuck';
+
+/** For each result, the messages one is picked from. `{weapon}` and `{defender}` are filled in. */
+export type BlowMessages = Partial<Record<BlowResult, string[]>>;
+
+/** A character's side of a fight (Zork's VILLAINS table and its ACTION modes). */
+export interface Combatant {
+  strength: number;
+  /** The item it fights with, while it holds it. */
+  weapon?: string;
+  /** The player's weapon that weakens it, and by how much. */
+  fears?: { item: string; by: number };
+  /** Percent added each turn to its chance of waking while unconscious. */
+  wake?: number;
+  /** Percent chance each turn to start a fight while the player is here. */
+  firstStrike?: number;
+  /** Its blows at the player. */
+  messages?: BlowMessages;
+  /** Events run when it dies, is knocked out, wakes, or would swing but its weapon is on the floor. */
+  onDeath?: string;
+  onUnconscious?: string;
+  onWake?: string;
+  onBusy?: string;
+}
+
+/** Fixed lines of a fight, overridable per world. */
+export type CombatText =
+  | 'bareHands'
+  | 'notHolding'
+  | 'notWeapon'
+  | 'notPerson'
+  | 'notCombatant'
+  | 'recovering'
+  | 'defenceless'
+  | 'dies'
+  | 'regainsFeet'
+  | 'stillHave'
+  | 'death';
+
+/** The player's side of fights. */
+export interface CombatRules {
+  /** The player's blows. */
+  messages?: BlowMessages;
+  /** Strength from `min` at no score to `max` at `maxScore`. */
+  strength?: { min: number; max: number };
+  /** Acted-on turns for one wound to heal. */
+  cureWait?: number;
+  texts?: Partial<Record<CombatText, string>>;
 }
 
 export interface NPCDialogue {
@@ -170,8 +251,14 @@ export type Effect =
   | { say: string }
   | { set: string }
   | { clear: string }
-  /** To a room, 'player', an item, or null (offstage). */
+  /** To a room, 'player', 'here' (the player's room), an item, a character, or null (offstage). */
   | { move: string; to: string | null }
+  /** A character to a room, or null (gone). */
+  | { moveNpc: string; to: string | null }
+  /** Sets a character's combat state. */
+  | { npcState: string; fighting?: boolean; staggered?: boolean; strength?: number }
+  /** Runs one of the world's scripts and the steps it returns. */
+  | { script: string; arg?: string }
   | { open: string }
   | { close: string }
   | { lock: string }
@@ -208,6 +295,20 @@ export interface Rank {
   /** Minimum score for this rank. */
   min: number;
   title: string;
+}
+
+/** How much the player can carry (Zork's LOAD-MAX and the fumble rule). */
+export interface Carry {
+  /** The total weight the player can carry when healthy. */
+  limit: number;
+  /** The player's own weight, counted in the load (Zork's ADVENTURER SIZE, 5). Default 0. */
+  self?: number;
+  /** Carrying more than `over` things, each TAKE has `count × chance` percent to fumble. */
+  fumble?: { over: number; chance: number };
+  tooHeavy?: string;
+  /** When wounds have lowered the limit. */
+  tooHeavyHurt?: string;
+  fumbled?: string;
 }
 
 export interface World {
@@ -289,6 +390,12 @@ export interface World {
   emptyInventory?: string;
   /** SMASH where nothing can be smashed. */
   smashRefusal?: string;
+  /** The code hatch: named functions that return steps. See `src/engine/scripts.ts`. */
+  scripts?: Record<string, Script>;
+  /** Carrying weight. Without it there's no limit. */
+  carry?: Carry;
+  /** Fights: the player's blows, strength and healing. */
+  combat?: CombatRules;
 }
 
 /**

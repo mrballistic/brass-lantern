@@ -2,6 +2,8 @@
 export interface AllowedDifference {
   command: string;
   reason: string;
+  /** Depends on chance, so it may happen to match: not required to differ. */
+  random?: boolean;
 }
 
 /**
@@ -79,11 +81,40 @@ export const WALKTHROUGH: string[] = [
   'trap',
   'drop all',
   'take all',
+  // Stage 4a: down to the troll with the sword, fight him, and go on east.
+  // Repeated moves use another case (Zork ignores it) to keep commands unique.
+  'walk down',
+  '@enter-troll-room',
+  '@fight',
+  'take axe',
+  'go e',
+  'East',
+  'LOOK',
+  'diagnose',
+  'SCORE',
+  'West',
+  'WEST',
 ];
+
+/**
+ * Sync points. Each side keeps retrying one of these until the condition holds:
+ * the original by starting its session again, the native port by trying the
+ * next seed. Randomness differs between the two, so these are where they're
+ * brought back into step.
+ */
+export const SYNC: Record<string, { command: string; until: 'noFirstStrike' | 'trollDead' }> = {
+  // Walking in, the troll may strike first (a third of the time).
+  '@enter-troll-room': { command: 'run north', until: 'noFirstStrike' },
+  // Attack until the troll is dead; a side whose player dies starts over.
+  '@fight': { command: 'kill troll with sword', until: 'trollDead' },
+};
 
 // The walkthrough skips the sword: with it, Zork's weight limit refuses the egg
 // (“Your load is too heavy.”), and carrying weight is stage 4.
 export const ALLOWED: AllowedDifference[] = [
+  { command: '@fight', random: true, reason: 'A random fight: compared line by line in zork1-fight.test.ts instead.' },
+  { command: 'diagnose', random: true, reason: 'Wounds depend on how the random fight went.' },
+  { command: 'SCORE', random: true, reason: 'The move count depends on how long the random fight ran.' },
   {
     command: 'examine lanturn',
     reason: 'Unknown words differ by design: Zork names the word, the native engine says it didn’t understand and asks the LLM.',

@@ -465,6 +465,15 @@ describe('useGameStore', () => {
       expect(store.game.gameOver).toBe(false);
     });
 
+    it('runs a world’s scripts through the store (the reactive state can be read)', async () => {
+      const { fixtureWorld } = await import('../fixtures/world');
+      const world = { ...fixtureWorld, scripts: { hello: () => ['Hello from a script.'] }, daemons: [{ if: 'in:bedroom', then: [{ script: 'hello' }] }] };
+      const store = freshStore();
+      store.initialize({ kind: 'world', id: 'scripted', title: 'S', world, saveKey: 'test:scripted' });
+      await store.submit('wait');
+      expect(store.output.some((l) => l.text === 'Hello from a script.')).toBe(true);
+    });
+
     it('saves and restores by name, and lists saves', async () => {
       const store = freshStore();
       store.initialize();

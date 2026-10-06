@@ -184,7 +184,7 @@ describe('fallbackParse', () => {
   });
 
   describe('smash / install / sit / wait', () => {
-    it.each(['smash', 'destroy', 'break', 'kill', 'hit', 'attack', 'wreck'])(
+    it.each(['smash', 'destroy', 'break', 'wreck'])(
       'parses "%s printer"',
       (verb) => {
         expect(fallbackParse(`${verb} printer`)).toEqual({
@@ -193,6 +193,11 @@ describe('fallbackParse', () => {
         });
       },
     );
+
+    // ATTACK is its own verb; at anything but a combatant it does what SMASH does.
+    it.each(['kill', 'hit', 'attack', 'fight', 'stab'])('parses "%s printer" as attack', (verb) => {
+      expect(fallbackParse(`${verb} printer`)).toEqual({ action: 'attack', target: 'printer' });
+    });
 
     it('parses "sit"', () => {
       expect(fallbackParse('sit')).toEqual({ action: 'sit' });

@@ -2,7 +2,7 @@
 
 Brass Lantern ships Zork I twice: the original story file, run by the Z-machine interpreter, and **ZORK I · NATIVE**, a rebuild as an ordinary Brass Lantern world (`src/worlds/zork1.ts`). The native version is how the engine proves it can carry an Infocom-class game. A test plays both side by side and fails if they disagree.
 
-It covers the house, the forest, and the first rooms underground: the cellar, the chasm, the gallery and the studio, with darkness, the lamp burning down, the grue, and death. The rest arrives as the engine gains actors, combat and carrying weight.
+It covers the house, the forest, and the first rooms underground: the cellar, the chasm, the gallery and the studio, with darkness, the lamp burning down, the grue, and death; and the Troll Room, the East-West Passage and the Round Room, with the troll, combat, the sword's glow and carrying weight. The rest arrives with the thief and the cyclops (stage 4b) and the rest of the map (stage 5).
 
 ## How ZIL maps to a world
 
@@ -37,6 +37,14 @@ Zork was written in ZIL, Infocom's language. Its source is MIT licensed ([histor
 | the parser's ORPHAN and WHICH-PRINT (“Which door do you mean, the wooden door or the trap door?”) | built in: a question, answered by the next line |
 | the parser's OOPS and AGAIN | built in |
 | an object with no `TEXT` (EXAMINE lists a container's contents) | `description: ''` |
+| `ACTORBIT` objects | characters (`npcs`), with places, things they hold (`holds`) and descriptions by state |
+| `VILLAINS`, `HERO-BLOW`, `VILLAIN-BLOW`, the melee tables | a character's `combat` block and `world.combat` (the tables are the engine's) |
+| a villain's ACTION modes (`F-DEAD`, `F-UNCONSCIOUS`, `F-CONSCIOUS`, `F-BUSY?`, `F-FIRST?`) | `onDeath`, `onUnconscious`, `onWake`, `onBusy`, `firstStrike` |
+| `SIZE`, `CAPACITY`, `LOAD-ALLOWED`, `FUMBLE-NUMBER` | `size`, `container.weight`, `carry` |
+| `V-DIAGNOSE`, `I-CURE` | DIAGNOSE and healing, built in |
+| an `ACTION` routine data can't express (`I-SWORD`, the troll catching what you throw) | a [script](../reference/world-schema#scripts) |
+| a `PER` exit routine with a side effect (`UP-CHIMNEY-FUNCTION`) | an exit's `then` event |
+| the parser's GWIM for ATTACK (“(with the sword)”) | built in, Infocom style |
 | `TVALUE` (points while a treasure is in the case) | a score entry with a condition: `{ if: 'inside:painting:trophy_case', points: 6 }` |
 
 `style: 'infocom'` makes the engine follow Zork's conventions:
@@ -56,11 +64,13 @@ Zork was written in ZIL, Infocom's language. Its source is MIT licensed ([histor
   original: Opening the brown sack reveals a clove of garlic, and a lunch.
 ```
 
-- **The walkthrough** covers the stage slices: the house and forest, the cellar and the gallery with the lamp lit, and the parser (a bare TAKE and its answer, “Which door do you mean?”, AGAIN, OOPS, TAKE ALL and DROP ALL).
-- **Expected differences** go in `tests/worlds/zork1-allowlist.ts`, each with a reason, and the test fails if one stops being different. There's one: a misspelled word, where Zork says “I don't know the word” and the native engine says it sees no such thing (and, in the app, asks the intent server). The OOPS that follows it matches.
+- **The walkthrough** covers the stage slices: the house and forest, the cellar and the gallery with the lamp lit, the parser (a bare TAKE and its answer, “Which door do you mean?”, AGAIN, OOPS, TAKE ALL and DROP ALL), and the troll.
+- **Fights are random,** and our dice aren't Zork's, so the walkthrough has **sync points**: walking into the Troll Room, each side retries until the troll doesn't strike first, and at the fight each side attacks until its troll is dead. The original retries by starting its session again, the native port by trying another seed. (The thief, who wanders at random from the start, also makes the original start over; he arrives in stage 4b.)
+- **`tests/worlds/zork1-fight.test.ts`** checks the fight itself: it fights the real troll 300 times, collects everything it prints, and requires every line of 200 native fights to be one the original prints. It found a difference between Zork's source and its story file: the source gives a knocked-out player's foes extra rounds, and Release 119 doesn't. The story file wins.
+- **Expected differences** go in `tests/worlds/zork1-allowlist.ts`, each with a reason, and the test fails if one stops being different. Two kinds: a misspelled word, where Zork says “I don't know the word” and the native engine says it sees no such thing (and, in the app, asks the intent server; the OOPS that follows it matches); and replies after the fight that depend on how it went (DIAGNOSE, SCORE's move count).
 - **Random lines** the original prints (the distant songbird) are filtered out: the engine's generator is seeded and reproducible, but it can't replay Zork's own. Random outcomes (the grue, where things scatter when you die) are pinned by seeded unit tests instead, and the death texts are checked against a real death in the original.
 
 ## What's next
 
-- **Actors:** the troll, the thief, the cyclops, combat, carrying weight.
+- **Stage 4b:** the thief (wandering, stealing, his lair), the cyclops, characters who move and follow, ASK/TELL topics and orders.
 - **The rest of the map**, vehicles included.

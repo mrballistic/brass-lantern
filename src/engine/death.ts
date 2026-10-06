@@ -26,6 +26,12 @@ export function die(cause: string, world: World, state: GameState, goTo: GoTo): 
     return [...lines, ...(d.final ?? [])];
   }
   vars.deaths = deaths + 1;
+  // A fresh start: no wounds, and nobody still fighting.
+  state.player = undefined;
+  for (const s of Object.values(state.npcs ?? {})) {
+    s.fighting = false;
+    s.staggered = false;
+  }
 
   const scatter = (d.scatter ?? []).filter((r) => world.rooms[r]);
   for (const id of inventoryOf(world, state)) {

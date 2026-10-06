@@ -1,4 +1,4 @@
-import type { World } from '@/types/world';
+import type { EventStep, World } from '@/types/world';
 
 /**
  * Zork I, rebuilt as a native Brass Lantern world: the house and the forest
@@ -251,7 +251,7 @@ export const zork1: World = {
         'You are in a dark and damp cellar with a narrow passageway leading north, and a crawlway to the south. On the west is the bottom of a steep metal ramp which is unclimbable.',
       dark: true,
       exits: {
-        north: { denial: 'The troll’s domain isn’t built yet.' },
+        north: 'troll_room',
         south: 'east_of_chasm',
         up: { to: 'living_room', door: 'trap_door' },
         west: { denial: 'You try to ascend the ramp, but it is impossible, and you slide back down.' },
@@ -260,10 +260,55 @@ export const zork1: World = {
       npcs: [],
       // The first time down, the trap door slams behind you. Zork's VALUE 25: points for getting here.
       onEnter: [
-        { if: 'open:trap_door', then: 'trap_door_slams' },
+        // CELLAR-FCN: slams whenever it's open and “someone” hasn't barred it since you last came round by the chimney.
+        { if: 'open:trap_door & !flag:trap_door_barred', then: 'trap_door_slams', repeat: true },
         { if: '!flag:cellar_visited', then: 'cellar_points' },
       ],
       scenery: ['trap_door'],
+    },
+    troll_room: {
+      name: 'The Troll Room',
+      description:
+        'This is a small room with passages to the east and south and a forbidding hole leading west. Bloodstains and deep scratches (perhaps made by an axe) mar the walls.',
+      dark: true,
+      exits: {
+        south: 'cellar',
+        east: { to: 'ew_passage', denials: [{ if: 'awake:troll', text: 'The troll fends you off with a menacing gesture.' }] },
+        west: { denials: [{ if: 'awake:troll', text: 'The troll fends you off with a menacing gesture.' }], denial: 'The maze isn’t built yet.' },
+      },
+      items: [],
+      npcs: ['troll'],
+      onEnter: [],
+    },
+    ew_passage: {
+      name: 'East-West Passage',
+      description: 'This is a narrow east-west passageway. There is a narrow stairway leading down at the north end of the room.',
+      dark: true,
+      exits: {
+        east: 'round_room',
+        west: 'troll_room',
+        down: { denial: 'That part of the Great Underground Empire isn’t built yet.' },
+        north: { denial: 'That part of the Great Underground Empire isn’t built yet.' },
+      },
+      items: [],
+      npcs: [],
+      // Zork's VALUE 5.
+      onEnter: [{ if: '!flag:ew_passage_visited', then: 'ew_passage_points' }],
+    },
+    round_room: {
+      name: 'Round Room',
+      description: 'This is a circular stone room with passages in all directions. Several of them have unfortunately been blocked by cave-ins.',
+      dark: true,
+      exits: {
+        west: 'ew_passage',
+        east: { denial: 'That part of the Great Underground Empire isn’t built yet.' },
+        north: { denial: 'That part of the Great Underground Empire isn’t built yet.' },
+        south: { denial: 'That part of the Great Underground Empire isn’t built yet.' },
+        southeast: { denial: 'That part of the Great Underground Empire isn’t built yet.' },
+      },
+      items: [],
+      npcs: [],
+      onEnter: [],
     },
     east_of_chasm: {
       name: 'East of Chasm',
@@ -297,6 +342,8 @@ export const zork1: World = {
         south: 'gallery',
         up: {
           to: 'kitchen',
+          // UP-CHIMNEY-FUNCTION: coming round this way with the trap door shut un-bars it.
+          then: 'chimney_climbed',
           denials: [
             { if: 'carrying<=0', text: 'Going up empty-handed is a bad idea.' },
             { if: '!has:lamp', text: CARRYING },
@@ -320,7 +367,7 @@ export const zork1: World = {
       portable: false,
       refusal: 'It is securely anchored.',
       tags: [],
-      container: { openable: true, capacity: 10 },
+      container: { openable: true, weight: 10 },
       contains: ['leaflet'],
     },
     leaflet: {
@@ -410,8 +457,9 @@ export const zork1: World = {
       description: 'The brown sack is closed.',
       initialDescription: 'On the table is an elongated brown sack, smelling of hot peppers.',
       portable: true,
+      size: 9,
       tags: [],
-      container: { openable: true, capacity: 9 },
+      container: { openable: true, weight: 9 },
       contains: ['lunch', 'garlic'],
     },
     lunch: {
@@ -427,6 +475,7 @@ export const zork1: World = {
       aliases: ['garlic', 'clove'],
       description: 'There’s nothing special about the clove of garlic.',
       portable: true,
+      size: 4,
       tags: [],
     },
     bottle: {
@@ -436,7 +485,7 @@ export const zork1: World = {
       initialDescription: 'A bottle is sitting on the table.',
       portable: true,
       tags: [],
-      container: { openable: true, transparent: true, capacity: 4 },
+      container: { openable: true, transparent: true, weight: 4 },
       contains: ['water'],
     },
     water: {
@@ -444,6 +493,7 @@ export const zork1: World = {
       aliases: ['water', 'liquid', 'h2o'],
       description: 'There’s nothing special about the quantity of water.',
       portable: true,
+      size: 4,
       tags: [],
     },
     chimney: {
@@ -470,6 +520,7 @@ export const zork1: World = {
       description: 'There’s nothing special about the rope.',
       initialDescription: 'A large coil of rope is lying in the corner.',
       portable: true,
+      size: 10,
       tags: [],
     },
     knife: {
@@ -477,6 +528,7 @@ export const zork1: World = {
       aliases: ['knife', 'knives', 'blade', 'unrusty knife'],
       description: 'There’s nothing special about the nasty knife.',
       initialDescription: 'On a table is a nasty-looking knife.',
+      weapon: true,
       portable: true,
       tags: [],
     },
@@ -501,6 +553,7 @@ export const zork1: World = {
       initialDescription: 'A battery-powered brass lantern is on the trophy case.',
       roomDescription: 'There is a brass lantern (battery-powered) here.',
       portable: true,
+      size: 15,
       switchable: true,
       light: true,
       home: 'living_room',
@@ -515,7 +568,18 @@ export const zork1: World = {
       aliases: ['orcrist', 'glamdring', 'blade', 'elvish sword', 'antique sword'],
       description: 'There’s nothing special about the sword.',
       initialDescription: 'Above the trophy case hangs an elvish sword of great antiquity.',
+      weapon: true,
       portable: true,
+      size: 30,
+      tags: [],
+    },
+    axe: {
+      name: 'bloody axe',
+      aliases: ['axe', 'ax'],
+      description: 'There’s nothing special about the bloody axe.',
+      portable: true,
+      size: 25,
+      weapon: true,
       tags: [],
     },
     rug: {
@@ -573,6 +637,7 @@ export const zork1: World = {
       initialDescription: 'Fortunately, there is still one chance for you to be a vandal, for on the far wall is a painting of unparalleled beauty.',
       roomDescription: 'A painting by a neglected genius is here.',
       portable: true,
+      size: 15,
       tags: [],
       after: { take: [{ if: '!flag:took_painting', then: 'took_painting' }] },
     },
@@ -595,7 +660,7 @@ export const zork1: World = {
       initialDescription: 'Beside you on the branch is a small bird’s nest.',
       portable: true,
       tags: [],
-      container: { capacity: 20 },
+      container: { weight: 20 },
       contains: ['egg'],
     },
     egg: {
@@ -607,6 +672,19 @@ export const zork1: World = {
       portable: true,
       tags: [],
       after: { take: [{ if: '!flag:took_egg', then: 'took_egg' }] },
+      // Closed with a clasp; only the thief can open it without breaking it (stage 4b).
+      container: { openable: true },
+      contains: ['canary'],
+      instead: { open: [{ say: ['You have neither the tools nor the expertise.'] }] },
+    },
+    canary: {
+      name: 'golden clockwork canary',
+      aliases: ['canary', 'clockwork canary', 'golden canary', 'gold canary'],
+      description: 'There’s nothing special about the golden clockwork canary.',
+      initialDescription:
+        'There is a golden clockwork canary nestled in the egg. It has ruby eyes and a silver beak. Through a crystal window below its left wing you can see intricate machinery inside. It appears to have wound down.',
+      portable: true,
+      tags: [],
     },
     leaves: {
       name: 'pile of leaves',
@@ -638,14 +716,222 @@ export const zork1: World = {
     },
   },
 
-  npcs: {},
-  dialogue: {},
+  npcs: {
+    troll: {
+      name: 'troll',
+      description: 'A nasty-looking troll, brandishing a bloody axe, blocks all passages out of the room.',
+      descriptions: [
+        { if: '!awake:troll', text: 'An unconscious troll is sprawled on the floor. All passages out of the room are open.' },
+        { if: 'var:troll_ldesc=1', text: 'A pathetically babbling troll is here.' },
+        { if: 'var:troll_ldesc=2', text: 'A troll is here.' },
+      ],
+      holds: ['axe'],
+      combat: {
+        strength: 2,
+        weapon: 'axe',
+        fears: { item: 'sword', by: 1 },
+        wake: 25,
+        firstStrike: 33,
+        onBusy: 'troll_busy',
+        onDeath: 'troll_drops_axe',
+        onUnconscious: 'troll_drops_axe',
+        onWake: 'troll_wakes',
+        messages: {
+          missed: [
+            'The troll swings his axe, but it misses.',
+            'The troll’s axe barely misses your ear.',
+            'The axe sweeps past as you jump aside.',
+            'The axe crashes against the rock, throwing sparks!',
+          ],
+          unconscious: ['The flat of the troll’s axe hits you delicately on the head, knocking you out.'],
+          killed: [
+            'The troll neatly removes your head.',
+            'The troll’s axe stroke cleaves you from the nave to the chops.',
+            'The troll’s axe removes your head.',
+          ],
+          lightWound: [
+            'The axe gets you right in the side. Ouch!',
+            'The flat of the troll’s axe skins across your forearm.',
+            'The troll’s swing almost knocks you over as you barely parry in time.',
+            'The troll swings his axe, and it nicks your arm as you dodge.',
+          ],
+          seriousWound: [
+            'The troll charges, and his axe slashes you on your {weapon} arm.',
+            'An axe stroke makes a deep wound in your leg.',
+            'The troll’s axe swings down, gashing your shoulder.',
+          ],
+          stagger: [
+            'The troll hits you with a glancing blow, and you are momentarily stunned.',
+            'The troll swings; the blade turns on your armor but crashes broadside into your head.',
+            'You stagger back under a hail of axe strokes.',
+            'The troll’s mighty blow drops you to your knees.',
+          ],
+          loseWeapon: [
+            'The axe hits your {weapon} and knocks it spinning.',
+            'The troll swings, you parry, but the force of his blow knocks your {weapon} away.',
+            'The axe knocks your {weapon} out of your hand. It falls to the floor.',
+          ],
+          hesitate: [
+            'The troll hesitates, fingering his axe.',
+            'The troll scratches his head ruminatively:  Might you be magically protected, he wonders?',
+          ],
+          sittingDuck: ['Conquering his fears, the troll puts you to death.'],
+        },
+      },
+      instead: {
+        throw: [{ then: 'troll_catches' }],
+        give: [{ then: 'troll_catches' }],
+        take: [{ then: 'troll_spits' }],
+        move: [{ then: 'troll_spits' }],
+        smash: [{ then: 'troll_laughs' }],
+        listen: [{ say: ['Every so often the troll says something, probably uncomplimentary, in his guttural tongue.'] }],
+      },
+    },
+  },
+  dialogue: {
+    troll: { default: 'The troll isn’t much of a conversationalist.' },
+  },
+
+  // Zork's HERO-MELEE, FIGHT-STRENGTH and CURE-WAIT.
+  combat: {
+    strength: { min: 2, max: 7 },
+    cureWait: 30,
+    messages: {
+      missed: [
+        'Your {weapon} misses the {defender} by an inch.',
+        'A good slash, but it misses the {defender} by a mile.',
+        'You charge, but the {defender} jumps nimbly aside.',
+        'Clang! Crash! The {defender} parries.',
+        'A quick stroke, but the {defender} is on guard.',
+        'A good stroke, but it’s too slow; the {defender} dodges.',
+      ],
+      unconscious: [
+        'Your {weapon} crashes down, knocking the {defender} into dreamland.',
+        'The {defender} is battered into unconsciousness.',
+        'A furious exchange, and the {defender} is knocked out!',
+        'The haft of your {weapon} knocks out the {defender}.',
+        'The {defender} is knocked out!',
+      ],
+      killed: [
+        'It’s curtains for the {defender} as your {weapon} removes his head.',
+        'The fatal blow strikes the {defender} square in the heart: He dies.',
+        'The {defender} takes a fatal blow and slumps to the floor dead.',
+      ],
+      lightWound: [
+        'The {defender} is struck on the arm; blood begins to trickle down.',
+        'Your {weapon} pinks the {defender} on the wrist, but it’s not serious.',
+        'Your stroke lands, but it was only the flat of the blade.',
+        'The blow lands, making a shallow gash in the {defender}’s arm!',
+      ],
+      seriousWound: [
+        'The {defender} receives a deep gash in his side.',
+        'A savage blow on the thigh! The {defender} is stunned but can still fight!',
+        'Slash! Your blow lands! That one hit an artery, it could be serious!',
+        'Slash! Your stroke connects! This could be serious!',
+      ],
+      stagger: [
+        'The {defender} is staggered, and drops to his knees.',
+        'The {defender} is momentarily disoriented and can’t fight back.',
+        'The force of your blow knocks the {defender} back, stunned.',
+        'The {defender} is confused and can’t fight back.',
+        'The quickness of your thrust knocks the {defender} back, stunned.',
+      ],
+      loseWeapon: [
+        'The {defender}’s weapon is knocked to the floor, leaving him unarmed.',
+        'The {defender} is disarmed by a subtle feint past his guard.',
+      ],
+    },
+  },
+
+  // Zork's LOAD-MAX, the player's own SIZE, and the fumble rule.
+  carry: { limit: 100, self: 5, fumble: { over: 7, chance: 8 } },
+
+  scripts: {
+    // TROLL-FCN's F-BUSY?: picks his axe back up (75%), or cowers.
+    troll_busy: (ctx) =>
+      ctx.holder('axe') === 'troll_room' && ctx.roll(100) < 75
+        ? [
+            { move: 'axe', to: 'troll' },
+            { setVar: 'troll_ldesc', to: 0 },
+            ...(ctx.room() === 'troll_room'
+              ? ['The troll, angered and humiliated, recovers his weapon. He appears to have an axe to grind with you.']
+              : []),
+          ]
+        : ctx.room() === 'troll_room'
+          ? [{ setVar: 'troll_ldesc', to: 1 }, 'The troll, disarmed, cowers in terror, pleading for his life in the guttural tongue of the trolls.']
+          : [],
+    // F-CONSCIOUS: back on his feet, and back to his axe if it's here.
+    troll_wakes: (ctx) => {
+      const here = ctx.room() === 'troll_room';
+      const steps: EventStep[] = here ? [{ npcState: 'troll', fighting: true }, 'The troll stirs, quickly resuming a fighting stance.'] : [];
+      if (ctx.holder('axe') === 'troll') return [...steps, { setVar: 'troll_ldesc', to: 0 }];
+      if (ctx.holder('axe') === 'troll_room') return [...steps, { move: 'axe', to: 'troll' }, { setVar: 'troll_ldesc', to: 0 }];
+      return [...steps, { setVar: 'troll_ldesc', to: 2 }];
+    },
+    // THROW or GIVE something to the troll.
+    troll_catches: (ctx) => {
+      const item = ctx.command?.target;
+      if (!item) return [];
+      const name = ctx.world.items[item]?.name ?? item;
+      const wake: EventStep[] = [{ run: 'troll_wake_if_out' }];
+      if (item === 'axe') return [...wake, { move: 'axe', to: 'troll' }, { npcState: 'troll', fighting: true }, 'The troll scratches his head in confusion, then takes the axe.'];
+      const opening =
+        ctx.command?.verb === 'throw'
+          ? `The troll, who is remarkably coordinated, catches the ${name}`
+          : 'The troll, who is not overly proud, graciously accepts the gift';
+      const weapon = ['knife', 'sword', 'axe'].includes(item);
+      if (weapon && ctx.roll(100) < 20) {
+        return [
+          ...wake,
+          { move: item, to: null },
+          `${opening} and eats it hungrily. Poor troll, he dies from an internal hemorrhage and his carcass disappears in a sinister black fog.`,
+          { npcState: 'troll', strength: 0, fighting: false },
+          { run: 'troll_drops_axe' },
+        ];
+      }
+      if (weapon) {
+        return [
+          ...wake,
+          { move: item, to: 'here' },
+          `${opening} and, being for the moment sated, throws it back. Fortunately, the troll has poor control, and the ${name} falls to the floor. He does not look pleased.`,
+          { npcState: 'troll', fighting: true },
+        ];
+      }
+      return [...wake, { move: item, to: null }, `${opening} and not having the most discriminating tastes, gleefully eats it.`];
+    },
+    // F-DEAD / F-UNCONSCIOUS: the axe falls only if he was holding it.
+    troll_drops_axe: (ctx) => (ctx.holder('axe') === 'troll' ? [{ move: 'axe', to: 'troll_room' }] : []),
+    chimney_climbed: (ctx) => (ctx.state.itemState.trap_door?.open ? [] : [{ clear: 'trap_door_barred' }]),
+    // AWAKEN: a knocked-out troll comes round when you meddle with him.
+    troll_wake_if_out: (ctx) => {
+      const strength = ctx.npc('troll')?.strength ?? 0;
+      return strength < 0 ? [{ npcState: 'troll', strength: -strength }, { run: 'troll_wakes' }] : [];
+    },
+    // I-SWORD: the sword glows near living monsters, brightly beside one.
+    sword_glow: (ctx) => {
+      const infested = (room: string) =>
+        Object.keys(ctx.world.npcs).some((id) => {
+          const s = ctx.npc(id);
+          const where = s?.room !== undefined ? s.room : Object.entries(ctx.world.rooms).find(([, r]) => r.npcs.includes(id))?.[0];
+          return where === room && s?.strength !== 0;
+        });
+      const here = ctx.room();
+      const next = Object.values(ctx.world.rooms[here]?.exits ?? {}).some((e) => {
+        const to = typeof e === 'string' ? e : e.to;
+        return to !== undefined && infested(to);
+      });
+      const level = infested(here) ? 2 : next ? 1 : 0;
+      if (level === (ctx.state.vars?.sword_glow ?? 0)) return [];
+      const line = ['Your sword is no longer glowing.', 'Your sword is glowing with a faint blue glow.', 'Your sword has begun to glow very brightly.'][level];
+      return [{ setVar: 'sword_glow', to: level }, line];
+    },
+  },
 
   verbs: {
     move: { words: ['move', 'shift', 'roll'], target: 'required' },
+    listen: { words: ['listen to', 'listen'], target: 'required', reply: 'At the moment, there is nothing to hear.' },
     count: { words: ['count'], target: 'required' },
     pray: { words: ['pray'], target: 'none', reply: 'If you pray enough, your prayers may be answered.' },
-    diagnose: { words: ['diagnose'], target: 'none', reply: 'You are in perfect health.' },
   },
 
   flagLabels: {
@@ -659,6 +945,7 @@ export const zork1: World = {
     { flag: 'kitchen_visited', points: 10 },
     { flag: 'took_egg', points: 5 },
     { flag: 'cellar_visited', points: 25 },
+    { flag: 'ew_passage_visited', points: 5 },
     { flag: 'took_painting', points: 4 },
     // Treasures count while they're in the trophy case.
     { if: 'inside:painting:trophy_case', points: 6 },
@@ -675,7 +962,7 @@ export const zork1: World = {
     { min: 350, title: 'Master Adventurer' },
   ],
 
-  vars: { lamp_fuel: 185 },
+  vars: { lamp_fuel: 185, sword_glow: 0, troll_ldesc: 0 },
 
   // Zork's LAMP-TABLE: warnings after 100, 170 and 185 lit turns; out on the next.
   daemons: [
@@ -684,6 +971,8 @@ export const zork1: World = {
     { if: 'on:lamp & var:lamp_fuel=15 & here:lamp', then: ['The lamp is definitely dimmer now.'] },
     { if: 'on:lamp & var:lamp_fuel=0 & here:lamp', then: ['The lamp is nearly out.'] },
     { if: 'on:lamp & var:lamp_fuel<0', then: 'lamp_dies' },
+    // I-SWORD, which runs after the lantern and before the fight.
+    { if: 'has:sword', then: [{ script: 'sword_glow' }] },
   ],
 
   darkness: {
@@ -716,7 +1005,7 @@ export const zork1: World = {
       'Copyright (c) 1981, 1982, 1983, 1984, 1985, 1986 Infocom, Inc. All rights reserved.',
       'ZORK is a registered trademark of Infocom, Inc.',
       'Release 119 / Serial number 880429',
-      '[A native Brass Lantern port: the house, the forest and the first rooms below. The troll comes later.]',
+      '[A native Brass Lantern port: the house, the forest, the first rooms below and the troll. The rest comes later.]',
     ],
     rug_moved: [
       'With a great effort, the rug is moved to one side of the room, revealing the dusty cover of a closed trap door.',
@@ -724,8 +1013,17 @@ export const zork1: World = {
     ],
     took_egg: ['[Flag set: took egg]'],
     kitchen_points: ['[Flag set: kitchen visited]'],
-    trap_door_slams: [{ close: 'trap_door' }, 'The trap door crashes shut, and you hear someone barring it.'],
+    trap_door_slams: [{ close: 'trap_door' }, { set: 'trap_door_barred' }, 'The trap door crashes shut, and you hear someone barring it.'],
+    chimney_climbed: [{ script: 'chimney_climbed' }],
     cellar_points: [{ set: 'cellar_visited' }],
+    ew_passage_points: [{ set: 'ew_passage_visited' }],
+    troll_drops_axe: [{ script: 'troll_drops_axe' }],
+    troll_wakes: [{ script: 'troll_wakes' }],
+    troll_busy: [{ script: 'troll_busy' }],
+    troll_catches: [{ script: 'troll_catches' }],
+    troll_spits: [{ run: 'troll_wake_if_out' }, 'The troll spits in your face, grunting “Better luck next time” in a rather barbarous accent.'],
+    troll_laughs: [{ run: 'troll_wake_if_out' }, 'The troll laughs at your puny gesture.'],
+    troll_wake_if_out: [{ script: 'troll_wake_if_out' }],
     took_painting: [{ set: 'took_painting' }],
     lamp_dies: [{ switch: 'lamp', on: false }, { set: 'lamp_dead' }, 'You’d better have more light than from the brass lantern.'],
     leaves_moved: ['Done.', 'In disturbing the pile of leaves, a grating is revealed.', '[Flag set: grate revealed]'],

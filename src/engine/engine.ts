@@ -20,6 +20,9 @@ import { handleAll } from './verbs/all';
 import { handleClose, handleLock, handleOpen, handlePut, handleSearch, handleTakeFrom, handleUnlock } from './verbs/containers';
 import { handleRead, handleSwitch } from './verbs/objects';
 import { handleGive, handleTalk } from './verbs/people';
+import { handleAttack, handleThrow } from './verbs/attack';
+import { setCommand } from './scripts';
+import { diagnoseLines } from './combat';
 import { handleHelp, handleHint, handleScore, handleUnknown, scoreLines } from './verbs/meta';
 
 export type { EngineResult } from './result';
@@ -65,6 +68,7 @@ export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
   }
 
   beginTurn(state);
+  setCommand(state, null);
   const pendingFuses = new Set(Object.keys(state.fuses ?? {}));
   const roomBefore = state.currentRoom;
   const litBefore = isLit(world, state);
@@ -90,7 +94,7 @@ export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
   // Misses don't count as turns: they must not mutate state (see EngineResult).
   state.turns = (state.turns ?? 0) + 1;
   state.moveCount += 1;
-  const before = JSON.stringify([state.vars, state.fuses, state.flags, state.locations, state.itemState, state.currentRoom]);
+  const before = JSON.stringify([state.vars, state.fuses, state.flags, state.locations, state.itemState, state.currentRoom, state.player, state.npcs, state.rng]);
   // A death this turn ends it: no timers or daemons after the resurrection.
   const later = turnHalted(state) ? [] : afterTurn(world, state, pendingFuses);
   // Light arriving or leaving while the player stays put.
@@ -102,7 +106,7 @@ export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
     }
     if (!litNow && litBefore) later.push(darknessFalls(world));
   }
-  const changed = before !== JSON.stringify([state.vars, state.fuses, state.flags, state.locations, state.itemState, state.currentRoom]);
+  const changed = before !== JSON.stringify([state.vars, state.fuses, state.flags, state.locations, state.itemState, state.currentRoom, state.player, state.npcs, state.rng]);
   if (later.length === 0 && !changed) return result;
   return { ...result, lines: [...result.lines, ...later], mutated: true };
 }
@@ -166,6 +170,12 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
       return handleInventory(world, state);
     case 'smash':
       return withRules('smash', action, world, state, () => handleSmash(action.target, world, state));
+    case 'attack':
+      return handleAttack(action, world, state, () => dispatch({ ...action, action: 'smash' }, world, state));
+    case 'throw':
+      return handleThrow(action, world, state);
+    case 'diagnose':
+      return ok(diagnoseLines(world, state));
     case 'hint':
       return handleHint(world, state);
     case 'score':

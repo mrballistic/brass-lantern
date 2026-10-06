@@ -62,6 +62,15 @@ describe('POST /api/parse-intent', () => {
     expect(res.status).toBe(400);
   });
 
+  it('tells the model how to read fighting, throwing and DIAGNOSE', async () => {
+    fetchMock.mockResolvedValueOnce(geminiReply('{"action":"attack","target":"troll","indirect":"sword"}'));
+    await post({ input: 'swing my sword at the troll', context: makeContext() });
+    const body = JSON.parse(String(fetchMock.mock.calls.at(-1)![1]!.body));
+    const prompt: string = body.systemInstruction.parts[0].text;
+    expect(prompt).toMatch(/attack: target is the person, indirect is the weapon/);
+    expect(prompt).toMatch(/throw/);
+  });
+
   it('happy path returns the parsed action', async () => {
     fetchMock.mockResolvedValueOnce(geminiReply('{"action":"go","target":"cubicle_farm"}'));
     const res = await post({ input: 'walk to the cubicles', context: makeContext() });

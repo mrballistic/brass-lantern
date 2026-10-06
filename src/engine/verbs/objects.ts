@@ -1,12 +1,13 @@
 import type { GameState } from '@/types/game';
 import type { Item, World } from '@/types/world';
 import { evaluateCondition } from '../conditions';
-import { contentsLines, describeRoom, lightNote, withArticle } from '../describe';
+import { contentsLines, describeRoom, lightNote, npcDescription, withArticle } from '../describe';
 import {
   closedAround, inventoryOf, isCarried, matchItem, matchNpc, moveItem, needObject, pickItem, PLAYER, reachableItems, visibleItems,
 } from '../model';
 import { miss, ok, type EngineResult } from '../result';
 import { applyRule, findRule, runEvent } from '../rules';
+import { takeRefusal } from '../weight';
 import { finishEnding } from '../endings';
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -46,6 +47,8 @@ export function takeItem(itemId: string, world: World, state: GameState): Engine
   if (!item.portable) return ok([item.refusal ?? `You can’t take the ${item.name}.`]);
   const closed = closedAround(world, state, itemId);
   if (closed) return ok([`The ${world.items[closed].name} is closed.`]);
+  const refusal = takeRefusal(world, state, itemId);
+  if (refusal) return ok([refusal]);
 
   moveItem(state, itemId, PLAYER);
   (state.itemState[itemId] ??= {}).moved = true;
@@ -77,7 +80,7 @@ export function handleExamine(target: string | undefined, world: World, state: G
   }
 
   const matchedNpc = matchNpc(target, world, state);
-  if (matchedNpc) return ok([world.npcs[matchedNpc]?.description ?? 'They look back at you.']);
+  if (matchedNpc) return ok([npcDescription(world, state, matchedNpc)]);
 
   return miss(`You see no “${target}” here worth examining.`);
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { execute, initialState, openingLines } from '@/engine/engine';
 import { fallbackParse, splitCommands, verbClashes } from '@/engine/parser';
-import { statusText } from '@/engine/verbs/meta';
+import { currentScore, statusText } from '@/engine/verbs/meta';
 import { zork1 } from '@/worlds/zork1';
 
 function play(commands: string[]) {
@@ -137,5 +137,121 @@ describe('Zork I, natively: house and forest', () => {
         if (to) expect(zork1.rooms[to], `${id} → ${label}`).toBeDefined();
       }
     }
+  });
+});
+
+describe('Zork I, natively: the troll', () => {
+  /** In the cellar with the lamp lit and the sword in hand, seeded. */
+  function cellar(seed = 1) {
+    const state = initialState(zork1);
+    state.currentRoom = 'cellar';
+    state.locations.lamp = 'player';
+    state.locations.sword = 'player';
+    state.itemState.lamp = { on: true, moved: true };
+    state.itemState.sword = { moved: true };
+    state.rng = seed;
+    const run = (c: string) => execute(fallbackParse(c, zork1.verbs) ?? { action: 'unknown' }, { world: zork1, state }).lines;
+    return { state, run };
+  }
+
+  it('the sword glows near the troll, brightly beside him', () => {
+    const { run } = cellar();
+    expect(run('look')).toContain('Your sword is glowing with a faint blue glow.');
+    expect(run('north')).toContain('Your sword has begun to glow very brightly.');
+  });
+
+  it('the troll blocks east and west while he’s awake', () => {
+    const { state, run } = cellar();
+    run('north');
+    state.npcs = { troll: { fighting: false } };
+    expect(run('east')[0]).toBe('The troll fends you off with a menacing gesture.');
+    expect(run('west')[0]).toBe('The troll fends you off with a menacing gesture.');
+  });
+
+  it('a fight the troll can lose: the fog, the axe on the floor, the way east open', () => {
+    expect(cellar().run('north').join('\n')).toContain('A nasty-looking troll, brandishing a bloody axe, blocks all passages out of the room.');
+    let won = false;
+    for (let seed = 1; seed < 400 && !won; seed++) {
+      const { state, run } = cellar(seed);
+      run('north');
+      if (state.currentRoom !== 'troll_room') continue;
+      // Zork's parser picks the one weapon you hold.
+      expect(run('kill troll')[0]).toBe('(with the sword)');
+      for (let i = 0; i < 20 && state.currentRoom === 'troll_room'; i++) {
+        const lines = run('kill troll with sword');
+        if (lines.some((l) => l.startsWith('Almost as soon as the troll breathes his last breath'))) {
+          won = true;
+          expect(state.locations.axe).toBe('troll_room');
+          expect(run('east')[0]).toBe('📍 East-West Passage');
+          expect(run('look').join('\n')).toContain('narrow east-west passageway');
+          break;
+        }
+      }
+    }
+    expect(won).toBe(true);
+  });
+
+  it('the East-West Passage is worth 5 points, once', () => {
+    const { state, run } = cellar();
+    state.currentRoom = 'troll_room';
+    state.npcs = { troll: { strength: 0 } };
+    const before = currentScore(zork1, state);
+    run('east');
+    run('west');
+    run('east');
+    expect(currentScore(zork1, state) - before).toBe(5);
+  });
+
+  it('throwing and giving things to the troll', () => {
+    const { state, run } = cellar(2);
+    run('north');
+    state.locations.lunch = 'player';
+    state.npcs = { troll: { fighting: false } };
+    expect(run('give lunch to troll')[0]).toBe('The troll, who is not overly proud, graciously accepts the gift and not having the most discriminating tastes, gleefully eats it.');
+    expect(state.locations.lunch).toBe(null);
+    const outcomes = new Set<string>();
+    for (let seed = 1; seed < 60; seed++) {
+      const t = cellar(seed);
+      t.run('north');
+      t.state.npcs = { troll: { fighting: false } };
+      outcomes.add(t.run('throw sword at troll')[0].replace(/^The troll, who is remarkably coordinated, catches the sword/, ''));
+    }
+    expect([...outcomes]).toEqual(
+      expect.arrayContaining([
+        ' and eats it hungrily. Poor troll, he dies from an internal hemorrhage and his carcass disappears in a sinister black fog.',
+        ' and, being for the moment sated, throws it back. Fortunately, the troll has poor control, and the sword falls to the floor. He does not look pleased.',
+      ]),
+    );
+  });
+
+  it('spits, laughs, and has nothing to say', () => {
+    const { state, run } = cellar();
+    run('north');
+    state.npcs = { troll: { fighting: false } };
+    expect(run('take troll')[0]).toBe('The troll spits in your face, grunting “Better luck next time” in a rather barbarous accent.');
+    expect(run('smash troll')[0]).toBe('The troll laughs at your puny gesture.');
+    expect(run('talk to troll')[0]).toBe('The troll isn’t much of a conversationalist.');
+  });
+
+  it('carries Zork’s weights: the sword and the egg are too much together', () => {
+    const { state, run } = cellar();
+    state.currentRoom = 'up_a_tree';
+    for (const id of ['sack', 'bottle', 'rope', 'knife']) state.locations[id] = 'player';
+    expect(run('take egg')[0]).toBe('Your load is too heavy.');
+  });
+
+  it('DIAGNOSE is built in now', () => {
+    const { run } = cellar();
+    // (The sword's glow follows: the troll is next door.)
+    expect(run('diagnose').slice(0, 2)).toEqual(['You are in perfect health.', 'You can be killed by a serious wound.']);
+  });
+
+  it('the troll’s death doesn’t take the axe out of your hands', () => {
+    const { state, run } = cellar(3);
+    run('north');
+    state.locations.axe = 'player';
+    state.npcs = { troll: { fighting: true } };
+    run('kill troll with sword');
+    expect(state.locations.axe).toBe('player');
   });
 });

@@ -22,7 +22,7 @@ describe('world audit', () => {
     const broken: World = {
       ...fixtureWorld,
       items: { ...fixtureWorld.items, player: { name: 'p', description: '', portable: false, tags: [], home: 'mars' } },
-      events: { ...fixtureWorld.events, bad: [{ move: 'unicorn', to: 'nowhere' }, { run: 'missing' }, { teleport: 'x' } as unknown as Effect] },
+      events: { ...fixtureWorld.events, bad: [{ move: 'unicorn', to: 'nowhere' }, { run: 'missing' }, { teleport: 'x' } as unknown as Effect, { moveNpc: 'ghost', to: 'mars' }, { script: 'nope' }] },
       daemons: [{ if: 'in:bedroom', then: 'absent' }],
     };
     const problems = auditWorld(broken);
@@ -59,6 +59,9 @@ describe('world audit', () => {
         'event bad: move names no item “unicorn”',
         'event bad: move to nowhere “nowhere”',
         'event bad: run names no event “missing”',
+        'event bad: moveNpc names no character “ghost”',
+        'event bad: moveNpc to nowhere “mars”',
+        'event bad: script names no script “nope”',
         expect.stringContaining('unknown effect'),
         'daemon 0: names no event “absent”',
         'item player: home names no room “mars”',

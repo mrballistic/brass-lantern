@@ -15,7 +15,7 @@ export function runOnEnter(roomId: string, world: World, state: GameState): stri
   const out: string[] = [];
   for (const trigger of room.onEnter) {
     if (turnHalted(state)) break;
-    if (state.firedEvents.includes(trigger.then)) continue;
+    if (!trigger.repeat && state.firedEvents.includes(trigger.then)) continue;
     if (evaluateCondition(trigger.if, state, world)) out.push(...runEvent(trigger.then, world, state));
   }
   return out;
@@ -65,8 +65,10 @@ export function followExit(exit: string | Exit, world: World, state: GameState):
     if (!exit.to) return ok([exit.denial ?? 'You can’t go that way.']);
   }
   const to = exitTarget(exit)!;
-  const lines = enterRoom(to, world, state);
-  return ok(lines, state.currentRoom === to);
+  const passing = typeof exit !== 'string' && exit.then ? runEvent(exit.then, world, state) : [];
+  if (turnHalted(state) || state.gameOver) return ok(passing, true);
+  const lines = [...passing, ...enterRoom(to, world, state)];
+  return ok(lines, state.currentRoom === to || passing.length > 0);
 }
 
 export function handleGo(target: string | undefined, world: World, state: GameState): EngineResult {

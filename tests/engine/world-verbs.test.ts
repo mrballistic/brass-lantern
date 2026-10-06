@@ -68,4 +68,20 @@ describe('world verbs', () => {
     expect(lines.find((l) => l.startsWith('SNOOZE'))).toBe('SNOOZE                   hit snooze, hit the snooze button, press snooze');
     expect(lines.join('\n')).not.toContain('liberated');
   });
+
+  it('can be aimed at a character, whose rules answer', () => {
+    const w = {
+      ...world,
+      verbs: { ...world.verbs, salute: { words: ['salute'], target: 'required' as const } },
+      npcs: { ...world.npcs, guard: { ...world.npcs.guard, instead: { salute: [{ say: ['The guard salutes back.'] }] } } },
+    };
+    const s = stateWith(w, { room: 'shed' });
+    expect(execute({ action: 'salute', target: 'guard' }, { world: w, state: s }).lines).toEqual(['The guard salutes back.']);
+  });
+
+  it('aimed at a person with no rule for it, it’s a miss (the LLM gets a turn)', () => {
+    const w = { ...world, verbs: { ...world.verbs, salute: { words: ['salute'], target: 'required' as const } } };
+    const s = stateWith(w, { room: 'shed' });
+    expect(execute({ action: 'salute', target: 'guard' }, { world: w, state: s }).understood).toBe(false);
+  });
 });
