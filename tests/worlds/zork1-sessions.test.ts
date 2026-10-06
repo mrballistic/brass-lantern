@@ -78,7 +78,7 @@ const SEEDS: Record<string, { native: number; original: number }> = {
   water: { native: 1, original: 1 },
   echo: { native: 1, original: 1 },
   thrown: { native: 1, original: 1 },
-  quiet: { native: 1, original: 1 },
+  quiet: { native: 2, original: 1 },
   mirror: { native: 1, original: 1 },
   'mirror-break': { native: 1, original: 1 },
   dome: { native: 1, original: 1 },
