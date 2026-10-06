@@ -75,3 +75,18 @@ describe('weight', () => {
     expect(take(s, 'bat', fixtureWorld)).toEqual(['Taken: bat.']);
   });
 });
+
+describe('worn things (backlog clear-out)', () => {
+  it('weigh 1 and don’t count toward the fumble count (Zork’s WEIGHT and CCOUNT)', async () => {
+    const { fixtureWorld } = await import('../fixtures/world');
+    const { stateWith } = await import('../helpers/state');
+    const { carriedWeight, carriedCount } = await import('@/engine/weight');
+    const w = { ...fixtureWorld, carry: { limit: 100 }, items: { ...fixtureWorld.items, shirt: { ...fixtureWorld.items.shirt, size: 8 } } };
+    const s = stateWith(w, { room: 'bedroom', carrying: ['shirt'] });
+    expect(carriedWeight(w, s)).toBe(8);
+    expect(carriedCount(w, s)).toBe(1);
+    s.firedEvents.push(w.items.shirt.onWear!);
+    expect(carriedWeight(w, s)).toBe(1);
+    expect(carriedCount(w, s)).toBe(0);
+  });
+});
