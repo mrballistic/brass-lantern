@@ -84,17 +84,21 @@ export function followExit(exit: string | Exit, world: World, state: GameState):
     if (!exit.to) return ok([exit.denial ?? 'You can’t go that way.']);
   }
   const to = exitTarget(exit)!;
-  // Zork's GOTO: water needs a water vehicle; a vehicle won't go overland.
-  const vehicle = state.aboard ? world.items[state.aboard] : undefined;
-  const toWater = isWater(world, state, to);
-  if (!vehicle && toWater) return ok(['You can’t go there without a vehicle.']);
-  if (vehicle && ((!toWater && !isWater(world, state)) || (toWater && vehicle.vehicle?.travels !== 'water'))) {
-    return ok([`You can’t go there in a ${vehicle.name}.`]);
-  }
+  const refused = vehicleRefusal(to, world, state);
+  if (refused) return ok([refused]);
   const passing = typeof exit !== 'string' && exit.then ? runEvent(exit.then, world, state) : [];
   if (turnHalted(state) || state.gameOver) return ok(passing, true);
   const lines = [...passing, ...enterRoom(to, world, state)];
   return ok(lines, state.currentRoom === to || passing.length > 0);
+}
+
+/** Zork's GOTO: water needs a water vehicle; a vehicle won't go overland. Null when the move may happen. */
+export function vehicleRefusal(to: string, world: World, state: GameState): string | null {
+  const vehicle = state.aboard ? world.items[state.aboard] : undefined;
+  const toWater = isWater(world, state, to);
+  if (!vehicle && toWater) return 'You can’t go there without a vehicle.';
+  if (vehicle && ((!toWater && !isWater(world, state)) || (toWater && vehicle.vehicle?.travels !== 'water'))) return `You can’t go there in a ${vehicle.name}.`;
+  return null;
 }
 
 export function handleGo(target: string | undefined, world: World, state: GameState): EngineResult {

@@ -18,6 +18,8 @@ export function handleBoard(action: ParsedAction, world: World, state: GameState
   }
   if (state.aboard === id) return ok([`You are already in the ${item.name}!`]);
   if (state.locations[id] !== state.currentRoom) return ok([`The ${item.name} must be on the ground to be boarded.`]);
+  // PRE-BOARD: one vehicle at a time.
+  if (state.aboard) return ok([`You are already in the ${world.items[state.aboard]?.name ?? state.aboard}!`]);
   state.aboard = id;
   return ok([`You are now in the ${item.name}.`], true);
 }
@@ -27,11 +29,13 @@ export function handleDisembark(action: ParsedAction, world: World, state: GameS
   const id = state.aboard;
   // With no object, Infocom's parser picks the one vehicle in sight and says so: “(magic boat)”.
   const vehicles = visibleItems(world, state).filter((v) => world.items[v]?.vehicle);
-  const guessed = !action.target && world.style === 'infocom' ? (id ?? (vehicles.length === 1 ? vehicles[0] : undefined)) : undefined;
+  const guessed = !action.target && !action.via && world.style === 'infocom' ? (id ?? (vehicles.length === 1 ? vehicles[0] : undefined)) : undefined;
   const note = guessed ? [`(${world.items[guessed].name})`] : [];
   // The vehicle you're in is always in reach, dark or not.
   const scope = id && !visibleItems(world, state).includes(id) ? [...visibleItems(world, state), id] : visibleItems(world, state);
   const named = action.target ? pickItem(action.target, scope, world, 'target', state) : id;
+  // V-STAND on foot.
+  if (!id && action.via === 'stand' && world.style === 'infocom') return ok(['You are already standing, I think.']);
   // Infocom answers as Zork does; elsewhere it's a miss, so “get out of bed” can go to the intent server.
   if (!id || named !== id) return world.style === 'infocom' ? ok([...note, 'You’re not in that!']) : miss('You’re not in that!');
   if (isWater(world, state)) return ok([...note, 'You realize that getting out here would be fatal.']);

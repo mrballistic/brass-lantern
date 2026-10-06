@@ -315,6 +315,9 @@ function parse(rawInput: string, allowBareWord: boolean, verbs?: World['verbs'])
   // A verb on its own (“take”): the engine asks what for.
   if (input in BARE_VERBS) return { action: BARE_VERBS[input] };
   if (input === 'exit') return { action: 'go', target: 'out', exit: true };
+  // STAND and a bare GET OUT are DISEMBARK by another road (Zork's V-STAND, TAKE OUT): no vehicle guess.
+  if (/^stand(?:\s+up)?$/.test(input)) return { action: 'disembark', via: 'stand' };
+  if (/^get\s+(?:out|off)$/.test(input)) return { action: 'disembark', via: 'out' };
   if (input in DIRECTIONS) return { action: 'go', target: DIRECTIONS[input] };
   if (input === 'enter') return { action: 'enter' };
   {

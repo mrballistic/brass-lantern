@@ -11,7 +11,7 @@ import { afterTurn, fuseFired } from './time';
 import { die } from './death';
 import { runEnding } from './endings';
 import { miss, ok, type EngineResult } from './result';
-import { enterRoom, handleClimb, handleEnter, handleGo, handleIdle } from './verbs/movement';
+import { enterRoom, handleClimb, handleEnter, handleGo, handleIdle, vehicleRefusal } from './verbs/movement';
 import {
   ALL, handleDrop, handleExamine, handleInventory, handleLook, handleSmash, handleTake, handleUse, handleWear,
 } from './verbs/objects';
@@ -59,7 +59,11 @@ export function initialState(world: World): GameState {
 /* ------------------------------------------------------------------ */
 
 setEffectHooks({
-  go: (room, world, state, opts) => enterRoom(room, world, state, opts),
+  // A scripted move meets GOTO's vehicle checks too (Zork's PRAY in the boat).
+  go: (room, world, state, opts) => {
+    const refused = vehicleRefusal(room, world, state);
+    return refused ? [refused] : enterRoom(room, world, state, opts);
+  },
   die: (cause, world, state) => die(cause, world, state, enterRoom),
   end: (id, world, state) => runEnding(id, world, state),
   look: (world, state) => handleLook(world, state).lines,

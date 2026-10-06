@@ -63,7 +63,7 @@ describe('boarding and leaving', () => {
     expect(fallbackParse('disembark')).toEqual({ action: 'disembark' });
     expect(fallbackParse('get out of raft')).toEqual({ action: 'disembark', target: 'raft' });
     expect(fallbackParse('exit')).toEqual({ action: 'go', target: 'out', exit: true });
-    expect(fallbackParse('stand up')).toEqual({ action: 'disembark' });
+    expect(fallbackParse('stand up')).toEqual({ action: 'disembark', via: 'stand' });
   });
   it('not aboard, bare EXIT walks out exactly as OUT does', () => {
     const a = stateWith(fixtureWorld, { room: 'bedroom' });
@@ -147,11 +147,12 @@ describe('moving with a vehicle', () => {
     expect(s.aboard).toBe('raft');
     expect(s.locations.raft).toBe('shed');
   });
-  it('a scripted move takes the vehicle along', () => {
-    const s = stateWith(boatWorld, { room: 'yard' });
+  it('a scripted move takes the vehicle along (one GOTO allows: off the water)', () => {
+    const s = stateWith(boatWorld, { room: 'cellar' });
+    s.locations.raft = 'cellar';
     s.aboard = 'raft';
-    runSteps([{ go: 'living' }], boatWorld, s);
-    expect(s.locations.raft).toBe('living');
+    runSteps([{ go: 'yard' }], boatWorld, s);
+    expect(s.locations.raft).toBe('yard');
     expect(s.aboard).toBe('raft');
   });
   it('the vehicle’s rules come before the room’s, and its onEnd replaces the room’s', () => {
@@ -266,5 +267,40 @@ describe('fast follow (B)', () => {
     s.locations.raft = 'yard';
     const dark: World = { ...boatWorld, rooms: { ...boatWorld.rooms, yard: { ...boatWorld.rooms.yard, dark: true } } };
     expect(run(s, { action: 'disembark', target: 'raft' }, dark).lines[0]).toBe('You are on your own feet again.');
+  });
+});
+
+describe('fast follow (C, vehicles)', () => {
+  it('STAND and GET OUT say no “(raft)”; STAND on foot is already standing; bare DISEMBARK still guesses', () => {
+    expect(fallbackParse('stand up')).toEqual({ action: 'disembark', via: 'stand' });
+    expect(fallbackParse('get out')).toEqual({ action: 'disembark', via: 'out' });
+    expect(fallbackParse('disembark')).toEqual({ action: 'disembark' });
+    const s = stateWith(boatWorld, { room: 'yard' });
+    s.locations.raft = 'yard';
+    s.aboard = 'raft';
+    expect(run(s, { action: 'disembark', via: 'stand' }).lines[0]).toBe('You are on your own feet again.');
+    expect(run(s, { action: 'disembark', via: 'stand' }).lines[0]).toBe('You are already standing, I think.');
+    s.aboard = 'raft';
+    expect(run(s, { action: 'disembark' }).lines[0]).toBe('(raft)');
+  });
+  it('BOARD of a second vehicle while aboard: “You are already in the raft!”', () => {
+    const w: World = { ...boatWorld, items: { ...boatWorld.items, canoe: { ...boatWorld.items.raft, name: 'canoe' } } };
+    const s = stateWith(w, { room: 'yard' });
+    s.locations.raft = 'yard';
+    s.locations.canoe = 'yard';
+    s.aboard = 'raft';
+    expect(run(s, { action: 'board', target: 'canoe' }, w).lines[0]).toBe('You are already in the raft!');
+    expect(s.aboard).toBe('raft');
+  });
+});
+
+describe('a scripted move while aboard (fast follow)', () => {
+  it('meets GOTO’s refusal: a water vehicle won’t go overland (Zork: PRAY in the boat)', () => {
+    const w: World = { ...boatWorld, events: { ...boatWorld.events, whisk: [{ go: 'bedroom' }] } };
+    const s = stateWith(w, { room: 'yard' });
+    s.locations.raft = 'yard';
+    s.aboard = 'raft';
+    expect(runSteps([{ run: 'whisk' }], w, s)).toEqual(['You can’t go there in a raft.']);
+    expect(s.currentRoom).toBe('yard');
   });
 });
