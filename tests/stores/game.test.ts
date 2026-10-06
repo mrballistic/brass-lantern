@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 import { setActivePinia, createPinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { setDownload, useGameStore } from '@/stores/game';

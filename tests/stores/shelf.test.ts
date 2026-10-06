@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 import 'fake-indexeddb/auto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';

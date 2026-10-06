@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { initAnalytics, track, __resetForTests, CLIENT_ID_KEY, SESSION_ID_KEY } from '@/services/analytics';
 import { CONSENT_KEY } from '@/services/consent';

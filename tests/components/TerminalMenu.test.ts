@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 import { flushPromises, mount } from '@vue/test-utils';
 import { createPinia, setActivePinia } from 'pinia';
 import 'fake-indexeddb/auto';
