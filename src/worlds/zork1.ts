@@ -328,7 +328,8 @@ function thiefTurn(ctx: ScriptContext): EventStep[] {
     recoverStiletto();
     const rooms = ctx.rooms();
     let next = rooms.indexOf(rm);
-    do next = (next + 1) % rooms.length; while (ctx.tags(rooms[next]).includes('sacred'));
+    // Never into a sacred room, nor onto the water (Zork's thief walks RLANDBIT rooms only).
+    do next = (next + 1) % rooms.length; while (ctx.tags(rooms[next]).includes('sacred') || ctx.water(rooms[next]));
     rm = rooms[next];
     steps.push({ moveNpc: 'thief', to: rm }, { npcState: 'thief', fighting: false, hidden: true }, { clear: 'thief_here' });
     seen = false;
@@ -3092,6 +3093,8 @@ export const zork1: World = {
       if (level + 1 >= 14) {
         steps.push({ set: 'maint_flooded' }, { clear: 'leaking' });
         if (here) steps.push({ die: 'I’m afraid you have done drowned yourself.' });
+      } else if (ctx.aboard() === 'inflated_boat' && ['maintenance_room', 'dam_room', 'dam_lobby'].includes(ctx.room())) {
+        steps.push({ die: 'The rising water carries the boat over the dam, down the river, and over the falls. Tsk, tsk.' });
       }
       return steps;
     },

@@ -516,3 +516,51 @@ describe('Zork I, natively: the grue in a dark move (5b)', () => {
     expect(killed / 400).toBeLessThan(0.86);
   });
 });
+
+describe('Zork I, natively: 5b’s treasures, the thief and the boat (5b)', () => {
+  it('scores the scarab and the pot of gold for taking, the emerald for opening the buoy, and each in the case', () => {
+    const state = initialState(zork1);
+    state.currentRoom = 'living_room';
+    state.npcs = { thief: { room: null } };
+    const score = () => currentScore(zork1, state);
+    for (const [id, value, tvalue] of [['scarab', 5, 5], ['pot_of_gold', 10, 10]] as const) {
+      state.locations[id] = 'living_room';
+      state.itemState[id] = { hidden: false };
+      const before = score();
+      execute({ action: 'take', target: id, byId: true }, { world: zork1, state });
+      expect(score() - before).toBe(value);
+      state.itemState.trophy_case = { ...state.itemState.trophy_case, open: true };
+      state.locations[id] = 'trophy_case';
+      expect(score() - before).toBe(value + tvalue);
+    }
+    state.locations.buoy = 'player';
+    const before = score();
+    execute({ action: 'open', target: 'buoy', byId: true }, { world: zork1, state });
+    expect(score() - before).toBe(5);
+    state.locations.emerald = 'trophy_case';
+    expect(score() - before).toBe(15);
+  });
+  it('the thief keeps off the water', () => {
+    const state = initialState(zork1);
+    state.currentRoom = 'living_room';
+    state.npcs = { thief: { room: 'reservoir_north', hidden: true } };
+    const visited = new Set<string>();
+    for (let i = 0; i < 300; i++) {
+      execute({ action: 'look' }, { world: zork1, state });
+      const at = Object.keys(zork1.rooms).find((r) => state.npcs?.thief?.room === r);
+      if (at) visited.add(at);
+    }
+    for (const r of ['in_stream', 'reservoir', 'river_1', 'river_2', 'river_3', 'river_4', 'river_5']) expect(visited.has(r)).toBe(false);
+  });
+  it('the maintenance flood carries a boat at the dam over the falls', () => {
+    const state = initialState(zork1);
+    state.currentRoom = 'dam_room';
+    state.locations.inflated_boat = 'dam_room';
+    state.aboard = 'inflated_boat';
+    state.flags.leaking = true;
+    state.vars = { ...state.vars, water_level: 5 };
+    state.npcs = { thief: { room: null } };
+    const lines = execute({ action: 'look' }, { world: zork1, state }).lines.join(' ');
+    expect(lines).toMatch(/The rising water carries the boat over the dam, down the river, and over the falls\. Tsk, tsk\./);
+  });
+});

@@ -163,3 +163,8 @@ export const RAINBOW_SESSIONS: Record<string, string[]> = {
   'jump-falls': [...TO_FALLS, 'drop sceptre', 'drop pump', 'jump'],
   'rainbow-death': [...TO_FALLS, 'wave sceptre', 'west', 'drop pump', 'wave sceptre'],
 };
+
+export const GRUE_SESSIONS: Record<string, string[]> = {
+  // Unlit, from the dark Round Room into the dark North-South Passage: Zork's GOTO grue (PROB 80).
+  grue: ['drop sword', 'drop rope', 'drop bottle', 'turn off lamp', 'drop lamp', 'north'],
+};
