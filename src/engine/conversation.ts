@@ -12,6 +12,8 @@ import type { Ask, EngineResult } from './result';
  */
 export interface Conversation {
   pending: Ask | null;
+  /** SAVE or RESTORE asked for a name; the next line answers it. */
+  prompt: 'save' | 'restore' | null;
   /** The last thing acted on (it, them, that). */
   it: string | null;
   /** The last person acted on (him, her). */
@@ -27,7 +29,7 @@ export interface Conversation {
 }
 
 export function newConversation(): Conversation {
-  return { pending: null, it: null, him: null, lastAction: null, lastAsked: false, lastUnknown: null, history: [] };
+  return { pending: null, prompt: null, it: null, him: null, lastAction: null, lastAsked: false, lastUnknown: null, history: [] };
 }
 
 /** What to do with a line of input. */

@@ -35,6 +35,16 @@ const EMPTY_WORLD: World = {
 
 const initialCartridge = defaultWorldCartridge();
 let world: World = initialCartridge?.world ?? EMPTY_WORLD;
+/** Save names: lowercase letters, digits, spaces, _ and -, at most 32. */
+function saveName(raw: string): string {
+  return raw
+    .toLowerCase()
+    .replace(/[^a-z0-9 _-]/g, '')
+    .trim()
+    .slice(0, 32)
+    .trim();
+}
+
 let persistence = createPersistenceService(initialCartridge ? saveKeyFor(initialCartridge) : undefined);
 // Between-command state (questions, pronouns, AGAIN, OOPS, UNDO). Not saved.
 let conversation = newConversation();
@@ -102,6 +112,49 @@ export const useGameStore = defineStore('game', {
       }
     },
 
+    /** SAVE [name]. No usable name asks for one. */
+    saveAs(raw: string | undefined): void {
+      if (!persistence.isAvailable()) {
+        this.appendSystem('Local terminal memory is unavailable in this browser mode. Progress will not persist across sessions.');
+        return;
+      }
+      const name = saveName(raw ?? '');
+      if (!name) {
+        conversation.prompt = 'save';
+        this.appendSystem('Save as? Type a name, or CANCEL.');
+        return;
+      }
+      persistence.saveNamed(name, this.game, this.output);
+      this.appendSystem(`Saved as ${name}.`);
+    },
+
+    /** RESTORE [name]. No name lists the saves and asks which. */
+    restoreFrom(raw: string | undefined): void {
+      const names = persistence.listNamed();
+      const name = raw === undefined ? '' : saveName(raw);
+      if (!name) {
+        if (names.length === 0) {
+          this.appendSystem('[There are no saved games yet.]');
+          return;
+        }
+        conversation.prompt = 'restore';
+        this.appendSystem(`Restore which save? ${names.join(', ')}. Or CANCEL.`);
+        return;
+      }
+      const loaded = migrateSave(world, persistence.loadNamed(name));
+      if (!loaded) {
+        this.appendSystem(`[There’s no save called “${raw!.trim()}”.]`);
+        return;
+      }
+      this.game = loaded.gameState;
+      this.gameOverTracked = loaded.gameState.gameOver;
+      // Another timeline: its undo history, question and pronouns don't apply.
+      conversation = newConversation();
+      this.appendSystem(`Restored ${name}.`);
+      this.appendLines(describeCurrentRoom(world, this.game));
+      this.persist();
+    },
+
     appendLines(texts: string[]): void {
       for (const t of texts) {
         if (!t) continue;
@@ -127,13 +180,20 @@ export const useGameStore = defineStore('game', {
 
       // Meta commands handled by the store, not the engine.
       const lower = input.toLowerCase();
-      if (lower === 'save') {
-        this.persist();
-        this.appendSystem(
-          persistence.isAvailable()
-            ? 'Progress saved to local terminal memory.'
-            : 'Local terminal memory is unavailable in this browser mode. Progress will not persist across sessions.',
-        );
+      // SAVE or RESTORE asked for a name: this line is the answer.
+      const prompt = conversation.prompt;
+      conversation.prompt = null;
+      if (prompt) {
+        if (lower === 'cancel') this.appendSystem('[Cancelled.]');
+        else if (prompt === 'save') this.saveAs(input);
+        else this.restoreFrom(input);
+        return;
+      }
+      const saveOrRestore = lower.match(/^(save|restore)(?:\s+(.+))?$/);
+      if (saveOrRestore) {
+        const [, verb, name] = saveOrRestore;
+        if (verb === 'save') this.saveAs(name);
+        else this.restoreFrom(name);
         return;
       }
       if (lower === 'load') {
@@ -226,6 +286,11 @@ export const useGameStore = defineStore('game', {
         // “Take that back”, “do that again”: the store's own commands.
         if (action.action === 'undo') {
           this.undo();
+          return { lines: [], mutated: false };
+        }
+        if (action.action === 'save' || action.action === 'restore') {
+          if (action.action === 'save') this.saveAs(action.target);
+          else this.restoreFrom(action.target);
           return { lines: [], mutated: false };
         }
         if (action.action === 'again') {

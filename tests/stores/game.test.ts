@@ -110,16 +110,13 @@ describe('useGameStore', () => {
       expect(store.game.currentRoom).toBe('living');
     });
 
-    it('explicit SAVE writes to localStorage and prints a confirmation', async () => {
+    it('SAVE with a name writes beside the autosave and confirms', async () => {
       const store = freshStore();
       store.initialize();
-      localStorage.removeItem(SAVE_KEY);
 
-      await store.submit('save');
-      expect(localStorage.getItem(SAVE_KEY)).not.toBeNull();
-      expect(
-        store.output.some((l) => l.text.includes('saved to local terminal memory')),
-      ).toBe(true);
+      await store.submit('save Mine!');
+      expect(localStorage.getItem(`${SAVE_KEY}:mine`)).not.toBeNull();
+      expect(store.output.at(-1)!.text).toBe('Saved as mine.');
     });
 
     it('explicit LOAD restores the last save', async () => {
@@ -283,6 +280,46 @@ describe('useGameStore', () => {
       mockIntent({ action: 'undo' });
       await store.submit('take that back please');
       expect(store.game.currentRoom).toBe('bedroom');
+    });
+
+    it('the LLM can ask for a save or a restore', async () => {
+      const store = freshStore();
+      store.initialize();
+      mockIntent({ action: 'save', target: 'cellar' });
+      await store.submit('please remember this moment as cellar');
+      expect(store.output.at(-1)!.text).toBe('Saved as cellar.');
+      mockIntent({ action: 'restore' });
+      await store.submit('bring back an old game');
+      expect(store.output.at(-1)!.text).toBe('Restore which save? cellar. Or CANCEL.');
+    });
+
+    it('saves and restores by name, and lists saves', async () => {
+      const store = freshStore();
+      store.initialize();
+      await store.submit('west');
+      await store.submit('save before shed');
+      expect(store.output.at(-1)!.text).toBe('Saved as before shed.');
+      await store.submit('east');
+      await store.submit('restore');
+      expect(store.output.at(-1)!.text).toBe('Restore which save? before shed. Or CANCEL.');
+      await store.submit('before shed');
+      expect(store.game.currentRoom).toBe('living');
+      expect(store.output.some((l) => l.text === 'Restored before shed.')).toBe(true);
+    });
+
+    it('a name that sanitizes to nothing asks again; cancel backs out; unknown names say so', async () => {
+      const store = freshStore();
+      store.initialize();
+      await store.submit('save');
+      expect(store.output.at(-1)!.text).toBe('Save as? Type a name, or CANCEL.');
+      await store.submit('!!!');
+      expect(store.output.at(-1)!.text).toBe('Save as? Type a name, or CANCEL.');
+      await store.submit('cancel');
+      expect(store.output.at(-1)!.text).toBe('[Cancelled.]');
+      await store.submit('restore');
+      expect(store.output.at(-1)!.text).toBe('[There are no saved games yet.]');
+      await store.submit('restore nowhere');
+      expect(store.output.at(-1)!.text).toBe('[There’s no save called “nowhere”.]');
     });
 
     it('answers a question without asking the LLM', async () => {
