@@ -2,6 +2,15 @@
 
 Known gaps the reviews found and deferred. Each stage's spec picks up the ones it touches; strike an item through (or delete it) when it ships. Newest first.
 
+## From stage 5b (1.10.0)
+
+- **BOARD of a second vehicle while aboard** switches vehicles; PRE-BOARD says “You are already in the <current>!”.
+- **The “(magic boat)” guess** prints for STAND, GET OUT and GET OFF too; in Zork only bare DISEMBARK guesses. STAND when not aboard should say “You are already standing, I think.”
+- **`execute`'s `changed` snapshot** omits `state.aboard`, so a fuse or `onEnd` that disembarks silently isn't saved that turn.
+- **HELP's BOARD / DISEMBARK line** is 26 characters in the verb column, breaking the 25-character alignment.
+- **In the dark, aboard,** “get out of raft” is a miss in brass style (the raft isn't visible), which the LLM re-reads to the same miss. Bare “get out” works.
+- **Teleports while aboard** (script `goTo`/`enterRoom`) carry the vehicle without GOTO's checks; Zork's PRAY in the boat refuses.
+
 ## From stage 5a (1.9.0)
 
 - **READ's automatic take** (Infocom) skips the item's take rules, so a readable treasure taken that way wouldn't score its took_* points; and it takes an item out of a container you carry (Zork's HELD? counts that as held).
