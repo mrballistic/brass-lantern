@@ -6,6 +6,7 @@ import { miss, ok, type EngineResult } from '../result';
 import { applyRule, findRule } from '../rules';
 import { handleGo } from './movement';
 import { withArticle } from '../describe';
+import { nextRandom } from '../rng';
 
 
 /** A verb the world declared. Null if the world has no such verb. */
@@ -36,7 +37,9 @@ export function handleWorldVerb(action: ParsedAction, world: World, state: GameS
   if (rule) return applyRule(rule, world, state);
   // `{a target}` names the object with its article, `{target}` without (Zork's V-SMELL: “It smells like a bat.”).
   const named = target ? world.items[target].name : person ? world.npcs[person].name : 'it';
-  const reply = (verb.reply ?? 'Nothing happens.').replace('{a target}', target ? withArticle(world, target) : named).replace('{target}', named);
+  // A list is a random pick (Zork's PICK-ONE for HACK-HACK and V-SKIP), from the seeded generator.
+  const chosen = Array.isArray(verb.reply) ? verb.reply[Math.floor(nextRandom(state) * verb.reply.length)] : verb.reply;
+  const reply = (chosen ?? 'Nothing happens.').replace('{a target}', target ? withArticle(world, target) : named).replace('{target}', named);
   // Aimed at a person who has no rule for it: a miss, so the intent server gets a turn.
   if (person) return miss(reply);
   return ok([reply]);

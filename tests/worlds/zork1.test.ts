@@ -826,5 +826,44 @@ describe('Zork I, natively: fast follow (C)', () => {
     expect(say(at('forest_1'), 'climb down tree')).toEqual(['There are no climbable trees here.']);
     expect(say(at('path'), 'climb down tree')).toEqual(['You can’t do that!']);
   });
+  it('KICK, WAVE and SKIP answer with Zork’s random lines (HACK-HACK, V-SKIP)', () => {
+    const s = at('west_of_house', ['lamp']);
+    expect(say(s, 'kick lamp')[0]).toMatch(/^Kicking the brass lantern (doesn’t seem to work|isn’t notably helpful|has no effect)\.$/);
+    expect(say(s, 'wave lamp')[0]).toMatch(/^Waving the brass lantern (doesn’t seem to work|isn’t notably helpful|has no effect)\.$/);
+    expect(['Very good. Now you can go to the second grade.', 'Are you enjoying yourself?', 'Wheeeeeeeeee!!!!!', 'Do you expect me to applaud?']).toContain(say(s, 'skip')[0]);
+  });
+  it('JUMP as V-LEAP', () => {
+    const tree = at('up_a_tree');
+    expect(say(tree, 'jump')[0]).toBe('In a feat of unaccustomed daring, you manage to land on your feet without killing yourself.');
+    expect(tree.currentRoom).toBe('path');
+    const shaft = at('shaft_room', ['lamp']);
+    shaft.itemState.lamp = { ...shaft.itemState.lamp, on: true };
+    expect(say(shaft, 'jump')[0]).toBe('This was not a very safe place to try jumping.');
+    const house = at('west_of_house', ['lamp']);
+    expect(['Very good. Now you can go to the second grade.', 'Are you enjoying yourself?', 'Wheeeeeeeeee!!!!!', 'Do you expect me to applaud?']).toContain(say(house, 'jump')[0]);
+    expect(say(house, 'jump over lamp')).toEqual(['That would be a good trick.']);
+  });
+  it('EXORCISE (V-EXORCISE, LLD-ROOM’s M-BEG)', () => {
+    expect(say(at('west_of_house'), 'exorcise house')).toEqual(['What a bizarre concept!']);
+    const lld = at('entrance_to_hades', ['lamp']);
+    lld.itemState.lamp = { ...lld.itemState.lamp, on: true };
+    expect(say(lld, 'exorcise ghosts')).toEqual(['You aren’t equipped for an exorcism.']);
+    for (const id of ['bell', 'book', 'candles']) lld.locations[id] = 'player';
+    expect(say(lld, 'exorcise ghosts')).toEqual(['You must perform the ceremony.']);
+  });
+  it('a spirit passes the troll (TROLL-FLAG)', () => {
+    const s = at('troll_room');
+    s.flags.dead = true;
+    s.npcs = { thief: { room: null } };
+    say(s, 'east');
+    expect(s.currentRoom).toBe('ew_passage');
+  });
+  it('entering the Loud Room while it roars drops the rest of the line, with Zork’s words', () => {
+    const s = at('round_room', ['lamp']);
+    s.itemState.lamp = { ...s.itemState.lamp, on: true };
+    const r = execute(fallbackParse('east', zork1.verbs)!, { world: zork1, state: s });
+    expect(s.currentRoom).toBe('loud_room');
+    expect(r.stopLine).toBe('The rest of your commands have been lost in the noise.');
+  });
 });
 
