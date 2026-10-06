@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.0 (2026-10-06)
+
+Engine parity, stage 5d: the barrow, the thief's timing, and the whole game. **Zork I · Native is complete**: every room, all 350 points, and a full game that matches the original chapter by chapter.
+
+- **`score<op>N`:** the score as a condition (Zork wins at `score>=350`); the audit refuses a `scoring` entry that tests the score itself.
+- **`darkness.arrive`:** a line on arriving in an unlit room (“You have moved into a dark place.”).
+- **`{ touch }`:** marks an item handled, ending its first-seen sentence (Zork's TOUCHBIT).
+- **Parser:** EXTINGUISH, DOUSE, BLOW OUT and PUT OUT turn things off. TAKE ALL FROM *container* takes what's in it. ENTER *vehicle* boards it.
+- **Infocom style:** OPEN touches a container; things on a scenery surface without a heading of its own read as if on the floor (Release 119's kitchen table); a lit light on the floor says “(providing light)”; a scenery container's contents go a level deeper once floor items were listed; a character who arrived this turn is listed before the room's things; THROW X IN Y is PUT.
+- **Zork I · Native** gains the Mountains, winning at 350 (the whisper, the ancient map, the secret path), the Stone Barrow and Zork's ending; WIND, the canary's songbird and the brass bauble; the Living Room's door after the cyclops flees; INFLATE and DIG guessing the one tool you hold; the canary's 6 points; the thief's own description until he's been knocked out.
+- **Tests:** the whole game natively from the first move to the barrow; the same game against the original in nine chapters, reply for reply, with fights as sync points; the thief's arrival rate measured against the original (median 17 turns on both sides); the diff walkthrough lets him roam.
+
 ## 1.11.0 (2026-10-06)
 
 Engine parity, stage 5c: the coal mine.
