@@ -33,6 +33,7 @@ export const cartridges: Cartridge[] = [
   { kind: 'zcode', id: 'zork1', title: 'ZORK I', story: 'stories/zork1.z3', format: 'Z-machine v3' },
   { kind: 'zcode', id: 'zork2', title: 'ZORK II', story: 'stories/zork2.z3', format: 'Z-machine v3' },
   { kind: 'zcode', id: 'zork3', title: 'ZORK III', story: 'stories/zork3.z3', format: 'Z-machine v3' },
+  { kind: 'world', id: 'zork1-native', title: 'ZORK I · NATIVE', world: zork1 },
 ];
 ```
 

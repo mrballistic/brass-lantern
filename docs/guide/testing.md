@@ -34,11 +34,11 @@ To pin every word, compare the whole transcript: `expect(text).toMatchInlineSnap
 
 ## Check the data
 
-[`tests/worlds/audit.test.ts`](https://github.com/mrballistic/brass-lantern/blob/main/tests/worlds/audit.test.ts) checks every world in `cartridges` (and the examples) for mistakes that fail silently in play:
+[`tests/worlds/audit.test.ts`](https://github.com/mrballistic/brass-lantern/blob/main/tests/worlds/audit.test.ts) checks every world in `cartridges` for mistakes (`tests/worlds/examples/audit.test.ts` does the same for the example worlds) that fail silently in play:
 
 - effects naming items, rooms, events or endings that don't exist, and unknown effects;
 - events named by rules, `onEnter`, `onTake`, `onWear`, `onSmash`, `onGive`, daemons and the finale that don't exist;
-- conditions of unknown kinds, or naming items and rooms that don't exist;
+- conditions of unknown kinds, or naming items and rooms that don't exist (in rules, triggers, exits, `requires`, daemons, hints and scoring);
 - exits to nowhere, doors that aren't items, items listed in rooms or containers that don't exist;
 - a world verb word that a built-in verb already owns, and the reserved ID `player`.
 

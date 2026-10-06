@@ -21,7 +21,7 @@ export const tutorial: World = {
 };
 ```
 
-Every room, item and person has an **ID**, its key (`desk_drawer`, `gary`). IDs are snake_case and never shown to players. The engine's state is small: where you are, what you carry, a set of **flags** (named booleans like `drawer_open`), which events have fired, and how many moves you've made. Everything a world does comes down to reading and setting those.
+Every room, item and person has an **ID**, its key (`desk_drawer`, `gary`). IDs are snake_case and never shown to players. The engine's state is small: where you are, where every item is, a set of **flags** (named booleans like `drawer_open`), a few numbers, which events have fired, and how many moves you've made. Everything a world does comes down to reading and setting those.
 
 ## Rooms
 
@@ -78,9 +78,9 @@ items: {
 
 `name` is what players see; `aliases` are other words they might use. `portable: false` items stay put, and `refusal` is what trying to take one says.
 
-The badge isn't in any room: opening the drawer hands it over. **`onUse`** is a list of rules, and the first one whose conditions hold wins. Each rule can fire an event (`then`), print lines (`say`), require another item nearby (`with`), or test a condition (`if`). End with a plain `say` as the fallback. OPEN, PUSH, PULL and PRESS all mean USE, so "open drawer" works.
+The badge isn't in any room: opening the drawer hands it over. **`onUse`** is a list of rules, and the first one whose conditions hold wins. Each rule can fire an event (`then`), print lines (`say`), require another item nearby (`with`), or test a condition (`if`). End with a plain `say` as the fallback. PUSH, PULL and PRESS mean USE, and OPEN falls back to use rules on anything that isn't a container, so "open drawer" works.
 
-Items also have `onTake`, `onWear`, `onSmash` and `onSnooze` hooks; see the [schema](../reference/world-schema#item).
+Items also have `onTake`, `onWear` and `onSmash` hooks, and `instead`/`after` rules for any verb; see the [schema](../reference/world-schema#item).
 
 ## People
 
@@ -139,7 +139,7 @@ flagLabels: {
 
 ## The ending
 
-The engine's one built-in way to win: smash a particular item, in a particular room, while holding a particular other item.
+Snack Attack wins with the **finale**: smash a particular item, in a particular room, while holding a particular other item. (The other way to end a game is the `end` effect; see [Endings](../reference/world-schema#endings) and the [two-room game](./building-worlds/two-rooms).)
 
 ```ts
 finale: {

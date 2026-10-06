@@ -2,7 +2,7 @@
 
 ## Conditions
 
-Conditions are strings, used by `requires`, `onEnter`, use rules, dialogue keys, hints, the finale's epilogue and ambient lines. One parser handles all of them (`src/engine/conditions.ts`).
+Conditions are strings, used by `requires`, exits (`if`, `denials`), room `descriptions`, `onEnter`, rules (`instead`, `after`, `onUse`), dialogue keys, hints, scoring, daemons, the finale's epilogue and ambient lines. One parser handles all of them (`src/engine/conditions.ts`).
 
 | Condition | True when |
 |---|---|
@@ -21,9 +21,9 @@ Conditions are strings, used by `requires`, `onEnter`, use rules, dialogue keys,
 | `!…` | negates any of the above |
 | `a & b` | every part holds: `in:break_room & !flag:lunch_freed` |
 
-There's no "or". Write two rules, or two dialogue keys, instead. An unrecognized condition is false in play, and `tests/worlds/audit.test.ts` fails on it, and on a condition naming an item or room that doesn't exist.
+There's no "or". Write two rules, or two dialogue keys, instead. An unrecognized condition is false in play. The world audit fails on it, and on a condition naming an item or room that doesn't exist, in rules, triggers, exits, `requires`, daemons, hints and scoring (not yet in dialogue keys, ambient lines or room descriptions).
 
-## Events
+## Events and effects
 
 An event is a named list of steps, run in order. A string is printed. An object is an effect:
 
@@ -58,7 +58,7 @@ Some lines are printed **and** change the game. They still work, and in an Infoc
 Facts worth knowing:
 
 - **Events from `onEnter`, `onTake`, `onWear`, `onSmash` and the finale’s `bareHanded` fire once per game.** Events from a use rule’s `then` and from `onGive` run every time the rule matches, so guard them with a `!flag:` condition if they should happen once.
-- **Flags only turn on.** Model "before and after" as two flags, or with `!flag:`.
+- **Bracket lines only turn flags on.** To turn one off, use the `{ clear: 'flag' }` effect.
 - **Item lines match display names**, not IDs. To upgrade an item, consume the old one and add the new: `[Lamp consumed]`, then `[Added to inventory: lit lamp]`.
 - **`intro`** plays when a new game starts. A chapter break is just a line, such as `✨ CHAPTER 2: THE AFTERNOON`.
 

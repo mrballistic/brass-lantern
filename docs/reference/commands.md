@@ -9,7 +9,7 @@ The verbs are fixed; a world gives them things to act on. Anything the regex par
 | CLIMB [*thing*] | `climb up`, `climb down` | Up, or the room's `climb` exit. |
 | LOOK | `l` | Describes the room again. |
 | TAKE *item* | `get` `grab` `pick up` | |
-| DROP *item* | `put down` | |
+| DROP *item* | `put down` `leave` | |
 | TAKE ALL, DROP ALL, PUT ALL IN / ON *thing* | `everything`; `… but X and Y`, `… except X, Y` | One line per thing: “lamp: Taken.”. TAKE ALL takes what’s in reach and not inside something you carry (in Infocom style, what’s directly in the room, with a reason for anything that can’t be taken). |
 | EXAMINE *thing* | `x` `inspect` `look at` | Items and people, and what's inside or on an item. |
 | READ *thing* | | The item's text. |
@@ -21,17 +21,17 @@ The verbs are fixed; a world gives them things to act on. Anything the regex par
 | TURN ON / OFF *thing* | `switch on`, `light` | Switchable items. |
 | USE *item* [ON *thing*] | `push` `pull` `press` `operate` `attach X to Y` | See [use rules](./world-schema#userule). OPEN and PUT fall back to an item's use rules when it isn't a container. |
 | GIVE *item* TO *person* | `hand` `offer` `return` | With one person present, GIVE *item* is enough. |
-| TALK TO *person* | `speak/chat with`, `ask … about …` | With one person present, TALK is enough. |
+| TALK TO *person* | `speak/chat with`, `question`, `ask … about …` | With one person present, TALK is enough. |
 | WEAR *item* | `put on` | |
-| SMASH *thing* [WITH *item*] | `hit` `break` `destroy` `attack` `wreck` `whack` | |
-| WAIT / SIT | `z` | Takes a `wait` / `sit` exit if the room has one. |
+| SMASH *thing* [WITH *item*] | `hit` `break` `destroy` `attack` `wreck` `whack` `kill` `beat` | |
+| WAIT / SIT | `z`, `sit down` `relax` | Takes a `wait` / `sit` exit if the room has one. |
 | INVENTORY | `i` `inv` | |
 | HINT | `hints` `clue` | |
 | VERBOSE / BRIEF / SUPERBRIEF | | Full descriptions always, on first visits only, or never (LOOK still shows them). Takes no game time. |
 | SCORE | | |
 | AGAIN | `g` | Repeats the last command, meaning the same things. |
 | OOPS *word* | | Replaces the word nobody understood in your last line, and tries it again: `examine lanturn`, then `oops lantern`. |
-| UNDO | | Takes back the last move, up to 50 moves. Not kept across a reload or a RESTART. Takes no game time. |
+| UNDO | | Takes back the last move, up to 50 moves. Not kept across a reload, a RESTART or a RESTORE. Takes no game time. |
 | QUIT | | Prints the world’s `quit` reply; the game carries on. |
 | SAVE [*name*] | | Saves the game under a name (`save before the troll`). Without a name, asks for one. Names are lowercase letters, digits, spaces, `-` and `_`, up to 32. |
 | RESTORE [*name*] | | Goes back to a named save. Without a name, lists them and asks which. |
@@ -53,6 +53,6 @@ The verbs are fixed; a world gives them things to act on. Anything the regex par
 
 **Pronouns:** `it`, `them` and `that` mean the last thing you acted on, as in `take the mug then give it to gary`; `him` and `her` mean the last person.
 
-**Questions:** when a word matches more than one thing, the game asks which (“Which door do you mean, the wooden door or the trap door?”), and when a verb is missing its object, what (“What do you want to take?”). Answer with just the missing words (`trap`, `the sword`), or type a new command to move on. Questions take no game time, and answers are never sent to the intent server.
+**Questions:** when a word matches more than one thing, the game asks which (“Which do you mean: the wooden door or the trap door?”, or in Infocom style “Which door do you mean, the wooden door or the trap door?”), and when a verb is missing its object, what (“What do you want to take?”). Answer with just the missing words (`trap`, `the sword`), or type a new command to move on. Questions take no game time, and answers are never sent to the intent server.
 
 **Keys:** Up and Down step through your last 100 commands, keeping whatever you’d started typing. Enter on an empty line, or any letter, finishes the text that’s typing out.

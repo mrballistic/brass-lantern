@@ -11,7 +11,7 @@ Every field a world can use. The source of truth is [`src/types/world.ts`](https
 | `items` | `Record<id, Item>` | |
 | `npcs` | `Record<id, NPC>` | |
 | `dialogue` | `Record<npc id, Dialogue>` | What TALK TO says. |
-| `events` | `Record<id, EventStep[]>` | Lines and [effects](./conditions-and-events#effects). `intro` plays when a new game starts. |
+| `events` | `Record<id, EventStep[]>` | Lines and [effects](./conditions-and-events#events-and-effects). `intro` plays when a new game starts. |
 | `flagLabels` | `Record<label, flag id>` | Maps the lowercased label in `[Flag set: …]` lines to a flag ID. |
 | `hints?` | `Hint[]` | HINT shows the first whose condition holds. |
 | `scoring?` | `{ flag, points }[]` or `{ if, points }[]` | SCORE sums points for set flags, plus conditions that hold right now (a treasure in the case), plus the `score` variable. |

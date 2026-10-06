@@ -2,7 +2,7 @@
 
 Brass Lantern ships Zork I twice: the original story file, run by the Z-machine interpreter, and **ZORK I · NATIVE**, a rebuild as an ordinary Brass Lantern world (`src/worlds/zork1.ts`). The native version is how the engine proves it can carry an Infocom-class game. A test plays both side by side and fails if they disagree.
 
-It covers the house, the forest, and the first rooms underground: the cellar, the chasm, the gallery and the studio, with darkness, the lamp burning down, the grue, and death. The rest arrives as the engine gains a fuller parser, actors and combat.
+It covers the house, the forest, and the first rooms underground: the cellar, the chasm, the gallery and the studio, with darkness, the lamp burning down, the grue, and death. The rest arrives as the engine gains actors, combat and carrying weight.
 
 ## How ZIL maps to a world
 

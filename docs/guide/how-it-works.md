@@ -22,7 +22,7 @@ browser                                      intent server (optional)
 
 The store (`src/stores/game.ts`) runs every line through the same steps:
 
-1. **Meta commands** (SAVE and RESTORE with a name, LOAD, UNDO, RESTART, COOKIES) are handled by the store itself. So is the answer to SAVE's “Save as?”.
+1. **Meta commands** (SAVE, RESTORE, LOAD, UNDO, RESTART, COOKIES) are handled by the store itself, and so is the answer to a SAVE or RESTORE prompt.
 2. **Split.** `splitCommands` (`src/engine/parser.ts`) breaks the line into commands:
    - Clauses always split on `then`, `;` and full stops, except after `dr.`, `mr.` and the like.
    - Within a clause, `and` and commas split only when every piece is a recognized command, or an object after a list verb: `get key and wallet` becomes `get key` and `take wallet`.
@@ -116,7 +116,7 @@ A restored session renders instantly, with no typewriter replay, and its boot se
 
 ## Saves and analytics
 
-- **Saves** live in `localStorage` only, one per cartridge, under `<storagePrefix>:save:<cartridge id>` (or the cartridge’s `saveKey`), with up to 500 lines of history. [Cartridges and storage](../reference/cartridges#browser-storage) lists every key. They're written after every change. SAVE *name* keeps an extra copy under `<save key>:<name>`, and RESTORE *name* brings it back. If storage is unavailable (private browsing), play continues and SAVE says so.
-- **UNDO** history is memory only: up to 50 snapshots, gone on reload or RESTART.
+- **Saves** live in `localStorage` only, one per cartridge, under `<storagePrefix>:save:<cartridge id>` (or the cartridge’s `saveKey`), with up to 500 lines of history. [Cartridges and storage](../reference/cartridges#browser-storage) lists every key. They're written after every change. SAVE *name* keeps an extra copy under `<save key>:named:<name>`, and RESTORE *name* brings it back. If storage is unavailable (private browsing), play continues and SAVE says so.
+- **UNDO** history is memory only: up to 50 snapshots, gone on reload, RESTART or RESTORE.
 - **SCRIPT** downloads a transcript as a text file when it stops; nothing is stored.
 - **Analytics** are off unless you set `VITE_GA_MEASUREMENT_ID` at build time. When it's set, nothing is sent and nothing is stored until the player accepts a consent banner, and Do Not Track is honored. Builds without an ID show no banner at all. Events: `page_view`, `game_start`, `session_resumed` (with a `cartridge` parameter for story files), and, for native worlds, `game_completed` with the move count.

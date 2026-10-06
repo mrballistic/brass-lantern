@@ -27,7 +27,7 @@ This page builds the smallest complete game, [`src/worlds/examples/two-rooms.ts`
 
 <<< ../../../src/worlds/examples/two-rooms.ts#events{ts}
 
-- **`events`** are named lists of steps. A string prints; an object is an [effect](../../reference/conditions-and-events#effects). `find_key` prints a line, sets a flag and moves the key onto the porch.
+- **`events`** are named lists of steps. A string prints; an object is an [effect](../../reference/conditions-and-events#events-and-effects). `find_key` prints a line, sets a flag and moves the key onto the porch.
 - **`intro`** plays when a new game starts.
 - **`end`** plays one of the world's **`endings`**: its lines, then the footer, and the game is over.
 - **`npcs`, `dialogue` and `flagLabels`** are required. This game has no people, and its flags are set by effects rather than [bracket lines](../../reference/conditions-and-events#bracket-lines-the-older-form), so they're empty.

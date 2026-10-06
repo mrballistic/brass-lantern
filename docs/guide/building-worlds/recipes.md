@@ -44,7 +44,7 @@ A shed with a lamp, and a dark cellar below it.
 
 - **`dark: true`** makes a room need light. A **`light`** item gives it while it's on (it has to be **`switchable`** to turn on), whether it's carried, on the floor, or inside something open.
 - **In the dark** the player can only find what they're carrying. Anything else gets `tooDark` (“It’s too dark to see.”), and no time passes.
-- **`blunder`** runs when the player tries a direction with no exit in the dark. Zork's grue is a [`chance`](../../reference/conditions-and-events#effects) of death; this one always bites.
+- **`blunder`** runs when the player tries a direction with no exit in the dark. Zork's grue is a [`chance`](../../reference/conditions-and-events#events-and-effects) of death; this one always bites.
 - **`death`** says what dying does. With `lives: 1` the player gets one resurrection in `respawn`; the next death plays `final` and ends the game. Without a `death` block, dying ends the game at once.
 
 ```
