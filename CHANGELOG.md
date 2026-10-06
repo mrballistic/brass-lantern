@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.10.0 (2026-10-06)
+
+Engine parity, stage 5b: the river, the boat, the rainbow and the canyon.
+
+- **Vehicles:** items with `vehicle` that the player can BOARD and DISEMBARK; rooms that are `water` (or water by a condition); Zork's rules for where a vehicle can and can't go, coming ashore, and the vehicle going wherever you go. Aboard, things you drop land in the vehicle, its rules come before the room's (except those it has for itself as an object, `as`), EXIT on its own gets out, and its `onEnd` runs in place of the room's. New conditions `aboard` and `water:`, effects `{ board }` and `{ disembark }`.
+- **Zork's grue in the dark:** walking from one unlit room into another can kill (`darkness.stumble`, Zork's 80%).
+- **GO runs through rules**, so a room or a vehicle can answer a direction.
+- **Infocom style** picks up more of Zork's listings: “(outside the boat)” while aboard, first-seen sentences first, “The box is closed.”, DISEMBARK guessing the one vehicle in sight, and “You don’t have the boat.” for dropping something you can see but aren’t holding.
+- **Zork I · Native** gains the magic boat (inflating, the label, punctures and the repair), the Frigid River with its current and its falls, the Stream, the White Cliffs' narrow paths, Sandy Beach and the shovel, the scarab in the Sandy Cave, the buoy and its emerald, the Shore, Aragain Falls, the rainbow and the pot of gold, and the canyon up to Canyon View and the forest. Three treasures. The thief stays off the water, and the flood can carry a boat over the dam.
+- **Tests:** seeded sessions for every new puzzle, against the real story file.
+- **Docs:** a recipe for a raft on a pond; vehicles in the schema; porting notes for 5b.
+
 ## 1.9.0 (2026-10-06)
 
 Engine parity, stage 5a: the dam, the Loud Room, the temple and Hades.

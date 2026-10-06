@@ -20,7 +20,7 @@ export const ACTION_VOCAB = [
   'go', 'take', 'drop', 'use', 'examine', 'look', 'talk', 'inventory',
   'smash', 'wear', 'give', 'sit', 'wait', 'hint', 'score', 'help',
   'open', 'close', 'lock', 'unlock', 'put', 'search', 'enter', 'climb', 'read', 'turn_on', 'turn_off', 'verbose', 'brief', 'superbrief', 'undo', 'again',
-  'restart', 'quit', 'save', 'restore', 'load', 'script', 'unscript', 'version', 'attack', 'throw', 'diagnose', 'ask', 'order', 'burn', 'turn', 'plug', 'unknown',
+  'restart', 'quit', 'save', 'restore', 'load', 'script', 'unscript', 'version', 'attack', 'throw', 'diagnose', 'ask', 'order', 'burn', 'turn', 'plug', 'board', 'disembark', 'unknown',
 ] as const;
 
 const ACTIONS: ReadonlySet<string> = new Set(ACTION_VOCAB);
@@ -90,6 +90,7 @@ function buildSystemInstruction(ctx: IntentContext): string {
     '- Setting fire to something is burn: target is what burns, indirect is what lights it (light candles with match).',
     '- Turning something with a tool is turn: target is the thing, indirect is the tool (turn bolt with wrench).',
     '- Plugging something with something is plug: target is the hole or leak, indirect is what plugs it.',
+    '- Getting into a vehicle (a boat, a cart) is board: target is the vehicle. Getting out is disembark.',
     '- Asking how hurt or healthy the player is is diagnose.',
     '- Asking or telling someone about something is ask: target is the person, indirect is the topic.',
     '- Telling someone to do something is order: target is the person, indirect is what they were told to do.',

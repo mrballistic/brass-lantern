@@ -103,6 +103,12 @@ export function isCarried(state: GameState, id: string): boolean {
   return state.locations[id] === PLAYER;
 }
 
+/** Is the room water (Zork's NONLANDBIT)? A condition string decides for rooms that change. */
+export function isWater(world: World, state: GameState, roomId: string = state.currentRoom): boolean {
+  const w = world.rooms[roomId]?.water;
+  return typeof w === 'string' ? evaluateCondition(w, state, world) : Boolean(w);
+}
+
 /** What the player holds, including things they can see inside what they hold (Zork's HELD). */
 export function heldItems(world: World, state: GameState): string[] {
   const within = (id: string): boolean => {
@@ -114,6 +120,8 @@ export function heldItems(world: World, state: GameState): string[] {
 
 export function moveItem(state: GameState, id: string, place: Place): void {
   state.locations[id] = place;
+  // A vehicle taken away from the player's room leaves them aboard nothing.
+  if (state.aboard === id && place !== state.currentRoom) state.aboard = undefined;
   const placed = (state.placed ??= {});
   placed[id] = Math.max(0, ...Object.values(placed)) + 1;
 }

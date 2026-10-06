@@ -254,7 +254,7 @@ describe('fallbackParse', () => {
       });
     });
     it('parses bare "exit" as go out', () => {
-      expect(fallbackParse('exit')).toEqual({ action: 'go', target: 'out' });
+      expect(fallbackParse('exit')).toEqual({ action: 'go', target: 'out', exit: true });
     });
   });
 

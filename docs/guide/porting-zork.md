@@ -2,7 +2,7 @@
 
 Brass Lantern ships Zork I twice: the original story file, run by the Z-machine interpreter, and **ZORK I · NATIVE**, a rebuild as an ordinary Brass Lantern world (`src/worlds/zork1.ts`). The native version is how the engine proves it can carry an Infocom-class game. A test plays both side by side and fails if they disagree.
 
-It covers the house, the forest, and the first rooms underground: the cellar, the chasm, the gallery and the studio, with darkness, the lamp burning down, the grue, and death; the Troll Room, the East-West Passage and the Round Room, with the troll, combat, the sword's glow and carrying weight; and the maze, the grating, the Cyclops Room and the thief's Treasure Room, with the thief (wandering, stealing, fighting) and the cyclops; and, from stage 5a, the underground east and south of the Round Room: the dam and the reservoir, the Loud Room, the mirrors, Atlantis, the dome, the temple and Hades, with the exorcism and ghost mode. The river, the rainbow, the coal mine and the endgame arrive in stages 5b and 5c.
+It covers the house, the forest, and the first rooms underground: the cellar, the chasm, the gallery and the studio, with darkness, the lamp burning down, the grue, and death; the Troll Room, the East-West Passage and the Round Room, with the troll, combat, the sword's glow and carrying weight; and the maze, the grating, the Cyclops Room and the thief's Treasure Room, with the thief (wandering, stealing, fighting) and the cyclops; and, from stage 5a, the underground east and south of the Round Room: the dam and the reservoir, the Loud Room, the mirrors, Atlantis, the dome, the temple and Hades, with the exorcism and ghost mode; and, from stage 5b, the magic boat on the Frigid River, the White Cliffs, Sandy Beach and its scarab, Aragain Falls, the rainbow and the canyon. The coal mine and the endgame arrive in stage 5c.
 
 ## How ZIL maps to a world
 
@@ -69,6 +69,12 @@ Zork was written in ZIL, Infocom's language. Its source is MIT licensed ([histor
 | `ALWAYS-LIT` for a spirit | `darkness.litIf` |
 | DEAD-FUNCTION | a world `capture` while `flag:dead` |
 | BURN (LIGHT … WITH) and FLAMEBIT/BURNBIT | the BURN verb, `flaming` and `burnable` |
+| VEHBIT and VTYPE (the magic boat) | an item's `vehicle: { travels: 'water' }`, BOARD and DISEMBARK |
+| NONLANDBIT on a room (the river, the reservoir at high tide) | the room's `water` (a condition for the reservoir) |
+| a vehicle's M-BEG and M-END | its rules (asked before the room's) and its `onEnd`; Zork's RBOAT M-BEG is in the world capture |
+| I-RIVER, RIVER-SPEEDS, RIVER-LAUNCH | a self-requeuing fuse and LAUNCH's table, in scripts |
+| GOTO's grue from one dark room into another | `darkness.stumble` |
+| PRINT-CONT's “(outside the magic boat)” and first-seen-first order | built in, Infocom style |
 
 `style: 'infocom'` makes the engine follow Zork's conventions:
 - “There is a sword here.”;
@@ -98,6 +104,5 @@ Zork was written in ZIL, Infocom's language. Its source is MIT licensed ([histor
 
 ## What's next
 
-- **Stage 5b:** the river and the boat (vehicles), the falls, the rainbow and the canyon.
 - **Stage 5c:** the coal mine, the endgame and the barrow, all 350 points, and the thief's exact timing against the original.
 - Characters who obey orders or follow the player.

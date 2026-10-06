@@ -2,6 +2,25 @@
 
 Known gaps the reviews found and deferred. Each stage's spec picks up the ones it touches; strike an item through (or delete it) when it ships. Newest first.
 
+## From stage 5b (1.10.0)
+
+- **BOARD of a second vehicle while aboard** switches vehicles; PRE-BOARD says “You are already in the <current>!”.
+- **The “(magic boat)” guess** prints for STAND, GET OUT and GET OFF too; in Zork only bare DISEMBARK guesses. STAND when not aboard should say “You are already standing, I think.”
+- **`execute`'s `changed` snapshot** omits `state.aboard`, so a fuse or `onEnd` that disembarks silently isn't saved that turn.
+- **HELP's BOARD / DISEMBARK line** is 26 characters in the verb column, breaking the 25-character alignment.
+- **In the dark, aboard,** “get out of raft” is a miss in brass style (the raft isn't visible), which the LLM re-reads to the same miss. Bare “get out” works.
+- **Teleports while aboard** (script `goTo`/`enterRoom`) carry the vehicle without GOTO's checks; Zork's PRAY in the boat refuses.
+
+## From stage 5a (1.9.0)
+
+- **READ's automatic take** (Infocom) skips the item's take rules, so a readable treasure taken that way wouldn't score its took_* points; and it takes an item out of a container you carry (Zork's HELD? counts that as held).
+- **Every captured line**, even a pure echo, is its own UNDO step and a save.
+- **WAIT's extra turns:** a fuse rescheduled on the first turn doesn't count down on the others (the scheduled-this-turn set lasts the whole WAIT), and a fuse cancelled silently ends the wait.
+- **A capture that throws** leaves the seed advanced (no try/finally around the script).
+- **BURN's scopes:** the tool comes from things in reach (Zork's syntax requires holding it) while withRules resolves it from things in sight; BURN TROLL WITH TORCH misses instead of “You can’t burn a troll.”
+- **BURN's refusal** uses Zork's fixed “a” (“With a alarm clock??!?”); brass worlds would want the right article.
+- **Not ported in 5a:** “The rest of your commands have been lost in the noise.” (entering the Loud Room mid-line); a spirit passing the troll (TROLL-FLAG); EXORCISE; V-LEAP outside the Dome; Zork's random V-SKIP and HACK-HACK replies (native uses one fixed line each).
+
 ## From stage 4b (1.8.0)
 
 - **Differential coverage of the thief's and cyclops's rarer lines:** the lair (scream, vanish), his death and treasures reappearing, the maze “off in the distance” line, the junk lines, and the cyclops's food, sleep and eats-you lines are checked against ZIL-derived unit tests, not `zork1.z3`. Stage 5's full map should let a scripted original session reach them.

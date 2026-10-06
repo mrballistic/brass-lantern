@@ -19,6 +19,9 @@ const DIRECTIONS: Record<string, string> = {
 const RE = {
   movement: /^(?:go|walk|head|run|exit)\s+(?:to\s+(?:the\s+)?|toward\s+|over\s+to\s+(?:the\s+)?|out\s+to\s+(?:the\s+)?)?(.+)$/i,
   enter: /^(?:enter|go\s+into|into)\s+(?:the\s+)?(.+)$/i,
+  board: /^(?:board|get\s+(?:in|into|on)|climb\s+(?:in|into|on)|sit\s+in)\s+(?:the\s+)?(.+)$/i,
+  // Bare EXIT stays a direction (out), as it always was.
+  disembark: /^(?:disembark|get\s+out(?:\s+of)?|get\s+off|stand(?:\s+up)?)(?:\s+(?:the\s+)?(.+))?$/i,
   // MOVE is GO only with a destination word; plain “move X” is left for worlds (MOVE RUG).
   moveTo: /^move\s+(?:to|toward|towards|over\s+to)\s+(?:the\s+)?(.+)$/i,
   climb: /^climb(?:\s+(up|down))?(?:\s+(?:the\s+)?(.+))?$/i,
@@ -102,6 +105,8 @@ const SINGLE_WORD: Record<string, ParsedAction> = {
 // group is the target; an optional second group is the indirect object. Order
 // matters — earlier entries win on ambiguous input.
 const VERB_PATTERNS: ReadonlyArray<readonly [RegExp, string, ('in' | 'on')?]> = [
+  [RE.board, 'board'],
+  [RE.disembark, 'disembark'],
   [RE.enter, 'enter'],
   [RE.moveTo, 'go'],
   [RE.movement, 'go'],
@@ -150,7 +155,7 @@ export const BUILT_IN_WORDS: ReadonlySet<string> = new Set([
   'drop', 'put down', 'leave', 'examine', 'inspect', 'look at', 'x', 'read', 'use', 'operate', 'open',
   'push', 'pull', 'press', 'insert', 'put', 'slide', 'stick', 'feed', 'plug', 'attach', 'give', 'hand',
   'offer', 'return', 'wear', 'put on', 'close', 'shut', 'lock', 'unlock', 'place', 'set', 'remove',
-  'search', 'look in', 'look inside', 'climb', 'go into', 'turn', 'switch', 'light', 'burn', 'burn down', 'ignite', 'incinerate', 'talk', 'speak', 'chat', 'ask', 'question', 'tell', 'order', 'smash', 'destroy',
+  'search', 'look in', 'look inside', 'climb', 'go into', 'turn', 'switch', 'light', 'board', 'disembark', 'get in', 'get out', 'get off', 'stand', 'burn', 'burn down', 'ignite', 'incinerate', 'talk', 'speak', 'chat', 'ask', 'question', 'tell', 'order', 'smash', 'destroy',
   'break', 'kill', 'hit', 'attack', 'fight', 'stab', 'murder', 'slay', 'throw', 'toss', 'hurl', 'wreck', 'whack', 'beat', 'sit', 'sit down', 'relax', 'wait', 'z',
   ...Object.keys(SINGLE_WORD),
   ...Object.keys(DIRECTIONS),
@@ -305,10 +310,11 @@ function parse(rawInput: string, allowBareWord: boolean, verbs?: World['verbs'])
   if (input in SINGLE_WORD) return SINGLE_WORD[input];
   // A verb on its own (“take”): the engine asks what for.
   if (input in BARE_VERBS) return { action: BARE_VERBS[input] };
+  if (input === 'exit') return { action: 'go', target: 'out', exit: true };
   if (input in DIRECTIONS) return { action: 'go', target: DIRECTIONS[input] };
   if (input === 'enter') return { action: 'enter' };
   {
-    const m = input.match(RE.climb);
+    const m = RE.board.test(input) ? null : input.match(RE.climb);
     if (m) return m[2] || m[1] ? { action: 'climb', target: (m[2] ?? m[1]).trim() } : { action: 'climb' };
   }
   {
@@ -328,7 +334,8 @@ function parse(rawInput: string, allowBareWord: boolean, verbs?: World['verbs'])
   for (const [re, action, prep] of VERB_PATTERNS) {
     const m = input.match(re);
     if (!m) continue;
-    const parsed: ParsedAction = { action, target: m[1].trim() };
+    // A pattern with an optional object (DISEMBARK [the boat]) may match without one.
+    const parsed: ParsedAction = m[1] ? { action, target: m[1].trim() } : { action };
     if (m[2]) parsed.indirect = m[2].trim();
     if (prep) parsed.prep = prep;
     return parsed;

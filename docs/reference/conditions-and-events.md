@@ -23,6 +23,8 @@ Conditions are strings, used by `requires`, exits (`if`, `denials`), room `descr
 | `fighting:NPC` | in a fight with the player (and conscious) |
 | `with:NPC` | in the player's room (hidden or not) |
 | `seen:NPC` | in the player's room and not hidden |
+| `aboard`, `aboard:ITEM` | the player is in a vehicle (that one) |
+| `water:here`, `water:ROOM` | the room is water now |
 | `!…` | negates any of the above |
 | `a & b` | every part holds: `in:break_room & !flag:lunch_freed` |
 
@@ -41,6 +43,7 @@ An event is a named list of steps, run in order. A string is printed. An object 
 | `{ npcState: 'npc', fighting?, staggered?, strength?, hidden? }` | Sets a character's combat state, or hides and reveals it. |
 | `{ script: 'name', arg? }` | Runs one of the world's [scripts](./world-schema#scripts) and the steps it returns. |
 | `{ hide: 'item' }`, `{ reveal: 'item' }` | Hides an item where it is (not seen, listed or taken), or shows it again. |
+| `{ board: 'item' }`, `{ disembark: true }` | Puts the player in a vehicle that's in the room, or takes them out. |
 | `{ unlist: 'item' }`, `{ relist: 'item' }` | Keeps an item where it is, seen and usable but out of the room's list, or lists it again (the tied rope). |
 | `{ open }`, `{ close }`, `{ lock }`, `{ unlock }` | Changes a container's or door's state. |
 | `{ switch: 'item', on: true }` | Switches a light (or anything switchable). |

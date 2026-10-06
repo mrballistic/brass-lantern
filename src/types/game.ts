@@ -43,6 +43,8 @@ export interface PlayerState {
 }
 
 export interface GameState {
+  /** The vehicle the player is in (Zork's VEHBIT), if any. */
+  aboard?: string;
   currentRoom: string;
   /** Every item's parent. Inventory and room contents are derived from it. */
   locations: Record<string, Place>;
@@ -98,6 +100,8 @@ export interface ParsedAction {
   prep?: 'in' | 'on';
   /** TAKE ALL BUT …: the words after BUT/EXCEPT. */
   except?: string[];
+  /** Bare EXIT (a direction, out), which aboard gets out of the vehicle (Zork's V-EXIT). */
+  exit?: boolean;
   /** The targets are IDs (the intent server's answer), so they resolve by ID first. */
   byId?: boolean;
 }

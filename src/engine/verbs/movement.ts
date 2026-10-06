@@ -3,8 +3,9 @@ import type { Exit, World } from '@/types/world';
 import { evaluateCondition } from '../conditions';
 import { COMPASS, describeRoom, exitList } from '../describe';
 import { fuzzyMatchExit } from '../fuzzy';
-import { isLit, isOpen, matchItem, visibleItems } from '../model';
+import { isLit, isOpen, isWater, matchItem, visibleItems } from '../model';
 import { runSteps, turnHalted } from '../effects';
+import { nextRandom } from '../rng';
 import { miss, ok, type EngineResult } from '../result';
 import { runEvent } from '../rules';
 
@@ -32,21 +33,34 @@ export function enterRoom(targetId: string, world: World, state: GameState, opts
     return [target.denial ?? GENERIC_DENIAL];
   }
   const first = !state.visited.includes(targetId);
+  const fromWater = isWater(world, state);
+  const wasLit = isLit(world, state);
   state.currentRoom = targetId;
+  // The vehicle goes where you go; coming ashore it rests on the bank (GOTO).
+  const landing: string[] = [];
+  if (state.aboard) {
+    state.locations[state.aboard] = targetId;
+    if (fromWater && !isWater(world, state, targetId)) landing.push(`The ${world.items[state.aboard]?.name ?? state.aboard} comes to a rest on the shore.`, '');
+  }
+  // Zork's GOTO: from one unlit room into another, the grue may be waiting.
+  const stumble = world.darkness?.stumble;
+  if (stumble && !wasLit && !isLit(world, state) && nextRandom(state) * 100 < stumble.chance) {
+    return [...landing, ...runSteps(state.aboard && stumble.aboard ? stumble.aboard : stumble.then, world, state)];
+  }
   // A dark room isn't visited until you've seen it (Zork's TOUCHBIT).
   if (first && isLit(world, state)) state.visited.push(targetId);
   // A quiet move (Zork's GOTO without a description) still runs the room's arrival events.
-  if (opts.quiet) return runOnEnter(targetId, world, state);
+  if (opts.quiet) return [...landing, ...runOnEnter(targetId, world, state)];
   const verbosity = state.verbosity ?? (world.style === 'infocom' ? 'brief' : 'verbose');
   const brief = verbosity === 'superbrief' || (verbosity === 'brief' && !first);
   // Infocom runs a room's arrival routine (M-ENTER) before describing it.
   if (world.style === 'infocom') {
     const arrival = runOnEnter(targetId, world, state);
     // An arrival that moved the player on, or ended things, has said all there is to say.
-    if (state.currentRoom !== targetId || state.gameOver || turnHalted(state)) return arrival;
-    return [...arrival, ...describeRoom(targetId, world, state, { first, brief, namesOnly: verbosity === 'superbrief' })];
+    if (state.currentRoom !== targetId || state.gameOver || turnHalted(state)) return [...landing, ...arrival];
+    return [...landing, ...arrival, ...describeRoom(targetId, world, state, { first, brief, namesOnly: verbosity === 'superbrief' })];
   }
-  const lines = describeRoom(targetId, world, state, { first, brief, namesOnly: verbosity === 'superbrief' });
+  const lines = [...landing, ...describeRoom(targetId, world, state, { first, brief, namesOnly: verbosity === 'superbrief' })];
   lines.push(...runOnEnter(targetId, world, state));
   return lines;
 }
@@ -67,6 +81,13 @@ export function followExit(exit: string | Exit, world: World, state: GameState):
     if (!exit.to) return ok([exit.denial ?? 'You can’t go that way.']);
   }
   const to = exitTarget(exit)!;
+  // Zork's GOTO: water needs a water vehicle; a vehicle won't go overland.
+  const vehicle = state.aboard ? world.items[state.aboard] : undefined;
+  const toWater = isWater(world, state, to);
+  if (!vehicle && toWater) return ok(['You can’t go there without a vehicle.']);
+  if (vehicle && ((!toWater && !isWater(world, state)) || (toWater && vehicle.vehicle?.travels !== 'water'))) {
+    return ok([`You can’t go there in a ${vehicle.name}.`]);
+  }
   const passing = typeof exit !== 'string' && exit.then ? runEvent(exit.then, world, state) : [];
   if (turnHalted(state) || state.gameOver) return ok(passing, true);
   const lines = [...passing, ...enterRoom(to, world, state)];
@@ -82,7 +103,8 @@ export function handleGo(target: string | undefined, world: World, state: GameSt
   if (!exitKey) {
     // Stumbling around in the dark is a real attempt to move (Zork's grue).
     // Only a real direction is a blunder; anything else goes to the LLM as a miss.
-    if (world.darkness?.blunder && DIRECTION_WORDS.has(target) && !isLit(world, state)) {
+    // V-WALK's blunder never happens on water.
+    if (world.darkness?.blunder && DIRECTION_WORDS.has(target) && !isLit(world, state) && !isWater(world, state)) {
       return ok(runSteps(world.darkness.blunder, world, state), true);
     }
     if (world.style === 'infocom') return miss('You can’t go that way.');

@@ -108,3 +108,31 @@ describe('litIf (5a)', () => {
     expect(isLit(w, s)).toBe(true);
   });
 });
+
+describe('dark moves (5b)', () => {
+  const darkShed = async () => {
+    const { fixtureWorld } = await import('../fixtures/world');
+    return {
+      ...fixtureWorld,
+      rooms: { ...fixtureWorld.rooms, shed: { ...fixtureWorld.rooms.shed, dark: true, requires: undefined } },
+      darkness: { ...fixtureWorld.darkness, stumble: { chance: 100, then: [{ die: 'Grue.' }] } },
+    };
+  };
+  it('unlit to unlit may kill', async () => {
+    const world = await darkShed();
+    const { stateWith } = await import('../helpers/state');
+    const { execute } = await import('@/engine/engine');
+    const s = stateWith(world, { room: 'shed' });
+    expect(execute({ action: 'go', target: 'down' }, { world, state: s }).lines[0]).toBe('Grue.');
+  });
+  it('never with a light, never from a lit room', async () => {
+    const world = await darkShed();
+    const { stateWith } = await import('../helpers/state');
+    const { execute } = await import('@/engine/engine');
+    const lit = stateWith(world, { room: 'shed', carrying: ['lamp'] });
+    lit.itemState.lamp = { on: true };
+    expect(execute({ action: 'go', target: 'down' }, { world, state: lit }).lines[0]).not.toBe('Grue.');
+    const fromLit = stateWith(world, { room: 'yard' });
+    expect(execute({ action: 'go', target: 'north' }, { world, state: fromLit }).lines[0]).not.toBe('Grue.');
+  });
+});

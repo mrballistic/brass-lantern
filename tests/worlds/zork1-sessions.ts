@@ -89,3 +89,82 @@ export const TEMPLE_SESSIONS: Record<string, string[]> = {
     'east', 'south', 'take bell', 'open bell', 'pray', 'south', 'turn on candles', 'pray', 'look',
   ],
 };
+
+/**
+ * From the Round Room to Dam Base with the pump and the putty: the reservoir drained for the pump at
+ * Reservoir North. The rope and bottle stay behind (the original's player is still wounded from its
+ * troll fight, so carries less).
+ */
+const BOAT_ROUTE = [
+  'drop rope', 'drop bottle', 'north', 'northeast', 'east', 'north', 'north', 'take wrench', 'take tube', 'push yellow button',
+  'south', 'south', 'turn bolt with wrench', 'drop wrench', ...waits(4), 'west', 'north', 'north', 'take pump', 'south', 'south',
+  'east', 'down',
+];
+
+export const BOAT_SESSIONS: Record<string, string[]> = {
+  inflate: [
+    'drop sword', ...BOAT_ROUTE, 'look', 'inflate plastic with lungs', 'blow in plastic', 'inflate plastic with tube',
+    'inflate plastic with pump', 'look', 'inflate boat with pump', 'read label', 'deflate boat', 'pump up plastic', 'deflate boat',
+    'inflate plastic with pump',
+  ],
+  board: [
+    'drop sword', ...BOAT_ROUTE, 'inflate plastic with pump', 'board boat', 'board boat', 'look', 'north', 'take boat', 'drop pump',
+    'look', 'disembark', 'disembark', 'launch',
+  ],
+  puncture: [
+    ...BOAT_ROUTE, 'open tube', 'squeeze tube', 'inflate plastic with pump', 'board boat', 'look', 'inflate boat with pump',
+    'put gunk on boat', 'inflate plastic with pump', 'put sword in boat', 'board boat', 'take sword', 'drop sword', 'look',
+    'board boat', 'drop sword', 'look',
+  ],
+};
+
+/** BOAT_ROUTE, then the boat inflated and boarded at Dam Base with nothing sharp, and only the lamp to lose. */
+const ABOARD = ['drop sword', ...BOAT_ROUTE, 'drop tube', 'inflate plastic with pump', 'board boat'];
+
+export const RIVER_SESSIONS: Record<string, string[]> = {
+  downriver: [...ABOARD, 'drop pump', 'launch', 'look', ...waits(8)],
+  landings: [...ABOARD, 'launch', 'east', 'land', 'look', 'launch', 'wait', 'land', 'west', 'up', 'look'],
+  stream: [
+    'drop sword', ...BOAT_ROUTE, 'drop tube', 'take plastic', 'up', 'west', 'west', 'drop plastic', 'inflate plastic with pump',
+    'board boat', 'launch', 'look', 'up', 'west', 'east', 'look', 'disembark', 'look',
+  ],
+  'wrong-launch': ['drop sword', ...BOAT_ROUTE, 'inflate plastic with pump', 'launch', 'board boat', 'up', 'launch', 'launch'],
+};
+
+// The current: River 1 to 2 in three turns of the clock, then 4, 3, 2 and 1. After 'look' on
+// River 2 you're on River 3; a WAIT there reaches River 4; another, River 5.
+const TO_RIVER_3 = [...ABOARD, 'launch', 'wait', 'wait', 'look'];
+const TO_RIVER_4 = [...TO_RIVER_3, 'wait'];
+
+export const BANK_SESSIONS: Record<string, string[]> = {
+  cliffs: [...TO_RIVER_3, 'land', 'look', 'south', 'disembark', 'south', 'north', 'west', 'east', 'take boat', 'south', 'drop boat', 'south', 'north'],
+  dig: [
+    ...TO_RIVER_4, 'east', 'disembark', 'look', 'take shovel', 'northeast', 'look', 'dig sand with pump',
+    'dig in sand with shovel', 'dig in sand with shovel', 'dig in sand with shovel', 'dig in sand with shovel', 'look', 'take scarab', 'score',
+  ],
+  collapse: [...TO_RIVER_4, 'east', 'disembark', 'drop pump', 'take shovel', 'northeast', ...Array<string>(5).fill('dig in sand with shovel')],
+  buoy: [...TO_RIVER_4, 'take buoy', 'east', 'examine buoy', 'open buoy', 'take emerald', 'score'],
+  shore: [...TO_RIVER_4, 'wait', 'land', 'disembark', 'look', 'north', 'look', 'south'],
+};
+
+/** The sceptre from the Egyptian Room, back up through the altar's hole, then the boat down the river to the Shore. */
+const TO_FALLS = [
+  'drop sword', 'southeast', 'east', 'tie rope to railing', 'down', 'south', 'east', 'open coffin', 'take sceptre', 'west', 'south',
+  'down', 'north', 'north', 'north', ...BOAT_ROUTE.slice(1), 'drop tube', 'inflate plastic with pump', 'put sceptre in boat',
+  'board boat', 'launch', 'wait', 'wait', 'look', 'wait', 'wait', 'land', 'take sceptre', 'disembark', 'south',
+];
+
+export const RAINBOW_SESSIONS: Record<string, string[]> = {
+  rainbow: [
+    ...TO_FALLS, 'look', 'west', 'cross rainbow', 'look under rainbow', 'wave sceptre', 'look', 'west', 'look', 'west', 'look', 'take pot',
+    'cross rainbow', 'cross rainbow', 'east', 'drop pot', 'west', 'wave sceptre', 'look', 'east', 'southwest', 'look', 'up', 'look',
+    'up', 'look', 'cross rainbow', 'northwest', 'look', 'score',
+  ],
+  'jump-falls': [...TO_FALLS, 'drop sceptre', 'drop pump', 'jump'],
+  'rainbow-death': [...TO_FALLS, 'wave sceptre', 'west', 'drop pump', 'wave sceptre'],
+};
+
+export const GRUE_SESSIONS: Record<string, string[]> = {
+  // Unlit, from the dark Round Room into the dark North-South Passage: Zork's GOTO grue (PROB 80).
+  grue: ['drop sword', 'drop rope', 'drop bottle', 'turn off lamp', 'drop lamp', 'north'],
+};

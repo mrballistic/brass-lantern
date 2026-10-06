@@ -31,6 +31,8 @@ export interface Room {
   scenery?: string[];
   /** Free-form labels scripts can read (`maze`, `sacred`). The engine doesn't. */
   tags?: string[];
+  /** Water (Zork's NONLANDBIT): only a water vehicle goes here. A condition for rooms that change (a reservoir that drains). */
+  water?: boolean | string;
   /** Takes input here before it's parsed, while `if` holds (Zork's Loud Room). See Capture. */
   capture?: Capture;
   /** Run at the end of every command here, after the action and before the clock (Zork's M-END). */
@@ -130,6 +132,10 @@ export interface Item {
   size?: number;
   /** Something to fight with. */
   weapon?: boolean;
+  /** Something the player can get into and travel in (Zork's VEHBIT; `travels` is VTYPE). */
+  vehicle?: { travels: 'water' };
+  /** A vehicle's end routines: while the player is aboard, they run instead of the room's (Zork's M-END). */
+  onEnd?: Array<{ if: string; then: string | EventStep[] }>;
   /** BURN can set it alight (Zork's BURNBIT). */
   burnable?: boolean;
   /** It can set things alight: always, or while switched on if it switches (Zork's FLAMEBIT). */
@@ -300,6 +306,9 @@ export type Effect =
   /** Hides an item where it is, or reveals it again (Zork's INVISIBLE). */
   | { hide: string }
   | { reveal: string }
+  /** Puts the player in a vehicle that's in the room, or takes them out. */
+  | { board: string }
+  | { disembark: true }
   /** Keeps an item where it is but out of listings, or lists it again (Zork's NDESCBIT, set in play: the tied rope). */
   | { unlist: string }
   | { relist: string }
@@ -417,6 +426,8 @@ export interface World {
     fall?: string;
     /** Run when the player tries a direction with no exit in the dark (Zork's grue). */
     blunder?: EventStep[];
+    /** Walking from an unlit dark room into another: `chance`% of `then` instead (Zork's GOTO grue), or `aboard` in a vehicle. */
+    stumble?: { chance: number; then: EventStep[]; aboard?: EventStep[] };
     /** While this condition holds every room is lit (Zork's ALWAYS-LIT, for a spirit). Mustn't use `lit:`. */
     litIf?: string;
   };

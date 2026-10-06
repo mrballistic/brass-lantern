@@ -152,6 +152,11 @@ function runEffect(e: Effect, world: World, state: GameState): { lines: string[]
     return { lines: runSteps((hit ? e.then : e.else) ?? [], world, state), stop: state.gameOver };
   }
   if ('hide' in e) return void (world.items[e.hide] && (itemState(state, e.hide).hidden = true)), { lines: [] };
+  if ('board' in e) {
+    if (world.items[e.board]?.vehicle && state.locations[e.board] === state.currentRoom) state.aboard = e.board;
+    return { lines: [] };
+  }
+  if ('disembark' in e) return void (state.aboard = undefined), { lines: [] };
   if ('unlist' in e) return void (world.items[e.unlist] && (itemState(state, e.unlist).unlisted = true)), { lines: [] };
   if ('relist' in e) return void (world.items[e.relist] && (itemState(state, e.relist).unlisted = false)), { lines: [] };
   if ('reveal' in e) return void (world.items[e.reveal] && (itemState(state, e.reveal).hidden = false)), { lines: [] };

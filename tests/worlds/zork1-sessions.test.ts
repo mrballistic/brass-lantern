@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it } from 'vitest';
 import { compare, nativeRun, originalRun, prefixed } from './zsession';
-import { DAM_SESSIONS, DOME_SESSIONS, LOUD_SESSIONS, TEMPLE_SESSIONS } from './zork1-sessions';
+import { BANK_SESSIONS, BOAT_SESSIONS, DAM_SESSIONS, DOME_SESSIONS, GRUE_SESSIONS, LOUD_SESSIONS, RAINBOW_SESSIONS, RIVER_SESSIONS, TEMPLE_SESSIONS } from './zork1-sessions';
 
 // Scripted sessions: each puzzle chain runs in native Zork I and in the real story
 // file, both seeded, and the replies are compared line by line.
@@ -40,21 +40,37 @@ async function session(name: string, commands: string[], seeds: { native: number
 // Seeds found with findSeed, one per side (tests/zz/seeds.test.ts while developing). A content change
 // that moves the thief can need new ones; the failure says so.
 const SEEDS: Record<string, { native: number; original: number }> = {
-  exorcism: { native: 2, original: 1 },
+  grue: { native: 1, original: 1 },
+  rainbow: { native: 513, original: 1 },
+  'jump-falls': { native: 83, original: 1 },
+  'rainbow-death': { native: 69, original: 1 },
+  cliffs: { native: 9, original: 1 },
+  dig: { native: 9, original: 1 },
+  collapse: { native: 10, original: 1 },
+  buoy: { native: 9, original: 1 },
+  shore: { native: 9, original: 1 },
+  downriver: { native: 9, original: 1 },
+  landings: { native: 9, original: 1 },
+  stream: { native: 4, original: 1 },
+  'wrong-launch': { native: 4, original: 1 },
+  inflate: { native: 7, original: 1 },
+  board: { native: 4, original: 1 },
+  puncture: { native: 37, original: 1 },
+  exorcism: { native: 4, original: 1 },
   'read-first': { native: 1, original: 1 },
   tension: { native: 1, original: 1 },
   'hot-bell': { native: 1, original: 1 },
   candles: { native: 2, original: 1 },
   coffin: { native: 1, original: 1 },
   ghost: { native: 2, original: 1 },
-  dam: { native: 2, original: 1 },
+  dam: { native: 9, original: 1 },
   leak: { native: 4, original: 1 },
-  flood: { native: 1, original: 1 },
+  flood: { native: 2, original: 1 },
   refill: { native: 4, original: 1 },
   water: { native: 1, original: 1 },
   echo: { native: 1, original: 1 },
   thrown: { native: 1, original: 1 },
-  quiet: { native: 27, original: 1 },
+  quiet: { native: 59, original: 1 },
   mirror: { native: 1, original: 1 },
   'mirror-break': { native: 1, original: 1 },
   dome: { native: 1, original: 1 },
@@ -69,6 +85,11 @@ const GROUPS: Array<[string, Record<string, string[]>]> = [
   ['the Loud Room', LOUD_SESSIONS],
   ['the mirrors, the caves, Atlantis and the dome', DOME_SESSIONS],
   ['the temple and Hades', TEMPLE_SESSIONS],
+  ['the boat', BOAT_SESSIONS],
+  ['the river and the stream', RIVER_SESSIONS],
+  ['the river banks', BANK_SESSIONS],
+  ['the rainbow and the canyon', RAINBOW_SESSIONS],
+  ['a grue in the dark', GRUE_SESSIONS],
 ];
 
 for (const [title, sessions] of GROUPS) {

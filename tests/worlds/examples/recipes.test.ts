@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { containers } from '@/worlds/examples/containers';
 import { darkness } from '@/worlds/examples/darkness';
 import { echo } from '@/worlds/examples/echo';
+import { raft } from '@/worlds/examples/raft';
 import { endings } from '@/worlds/examples/endings';
 import { fortune } from '@/worlds/examples/fortune';
 import { guard } from '@/worlds/examples/guard';
@@ -274,5 +275,42 @@ describe('recipes', () => {
       📍 Ledge"
     `);
     expect(state.moveCount).toBe(3);
+  });
+
+  it('a raft on a pond', () => {
+    const { text } = play(raft, ['east', 'board raft', 'east', 'disembark', 'east', 'take cone', 'drop cone', 'look', 'disembark']);
+    expect(text).toMatchInlineSnapshot(`
+      "📍 Pond Bank
+      A muddy bank. A pond stretches east.
+      There is a raft here.
+      > east
+      You can’t go there without a vehicle.
+      > board raft
+      You are now in the raft.
+      > east
+      📍 Pond, in the raft
+      The middle of the pond. Lily pads drift by. An island lies to the east, the bank to the west.
+      > disembark
+      (raft)
+      You realize that getting out here would be fatal.
+      > east
+      The raft comes to a rest on the shore.
+
+      📍 Island, in the raft
+      A tiny island with one tree. The pond is west.
+      There is a pine cone here. (outside the raft)
+      > take cone
+      Taken.
+      > drop cone
+      Dropped.
+      > look
+      📍 Island, in the raft
+      A tiny island with one tree. The pond is west.
+      The raft contains:
+        A pine cone
+      > disembark
+      (raft)
+      You are on your own feet again."
+    `);
   });
 });

@@ -38,6 +38,128 @@ function lightWith(ctx: ScriptContext, tool: string): EventStep[] {
   if (tool === 'torch') return lit ? ['You realize, just in time, that the candles are already lighted.'] : [{ move: 'candles', to: null }, 'The heat from the torch is so intense that the candles are vaporized.'];
   return ['You have to light them with something that’s burning, you know.'];
 }
+/** DEAD-FUNCTION: a spirit's limits, before the parser's own verbs. */
+function deadFunction(ctx: ScriptContext): EventStep[] | undefined {
+  // The line as typed, or a command already parsed (AGAIN, the intent server's reading).
+  const a = ctx.action ?? ctx.parse(ctx.line ?? '');
+  if (!a) return;
+  const verb = a.action;
+  if (['go', 'verbose', 'brief', 'superbrief', 'version', 'save', 'restore', 'load', 'quit', 'restart', 'undo', 'again', 'oops', 'unknown', 'capture'].includes(verb)) return;
+  if (['attack', 'smash'].includes(verb)) return ['All such attacks are vain in your condition.'];
+  if (['open', 'close', 'eat', 'drink', 'inflate', 'deflate', 'turn', 'burn', 'tie', 'untie', 'rub'].includes(verb)) return ['Even such an action is beyond your capabilities.'];
+  if (verb === 'wait') return ['Might as well. You’ve got an eternity.'];
+  if (verb === 'turn_on') return ['You need no light to guide you.'];
+  if (verb === 'score') return ['You’re dead! How can you think of your score?'];
+  if (verb === 'take') return ['Your hand passes through its object.'];
+  if (['drop', 'throw', 'inventory'].includes(verb)) return ['You have no possessions.'];
+  if (verb === 'diagnose') return ['You are dead.'];
+  if (verb === 'look') {
+    const lit = !ctx.world.rooms[ctx.room()]?.dark;
+    return ['The room looks strange and unearthly and objects appear indistinct.', ...(lit ? [] : ['Although there is no light, the room seems dimly illuminated.']), '', { look: true }];
+  }
+  if (verb === 'pray') {
+    if (ctx.room() !== 'south_temple') return ['Your prayers are not heard.'];
+    return [
+      { clear: 'dead' },
+      'From the distance the sound of a lone trumpet is heard. The room becomes very bright and you feel disembodied. In a moment, the brightness fades and you find yourself rising as if from a long sleep, deep in the woods. In the distance you can faintly hear a songbird and the sounds of the forest.',
+      '',
+      { go: 'forest_1' },
+    ];
+  }
+  return ['You can’t even do that.'];
+}
+
+const WEAPONS = ['sceptre', 'knife', 'sword', 'rusty_knife', 'axe', 'stiletto'];
+/** Rooms the boat floats in, and what LAUNCH calls them (RBOAT-FUNCTION). */
+const WATERS: Record<string, string> = { river_1: 'river', river_2: 'river', river_3: 'river', river_4: 'river', reservoir: 'reservoir', in_stream: 'stream' };
+const DIRS: Record<string, string> = { n: 'north', s: 'south', e: 'east', w: 'west', u: 'up', d: 'down', ne: 'northeast', nw: 'northwest', se: 'southeast', sw: 'southwest' };
+
+/** IBOAT-FUNCTION: the pile becomes the magic boat. */
+function inflateBoat(ctx: ScriptContext): EventStep[] {
+  return [
+    'The boat inflates and appears seaworthy.',
+    ...(ctx.state.itemState.boat_label?.moved ? [] : ['A tan label is lying inside the boat.']),
+    { clear: 'deflate' },
+    { move: 'inflatable_boat', to: null },
+    { move: 'inflated_boat', to: 'here' },
+  ];
+}
+
+/** RBOAT-FUNCTION's M-BEG: steering, LAUNCH, and sharp things aboard. */
+function boatBeg(ctx: ScriptContext): EventStep[] | undefined {
+  const a = ctx.action ?? ctx.parse(ctx.line ?? '');
+  if (!a) return;
+  const here = ctx.room();
+  if (a.action === 'go') {
+    const dir = DIRS[a.target ?? ''] ?? a.target ?? '';
+    if (['land', 'east', 'west'].includes(dir)) return;
+    if (here === 'reservoir' && ['north', 'south'].includes(dir)) return;
+    if (here === 'in_stream' && dir === 'south') return;
+    return ['Read the label for the boat’s instructions.'];
+  }
+  if (a.action === 'launch') {
+    if (WATERS[here]) return ['(magic boat)', `You are on the ${WATERS[here]}, or have you forgotten?`];
+    return launchFrom(ctx, here);
+  }
+  const word = (w?: string) => (w ?? '').toLowerCase().replace(/^the\s+/, '');
+  const named = (w?: string) => WEAPONS.find((id) => ctx.carried(id) && (ctx.world.items[id].name === word(w) || (ctx.world.items[id].aliases ?? []).includes(word(w)) || id === w));
+  const sharp =
+    (a.action === 'drop' && named(a.target)) ||
+    (a.action === 'put' && /boat|raft/.test(word(a.indirect)) && named(a.target)) ||
+    (['attack', 'smash'].includes(a.action) && named(a.indirect));
+  if (!sharp) return;
+  const loot = ctx.children('inflated_boat').filter((id) => ctx.treasure(id) > 0);
+  const steps: EventStep[] = [
+    { disembark: true },
+    { move: 'inflated_boat', to: null },
+    { move: 'punctured_boat', to: 'here' },
+    ...loot.map((id): EventStep => ({ move: id, to: 'here' })),
+    `It seems that the ${ctx.world.items[sharp].name} didn’t agree with the boat, as evidenced by the loud hissing noise issuing therefrom. With a pathetic sputter, the boat deflates, leaving you without.`,
+  ];
+  if (ctx.water()) {
+    steps.push('');
+    steps.push({ die: here === 'reservoir' || here === 'in_stream' ? 'Another pathetic sputter, this time from you, heralds your drowning.' : 'In other words, fighting the fierce currents of the Frigid River. You manage to hold your own for a bit, but then you are carried over a waterfall and into some nasty rocks. Ouch!' });
+  }
+  return steps;
+}
+
+/** RIVER-LAUNCH: where LAUNCH takes the boat from each bank. */
+const LAUNCHES: Record<string, string> = {
+  dam_base: 'river_1',
+  white_cliffs_north: 'river_3',
+  white_cliffs_south: 'river_4',
+  shore: 'river_5',
+  sandy_beach: 'river_4',
+  reservoir_south: 'reservoir',
+  reservoir_north: 'reservoir',
+  stream_view: 'in_stream',
+};
+/** RIVER-SPEEDS and RIVER-NEXT: turns between pulls of the current, and where it pulls you. */
+const RIVER_SPEEDS: Record<string, number> = { river_1: 4, river_2: 4, river_3: 3, river_4: 2, river_5: 1 };
+const RIVER_NEXT: Record<string, string> = { river_1: 'river_2', river_2: 'river_3', river_3: 'river_4', river_4: 'river_5' };
+
+/** RBOAT-FUNCTION's LAUNCH, through GO-NEXT: into the water, and the current takes over on the river. */
+function launchFrom(ctx: ScriptContext, here: string): EventStep[] {
+  const to = LAUNCHES[here];
+  if (!to) return ['(magic boat)', 'You can’t launch it here.'];
+  if (!ctx.water(to)) return ['(magic boat)', 'You can’t go there in a magic boat.'];
+  const speed = RIVER_SPEEDS[to];
+  // A QUEUE from an action ticks this same turn: one less to wait, or now if that's none.
+  const current: EventStep[] = speed === undefined ? [] : speed > 1 ? [{ schedule: 'river_current', in: speed - 1 }] : [{ run: 'river_current' }];
+  return ['(magic boat)', { go: to }, ...current];
+}
+
+/** SAND-FUNCTION's BDIGS. */
+const BDIGS = ['You seem to be digging a hole here.', 'The hole is getting deeper, but that’s about it.', 'You are surrounded by a wall of sand on all sides.'];
+/** Things with Zork's TOOLBIT. */
+const TOOLS = ['pump', 'screwdriver', 'wrench', 'shovel', 'putty'];
+/** V-DIG: anything but the shovel in the sand. */
+function vDig(ctx: ScriptContext, tool?: string): string {
+  if (tool === 'shovel') return 'There’s no reason to be digging here.';
+  if (!tool) return 'Digging with the pair of hands is slow and tedious.';
+  const name = ctx.world.items[tool]?.name ?? tool;
+  return TOOLS.includes(tool) ? `Digging with the ${name} is slow and tedious.` : `Digging with a ${name} is silly.`;
+}
 const NO_TREE = 'There is no tree here suitable for climbing.';
 const BOARDED = 'The windows are all boarded.';
 
@@ -206,7 +328,8 @@ function thiefTurn(ctx: ScriptContext): EventStep[] {
     recoverStiletto();
     const rooms = ctx.rooms();
     let next = rooms.indexOf(rm);
-    do next = (next + 1) % rooms.length; while (ctx.tags(rooms[next]).includes('sacred'));
+    // Never into a sacred room, nor onto the water (Zork's thief walks RLANDBIT rooms only).
+    do next = (next + 1) % rooms.length; while (ctx.tags(rooms[next]).includes('sacred') || ctx.water(rooms[next]));
     rm = rooms[next];
     steps.push({ moveNpc: 'thief', to: rm }, { npcState: 'thief', fighting: false, hidden: true }, { clear: 'thief_here' });
     seen = false;
@@ -247,6 +370,200 @@ export const zork1: World = {
   emptyInventory: 'You are empty-handed.',
 
   rooms: {
+    // Stage 5b: the canyon and the rainbow. CANYON-VIEW through ARAGAIN-FALLS, in story order.
+    canyon_view: {
+      name: 'Canyon View',
+      description: 'You are at the top of the Great Canyon on its west wall. From here there is a marvelous view of the canyon and parts of the Frigid River upstream. Across the canyon, the walls of the White Cliffs join the mighty ramparts of the Flathead Mountains to the east. Following the Canyon upstream to the north, Aragain Falls may be seen, complete with rainbow. The mighty Frigid River flows out from a great dark cavern. To the west and south can be seen an immense forest, stretching for miles around. A path leads northwest. It is possible to climb down into the canyon from here.',
+      exits: { east: 'cliff_middle', down: 'cliff_middle', northwest: 'clearing', west: 'forest_3', south: { denial: 'Storm-tossed trees block your way.' } },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      scenery: ['climbable_cliff', 'rainbow'],
+      tags: ['sacred'],
+      // CANYON-VIEW-F.
+      instead: { jump: [{ then: 'canyon_jump' }] },
+    },
+    cliff_middle: {
+      name: 'Rocky Ledge',
+      description: 'You are on a ledge about halfway up the wall of the river canyon. You can see from here that the main flow from Aragain Falls twists along a passage which it is impossible for you to enter. Below you is the canyon bottom. Above you is more cliff, which appears climbable.',
+      exits: { up: 'canyon_view', down: 'canyon_bottom' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      scenery: ['climbable_cliff'],
+      tags: ['sacred'],
+    },
+    canyon_bottom: {
+      name: 'Canyon Bottom',
+      description: 'You are beneath the walls of the river canyon which may be climbable here. The lesser part of the runoff of Aragain Falls flows by below. To the north is a narrow path.',
+      exits: { up: 'cliff_middle', north: 'end_of_rainbow' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      scenery: ['global_water', 'climbable_cliff'],
+      tags: ['sacred'],
+    },
+    end_of_rainbow: {
+      name: 'End of Rainbow',
+      description: 'You are on a small, rocky beach on the continuation of the Frigid River past the Falls. The beach is narrow due to the presence of the White Cliffs. The river canyon opens here and sunlight shines in from above. A rainbow crosses over the falls to the east and a narrow path continues to the southwest.',
+      exits: {
+        up: { to: 'on_rainbow', if: 'flag:rainbow_flag' },
+        northeast: { to: 'on_rainbow', if: 'flag:rainbow_flag' },
+        east: { to: 'on_rainbow', if: 'flag:rainbow_flag' },
+        southwest: 'canyon_bottom',
+      },
+      items: ['pot_of_gold'],
+      npcs: [],
+      onEnter: [],
+      scenery: ['global_water', 'rainbow'],
+    },
+    on_rainbow: {
+      name: 'On the Rainbow',
+      description: 'You are on top of a rainbow (I bet you never thought you would walk on a rainbow), with a magnificent view of the Falls. The rainbow travels east-west here.',
+      exits: { west: 'end_of_rainbow', east: 'aragain_falls' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      scenery: ['rainbow'],
+      tags: ['sacred'],
+    },
+    aragain_falls: {
+      name: 'Aragain Falls',
+      // FALLS-ROOM's M-LOOK.
+      description: 'You are at the top of Aragain Falls, an enormous waterfall with a drop of about 450 feet. The only path here is on the north end.\nA beautiful rainbow can be seen over the falls and to the west.',
+      descriptions: [{ if: 'flag:rainbow_flag', text: 'You are at the top of Aragain Falls, an enormous waterfall with a drop of about 450 feet. The only path here is on the north end.\nA solid rainbow spans the falls.' }],
+      exits: {
+        west: { to: 'on_rainbow', if: 'flag:rainbow_flag' },
+        up: { to: 'on_rainbow', if: 'flag:rainbow_flag' },
+        down: { denial: 'It’s a long way...' },
+        north: 'shore',
+      },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      scenery: ['global_water', 'rainbow'],
+      tags: ['sacred'],
+      instead: { jump: [{ then: 'jump_death' }] },
+    },
+    // Stage 5b: the east bank. SANDY-CAVE, SANDY-BEACH and SHORE, in story order.
+    sandy_cave: {
+      name: 'Sandy Cave',
+      description: 'This is a sand-filled cave whose exit is to the southwest.',
+      dark: true,
+      exits: { southwest: 'sandy_beach' },
+      items: ['scarab'],
+      npcs: [],
+      onEnter: [],
+      scenery: ['sand'],
+    },
+    sandy_beach: {
+      name: 'Sandy Beach',
+      description: 'You are on a large sandy beach on the east shore of the river, which is flowing quickly by. A path runs beside the river to the south here, and a passage is partially buried in sand to the northeast.',
+      dark: true,
+      exits: { northeast: 'sandy_cave', south: 'shore' },
+      items: ['shovel'],
+      npcs: [],
+      onEnter: [],
+      scenery: ['global_water'],
+      tags: ['sacred'],
+    },
+    shore: {
+      name: 'Shore',
+      description: 'You are on the east shore of the river. The water here seems somewhat treacherous. A path travels from north to south here, the south end quickly turning around a sharp corner.',
+      exits: { north: 'sandy_beach', south: 'aragain_falls' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      scenery: ['global_water'],
+      tags: ['sacred'],
+    },
+    // Stage 5b: the Frigid River. RIVER-5 to RIVER-1, in story order (the White Cliffs beaches come between 4 and 3).
+    river_5: {
+      name: 'Frigid River',
+      description: 'The sound of rushing water is nearly unbearable here. On the east shore is a large landing area.',
+      water: true,
+      exits: { up: { denial: 'You cannot go upstream due to strong currents.' }, east: 'shore', land: 'shore' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      scenery: ['global_water'],
+      tags: ['sacred'],
+    },
+    river_4: {
+      name: 'Frigid River',
+      description: 'The river is running faster here and the sound ahead appears to be that of rushing water. On the east shore is a sandy beach. A small area of beach can also be seen below the cliffs on the west shore.',
+      dark: true,
+      water: true,
+      exits: { up: { denial: 'You cannot go upstream due to strong currents.' }, down: 'river_5', land: { denial: 'You can land either to the east or the west.' }, west: 'white_cliffs_south', east: 'sandy_beach' },
+      items: ['buoy'],
+      npcs: [],
+      onEnter: [],
+      scenery: ['global_water'],
+      tags: ['sacred'],
+    },
+    // Stage 5b: the White Cliffs beaches. The narrow paths take you only without the inflated boat (WHITE-CLIFFS-FUNCTION).
+    white_cliffs_south: {
+      name: 'White Cliffs Beach',
+      description: 'You are on a rocky, narrow strip of beach beside the Cliffs. A narrow path leads north along the shore.',
+      dark: true,
+      exits: { north: { to: 'white_cliffs_north', if: 'flag:deflate', denial: 'The path is too narrow.' } },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      onEnd: [{ if: 'has:inflated_boat', then: [{ clear: 'deflate' }] }, { if: '!has:inflated_boat', then: [{ set: 'deflate' }] }],
+      scenery: ['global_water', 'white_cliff'],
+      tags: ['sacred'],
+    },
+    white_cliffs_north: {
+      name: 'White Cliffs Beach',
+      description: 'You are on a narrow strip of beach which runs along the base of the White Cliffs. There is a narrow path heading south along the Cliffs and a tight passage leading west into the cliffs themselves.',
+      dark: true,
+      exits: {
+        south: { to: 'white_cliffs_south', if: 'flag:deflate', denial: 'The path is too narrow.' },
+        west: { to: 'damp_cave', if: 'flag:deflate', denial: 'The path is too narrow.' },
+      },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      onEnd: [{ if: 'has:inflated_boat', then: [{ clear: 'deflate' }] }, { if: '!has:inflated_boat', then: [{ set: 'deflate' }] }],
+      scenery: ['global_water', 'white_cliff'],
+      tags: ['sacred'],
+    },
+    river_3: {
+      name: 'Frigid River',
+      description: 'The river descends here into a valley. There is a narrow beach on the west shore below the cliffs. In the distance a faint rumbling can be heard.',
+      dark: true,
+      water: true,
+      exits: { up: { denial: 'You cannot go upstream due to strong currents.' }, down: 'river_4', land: 'white_cliffs_north', west: 'white_cliffs_north' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      scenery: ['global_water'],
+      tags: ['sacred'],
+    },
+    river_2: {
+      name: 'Frigid River',
+      description: 'The river turns a corner here making it impossible to see the Dam. The White Cliffs loom on the east bank and large rocks prevent landing on the west.',
+      dark: true,
+      water: true,
+      exits: { up: { denial: 'You cannot go upstream due to strong currents.' }, down: 'river_3', land: { denial: 'There is no safe landing spot here.' }, east: { denial: 'The White Cliffs prevent your landing here.' }, west: { denial: 'Just in time you steer away from the rocks.' } },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      scenery: ['global_water'],
+      tags: ['sacred'],
+    },
+    river_1: {
+      name: 'Frigid River',
+      description: 'You are on the Frigid River in the vicinity of the Dam. The river flows quietly here. There is a landing on the west shore.',
+      water: true,
+      exits: { up: { denial: 'You cannot go upstream due to strong currents.' }, west: 'dam_base', land: 'dam_base', down: 'river_2', east: { denial: 'The White Cliffs prevent your landing here.' } },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      scenery: ['global_water'],
+      tags: ['sacred'],
+    },
     // Stage 5a: the dam. DAM-BASE through DEEP-CANYON, in story order.
     dam_base: {
       name: 'Dam Base',
@@ -437,7 +754,7 @@ export const zork1: World = {
       name: 'Damp Cave',
       description: 'This cave has exits to the west and east, and narrows to a crack toward the south. The earth is particularly damp here.',
       dark: true,
-      exits: { west: 'loud_room', east: { denial: 'That part of the Great Underground Empire isn’t built yet.' }, south: { denial: 'It is too narrow for most insects.' } },
+      exits: { west: 'loud_room', east: 'white_cliffs_north', south: { denial: 'It is too narrow for most insects.' } },
       items: [],
       npcs: [],
       onEnter: [],
@@ -572,6 +889,24 @@ export const zork1: World = {
       onEnter: [],
     },
     // Stage 5a: the reservoir. STREAM-VIEW through RESERVOIR-SOUTH, in story order.
+    // Stage 5b: the Stream (IN-STREAM), water.
+    in_stream: {
+      name: 'Stream',
+      description: 'You are on the gently flowing stream. The upstream route is too narrow to navigate, and the downstream route is invisible due to twisting walls. There is a narrow beach to land on.',
+      dark: true,
+      water: true,
+      exits: {
+        up: { denial: 'The channel is too narrow.' },
+        west: { denial: 'The channel is too narrow.' },
+        land: 'stream_view',
+        down: 'reservoir',
+        east: 'reservoir',
+      },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      scenery: ['global_water'],
+    },
     stream_view: {
       name: 'Stream View',
       description: 'You are standing on a path beside a gently flowing stream. The path follows the stream, which flows from west to east.',
@@ -605,11 +940,13 @@ export const zork1: World = {
       description: 'You are on the lake. Beaches can be seen north and south. Upstream a small stream enters the lake through a narrow cleft in the rocks. The dam can be seen downstream.',
       descriptions: [{ if: 'flag:low_tide', text: 'You are on what used to be a large lake, but which is now a large mud pile. There are “shores” to the north and south.' }],
       dark: true,
+      // NONLANDBIT until it drains.
+      water: '!flag:low_tide',
       exits: {
         north: 'reservoir_north',
         south: 'reservoir_south',
-        up: { denial: 'You can’t go there without a vehicle.' },
-        west: { denial: 'You can’t go there without a vehicle.' },
+        up: 'in_stream',
+        west: 'in_stream',
         down: { denial: 'The dam blocks your way.' },
       },
       items: ['trunk'],
@@ -1024,7 +1361,7 @@ export const zork1: World = {
       description: 'You are in a small clearing in a well marked forest path that extends to the east and west.',
       exits: {
         up: { denial: NO_TREE },
-        east: { denial: OFF_MAP },
+        east: 'canyon_view',
         north: 'forest_2',
         south: 'forest_3',
         west: 'east_of_house',
@@ -1293,6 +1630,75 @@ export const zork1: World = {
       instead: { turn_off: [{ say: ['You nearly burn your hand trying to extinguish the flame.'] }] },
       after: { take: [{ if: '!flag:took_torch', then: 'took_torch' }] },
     },
+    // Stage 5b: the rainbow and the canyon.
+    pot_of_gold: {
+      name: 'pot of gold',
+      aliases: ['pot', 'gold', 'treasure', 'gold pot'],
+      description: 'There’s nothing special about the pot of gold.',
+      initialDescription: 'At the end of the rainbow is a pot of gold.',
+      portable: true,
+      size: 15,
+      treasure: 10,
+      tags: [],
+      after: { take: [{ if: '!flag:took_pot', then: 'took_pot' }] },
+    },
+    // RAINBOW-FCN.
+    rainbow: {
+      name: 'rainbow',
+      description: 'There’s nothing special about the rainbow.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      instead: { cross: [{ then: 'cross_rainbow' }], look_under: [{ say: ['The Frigid River flows under the rainbow.'] }] },
+    },
+    // CLIFF-OBJECT.
+    climbable_cliff: {
+      name: 'cliff',
+      aliases: ['wall', 'walls', 'ledge', 'rocky cliff', 'sheer cliff'],
+      description: 'There’s nothing special about the cliff.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      instead: { throw: [{ as: 'indirect', then: 'over_the_cliff' }], put: [{ as: 'indirect', then: 'over_the_cliff' }] },
+    },
+    // Stage 5b: the banks.
+    shovel: {
+      name: 'shovel',
+      aliases: ['tool', 'tools'],
+      description: 'There’s nothing special about the shovel.',
+      portable: true,
+      size: 15,
+      tags: [],
+    },
+    scarab: {
+      name: 'beautiful jeweled scarab',
+      aliases: ['scarab', 'bug', 'beetle', 'treasure', 'jeweled scarab', 'carved scarab'],
+      description: 'There’s nothing special about the beautiful jeweled scarab.',
+      portable: true,
+      size: 8,
+      treasure: 5,
+      tags: [],
+      after: { take: [{ if: '!flag:took_scarab', then: 'took_scarab' }] },
+    },
+    // SAND-FUNCTION.
+    sand: {
+      name: 'sand',
+      description: 'There’s nothing special about the sand.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      instead: { dig: [{ as: 'target', then: 'dig_sand' }] },
+    },
+    // WCLIF-OBJECT.
+    white_cliff: {
+      name: 'white cliffs',
+      aliases: ['cliff', 'cliffs', 'white cliff'],
+      description: 'There’s nothing special about the white cliffs.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      instead: { climb: [{ say: ['The cliff is too steep for climbing.'] }] },
+    },
     // Stage 5a: the temple and Hades.
     altar: {
       name: 'altar',
@@ -1401,6 +1807,8 @@ export const zork1: World = {
       treasure: 6,
       weapon: true,
       tags: [],
+      // SCEPTRE-FUNCTION.
+      instead: { wave: [{ as: 'target', then: 'sceptre_waved' }] },
       after: { take: [{ if: '!flag:took_sceptre', then: 'took_sceptre' }] },
     },
     skull: {
@@ -1657,7 +2065,28 @@ export const zork1: World = {
       portable: true,
       tags: [],
     },
-    // The boat, folded: it inflates in stage 5b.
+    // The buoy on River 4 (TREASURE-INSIDE: opening it scores the emerald).
+    buoy: {
+      name: 'red buoy',
+      aliases: ['buoy'],
+      description: '',
+      initialDescription: 'There is a red buoy here (probably a warning).',
+      portable: true,
+      size: 10,
+      tags: [],
+      container: { openable: true, weight: 20 },
+      contains: ['emerald'],
+      after: { open: [{ if: '!flag:took_emerald', then: 'took_emerald' }] },
+    },
+    emerald: {
+      name: 'large emerald',
+      aliases: ['emerald', 'treasure'],
+      description: 'There’s nothing special about the large emerald.',
+      portable: true,
+      treasure: 10,
+      tags: [],
+    },
+    // The boat (IBOAT-FUNCTION): a pile of plastic until it's inflated.
     inflatable_boat: {
       name: 'pile of plastic',
       aliases: ['boat', 'pile', 'plastic', 'valve', 'plastic pile'],
@@ -1667,6 +2096,67 @@ export const zork1: World = {
       size: 20,
       burnable: true,
       tags: [],
+      instead: {
+        inflate: [{ as: 'target', then: 'boat_inflate' }],
+        pump: [{ as: 'target', then: 'boat_pump' }],
+        breathe: [{ as: 'target', say: ['You don’t have enough lung power to inflate it.'] }],
+      },
+    },
+    // RBOAT-FUNCTION: the magic boat, a vehicle for water.
+    inflated_boat: {
+      name: 'magic boat',
+      aliases: ['boat', 'raft', 'plastic boat', 'seaworthy boat'],
+      description: '',
+      portable: true,
+      size: 20,
+      burnable: true,
+      tags: [],
+      vehicle: { travels: 'water' },
+      container: { open: true, weight: 100 },
+      contains: ['boat_label'],
+      instead: {
+        board: [
+          { if: 'has:sceptre & !aboard', then: 'boat_punctured_boarding' },
+          { if: 'has:knife & !aboard', then: 'boat_punctured_boarding' },
+          { if: 'has:sword & !aboard', then: 'boat_punctured_boarding' },
+          { if: 'has:rusty_knife & !aboard', then: 'boat_punctured_boarding' },
+          { if: 'has:axe & !aboard', then: 'boat_punctured_boarding' },
+          { if: 'has:stiletto & !aboard', then: 'boat_punctured_boarding' },
+        ],
+        inflate: [{ as: 'target', say: ['Inflating it further would probably burst it.'] }],
+        pump: [{ as: 'target', if: 'has:pump', say: ['Inflating it further would probably burst it.'] }],
+        breathe: [{ as: 'target', say: ['Inflating it further would probably burst it.'] }],
+        deflate: [
+          { as: 'target', if: 'aboard:inflated_boat', say: ['You can’t deflate the boat while you’re in it.'] },
+          { as: 'target', then: 'boat_deflate' },
+        ],
+      },
+    },
+    // DBOAT-FUNCTION.
+    punctured_boat: {
+      name: 'punctured boat',
+      aliases: ['boat', 'pile', 'plastic', 'punctured pile'],
+      description: 'There’s nothing special about the punctured boat.',
+      portable: true,
+      size: 20,
+      burnable: true,
+      tags: [],
+      instead: {
+        put: [{ as: 'indirect', with: 'putty', then: 'boat_repaired' }],
+        plug: [{ as: 'target', with: 'putty', then: 'boat_repaired' }, { as: 'target', then: 'with_tell' }],
+        inflate: [{ as: 'target', say: ['No chance. Some moron punctured it.'] }],
+        pump: [{ as: 'target', say: ['No chance. Some moron punctured it.'] }],
+      },
+    },
+    boat_label: {
+      name: 'tan label',
+      aliases: ['label', 'fineprint', 'print', 'fine print'],
+      description: '',
+      portable: true,
+      size: 2,
+      burnable: true,
+      tags: [],
+      text: '  !!!!FROBOZZ MAGIC BOAT COMPANY!!!!\n\nHello, Sailor!\n\nInstructions for use:\n\n   To get into a body of water, say “Launch”.\n   To get to shore, say “Land” or the direction in which you want to maneuver the boat.\n\nWarranty:\n\n  This boat is guaranteed against all defects for a period of 76 milliseconds from date of purchase or until first used, whichever comes first.\n\nWarning:\n   This boat is made of thin plastic.\n   Good Luck!',
     },
     // West of House
     mailbox: {
@@ -2390,6 +2880,99 @@ export const zork1: World = {
   carry: { limit: 100, self: 5, fumble: { over: 7, chance: 8 } },
 
   scripts: {
+    // IBOAT-FUNCTION's INFLATE.
+    boat_inflate: (ctx) => {
+      if (ctx.holder('inflatable_boat') !== ctx.room()) return ['The boat must be on the ground to be inflated.'];
+      const tool = ctx.command?.indirect;
+      if (tool === 'pump') return inflateBoat(ctx);
+      if (!tool) return ['You don’t have enough lung power to inflate it.'];
+      return [`With a ${ctx.world.items[tool]?.name ?? tool}? Surely you jest!`];
+    },
+    // V-PUMP: PUMP UP the boat with the pump in hand.
+    boat_pump: (ctx) => {
+      const tool = ctx.command?.indirect;
+      if (tool && tool !== 'pump') return [`Pump it up with a ${ctx.world.items[tool]?.name ?? tool}?`];
+      if (!ctx.carried('pump')) return ['It’s really not clear how.'];
+      if (ctx.holder('inflatable_boat') !== ctx.room()) return ['The boat must be on the ground to be inflated.'];
+      return inflateBoat(ctx);
+    },
+    // FIX-BOAT: the pile comes back where the punctured boat was.
+    boat_repaired: (ctx) => [{ move: 'inflatable_boat', to: ctx.holder('punctured_boat') as string }, { move: 'punctured_boat', to: null }],
+    // The world's M-BEG: a spirit's limits (DEAD-FUNCTION), and the boat's (RBOAT-FUNCTION) while aboard.
+    world_beg: (ctx) => {
+      if (ctx.state.flags.dead) return deadFunction(ctx);
+      if (ctx.aboard() === 'inflated_boat') return boatBeg(ctx);
+      const a = ctx.action ?? ctx.parse(ctx.line ?? '');
+      // LUNGS, one of Zork's global objects: INFLATE … WITH LUNGS is V-BREATHE.
+      if (a?.action === 'inflate' && /^(?:the\s+)?(?:lungs|air|mouth|breath)$/i.test(a.indirect ?? '')) {
+        const boat = ['inflatable_boat', 'inflated_boat', 'punctured_boat'].find((id) => ctx.here(id) && (ctx.world.items[id].aliases ?? []).concat(ctx.world.items[id].name).some((w) => w === (a.target ?? '').toLowerCase().replace(/^the\s+/, '')));
+        if (boat === 'inflatable_boat') return ['You don’t have enough lung power to inflate it.'];
+        if (boat === 'inflated_boat') return ['Inflating it further would probably burst it.'];
+        if (boat === 'punctured_boat') return ['No chance. Some moron punctured it.'];
+        return ['How can you inflate that?'];
+      }
+      // V-LAUNCH, the parser having guessed the boat.
+      if (a?.action === 'launch' && !a.target && ctx.here('inflated_boat')) return ['(magic boat)', 'You can’t launch that by saying “launch”!'];
+      return;
+    },
+    // SCEPTRE-FUNCTION: the rainbow made solid, or not; anywhere else, colours.
+    sceptre_waved: (ctx) => {
+      const here = ctx.room();
+      if (here === 'aragain_falls' || here === 'end_of_rainbow') {
+        if (!ctx.state.flags.rainbow_flag) {
+          const pot = here === 'end_of_rainbow' && ctx.holder('pot_of_gold') === 'end_of_rainbow';
+          return [
+            { reveal: 'pot_of_gold' },
+            'Suddenly, the rainbow appears to become solid and, I venture, walkable (I think the giveaway was the stairs and bannister).',
+            ...(pot ? ['A shimmering pot of gold appears at the end of the rainbow.'] : []),
+            { set: 'rainbow_flag' },
+          ];
+        }
+        // ROB ON-RAINBOW WALL: treasures left on the rainbow are gone.
+        const lost = ctx.children('on_rainbow').filter((id) => ctx.treasure(id) > 0 && !(ctx.world.items[id].tags ?? []).includes('sacred'));
+        return [...lost.map((id): EventStep => ({ move: id, to: null })), 'The rainbow seems to have become somewhat run-of-the-mill.', { clear: 'rainbow_flag' }];
+      }
+      if (here === 'on_rainbow') return [{ clear: 'rainbow_flag' }, { die: 'The structural integrity of the rainbow is severely compromised, leaving you hanging in midair, supported only by water vapor. Bye.' }];
+      return ['A dazzling display of color briefly emanates from the sceptre.'];
+    },
+    // RAINBOW-FCN's CROSS.
+    cross_rainbow: (ctx) => {
+      const here = ctx.room();
+      if (here === 'canyon_view') return ['From here?!?'];
+      if (!ctx.state.flags.rainbow_flag) return ['Can you walk on water vapor?'];
+      if (here === 'aragain_falls') return [{ go: 'end_of_rainbow' }];
+      if (here === 'end_of_rainbow') return [{ go: 'aragain_falls' }];
+      return ['You’ll have to say which way...'];
+    },
+    // CLIFF-OBJECT: thrown off the cliff, it's gone.
+    over_the_cliff: (ctx) => {
+      const it = ctx.command?.target;
+      if (!it || !ctx.world.items[it]) return [];
+      return [{ move: it, to: null }, `The ${ctx.world.items[it].name} tumbles into the river and is seen no more.`];
+    },
+    // SAND-FUNCTION and V-DIG: four digs with the shovel find the scarab, a fifth buries you.
+    dig_sand: (ctx) => {
+      const tool = ctx.command?.indirect;
+      if (tool !== 'shovel') return [vDig(ctx, tool)];
+      const dig = (ctx.state.vars?.beach_dig ?? -1) + 1;
+      if (dig > 3) {
+        return [
+          { setVar: 'beach_dig', to: -1 },
+          ...(ctx.holder('scarab') === ctx.room() ? [{ hide: 'scarab' } as EventStep] : []),
+          { die: 'The hole collapses, smothering you.' },
+        ];
+      }
+      if (dig === 3) return [{ setVar: 'beach_dig', to: 3 }, ...(ctx.state.itemState.scarab?.hidden ? ['You can see a scarab here in the sand.', { reveal: 'scarab' } as EventStep] : [])];
+      return [{ setVar: 'beach_dig', to: dig }, BDIGS[dig]];
+    },
+    // I-RIVER: the current carries the boat down, and over the falls from the last stretch.
+    river_current: (ctx) => {
+      const here = ctx.room();
+      if (RIVER_SPEEDS[here] === undefined) return [];
+      const next = RIVER_NEXT[here];
+      if (!next) return [{ die: 'Unfortunately, the magic boat doesn’t provide protection from the rocks and boulders one meets at the bottom of waterfalls. Including this one.' }];
+      return ['The flow of the river carries you downstream.', '', { go: next }, { schedule: 'river_current', in: RIVER_SPEEDS[next] }];
+    },
     // CANDLES-FCN's LAMP-ON and BURN.
     light_candles: (ctx) => {
       if (ctx.state.flags.candles_burnt) return ['Alas, there’s not much left of the candles. Certainly not enough to burn.'];
@@ -2421,36 +3004,6 @@ export const zork1: World = {
       const item = ctx.world.items[tool];
       if (item?.burnable) return [`The ${item.name} burns and is consumed.`, { move: tool, to: null }];
       return ['The heat from the bell is too intense.'];
-    },
-    // DEAD-FUNCTION: a spirit's limits, before the parser's own verbs.
-    dead_function: (ctx) => {
-      // The line as typed, or a command already parsed (AGAIN, the intent server's reading).
-      const a = ctx.action ?? ctx.parse(ctx.line ?? '');
-      if (!a) return;
-      const verb = a.action;
-      if (['go', 'verbose', 'brief', 'superbrief', 'version', 'save', 'restore', 'load', 'quit', 'restart', 'undo', 'again', 'oops', 'unknown', 'capture'].includes(verb)) return;
-      if (['attack', 'smash'].includes(verb)) return ['All such attacks are vain in your condition.'];
-      if (['open', 'close', 'eat', 'drink', 'inflate', 'deflate', 'turn', 'burn', 'tie', 'untie', 'rub'].includes(verb)) return ['Even such an action is beyond your capabilities.'];
-      if (verb === 'wait') return ['Might as well. You’ve got an eternity.'];
-      if (verb === 'turn_on') return ['You need no light to guide you.'];
-      if (verb === 'score') return ['You’re dead! How can you think of your score?'];
-      if (verb === 'take') return ['Your hand passes through its object.'];
-      if (['drop', 'throw', 'inventory'].includes(verb)) return ['You have no possessions.'];
-      if (verb === 'diagnose') return ['You are dead.'];
-      if (verb === 'look') {
-        const lit = !ctx.world.rooms[ctx.room()]?.dark;
-        return ['The room looks strange and unearthly and objects appear indistinct.', ...(lit ? [] : ['Although there is no light, the room seems dimly illuminated.']), '', { look: true }];
-      }
-      if (verb === 'pray') {
-        if (ctx.room() !== 'south_temple') return ['Your prayers are not heard.'];
-        return [
-          { clear: 'dead' },
-          'From the distance the sound of a lone trumpet is heard. The room becomes very bright and you feel disembodied. In a moment, the brightness fades and you find yourself rising as if from a long sleep, deep in the woods. In the distance you can faintly hear a songbird and the sounds of the forest.',
-          '',
-          { go: 'forest_1' },
-        ];
-      }
-      return ['You can’t even do that.'];
     },
     // LOUD-ROOM-FCN's loop: the first word (after GO or SAY) decides; anything else echoes.
     loud_room_capture: (ctx) => {
@@ -2540,6 +3093,8 @@ export const zork1: World = {
       if (level + 1 >= 14) {
         steps.push({ set: 'maint_flooded' }, { clear: 'leaking' });
         if (here) steps.push({ die: 'I’m afraid you have done drowned yourself.' });
+      } else if (ctx.aboard() === 'inflated_boat' && ['maintenance_room', 'dam_room', 'dam_lobby'].includes(ctx.room())) {
+        steps.push({ die: 'The rising water carries the boat over the dam, down the river, and over the falls. Tsk, tsk.' });
       }
       return steps;
     },
@@ -2800,6 +3355,16 @@ export const zork1: World = {
     tie: { words: ['tie', 'fasten', 'secure'], target: 'required', indirect: ['to'], reply: 'You can’t tie that to that.' },
     untie: { words: ['untie', 'unfasten', 'unhook'], target: 'required', indirect: ['from'], reply: 'This cannot be tied, so it cannot be untied!' },
     jump: { words: ['jump', 'leap', 'dive'], target: 'none', reply: 'Wheeeeeeeeee!!!!!' },
+    inflate: { words: ['inflate', 'blow up'], target: 'required', indirect: ['with'], reply: 'How can you inflate that?' },
+    deflate: { words: ['deflate'], target: 'required', reply: 'Come on, now!' },
+    pump: { words: ['pump up', 'pump'], target: 'required', indirect: ['with'], reply: 'It’s really not clear how.' },
+    breathe: { words: ['blow in', 'blow into', 'breathe in', 'breathe into'], target: 'required', reply: 'You don’t have enough lung power to inflate it.' },
+    launch: { words: ['launch'], target: 'optional', reply: 'You can’t launch that by saying “launch”!' },
+    land: { words: ['land'], target: 'none', go: true },
+    wave: { words: ['wave', 'raise', 'brandish'], target: 'required', reply: 'Waving that has no effect.' },
+    cross: { words: ['cross', 'ford'], target: 'required', reply: 'You can’t cross that!' },
+    look_under: { words: ['look under'], target: 'required', reply: 'There is nothing but dust there.' },
+    dig: { words: ['dig in', 'dig'], target: 'required', indirect: ['with'], reply: 'Digging with the pair of hands is slow and tedious.' },
     ring: { words: ['ring', 'peal'], target: 'required', indirect: ['with'], reply: 'How, exactly, can you ring that?' },
     pour: { words: ['pour', 'spill'], target: 'required', indirect: ['on', 'in', 'from'], held: true },
   },
@@ -2825,6 +3390,12 @@ export const zork1: World = {
     { if: 'inside:canary:trophy_case', points: 4 },
     { flag: 'took_painting', points: 4 },
     { flag: 'took_trunk', points: 15 },
+    { flag: 'took_emerald', points: 5 },
+    { flag: 'took_scarab', points: 5 },
+    { flag: 'took_pot', points: 10 },
+    { if: 'inside:pot_of_gold:trophy_case', points: 10 },
+    { if: 'inside:scarab:trophy_case', points: 5 },
+    { if: 'inside:emerald:trophy_case', points: 10 },
     { flag: 'took_bar', points: 10 },
     { if: 'inside:bar:trophy_case', points: 5 },
     { flag: 'took_trident', points: 4 },
@@ -2843,7 +3414,7 @@ export const zork1: World = {
   ],
   maxScore: 350,
   // DEAD-FUNCTION: what a spirit can and can't do.
-  capture: { if: 'flag:dead', script: 'dead_function' },
+  capture: { script: 'world_beg' },
   // V-WAIT: three turns of the clock, or fewer if something happens.
   wait: { turns: 3 },
   ranks: [
@@ -2857,7 +3428,7 @@ export const zork1: World = {
     { min: 350, title: 'Master Adventurer' },
   ],
 
-  vars: { candle_life: 75, water_level: 0, match_count: 6, lamp_fuel: 385, sword_glow: 0, troll_ldesc: 0, cyclowrath: 0 },
+  vars: { beach_dig: -1, candle_life: 75, water_level: 0, match_count: 6, lamp_fuel: 385, sword_glow: 0, troll_ldesc: 0, cyclowrath: 0 },
 
   // Zork's LAMP-TABLE: warnings after 100, 170 and 185 lit turns; out on the next.
   daemons: [
@@ -2889,6 +3460,12 @@ export const zork1: World = {
     look: 'It is pitch black. You are likely to be eaten by a grue.',
     tooDark: 'It’s too dark to see!',
     blunder: [{ chance: 80, then: [{ die: GRUE }], else: ['You can’t go that way.'] }],
+    // GOTO, from one unlit room into another (PROB 80).
+    stumble: {
+      chance: 80,
+      then: [{ die: 'Oh, no! A lurking grue slithered into the room and devoured you!' }],
+      aboard: [{ die: 'Oh, no! A lurking grue slithered into the magic boat and devoured you!' }],
+    },
   },
 
   death: {
@@ -2901,7 +3478,7 @@ export const zork1: World = {
     resurrection: [
       'Now, let’s take a look here... Well, you probably deserve another chance. I can’t quite fix you up completely, but you can’t have everything.',
     ],
-    scatter: ['west_of_house', 'north_of_house', 'south_of_house', 'east_of_house', 'forest_1', 'forest_2', 'forest_3', 'path', 'clearing', 'grating_clearing'],
+    scatter: ['canyon_view', 'west_of_house', 'north_of_house', 'south_of_house', 'east_of_house', 'forest_1', 'forest_2', 'forest_3', 'path', 'clearing', 'grating_clearing'],
     // JIGS-UP: once you've seen the Altar, you wake as a spirit before the gates of Hell.
     variants: [
       {
@@ -2971,6 +3548,30 @@ export const zork1: World = {
       { if: 'in:reservoir_south', then: ['You notice that the water level has risen to the point that it is impossible to cross.'] },
     ],
     took_trunk: [{ set: 'took_trunk' }],
+    took_pot: [{ set: 'took_pot' }],
+    sceptre_waved: [{ script: 'sceptre_waved' }],
+    cross_rainbow: [{ script: 'cross_rainbow' }],
+    over_the_cliff: [{ script: 'over_the_cliff' }],
+    canyon_jump: [{ if: '!aboard', then: [{ die: 'Nice view, lousy place to jump.' }] }],
+    took_scarab: [{ set: 'took_scarab' }],
+    dig_sand: [{ script: 'dig_sand' }],
+    took_emerald: [{ set: 'took_emerald' }],
+    river_current: [{ script: 'river_current' }],
+    boat_inflate: [{ script: 'boat_inflate' }],
+    boat_pump: [{ script: 'boat_pump' }],
+    // RBOAT-FUNCTION's DEFLATE.
+    boat_deflate: [
+      { if: '!here:inflated_boat', then: ['The boat must be on the ground to be deflated.'] },
+      { if: 'here:inflated_boat', then: ['The boat deflates.', { set: 'deflate' }, { move: 'inflated_boat', to: null }, { move: 'inflatable_boat', to: 'here' }] },
+    ],
+    // RBOAT-FUNCTION's BOARD: something sharp in hand.
+    boat_punctured_boarding: [
+      'Oops! Something sharp seems to have slipped and punctured the boat. The boat deflates to the sounds of hissing, sputtering, and cursing.',
+      { move: 'inflated_boat', to: null },
+      { move: 'punctured_boat', to: 'here' },
+    ],
+    // FIX-BOAT.
+    boat_repaired: ['Well done. The boat is repaired.', { script: 'boat_repaired' }],
     took_bar: [{ set: 'took_bar' }],
     took_trident: [{ set: 'took_trident' }],
     took_coffin: [{ set: 'took_coffin' }],
@@ -3053,10 +3654,12 @@ export const zork1: World = {
       'Copyright (c) 1981, 1982, 1983, 1984, 1985, 1986 Infocom, Inc. All rights reserved.',
       'ZORK is a registered trademark of Infocom, Inc.',
       'Release 119 / Serial number 880429',
-      '[A native Brass Lantern port. Still to come: the river, the rainbow, the coal mine and the barrow.]',
+      '[A native Brass Lantern port. Still to come: the coal mine and the barrow.]',
       // INVISIBLE until something reveals them.
       { hide: 'leak' },
       { hide: 'trunk' },
+      { hide: 'scarab' },
+      { hide: 'pot_of_gold' },
       // The torch and the candles are lit from the start (ONBIT); the hot bell waits offstage.
       { switch: 'torch', on: true },
       { switch: 'candles', on: true },

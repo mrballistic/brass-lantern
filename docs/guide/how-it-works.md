@@ -68,7 +68,8 @@ Inserting or ejecting a cartridge clears the screen.
 | Conditions | anywhere | `flag:`, `has:`, `in:`, `visited:`, `inside:`, `open:`, `locked:`, `on:`, `here:`, `var:`, `carrying`, `lit:`, `alive:`, `awake:`, `fighting:`, `with:`, `!`, `&`. One parser, `src/engine/conditions.ts`. |
 | Rules | `instead`, `after` on items and rooms | Replace a verb's default, or follow it. `src/engine/rules.ts`. |
 | Containers, doors | `item.container`, `item.surface`, `item.door` | Open, close, lock, put in, take from. |
-| Exits | `room.exits` | A room ID, or `{ to, if, denial, door, denials, then }`. |
+| Exits | `room.exits` | A room ID, or `{ to, if, denial, door, denials, then }`. GO runs through rules. |
+| Vehicles | `item.vehicle`, `room.water` | BOARD, DISEMBARK, and Zork's rules for water and land (`src/engine/verbs/vehicle.ts`, `movement.ts`). |
 | Effects | `events` | Lines and typed effects: flags, moves, variables, timers, chance, death, endings (`src/engine/effects.ts`). |
 | Darkness | `room.dark`, `item.light`, `world.darkness` | In an unlit dark room you can only find what you carry (`src/engine/model.ts` `isLit`). |
 | Death, endings | `world.death`, `world.endings` | `src/engine/death.ts`, `src/engine/endings.ts`. |

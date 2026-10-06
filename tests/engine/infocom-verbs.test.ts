@@ -143,3 +143,29 @@ describe('final review fixes (5a)', () => {
     expect(run(t, { action: 'examine', target: 'sky' }, brass).join(' ')).toMatch(/Which/);
   });
 });
+
+describe('first-seen sentences come first (PRINT-CONT) (5b)', () => {
+  it('lists untouched things with their own first sentence before the rest', () => {
+    const world: World = {
+      ...w,
+      items: { ...w.items, gem: { name: 'gem', description: 'A gem.', initialDescription: 'A gem glints in the dust.', portable: true, tags: [] } },
+    };
+    const s = stateWith(world, { room: 'yard' });
+    for (const id of Object.keys(s.locations)) if (s.locations[id] === 'yard') s.locations[id] = null;
+    // Newest is listed first in Infocom style: the bat, placed last, would otherwise lead.
+    s.locations.gem = 'yard';
+    s.placed = { ...s.placed, gem: 1, bat: 99 };
+    s.locations.bat = 'yard';
+    const lines = run(s, { action: 'look' }, world);
+    expect(lines.indexOf('A gem glints in the dust.')).toBeLessThan(lines.indexOf('There is a bat here.'));
+  });
+});
+
+describe('EXAMINE a closed container (5b)', () => {
+  it('says it’s closed, not empty', () => {
+    const world: World = { ...w, items: { ...w.items, box: { name: 'box', description: '', portable: true, tags: [], container: { openable: true }, contains: ['marble'] } } };
+    const s = stateWith(world, { room: 'living' });
+    s.locations.box = 'living';
+    expect(run(s, { action: 'examine', target: 'box' }, world)).toEqual(['The box is closed.']);
+  });
+});

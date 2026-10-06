@@ -163,9 +163,9 @@ export async function prefixed(side: Side, commands: string[], seed: number): Pr
   return replies;
 }
 
-/** The first seed (1..300) whose run gets through and is accepted. For choosing a session's pinned seed. */
-export async function findSeed(side: Side, commands: string[], accept: (replies: string[][]) => boolean = () => true): Promise<number> {
-  for (let seed = 1; seed <= 300; seed++) {
+/** The first seed (1..tries) whose run gets through and is accepted. For choosing a session's pinned seed. */
+export async function findSeed(side: Side, commands: string[], accept: (replies: string[][]) => boolean = () => true, tries = 300): Promise<number> {
+  for (let seed = 1; seed <= tries; seed++) {
     const replies = await prefixed(side, commands, seed);
     if (replies && accept(replies)) return seed;
   }

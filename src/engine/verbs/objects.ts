@@ -2,9 +2,7 @@ import type { GameState } from '@/types/game';
 import type { Item, World } from '@/types/world';
 import { evaluateCondition } from '../conditions';
 import { contentsLines, describeRoom, lightNote, npcDescription, withArticle } from '../describe';
-import {
-  closedAround, inventoryOf, isCarried, matchItem, matchNpc, moveItem, needObject, pickItem, PLAYER, reachableItems, visibleItems,
-} from '../model';
+import { closedAround, inventoryOf, isCarried, isOpen, matchItem, matchNpc, moveItem, needObject, pickItem, PLAYER, reachableItems, visibleItems } from '../model';
 import { miss, ok, type EngineResult } from '../result';
 import { applyRule, findRule, runEvent } from '../rules';
 import { takeRefusal } from '../weight';
@@ -44,6 +42,7 @@ export function handleTake(target: string | undefined, world: World, state: Game
 /** Take an item the player can see: refusals first, so a refusal changes nothing. */
 export function takeItem(itemId: string, world: World, state: GameState): EngineResult {
   const item = world.items[itemId];
+  if (itemId === state.aboard) return ok(['You’re inside of it!']);
   if (!item.portable) return ok([item.refusal ?? `You can’t take the ${item.name}.`]);
   const closed = closedAround(world, state, itemId);
   if (closed) return ok([`The ${world.items[closed].name} is closed.`]);
@@ -58,9 +57,15 @@ export function takeItem(itemId: string, world: World, state: GameState): Engine
 export function handleDrop(target: string | undefined, world: World, state: GameState): EngineResult {
   if (!target) needObject();
   const itemId = pickItem(target, inventoryOf(world, state), world, 'target', state);
-  if (!itemId) return miss(`You aren’t carrying a “${target}”.`);
+  if (!itemId) {
+    // Infocom's parser checks HAVE first: a thing in sight but not held (the boat you're in) is “You don't have”.
+    const seen = world.style === 'infocom' ? pickItem(target, visibleItems(world, state), world, 'target', state) : undefined;
+    if (seen) return { ...ok([`You don’t have the ${world.items[seen].name}.`]), free: true };
+    return miss(`You aren’t carrying a “${target}”.`);
+  }
 
-  moveItem(state, itemId, state.currentRoom);
+  // Aboard, things land in the vehicle (IDROP).
+  moveItem(state, itemId, state.aboard ?? state.currentRoom);
 
   return ok([world.style === 'infocom' ? 'Dropped.' : `Dropped: ${world.items[itemId]?.name ?? itemId}.`], true);
 }
@@ -75,6 +80,8 @@ export function handleExamine(target: string | undefined, world: World, state: G
     if (item && !item.description) {
       // Zork's EXAMINE reads what's written on it.
       if (item.text && world.style === 'infocom') return ok([item.text]);
+      // Zork's EXAMINE of a closed box: it says so, rather than calling it empty.
+      if (world.style === 'infocom' && item.container && !item.container.transparent && !isOpen(world, state, matchedItem)) return ok([`The ${item.name} is closed.`]);
       if (contents.length > 0) return ok(contents);
       return ok([item.container ? `The ${item.name} is empty.` : `There’s nothing special about the ${item.name}.`]);
     }

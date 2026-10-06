@@ -500,3 +500,108 @@ describe('Zork I, natively: a spirit can’t take things, however asked (5a revi
     expect(state.locations.skull).toBe('land_of_living_dead');
   });
 });
+
+describe('Zork I, natively: the grue in a dark move (5b)', () => {
+  it('kills about 80% of the time, moving unlit between dark rooms', () => {
+    let killed = 0;
+    for (let seed = 1; seed <= 400; seed++) {
+      const state = initialState(zork1);
+      state.currentRoom = 'maze_1';
+      state.rng = seed;
+      state.npcs = { thief: { room: null } };
+      const lines = execute({ action: 'go', target: 'south' }, { world: zork1, state }).lines.join(' ');
+      if (lines.includes('Oh, no! A lurking grue slithered into the room and devoured you!')) killed++;
+    }
+    expect(killed / 400).toBeGreaterThan(0.74);
+    expect(killed / 400).toBeLessThan(0.86);
+  });
+});
+
+describe('Zork I, natively: 5b’s treasures, the thief and the boat (5b)', () => {
+  it('scores the scarab and the pot of gold for taking, the emerald for opening the buoy, and each in the case', () => {
+    const state = initialState(zork1);
+    state.currentRoom = 'living_room';
+    state.npcs = { thief: { room: null } };
+    const score = () => currentScore(zork1, state);
+    for (const [id, value, tvalue] of [['scarab', 5, 5], ['pot_of_gold', 10, 10]] as const) {
+      state.locations[id] = 'living_room';
+      state.itemState[id] = { hidden: false };
+      const before = score();
+      execute({ action: 'take', target: id, byId: true }, { world: zork1, state });
+      expect(score() - before).toBe(value);
+      state.itemState.trophy_case = { ...state.itemState.trophy_case, open: true };
+      state.locations[id] = 'trophy_case';
+      expect(score() - before).toBe(value + tvalue);
+    }
+    state.locations.buoy = 'player';
+    const before = score();
+    execute({ action: 'open', target: 'buoy', byId: true }, { world: zork1, state });
+    expect(score() - before).toBe(5);
+    state.locations.emerald = 'trophy_case';
+    expect(score() - before).toBe(15);
+  });
+  it('the thief keeps off the water', () => {
+    const state = initialState(zork1);
+    state.currentRoom = 'living_room';
+    state.npcs = { thief: { room: 'reservoir_north', hidden: true } };
+    const visited = new Set<string>();
+    for (let i = 0; i < 300; i++) {
+      execute({ action: 'look' }, { world: zork1, state });
+      const at = Object.keys(zork1.rooms).find((r) => state.npcs?.thief?.room === r);
+      if (at) visited.add(at);
+    }
+    for (const r of ['in_stream', 'reservoir', 'river_1', 'river_2', 'river_3', 'river_4', 'river_5']) expect(visited.has(r)).toBe(false);
+  });
+  it('the maintenance flood carries a boat at the dam over the falls', () => {
+    const state = initialState(zork1);
+    state.currentRoom = 'dam_room';
+    state.locations.inflated_boat = 'dam_room';
+    state.aboard = 'inflated_boat';
+    state.flags.leaking = true;
+    state.vars = { ...state.vars, water_level: 5 };
+    state.npcs = { thief: { room: null } };
+    const lines = execute({ action: 'look' }, { world: zork1, state }).lines.join(' ');
+    expect(lines).toMatch(/The rising water carries the boat over the dam, down the river, and over the falls\. Tsk, tsk\./);
+  });
+});
+
+describe('Zork I, natively: the boat’s final-review fixes (5b)', () => {
+  const atDamBase = (aboard: boolean) => {
+    const state = initialState(zork1);
+    state.currentRoom = 'dam_base';
+    state.npcs = { thief: { room: null } };
+    state.locations.inflated_boat = 'dam_base';
+    state.locations.inflatable_boat = null;
+    if (aboard) state.aboard = 'inflated_boat';
+    return state;
+  };
+  const say = (state: ReturnType<typeof initialState>, line: string) =>
+    execute(fallbackParse(line, zork1.verbs) ?? { action: 'unknown' }, { world: zork1, state }).lines;
+  it('CLIMB IN and CLIMB ON board the boat', () => {
+    const s = atDamBase(false);
+    expect(say(s, 'climb in boat')[0]).toBe('You are now in the magic boat.');
+    expect(s.currentRoom).toBe('dam_base');
+    expect(say(s, 'climb on boat')[0]).toBe('You are already in the magic boat!');
+  });
+  it('aboard, the boat’s rules for itself don’t answer for other things', () => {
+    const s = atDamBase(true);
+    s.locations.leaflet = 'player';
+    expect(say(s, 'inflate leaflet')[0]).toBe('How can you inflate that?');
+    expect(say(s, 'deflate leaflet')[0]).toBe('Come on, now!');
+    expect(say(s, 'deflate boat')[0]).toBe('You can’t deflate the boat while you’re in it.');
+  });
+  it('aboard, bare EXIT gets out (V-EXIT), and on the river refuses', () => {
+    const s = atDamBase(true);
+    expect(say(s, 'exit')[0]).toBe('You are on your own feet again.');
+    expect(s.aboard).toBeUndefined();
+    const r = atDamBase(true);
+    r.currentRoom = 'river_1';
+    r.locations.inflated_boat = 'river_1';
+    expect(say(r, 'exit')[0]).toBe('You realize that getting out here would be fatal.');
+  });
+  it('aboard, DROP of the boat says you don’t have it', () => {
+    const s = atDamBase(true);
+    expect(say(s, 'drop boat')).toEqual(['You don’t have the magic boat.']);
+    expect(s.aboard).toBe('inflated_boat');
+  });
+});

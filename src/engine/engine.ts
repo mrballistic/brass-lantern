@@ -23,6 +23,7 @@ import { handleRead, handleSwitch } from './verbs/objects';
 import { handleGive, handleTalk } from './verbs/people';
 import { handleAttack, handleThrow } from './verbs/attack';
 import { handleBurn, handleNoEffect } from './verbs/burn';
+import { handleBoard, handleDisembark } from './verbs/vehicle';
 import { handleAsk, handleOrder } from './verbs/talk';
 import { scriptSteps, setCommand } from './scripts';
 import { diagnoseLines } from './combat';
@@ -67,7 +68,9 @@ setEffectHooks({
 /** The player's room's end routines (Zork's M-END): after the action, before the clock. */
 function roomEnd(world: World, state: GameState): string[] {
   const out: string[] = [];
-  for (const e of world.rooms[state.currentRoom]?.onEnd ?? []) {
+  // Aboard, the vehicle's end routine runs instead of the room's (Zork's M-END goes to the vehicle).
+  const owner = state.aboard ? world.items[state.aboard] : world.rooms[state.currentRoom];
+  for (const e of owner?.onEnd ?? []) {
     if (!evaluateCondition(e.if, state, world)) continue;
     out.push(...(typeof e.then === 'string' ? runEventKey(e.then, world, state) : runSteps(e.then, world, state)));
     if (state.gameOver || turnHalted(state)) break;
@@ -116,6 +119,8 @@ export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
   if (state.gameOver && action.action !== 'restart' && action.action !== 'help') {
     return ok(['The game has ended. Type RESTART to play again.']);
   }
+  // Aboard, bare EXIT is getting out (V-EXIT), not walking out; captures see it as that.
+  if (action.action === 'go' && action.exit && state.aboard) return execute({ action: 'disembark', target: state.aboard, byId: true }, deps);
   // A capture sees parsed commands too (`ctx.action`), however they arrived: a spirit can't take things by AGAIN.
   if (action.action !== 'capture') {
     const steps = parsedCapture(world, state, action);
@@ -191,11 +196,15 @@ export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
 function dispatch(action: ParsedAction, world: World, state: GameState): EngineResult {
   switch (action.action) {
     case 'go':
-      return handleGo(action.target, world, state);
+      return withRules('go', action, world, state, () => handleGo(action.target, world, state));
     case 'read':
       return withRules('read', action, world, state, () => handleRead(action.target, world, state));
     case 'turn_on':
       return withRules('turn_on', action, world, state, () => handleSwitch(action.target, true, world, state));
+    case 'board':
+      return withRules('board', action, world, state, () => handleBoard(action, world, state));
+    case 'disembark':
+      return withRules('disembark', action, world, state, () => handleDisembark(action, world, state));
     case 'burn':
       return withRules('burn', action, world, state, () => handleBurn(action, world, state));
     // Zork's V-TURN and V-PLUG: a rule on the thing does the work.
