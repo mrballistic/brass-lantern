@@ -68,6 +68,7 @@ const SINGLE_WORD: Record<string, ParsedAction> = {
   look: { action: 'look' },
   l: { action: 'look' },
   talk: { action: 'talk' },
+  diagnose: { action: 'diagnose' },
   inventory: { action: 'inventory' },
   inv: { action: 'inventory' },
   i: { action: 'inventory' },

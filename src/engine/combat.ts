@@ -1,7 +1,8 @@
 import type { GameState } from '@/types/game';
 import type { BlowMessages, BlowResult, CombatText, World } from '@/types/world';
-import { childrenOf, isCarried, moveItem, npcStateOf } from './model';
-import { runEventKey } from './effects';
+import { childrenOf, isAwake, isCarried, moveItem, npcRoom, npcStateOf } from './model';
+import { commandOf } from './scripts';
+import { runEventKey, runSteps, turnHalted } from './effects';
 import { prob, roll } from './rng';
 import { currentScore } from './verbs/meta';
 
@@ -203,4 +204,170 @@ export function heroBlow(world: World, state: GameState, npc: string, weapon: st
   return lines;
 }
 
-export { BRASS_VILLAIN };
+
+/** Wakes a knocked-out character (Zork's AWAKEN): its strength back, and its onWake. */
+function awaken(world: World, state: GameState, npc: string): string[] {
+  if ((state.npcs?.[npc]?.strength ?? 0) >= 0) return [];
+  const s = npcStateOf(state, npc);
+  s.strength = -(s.strength ?? 0);
+  s.wake = 0;
+  const hook = world.npcs[npc].combat?.onWake;
+  return hook ? runEventKey(hook, world, state) : [];
+}
+
+/** The player's weapon in the command just run, if it was an attack with one (Zork's PRSI). */
+function attackWeapon(world: World, state: GameState): string | undefined {
+  const cmd = commandOf(state);
+  return cmd?.verb === 'attack' && cmd.indirect && world.items[cmd.indirect]?.weapon ? cmd.indirect : undefined;
+}
+
+/**
+ * A character's blow at the player (Zork's VILLAIN-BLOW and WINNER-RESULT).
+ * Returns the result, 'staggered' when it spent the blow getting up, or null
+ * when the player died.
+ */
+function villainBlow(world: World, state: GameState, npc: string, out: boolean, lines: string[]): BlowResult | 'staggered' | null {
+  const player = (state.player ??= {});
+  player.staggered = false;
+  const s = npcStateOf(state, npc);
+  const name = world.npcs[npc].name;
+  if (s.staggered) {
+    s.staggered = false;
+    lines.push(combatText(world, 'regainsFeet', { defender: name }));
+    return 'staggered';
+  }
+  const att = villainStrength(world, state, npc, attackWeapon(world, state));
+  let def = fightStrength(world, state);
+  if (def <= 0) return 'missed';
+  const od = fightStrength(world, state, false);
+  const mine = weaponHeldBy(world, state, 'player');
+  let result = blow(state, att, def);
+  if (out) result = result === 'stagger' ? 'hesitate' : 'sittingDuck';
+  if (result === 'stagger' && mine && prob(state, 25)) result = 'loseWeapon';
+  const fields = { defender: name, weapon: mine ? world.items[mine].name : '' };
+  lines.push(blowMessage(state, world.npcs[npc].combat?.messages?.[result], BRASS_VILLAIN[result], fields));
+  const limit = world.carry?.limit;
+  const lowerLoad = (by: number) => {
+    if (limit === undefined) return;
+    const load = player.load ?? limit;
+    if (load > 50) player.load = load - by;
+  };
+  switch (result) {
+    case 'killed':
+    case 'sittingDuck':
+      def = 0;
+      break;
+    case 'lightWound':
+      def = Math.max(0, def - 1);
+      lowerLoad(10);
+      break;
+    case 'seriousWound':
+      def = Math.max(0, def - 2);
+      lowerLoad(20);
+      break;
+    case 'stagger':
+      player.staggered = true;
+      break;
+    case 'loseWeapon':
+      if (mine) {
+        moveItem(state, mine, state.currentRoom);
+        const next = weaponHeldBy(world, state, 'player');
+        if (next) lines.push(combatText(world, 'stillHave', { weapon: world.items[next].name }));
+      }
+      break;
+  }
+  if (def === 0) {
+    lines.push(...runSteps([{ die: combatText(world, 'death') }], world, state));
+    return null;
+  }
+  if (def < od) {
+    player.wounds = od - def;
+    player.cureIn = world.combat?.cureWait ?? 30;
+  }
+  return result;
+}
+
+/** After each acted-on turn: characters wake, join fights, and swing (Zork's I-FIGHT and DO-FIGHT). */
+export function fightTurn(world: World, state: GameState): string[] {
+  const lines: string[] = [];
+  const fighters: string[] = [];
+  for (const [id, npc] of Object.entries(world.npcs)) {
+    const combat = npc.combat;
+    if (!combat || npcRoom(world, state, id) === null) continue;
+    const s = state.npcs?.[id];
+    if (npcRoom(world, state, id) === state.currentRoom) {
+      if ((s?.strength ?? 0) < 0) {
+        const p = s?.wake ?? 0;
+        if (p > 0 && prob(state, p)) lines.push(...awaken(world, state, id));
+        else npcStateOf(state, id).wake = p + (combat.wake ?? 25);
+      } else if (s?.fighting || (combat.firstStrike !== undefined && combat.firstStrike > 0 && prob(state, combat.firstStrike))) {
+        npcStateOf(state, id).fighting = true;
+        fighters.push(id);
+      }
+    } else {
+      if (s?.fighting || s?.staggered) {
+        s.fighting = false;
+        s.staggered = false;
+        if (state.player) state.player.staggered = false;
+      }
+      lines.push(...awaken(world, state, id));
+    }
+  }
+  if (fighters.length === 0) return lines;
+  // A blow that knocks the player out gives the fighters 1–3 more rounds.
+  let out = 0;
+  for (;;) {
+    for (const id of fighters) {
+      if (!isAwake(world, state, id) || !state.npcs?.[id]?.fighting) continue;
+      const combat = world.npcs[id].combat!;
+      if (combat.weapon && combat.onBusy && state.locations[combat.weapon] !== id) {
+        lines.push(...runEventKey(combat.onBusy, world, state));
+        continue;
+      }
+      const result = villainBlow(world, state, id, out > 0, lines);
+      if (result === null || turnHalted(state) || state.gameOver) return lines;
+      if (result === 'unconscious') out = 1 + roll(state, 3);
+    }
+    if (out === 0) return lines;
+    out -= 1;
+    if (out === 0) return lines;
+  }
+}
+
+/** One turn of healing (Zork's I-CURE). */
+export function cureTick(world: World, state: GameState): void {
+  const p = state.player;
+  if (!p || p.cureIn === undefined) return;
+  p.cureIn -= 1;
+  if (p.cureIn > 0) return;
+  p.wounds = Math.max(0, (p.wounds ?? 0) - 1);
+  const limit = world.carry?.limit;
+  if (p.wounds > 0) {
+    if (limit !== undefined && (p.load ?? limit) < limit) p.load = (p.load ?? limit) + 10;
+    p.cureIn = world.combat?.cureWait ?? 30;
+  } else {
+    if (limit !== undefined) p.load = limit;
+    p.cureIn = undefined;
+  }
+}
+
+const WOUNDS = ['', 'a light wound,', 'a serious wound,', 'several wounds,'];
+const OUTLOOK = ['expect death soon', 'be killed by one more light wound', 'be killed by a serious wound', 'survive one serious wound'];
+
+/** DIAGNOSE (Zork's V-DIAGNOSE). */
+export function diagnoseLines(world: World, state: GameState): string[] {
+  const p = state.player;
+  const wounds = p?.cureIn !== undefined ? (p.wounds ?? 0) : 0;
+  const rs = fightStrength(world, state, false) - (p?.wounds ?? 0);
+  const lines: string[] = [];
+  if (wounds === 0) lines.push('You are in perfect health.');
+  else {
+    const kind = WOUNDS[wounds] ?? 'serious wounds,';
+    const moves = (world.combat?.cureWait ?? 30) * (wounds - 1) + (p?.cureIn ?? 0);
+    lines.push(`You have ${kind} which will be cured after ${moves} moves.`);
+  }
+  lines.push(`You can ${OUTLOOK[rs] ?? (rs > 3 ? 'survive several wounds' : 'expect death soon')}.`);
+  const deaths = state.vars?.deaths ?? 0;
+  if (deaths > 0) lines.push(`You have been killed ${deaths === 1 ? 'once' : 'twice'}.`);
+  return world.style === 'infocom' ? lines : lines.map((l) => `[${l}]`);
+}

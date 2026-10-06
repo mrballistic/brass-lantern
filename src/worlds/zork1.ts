@@ -645,7 +645,6 @@ export const zork1: World = {
     move: { words: ['move', 'shift', 'roll'], target: 'required' },
     count: { words: ['count'], target: 'required' },
     pray: { words: ['pray'], target: 'none', reply: 'If you pray enough, your prayers may be answered.' },
-    diagnose: { words: ['diagnose'], target: 'none', reply: 'You are in perfect health.' },
   },
 
   flagLabels: {

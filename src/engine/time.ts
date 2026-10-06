@@ -1,4 +1,5 @@
 import type { GameState } from '@/types/game';
+import { cureTick, fightTurn } from './combat';
 import type { World } from '@/types/world';
 import { evaluateCondition } from './conditions';
 import { runEventKey, runSteps, scheduledThisTurn, turnHalted } from './effects';
@@ -10,7 +11,10 @@ import { runEventKey, runSteps, scheduledThisTurn, turnHalted } from './effects'
  * fuse set during the turn starts counting next turn.
  */
 export function afterTurn(world: World, state: GameState, existing: Set<string>): string[] {
-  const out: string[] = [];
+  // Zork's I-FIGHT runs first, then healing, then the other timers.
+  const out: string[] = fightTurn(world, state);
+  if (state.gameOver || turnHalted(state)) return out;
+  cureTick(world, state);
   for (const [key, left] of Object.entries(state.fuses ?? {})) {
     if (!existing.has(key) || scheduledThisTurn(state, key) || state.fuses?.[key] === undefined) continue;
     if (left <= 1) {

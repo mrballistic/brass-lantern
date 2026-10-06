@@ -37,6 +37,11 @@ export interface Command {
 
 const commands = new WeakMap<GameState, Command | null>();
 
+/** The command a rule is running for this turn, if any. */
+export function commandOf(state: GameState): Command | undefined {
+  return commands.get(state) ?? undefined;
+}
+
 /** Records the command a rule is running for, so scripts can see it. */
 export function setCommand(state: GameState, command: Command | null): void {
   commands.set(state, command);
