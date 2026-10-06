@@ -1,12 +1,13 @@
 import type { GameState, Place } from '@/types/game';
 import type { Effect, EventStep, World } from '@/types/world';
+import { evaluateCondition } from './conditions';
 import { isCarried, moveItem, npcStateOf, PLAYER } from './model';
 import { nextRandom } from './rng';
 import { scriptSteps } from './scripts';
 
 // Running event steps: printed lines (bracket lines also act) and typed effects.
 
-type Hook = (arg: string, world: World, state: GameState) => string[];
+type Hook = (arg: string, world: World, state: GameState, opts?: { quiet?: boolean }) => string[];
 
 /**
  * Effects that need other engine modules (moving the player, death, endings)
@@ -22,6 +23,9 @@ export function setEffectHooks(h: typeof hooks): void {
 // later steps, a rule's `say`, more arrival events, daemons. Tracked per game
 // state so separate games (and tests) don't interfere.
 const halted = new WeakSet<GameState>();
+// Turns a `free` step made timeless, and turns whose darkness a step already reported.
+const freeTurns = new WeakSet<GameState>();
+const darkSaid = new WeakSet<GameState>();
 // Fuses (re)scheduled this turn don't count down until the next one.
 const scheduled = new WeakMap<GameState, Set<string>>();
 
@@ -29,6 +33,8 @@ const scheduled = new WeakMap<GameState, Set<string>>();
 export function beginTurn(state: GameState): void {
   halted.delete(state);
   scheduled.delete(state);
+  freeTurns.delete(state);
+  darkSaid.delete(state);
 }
 
 /** Was this fuse set (or reset) during the current turn? */
@@ -41,6 +47,16 @@ function schedule(state: GameState, key: string, turns: number): void {
   const keys = scheduled.get(state) ?? new Set<string>();
   keys.add(key);
   scheduled.set(state, keys);
+}
+
+/** Did a `free` step make this turn take no time? */
+export function turnFree(state: GameState): boolean {
+  return freeTurns.has(state);
+}
+
+/** Did a step already say the light went out this turn? */
+export function darkLineSaid(state: GameState): boolean {
+  return darkSaid.has(state);
 }
 
 /** Has a death or an ending stopped this turn? */
@@ -123,6 +139,13 @@ function runEffect(e: Effect, world: World, state: GameState): { lines: string[]
     if (state.fuses) delete state.fuses[e.cancel];
     return { lines: [] };
   }
+  if ('if' in e && Array.isArray(e.then)) {
+    const branch = evaluateCondition(e.if, state, world) ? e.then : e.else;
+    return { lines: runSteps(branch ?? [], world, state), stop: state.gameOver || halted.has(state) };
+  }
+  if ('unvisit' in e) return void (state.visited = state.visited.filter((r) => r !== e.unvisit)), { lines: [] };
+  if ('free' in e) return void freeTurns.add(state), { lines: [] };
+  if ('noDarkLine' in e) return void darkSaid.add(state), { lines: [] };
   if ('chance' in e) {
     const hit = nextRandom(state) * 100 < e.chance;
     return { lines: runSteps((hit ? e.then : e.else) ?? [], world, state), stop: state.gameOver };
@@ -131,7 +154,7 @@ function runEffect(e: Effect, world: World, state: GameState): { lines: string[]
   if ('reveal' in e) return void (world.items[e.reveal] && (itemState(state, e.reveal).hidden = false)), { lines: [] };
   if ('script' in e) return { lines: runSteps(scriptSteps(e.script, e.arg, world, state), world, state), stop: state.gameOver || halted.has(state) };
   if ('run' in e) return { lines: world.events[e.run] ? runEventKey(e.run, world, state) : [], stop: state.gameOver };
-  if ('go' in e) return { lines: hooks.go ? hooks.go(e.go, world, state) : [] };
+  if ('go' in e) return { lines: hooks.go ? hooks.go(e.go, world, state, { quiet: e.quiet }) : [] };
   if ('die' in e) {
     // The death plays out in full, then halts the rest of the turn.
     const lines = hooks.die ? hooks.die(e.die, world, state) : [e.die];

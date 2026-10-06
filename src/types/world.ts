@@ -295,8 +295,16 @@ export type Effect =
   | { setVar: string; to: number }
   /** Adds to the `score` variable. */
   | { score: number }
-  /** Moves the player there and describes it. */
-  | { go: string }
+  /** Moves the player there and describes it; `quiet` moves without describing (Zork's mirror). */
+  | { go: string; quiet?: boolean }
+  /** Runs `then` if the condition holds, else `else`. */
+  | { if: string; then: EventStep[]; else?: EventStep[] }
+  /** Forgets the player has been there, so the next arrival shows the full description (Zork clears TOUCHBIT). */
+  | { unvisit: string }
+  /** This turn takes no time: no move counted, no fuses or daemons (Zork's raw-input loops). */
+  | { free: true }
+  /** A line already said the light went out, so the engine doesn't add its own. */
+  | { noDarkLine: true }
   /** Runs an event after this many acted-on turns. */
   | { schedule: string; in: number }
   | { cancel: string }

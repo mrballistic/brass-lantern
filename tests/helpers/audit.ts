@@ -9,6 +9,7 @@ import type { Effect, EventStep, Rule, RuleTable, World } from '@/types/world';
 const EFFECT_KINDS = new Set([
   'say', 'set', 'clear', 'move', 'open', 'close', 'lock', 'unlock', 'switch', 'add', 'setVar', 'score',
   'go', 'schedule', 'cancel', 'chance', 'run', 'die', 'end', 'moveNpc', 'npcState', 'script', 'hide', 'reveal',
+  'if', 'unvisit', 'free', 'noDarkLine',
 ]);
 
 export function auditWorld(world: World): string[] {
@@ -39,6 +40,12 @@ export function auditWorld(world: World): string[] {
       if ((kind === 'moveNpc' || kind === 'npcState') && !((target as string) in world.npcs)) problems.push(`${where}: ${kind} names no character “${target}”`);
       if (kind === 'moveNpc' && e.to !== null && !isRoom(e.to as string)) problems.push(`${where}: moveNpc to nowhere “${e.to}”`);
       if (kind === 'end' && !world.endings?.[target as string]) problems.push(`${where}: end names no ending “${target}”`);
+      if (kind === 'unvisit' && !isRoom(target as string)) problems.push(`${where}: unvisit names no room “${target}”`);
+      if (kind === 'if') {
+        for (const p of conditionProblems(target as string, world)) problems.push(`${where} (if): ${p}`);
+        checkSteps((e.then as EventStep[]) ?? [], `${where} (if)`);
+        checkSteps((e.else as EventStep[]) ?? [], `${where} (if)`);
+      }
       if (kind === 'chance') {
         checkSteps((e.then as EventStep[]) ?? [], `${where} (chance)`);
         checkSteps((e.else as EventStep[]) ?? [], `${where} (chance)`);

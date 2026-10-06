@@ -25,7 +25,7 @@ const DIRECTION_WORDS = new Set([...COMPASS, 'in', 'out', 'inside', 'outside']);
 
 export const GENERIC_DENIAL = 'Something stops you. The story isn’t ready for you to go there yet.';
 
-export function enterRoom(targetId: string, world: World, state: GameState): string[] {
+export function enterRoom(targetId: string, world: World, state: GameState, opts: { quiet?: boolean } = {}): string[] {
   const target = world.rooms[targetId];
   if (!target) return ['There is nothing in that direction.'];
   if (target.requires && !evaluateCondition(target.requires, state, world)) {
@@ -35,6 +35,8 @@ export function enterRoom(targetId: string, world: World, state: GameState): str
   state.currentRoom = targetId;
   // A dark room isn't visited until you've seen it (Zork's TOUCHBIT).
   if (first && isLit(world, state)) state.visited.push(targetId);
+  // A quiet move (Zork's GOTO without a description) still runs the room's arrival events.
+  if (opts.quiet) return runOnEnter(targetId, world, state);
   const verbosity = state.verbosity ?? (world.style === 'infocom' ? 'brief' : 'verbose');
   const brief = verbosity === 'superbrief' || (verbosity === 'brief' && !first);
   // Infocom runs a room's arrival routine (M-ENTER) before describing it.

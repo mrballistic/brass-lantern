@@ -4,7 +4,7 @@ import { describeRoom } from './describe';
 import { AskSignal, initialLocations, isLit, matchItem, setResolveById, takeActed, visibleItems } from './model';
 import { whatQuestion, whichQuestion } from './ask';
 import { darknessFalls, tooDark } from './light';
-import { beginTurn, runSteps, setEffectHooks, turnHalted } from './effects';
+import { beginTurn, darkLineSaid, runSteps, setEffectHooks, turnFree, turnHalted } from './effects';
 import { seedFor } from './rng';
 import { afterTurn } from './time';
 import { die } from './death';
@@ -57,7 +57,7 @@ export function initialState(world: World): GameState {
 /* ------------------------------------------------------------------ */
 
 setEffectHooks({
-  go: (room, world, state) => enterRoom(room, world, state),
+  go: (room, world, state, opts) => enterRoom(room, world, state, opts),
   die: (cause, world, state) => die(cause, world, state, enterRoom),
   end: (id, world, state) => runEnding(id, world, state),
 });
@@ -86,6 +86,7 @@ export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
     setResolveById(state, false);
   }
   result = { ...result, acted: takeActed(state) };
+  if (turnFree(state) && result.understood !== false) result = { ...result, free: true };
   // You can't find things in the dark: an understood refusal, so the LLM isn't asked to re-guess.
   // Not an order: “ok, light the lamp” parses as one, and the LLM must still get to read it.
   if (result.understood === false && action.target && action.action !== 'go' && action.action !== 'order' && !isLit(world, state)) {
@@ -107,7 +108,7 @@ export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
       if (!state.visited.includes(state.currentRoom)) state.visited.push(state.currentRoom);
       later.push(...describeRoom(state.currentRoom, world, state));
     }
-    if (!litNow && litBefore) later.push(darknessFalls(world));
+    if (!litNow && litBefore && !darkLineSaid(state)) later.push(darknessFalls(world));
   }
   const changed = before !== JSON.stringify([state.vars, state.fuses, state.flags, state.locations, state.itemState, state.currentRoom, state.player, state.npcs, state.rng]);
   if (later.length === 0 && !changed) return result;
