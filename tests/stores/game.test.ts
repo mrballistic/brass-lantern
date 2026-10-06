@@ -396,6 +396,21 @@ describe('useGameStore', () => {
       expect(inventoryOf(store.world, store.game)).toEqual([]);
     });
 
+    it('the default transcript download keeps its URL alive until the click has started it', async () => {
+      vi.useFakeTimers();
+      const revoke = vi.fn();
+      vi.stubGlobal('URL', { ...URL, createObjectURL: () => 'blob:x', revokeObjectURL: revoke });
+      const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+      const { defaultDownload } = await import('@/stores/game');
+      defaultDownload('t.txt', 'hello');
+      expect(click).toHaveBeenCalled();
+      expect(revoke).not.toHaveBeenCalled();
+      vi.runAllTimers();
+      expect(revoke).toHaveBeenCalledWith('blob:x');
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    });
+
     it('a transcript survives RESTART', async () => {
       const store = freshStore();
       store.initialize();

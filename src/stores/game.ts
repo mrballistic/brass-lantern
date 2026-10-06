@@ -52,14 +52,17 @@ function beginLine(game: GameState, outputLength: number): void {
 }
 
 /** Saves a transcript as a file. Tests swap it out with setDownload. */
-let download = (filename: string, text: string): void => {
+export function defaultDownload(filename: string, text: string): void {
   const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
   a.click();
-  URL.revokeObjectURL(url);
-};
+  // Revoking at once can cancel the download in some browsers.
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+let download = defaultDownload;
 
 export function setDownload(fn: (filename: string, text: string) => void): void {
   download = fn;
