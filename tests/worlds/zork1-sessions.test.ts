@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it } from 'vitest';
 import { compare, nativeRun, originalRun, prefixed } from '../helpers/zsession';
+import { DAM_SESSIONS } from './zork1-sessions';
 
 // Scripted sessions: each puzzle chain runs in native Zork I and in the real story
 // file, both seeded, and the replies are compared line by line.
@@ -26,4 +27,25 @@ describe('the seeded original', () => {
     const r = nativeRun(['look'], 1);
     expect(compare(r, r, ['look'])).toEqual([]);
   });
+});
+
+/** Runs a session on both sides from their pinned seeds and requires every reply to match. */
+async function session(name: string, commands: string[], seeds: { native: number; original: number }) {
+  const original = await prefixed('original', commands, seeds.original);
+  const native = await prefixed('native', commands, seeds.native);
+  if (!original || !native) throw new Error(`${name}: a pinned seed no longer gets through (re-run findSeed): original ${Boolean(original)}, native ${Boolean(native)}`);
+  expect(compare(native, original, commands)).toEqual([]);
+}
+
+// Seeds found with findSeed, one per side; a content change that moves the thief may need new ones.
+const DAM_SEEDS: Record<string, { native: number; original: number }> = {
+  dam: { native: 7, original: 1 },
+  leak: { native: 4, original: 1 },
+  flood: { native: 4, original: 1 },
+  refill: { native: 4, original: 1 },
+  water: { native: 13, original: 1 },
+};
+
+describe('5a sessions: the dam and the reservoir', () => {
+  for (const [name, commands] of Object.entries(DAM_SESSIONS)) it(name, () => session(name, commands, DAM_SEEDS[name]), 120_000);
 });

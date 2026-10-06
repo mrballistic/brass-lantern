@@ -5,7 +5,7 @@ import { describeRoom } from './describe';
 import { AskSignal, initialLocations, isLit, matchItem, setResolveById, takeActed, visibleItems } from './model';
 import { whatQuestion, whichQuestion } from './ask';
 import { darknessFalls, tooDark } from './light';
-import { beginTurn, darkLineSaid, runSteps, setEffectHooks, turnFree, turnHalted } from './effects';
+import { beginTurn, darkLineSaid, runEventKey, runSteps, setEffectHooks, turnFree, turnHalted } from './effects';
 import { seedFor } from './rng';
 import { afterTurn } from './time';
 import { die } from './death';
@@ -62,6 +62,17 @@ setEffectHooks({
   die: (cause, world, state) => die(cause, world, state, enterRoom),
   end: (id, world, state) => runEnding(id, world, state),
 });
+
+/** The player's room's end routines (Zork's M-END): after the action, before the clock. */
+function roomEnd(world: World, state: GameState): string[] {
+  const out: string[] = [];
+  for (const e of world.rooms[state.currentRoom]?.onEnd ?? []) {
+    if (!evaluateCondition(e.if, state, world)) continue;
+    out.push(...(typeof e.then === 'string' ? runEventKey(e.then, world, state) : runSteps(e.then, world, state)));
+    if (state.gameOver || turnHalted(state)) break;
+  }
+  return out;
+}
 
 // The steps a capture returned, waiting for execute() to run them as a turn.
 const pendingCapture = new WeakMap<GameState, EventStep[]>();
@@ -124,8 +135,24 @@ export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
   state.turns = (state.turns ?? 0) + 1;
   state.moveCount += 1;
   const before = JSON.stringify([state.vars, state.fuses, state.flags, state.locations, state.itemState, state.currentRoom, state.player, state.npcs, state.rng]);
+  // Zork's WAIT runs the clock inside the action, up to `wait.turns` times; the room's
+  // end routine (M-END) then follows it. Anything else: end routine, then one tick.
+  const waiting = action.action === 'wait' && Boolean(world.wait);
+  const later: string[] = [];
+  if (!waiting && !turnHalted(state)) later.push(...roomEnd(world, state));
   // A death this turn ends it: no timers or daemons after the resurrection.
-  const later = turnHalted(state) ? [] : afterTurn(world, state, pendingFuses);
+  for (let tick = 0; tick < (waiting ? world.wait!.turns : 1) && !turnHalted(state) && !state.gameOver; tick++) {
+    if (tick > 0) {
+      state.turns = (state.turns ?? 0) + 1;
+      state.moveCount += 1;
+    }
+    const fuses = Object.keys(state.fuses ?? {});
+    const out = afterTurn(world, state, tick === 0 ? pendingFuses : new Set(fuses));
+    later.push(...out);
+    // A tick that did something (Zork: an interrupt returned true) ends the wait.
+    if (out.length > 0 || fuses.some((k) => state.fuses?.[k] === undefined)) break;
+  }
+  if (waiting && !turnHalted(state) && !state.gameOver) later.push(...roomEnd(world, state));
   // Light arriving or leaving while the player stays put.
   if (state.currentRoom === roomBefore && !state.gameOver) {
     const litNow = isLit(world, state);
@@ -193,7 +220,7 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
       return withRules('unlock', action, world, state, () => handleUnlock(action.target, action.indirect, world, state));
     case 'put':
       if (action.target && ALL.test(action.target)) return handleAll(action, world, state);
-      return withRules('put', action, world, state, () => handlePut(action.target, action.indirect, world, state));
+      return withRules('put', action, world, state, () => handlePut(action.target, action.indirect, world, state, action.prep));
     case 'search':
       return withRules('search', action, world, state, () => handleSearch(action.target, world, state));
     case 'wear':

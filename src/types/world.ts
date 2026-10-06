@@ -33,6 +33,8 @@ export interface Room {
   tags?: string[];
   /** Takes input here before it's parsed, while `if` holds (Zork's Loud Room). See Capture. */
   capture?: Capture;
+  /** Run at the end of every command here, after the action and before the clock (Zork's M-END). */
+  onEnd?: Array<{ if: string; then: string | EventStep[] }>;
 }
 
 /** A script that sees each piece of input first (`ctx.line`): it returns steps to take it, or nothing to let it parse. */
@@ -55,6 +57,10 @@ export interface Rule {
   say?: string[];
   /** An instead rule that runs, then lets the verb's default go on (Zork's “print, then RFALSE”). */
   continue?: boolean;
+  /** Only when its item is the command's object (`target`) or second object (`indirect`): Zork's PRSO and PRSI. */
+  as?: 'target' | 'indirect';
+  /** Only for this preposition (PUT … `in` or `on`). */
+  prep?: string;
 }
 
 /** Verb → rules. */
@@ -69,6 +75,8 @@ export interface WorldVerb {
   indirect?: string[];
   /** Printed when no rule applies. Defaults to “Nothing happens.” */
   reply?: string;
+  /** The object must be something you're carrying (Zork's HELD): POUR WATER means the water in your bottle. */
+  held?: boolean;
   /** Treat it as GO: through the target exit, or the exit labeled with the verb's ID when bare. */
   go?: boolean;
 }
@@ -376,6 +384,8 @@ export interface World {
   statusLine?: 'moves' | 'score';
   /** Takes input anywhere, after the room's own capture, while `if` holds (a spirit's limits). */
   capture?: Capture;
+  /** WAIT runs the clock up to `turns` times, stopping after a tick that did something (Zork's V-WAIT: 3). */
+  wait?: { turns: number };
   /** The game's full title, for VERSION and transcripts. */
   title?: string;
   /** Lines VERSION prints after the title (copyright, authors). */

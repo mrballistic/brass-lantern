@@ -103,6 +103,15 @@ export function isCarried(state: GameState, id: string): boolean {
   return state.locations[id] === PLAYER;
 }
 
+/** What the player holds, including things they can see inside what they hold (Zork's HELD). */
+export function heldItems(world: World, state: GameState): string[] {
+  const within = (id: string): boolean => {
+    for (let p = state.locations[id]; p; p = state.locations[p]) if (p === PLAYER) return true;
+    return false;
+  };
+  return visibleItems(world, state).filter(within);
+}
+
 export function moveItem(state: GameState, id: string, place: Place): void {
   state.locations[id] = place;
   const placed = (state.placed ??= {});
@@ -319,8 +328,11 @@ export function setResolveById(state: GameState, on: boolean): void {
  */
 export function pickItem(target: string, ids: string[], world: World, slot: 'target' | 'indirect' = 'target', state?: GameState): string | null {
   const candidates = ids.map((id) => ({ id, name: world.items[id]?.name ?? id, aliases: world.items[id]?.aliases }));
-  const found = [...new Set(fuzzyCandidates(target, candidates, { byId: state ? byIdTurns.has(state) : false }))];
+  let found = [...new Set(fuzzyCandidates(target, candidates, { byId: state ? byIdTurns.has(state) : false }))];
   if (found.length === 0) return null;
+  // A room's scenery (Zork's local globals) only counts when nothing else matches.
+  const fixtures = state ? (world.rooms[state.currentRoom]?.scenery ?? []) : [];
+  if (found.length > 1 && found.some((id) => !fixtures.includes(id))) found = found.filter((id) => !fixtures.includes(id));
   if (found.length === 1) {
     if (state) noteActed(state, slot, found[0]);
     return found[0];

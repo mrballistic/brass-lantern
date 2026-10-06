@@ -98,3 +98,48 @@ describe('the audit knows the new steps', () => {
     expect(problems.some((p) => p.includes('unknown') || p.includes('not an effect'))).toBe(false);
   });
 });
+
+describe('Zork’s WAIT: several clock ticks (5a)', () => {
+  const base: World = { ...fixtureWorld, wait: { turns: 3 }, vars: { ticks: 0 }, daemons: [{ if: 'in:living', then: [{ add: 'ticks', by: 1 }] }] };
+  it('runs the clock up to `turns` times, a move each', () => {
+    const s = stateWith(base, { room: 'living' });
+    execute({ action: 'wait' }, { world: base, state: s });
+    expect(s.vars.ticks).toBe(3);
+    expect(s.moveCount).toBe(3);
+  });
+  it('stops after a tick that printed something or fired a fuse', () => {
+    const w: World = { ...base, daemons: [...base.daemons!, { if: 'var:ticks=2', then: ['Tick two.'] }] };
+    const s = stateWith(w, { room: 'living' });
+    const r = execute({ action: 'wait' }, { world: w, state: s });
+    expect(r.lines.at(-1)).toBe('Tick two.');
+    expect(s.vars.ticks).toBe(2);
+    const f: World = { ...base, events: { ...base.events, boom: [{ set: 'boomed' }] } };
+    const t = stateWith(f, { room: 'living' });
+    t.fuses = { boom: 1 };
+    execute({ action: 'wait' }, { world: f, state: t });
+    expect(t.flags.boomed).toBe(true);
+    expect(t.vars.ticks).toBe(1);
+  });
+  it('other commands tick once', () => {
+    const s = stateWith(base, { room: 'living' });
+    execute({ action: 'look' }, { world: base, state: s });
+    expect(s.vars.ticks).toBe(1);
+  });
+});
+
+describe('room end routines (Zork’s M-END) (5a)', () => {
+  const w: World = {
+    ...fixtureWorld,
+    wait: { turns: 3 },
+    rooms: { ...fixtureWorld.rooms, living: { ...fixtureWorld.rooms.living, onEnd: [{ if: 'in:living', then: ['The floor creaks.'] }] } },
+    daemons: [{ if: 'in:living', then: ['Tock.'] }],
+  };
+  it('run after the action and before the clock, without stopping a WAIT', () => {
+    const s = stateWith(w, { room: 'living' });
+    expect(execute({ action: 'look' }, { world: w, state: s }).lines.slice(-2)).toEqual(['The floor creaks.', 'Tock.']);
+    const t = stateWith({ ...w, daemons: [] }, { room: 'living' });
+    const r = execute({ action: 'wait' }, { world: { ...w, daemons: [] }, state: t });
+    expect(r.lines.at(-1)).toBe('The floor creaks.');
+    expect(t.moveCount).toBe(3);
+  });
+});

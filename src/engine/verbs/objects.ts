@@ -73,6 +73,8 @@ export function handleExamine(target: string | undefined, world: World, state: G
     const contents = contentsLines(world, state, matchedItem);
     // No description of its own: a container shows what's in it, as Zork's EXAMINE does.
     if (item && !item.description) {
+      // Zork's EXAMINE reads what's written on it.
+      if (item.text) return ok([item.text]);
       if (contents.length > 0) return ok(contents);
       return ok([item.container ? `The ${item.name} is empty.` : `There’s nothing special about the ${item.name}.`]);
     }
@@ -189,7 +191,14 @@ export function handleRead(target: string | undefined, world: World, state: Game
   const id = pickItem(target, visibleItems(world, state), world, 'target', state);
   if (!id) return miss(`You don’t see a “${target}” here.`);
   const item = world.items[id];
-  return ok([item.text ?? (item.description || `There’s nothing special about the ${item.name}.`)]);
+  const text = item.text ?? (item.description || `There’s nothing special about the ${item.name}.`);
+  // Zork's READ takes the thing first (its syntax's TAKE flag).
+  if (world.style === 'infocom' && item.portable && !isCarried(state, id)) {
+    const took = takeItem(id, world, state);
+    if (!took.mutated) return took;
+    return ok(['(Taken)', text], true);
+  }
+  return ok([text]);
 }
 
 export function handleSwitch(target: string | undefined, on: boolean, world: World, state: GameState): EngineResult {

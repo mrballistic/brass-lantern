@@ -1,6 +1,6 @@
 import type { GameState, ParsedAction } from '@/types/game';
 import type { World } from '@/types/world';
-import { matchNpc, needObject, pickItem, reachableItems } from '../model';
+import { heldItems, matchNpc, needObject, pickItem, reachableItems } from '../model';
 import { setCommand } from '../scripts';
 import { miss, ok, type EngineResult } from '../result';
 import { applyRule, findRule } from '../rules';
@@ -13,7 +13,8 @@ export function handleWorldVerb(action: ParsedAction, world: World, state: GameS
   if (!verb) return null;
   if (verb.go) return handleGo(action.target ?? action.action, world, state);
   const reach = reachableItems(world, state);
-  const target = action.target ? pickItem(action.target, reach, world, 'target', state) : null;
+  const scope = verb.held ? heldItems(world, state) : reach;
+  const target = action.target ? pickItem(action.target, scope, world, 'target', state) : null;
   // A word that isn't a thing here may be a person here (CONSULT MADAME).
   const person = action.target && !target ? matchNpc(action.target, world, state) : null;
   if (action.target && !target && !person) return miss(`You don’t see a “${action.target}” here.`);

@@ -26,7 +26,7 @@ export function normalize(lines: string[]): string {
     .toLowerCase();
 }
 
-export const THIEF = /large bag|seedy-looking|\bthief\b/i;
+export const THIEF = /large bag|seedy-looking|\bthief\b|\brobber\b/i;
 
 /** A fresh session of the original, past its banner. `send` answers with the reply's lines. */
 export async function openOriginal(seed?: number): Promise<{ send: (command: string) => Promise<string[]> }> {
@@ -111,8 +111,11 @@ export function nativeRun(commands: string[], seed: number): string[][] {
   return commands.map((c) => send(c));
 }
 
-/** West of House to the Round Room, with the lamp lit and the sword; `@fight` fights the troll to the death. */
-export const PREFIX = ['north', 'east', 'open window', 'west', 'west', 'take sword', 'take lamp', 'move rug', 'open trap door', 'turn on lamp', 'down', 'north', '@fight', 'east', 'east'];
+/** West of House to the Round Room with the lamp lit, the sword, the bottle and the rope; `@fight` fights the troll to the death. */
+export const PREFIX = [
+  'north', 'east', 'open window', 'west', 'take bottle', 'west', 'take sword', 'take lamp', 'turn on lamp',
+  'east', 'up', 'take rope', 'down', 'west', 'move rug', 'open trap door', 'down', 'north', '@fight', 'east', 'east',
+];
 
 const died = (reply: string[]) => normalize(reply).includes('you have died');
 const trollDied = (reply: string[]) => normalize(reply).includes('almost as soon as the troll breathes his last breath');
@@ -125,14 +128,21 @@ export type Side = 'native' | 'original';
  */
 export async function prefixed(side: Side, commands: string[], seed: number): Promise<string[][] | null> {
   let send: (c: string) => Promise<string[]> | string[];
+  // The thief can steal without a word; natively that shows in the state.
+  let pilfered = () => false;
   if (side === 'original') {
     localStorage.clear();
     send = (await openOriginal(seed)).send;
-  } else send = openNative(seed).send;
+  } else {
+    const game = openNative(seed);
+    send = game.send;
+    pilfered = () => Object.entries(game.state.locations).some(([id, place]) => place === 'thief' && !['stiletto', 'large_bag'].includes(id));
+  }
   const seen: string[][] = [];
   for (const c of PREFIX) {
     if (c !== '@fight') {
       seen.push(await send(c));
+      if (pilfered()) return null;
       continue;
     }
     let dead = false;
@@ -145,7 +155,10 @@ export async function prefixed(side: Side, commands: string[], seed: number): Pr
     if (!dead) return null;
   }
   const replies: string[][] = [];
-  for (const c of commands) replies.push(await send(c));
+  for (const c of commands) {
+    replies.push(await send(c));
+    if (pilfered()) return null;
+  }
   if (seen.some(died) || [...seen, ...replies].some((r) => THIEF.test(r.join(' ')))) return null;
   return replies;
 }

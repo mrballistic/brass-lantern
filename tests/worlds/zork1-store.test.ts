@@ -22,7 +22,7 @@ describe('the thief and UNDO', () => {
     let found = false;
     for (let seed = 1; seed <= 60 && !found; seed++) {
       const s = store(seed);
-      await s.submit('wait');
+      // One WAIT: up to three turns of Zork's clock, all undone together.
       await s.submit('wait');
       if (s.game.locations.egg === 'player') continue;
       found = true;

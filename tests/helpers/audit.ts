@@ -123,6 +123,12 @@ export function auditWorld(world: World): string[] {
     checkTable(room.instead, 'instead', `room ${id}`);
     checkTable(room.after, 'after', `room ${id}`);
     checkCondition(room.requires, `room ${id} requires`);
+    for (const e of room.onEnd ?? []) {
+      checkCondition(e.if, `room ${id} onEnd`);
+      if (typeof e.then === 'string') {
+        if (!isEvent(e.then)) problems.push(`room ${id} onEnd names no event “${e.then}”`);
+      } else checkSteps(e.then, `room ${id} onEnd`);
+    }
     checkCapture(room.capture, `room ${id} capture`);
     for (const [label, exit] of Object.entries(room.exits)) {
       if (typeof exit === 'string') continue;

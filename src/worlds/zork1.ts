@@ -15,6 +15,8 @@ import type { EventStep, World } from '@/types/world';
 const CARRYING = 'You can’t get up there with what you’re carrying.';
 const GRUE = 'Oh, no! You have walked into the slavering fangs of a lurking grue!';
 const OFF_MAP = 'That part of the map isn’t built yet.';
+// The Maintenance Room's flood, by half-levels (Zork's DROWNINGS).
+const DROWNINGS = ['up to your ankles.', 'up to your shin.', 'up to your knees.', 'up to your hips.', 'up to your waist.', 'up to your chest.', 'up to your neck.', 'over your head.', 'high in your lungs.'];
 const NO_TREE = 'There is no tree here suitable for climbing.';
 const BOARDED = 'The windows are all boarded.';
 
@@ -220,6 +222,90 @@ export const zork1: World = {
   emptyInventory: 'You are empty-handed.',
 
   rooms: {
+    // Stage 5a: the dam. DAM-BASE through DEEP-CANYON, in story order.
+    dam_base: {
+      name: 'Dam Base',
+      description: 'You are at the base of Flood Control Dam #3, which looms above you and to the north. The river Frigid is flowing by here. Along the river are the White Cliffs which seem to form giant walls stretching from north to south along the shores of the river as it winds its way downstream.',
+      exits: { north: 'dam_room', up: 'dam_room' },
+      items: ['inflatable_boat'],
+      npcs: [],
+      onEnter: [],
+      scenery: ['global_water'],
+      tags: ['sacred'],
+    },
+    maintenance_room: {
+      name: 'Maintenance Room',
+      description: 'This is what appears to have been the maintenance room for Flood Control Dam #3. Apparently, this room has been ransacked recently, for most of the valuable equipment is gone. On the wall in front of you is a group of buttons colored blue, yellow, brown, and red. There are doorways to the west and south.',
+      dark: true,
+      exits: { south: 'dam_lobby', west: 'dam_lobby' },
+      // MUNG-ROOM: once flooded, it can't be entered.
+      requires: '!flag:maint_flooded',
+      denial: 'The room is full of water and cannot be entered.',
+      items: ['tool_chest', 'screwdriver', 'tube', 'wrench', 'maintenance_lights'],
+      npcs: [],
+      onEnter: [],
+      scenery: ['yellow_button', 'brown_button', 'red_button', 'blue_button', 'leak'],
+    },
+    dam_lobby: {
+      name: 'Dam Lobby',
+      description: 'This room appears to have been the waiting room for groups touring the dam. There are open doorways here to the north and east marked “Private”, and there is a path leading south over the top of the dam.',
+      exits: { south: 'dam_room', north: 'maintenance_room', east: 'maintenance_room' },
+      items: ['match', 'guide'],
+      npcs: [],
+      onEnter: [],
+    },
+    dam_room: {
+      name: 'Dam',
+      // DAM-ROOM-FCN's M-LOOK: the water and the bubble.
+      description: 'You are standing on the top of the Flood Control Dam #3, which was quite a tourist attraction in times far distant. There are paths to the north, south, and west, and a scramble down.\nThe sluice gates on the dam are closed. Behind the dam, there can be seen a wide reservoir. Water is pouring over the top of the now abandoned dam.\nThere is a control panel here, on which a large metal bolt is mounted. Directly above the bolt is a small green plastic bubble.',
+      descriptions: [
+        { if: 'flag:low_tide & flag:gates_open & flag:gate_flag', text: 'You are standing on the top of the Flood Control Dam #3, which was quite a tourist attraction in times far distant. There are paths to the north, south, and west, and a scramble down.\nThe water level behind the dam is low: The sluice gates have been opened. Water rushes through the dam and downstream.\nThere is a control panel here, on which a large metal bolt is mounted. Directly above the bolt is a small green plastic bubble which is glowing serenely.' },
+        { if: 'flag:low_tide & flag:gates_open & !flag:gate_flag', text: 'You are standing on the top of the Flood Control Dam #3, which was quite a tourist attraction in times far distant. There are paths to the north, south, and west, and a scramble down.\nThe water level behind the dam is low: The sluice gates have been opened. Water rushes through the dam and downstream.\nThere is a control panel here, on which a large metal bolt is mounted. Directly above the bolt is a small green plastic bubble.' },
+        { if: 'flag:gates_open & flag:gate_flag', text: 'You are standing on the top of the Flood Control Dam #3, which was quite a tourist attraction in times far distant. There are paths to the north, south, and west, and a scramble down.\nThe sluice gates are open, and water rushes through the dam. The water level behind the dam is still high.\nThere is a control panel here, on which a large metal bolt is mounted. Directly above the bolt is a small green plastic bubble which is glowing serenely.' },
+        { if: 'flag:gates_open & !flag:gate_flag', text: 'You are standing on the top of the Flood Control Dam #3, which was quite a tourist attraction in times far distant. There are paths to the north, south, and west, and a scramble down.\nThe sluice gates are open, and water rushes through the dam. The water level behind the dam is still high.\nThere is a control panel here, on which a large metal bolt is mounted. Directly above the bolt is a small green plastic bubble.' },
+        { if: 'flag:low_tide & flag:gate_flag', text: 'You are standing on the top of the Flood Control Dam #3, which was quite a tourist attraction in times far distant. There are paths to the north, south, and west, and a scramble down.\nThe sluice gates are closed. The water level in the reservoir is quite low, but the level is rising quickly.\nThere is a control panel here, on which a large metal bolt is mounted. Directly above the bolt is a small green plastic bubble which is glowing serenely.' },
+        { if: 'flag:low_tide & !flag:gate_flag', text: 'You are standing on the top of the Flood Control Dam #3, which was quite a tourist attraction in times far distant. There are paths to the north, south, and west, and a scramble down.\nThe sluice gates are closed. The water level in the reservoir is quite low, but the level is rising quickly.\nThere is a control panel here, on which a large metal bolt is mounted. Directly above the bolt is a small green plastic bubble.' },
+        { if: 'flag:gate_flag', text: 'You are standing on the top of the Flood Control Dam #3, which was quite a tourist attraction in times far distant. There are paths to the north, south, and west, and a scramble down.\nThe sluice gates on the dam are closed. Behind the dam, there can be seen a wide reservoir. Water is pouring over the top of the now abandoned dam.\nThere is a control panel here, on which a large metal bolt is mounted. Directly above the bolt is a small green plastic bubble which is glowing serenely.' },
+        { if: '!flag:gate_flag', text: 'You are standing on the top of the Flood Control Dam #3, which was quite a tourist attraction in times far distant. There are paths to the north, south, and west, and a scramble down.\nThe sluice gates on the dam are closed. Behind the dam, there can be seen a wide reservoir. Water is pouring over the top of the now abandoned dam.\nThere is a control panel here, on which a large metal bolt is mounted. Directly above the bolt is a small green plastic bubble.' },
+      ],
+      exits: { south: 'deep_canyon', down: 'dam_base', east: 'dam_base', north: 'dam_lobby', west: 'reservoir_south' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      scenery: ['bolt', 'bubble', 'dam', 'control_panel', 'global_water'],
+    },
+    chasm_room: {
+      name: 'Chasm',
+      description: 'A chasm runs southwest to northeast and the path follows it. You are on the south side of the chasm, where a crack opens into a passage.',
+      dark: true,
+      exits: { northeast: 'reservoir_south', southwest: 'ew_passage', up: 'ew_passage', south: 'ns_passage', down: { denial: 'Are you out of your mind?' } },
+      items: [],
+      npcs: [],
+      onEnter: [],
+    },
+    ns_passage: {
+      name: 'North-South Passage',
+      description: 'This is a high north-south passage, which forks to the northeast.',
+      dark: true,
+      exits: { north: 'chasm_room', northeast: 'deep_canyon', south: 'round_room' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+    },
+    deep_canyon: {
+      name: 'Deep Canyon',
+      // DEEP-CANYON-F: the water below.
+      description: 'You are on the south edge of a deep canyon. Passages lead off to the east, northwest and southwest. A stairway leads down. You can hear the sound of flowing water from below.',
+      descriptions: [
+        { if: 'flag:gates_open & !flag:low_tide', text: 'You are on the south edge of a deep canyon. Passages lead off to the east, northwest and southwest. A stairway leads down. You can hear a loud roaring sound, like that of rushing water, from below.' },
+        { if: '!flag:gates_open & flag:low_tide', text: 'You are on the south edge of a deep canyon. Passages lead off to the east, northwest and southwest. A stairway leads down.' },
+      ],
+      dark: true,
+      exits: { northwest: 'reservoir_south', east: 'dam_room', southwest: 'ns_passage', down: { denial: 'That part of the Great Underground Empire isn’t built yet.' } },
+      items: [],
+      npcs: [],
+      onEnter: [],
+    },
     round_room: {
       name: 'Round Room',
       description: 'This is a circular stone room with passages in all directions. Several of them have unfortunately been blocked by cave-ins.',
@@ -227,7 +313,7 @@ export const zork1: World = {
       exits: {
         west: 'ew_passage',
         east: { denial: 'That part of the Great Underground Empire isn’t built yet.' },
-        north: { denial: 'That part of the Great Underground Empire isn’t built yet.' },
+        north: 'ns_passage',
         south: { denial: 'That part of the Great Underground Empire isn’t built yet.' },
         southeast: { denial: 'That part of the Great Underground Empire isn’t built yet.' },
       },
@@ -242,13 +328,82 @@ export const zork1: World = {
       exits: {
         east: 'round_room',
         west: 'troll_room',
-        down: { denial: 'That part of the Great Underground Empire isn’t built yet.' },
-        north: { denial: 'That part of the Great Underground Empire isn’t built yet.' },
+        down: 'chasm_room',
+        north: 'chasm_room',
       },
       items: [],
       npcs: [],
       // Zork's VALUE 5.
       onEnter: [{ if: '!flag:ew_passage_visited', then: 'ew_passage_points' }],
+    },
+    // Stage 5a: the reservoir. STREAM-VIEW through RESERVOIR-SOUTH, in story order.
+    stream_view: {
+      name: 'Stream View',
+      description: 'You are standing on a path beside a gently flowing stream. The path follows the stream, which flows from west to east.',
+      dark: true,
+      exits: { east: 'reservoir_south', west: { denial: 'The stream emerges from a spot too small for you to enter.' } },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      scenery: ['global_water'],
+    },
+    reservoir_north: {
+      name: 'Reservoir North',
+      description: 'You are in a large cavernous room, north of a large lake.\nThere is a slimy stairway leaving the room to the north.',
+      descriptions: [
+        { if: 'flag:low_tide & flag:gates_open', text: 'You are in a large cavernous room, the south of which was formerly a lake. However, with the water level lowered, there is merely a wide stream running through there.\nThere is a slimy stairway leaving the room to the north.' },
+        { if: 'flag:gates_open', text: 'You are in a large cavernous area. To the south is a wide lake, whose water level appears to be falling rapidly.\nThere is a slimy stairway leaving the room to the north.' },
+        { if: 'flag:low_tide', text: 'You are in a cavernous area, to the south of which is a very wide stream. The level of the stream is rising rapidly, and it appears that before long it will be impossible to cross to the other side.\nThere is a slimy stairway leaving the room to the north.' },
+      ],
+      dark: true,
+      exits: {
+        north: { denial: 'That part of the Great Underground Empire isn’t built yet.' },
+        south: { to: 'reservoir', if: 'flag:low_tide', denial: 'You would drown.' },
+      },
+      items: ['pump'],
+      npcs: [],
+      onEnter: [],
+      scenery: ['global_water'],
+    },
+    reservoir: {
+      name: 'Reservoir',
+      description: 'You are on the lake. Beaches can be seen north and south. Upstream a small stream enters the lake through a narrow cleft in the rocks. The dam can be seen downstream.',
+      descriptions: [{ if: 'flag:low_tide', text: 'You are on what used to be a large lake, but which is now a large mud pile. There are “shores” to the north and south.' }],
+      dark: true,
+      exits: {
+        north: 'reservoir_north',
+        south: 'reservoir_south',
+        up: { denial: 'You can’t go there without a vehicle.' },
+        west: { denial: 'You can’t go there without a vehicle.' },
+        down: { denial: 'The dam blocks your way.' },
+      },
+      items: ['trunk'],
+      npcs: [],
+      onEnter: [],
+      // RESERVOIR-FCN's M-END.
+      onEnd: [{ if: '!flag:gates_open & flag:low_tide', then: ['You notice that the water level here is rising rapidly. The currents are also becoming stronger. Staying here seems quite perilous!'] }],
+      scenery: ['global_water'],
+    },
+    reservoir_south: {
+      name: 'Reservoir South',
+      description: 'You are in a long room on the south shore of a large lake, far too deep and wide for crossing.\nThere is a path along the stream to the east or west, a steep pathway climbing southwest along the edge of a chasm, and a path leading into a canyon to the southeast.',
+      descriptions: [
+        { if: 'flag:low_tide & flag:gates_open', text: 'You are in a long room, to the north of which was formerly a lake. However, with the water level lowered, there is merely a wide stream running through the center of the room.\nThere is a path along the stream to the east or west, a steep pathway climbing southwest along the edge of a chasm, and a path leading into a canyon to the southeast.' },
+        { if: 'flag:gates_open', text: 'You are in a long room. To the north is a large lake, too deep to cross. You notice, however, that the water level appears to be dropping at a rapid rate. Before long, it might be possible to cross to the other side from here.\nThere is a path along the stream to the east or west, a steep pathway climbing southwest along the edge of a chasm, and a path leading into a canyon to the southeast.' },
+        { if: 'flag:low_tide', text: 'You are in a long room, to the north of which is a wide area which was formerly a reservoir, but now is merely a stream. You notice, however, that the level of the stream is rising quickly and that before long it will be impossible to cross here.\nThere is a path along the stream to the east or west, a steep pathway climbing southwest along the edge of a chasm, and a path leading into a canyon to the southeast.' },
+      ],
+      dark: true,
+      exits: {
+        southeast: 'deep_canyon',
+        southwest: 'chasm_room',
+        east: 'dam_room',
+        west: 'stream_view',
+        north: { to: 'reservoir', if: 'flag:low_tide', denial: 'You would drown.' },
+      },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      scenery: ['global_water'],
     },
     treasure_room: {
       name: 'Treasure Room',
@@ -806,6 +961,234 @@ export const zork1: World = {
   },
 
   items: {
+    // Stage 5a: the dam and the reservoir.
+    global_water: {
+      name: 'water',
+      aliases: ['quantity', 'lake', 'reservoir', 'stream', 'river'],
+      description: 'There’s nothing special about the water.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      // WATER-F: taking it is filling the bottle.
+      instead: { take: [{ then: 'fill_bottle' }] },
+    },
+    bolt: {
+      name: 'bolt',
+      aliases: ['nut', 'metal bolt', 'large bolt'],
+      description: 'There’s nothing special about the bolt.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      instead: { turn: [{ then: 'bolt_turn' }], take: [{ say: ['It is an integral part of the control panel.'] }] },
+    },
+    bubble: {
+      name: 'green bubble',
+      aliases: ['bubble', 'small bubble', 'plastic bubble', 'green plastic bubble'],
+      description: 'There’s nothing special about the green bubble.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      instead: { take: [{ say: ['It is an integral part of the control panel.'] }] },
+    },
+    dam: {
+      name: 'dam',
+      aliases: ['gate', 'gates', 'fcd#3'],
+      description: 'There’s nothing special about the dam.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      instead: {
+        open: [{ say: ['Sounds reasonable, but this isn’t how.'] }],
+        close: [{ say: ['Sounds reasonable, but this isn’t how.'] }],
+        plug: [{ as: 'target', then: 'dam_plug' }],
+      },
+    },
+    control_panel: {
+      name: 'control panel',
+      aliases: ['panel'],
+      description: 'There’s nothing special about the control panel.',
+      portable: false,
+      tags: [],
+      scenery: true,
+    },
+    tool_chest: {
+      name: 'group of tool chests',
+      aliases: ['chest', 'chests', 'group', 'toolchests', 'tool chests', 'tool chest'],
+      description: 'The chests are all empty.',
+      portable: false,
+      tags: ['sacred'],
+      container: { open: true },
+      instead: {
+        take: [{ then: 'chests_crumble' }],
+        open: [{ then: 'chests_crumble' }],
+        put: [{ then: 'chests_crumble' }],
+      },
+    },
+    yellow_button: {
+      name: 'yellow button',
+      aliases: ['button', 'switch', 'buttons', 'yellow switch'],
+      description: 'There’s nothing special about the yellow button.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      instead: { use: [{ then: 'gate_flag_on' }], read: [{ say: ['They’re greek to you.'] }] },
+    },
+    brown_button: {
+      name: 'brown button',
+      aliases: ['button', 'switch', 'buttons', 'brown switch'],
+      description: 'There’s nothing special about the brown button.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      instead: { use: [{ then: 'gate_flag_off' }], read: [{ say: ['They’re greek to you.'] }] },
+    },
+    red_button: {
+      name: 'red button',
+      aliases: ['button', 'switch', 'buttons', 'red switch'],
+      description: 'There’s nothing special about the red button.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      instead: {
+        use: [{ if: 'on:maintenance_lights', then: 'lights_off' }, { then: 'lights_on' }],
+        read: [{ say: ['They’re greek to you.'] }],
+      },
+    },
+    blue_button: {
+      name: 'blue button',
+      aliases: ['button', 'switch', 'buttons', 'blue switch'],
+      description: 'There’s nothing special about the blue button.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      instead: {
+        use: [{ if: 'var:water_level=0', then: 'leak_starts' }, { say: ['The blue button appears to be jammed.'] }],
+        read: [{ say: ['They’re greek to you.'] }],
+      },
+    },
+    // The Maintenance Room's own lights (its ONBIT), switched by the red button.
+    maintenance_lights: {
+      name: 'ceiling lights',
+      description: 'There’s nothing special about the ceiling lights.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      switchable: true,
+      light: true,
+    },
+    leak: {
+      name: 'leak',
+      aliases: ['drip', 'pipe'],
+      description: 'There’s nothing special about the leak.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      // LEAK-FUNCTION: only while the water's rising.
+      instead: {
+        put: [{ if: 'var:water_level>0', with: 'putty', then: 'leak_fixed' }],
+        plug: [{ if: 'var:water_level>0', with: 'putty', then: 'leak_fixed' }, { if: 'var:water_level>0', as: 'target', then: 'with_tell' }],
+      },
+    },
+    tube: {
+      name: 'tube',
+      aliases: ['tooth', 'paste', 'toothpaste', 'tube of toothpaste'],
+      description: '',
+      roomDescription: 'There is an object which looks like a tube of toothpaste here.',
+      portable: true,
+      size: 5,
+      tags: [],
+      text: '---> Frobozz Magic Gunk Company <---\n  All-Purpose Gunk',
+      container: { openable: true, weight: 7 },
+      contains: ['putty'],
+      instead: { squeeze: [{ then: 'squeeze_tube' }], put: [{ as: 'indirect', say: ['The tube refuses to accept anything.'] }] },
+    },
+    putty: {
+      name: 'viscous material',
+      aliases: ['material', 'gunk', 'viscous gunk'],
+      description: 'There’s nothing special about the viscous material.',
+      portable: true,
+      size: 6,
+      tags: [],
+      // PUTTY-FCN: PUT (in), not PUT ON.
+      instead: { put: [{ if: '!var:water_level>0', as: 'target', prep: 'in', say: ['The all-purpose gunk isn’t a lubricant.'] }] },
+    },
+    screwdriver: {
+      name: 'screwdriver',
+      aliases: ['tool', 'tools', 'driver', 'screw driver'],
+      description: 'There’s nothing special about the screwdriver.',
+      portable: true,
+      tags: [],
+    },
+    wrench: {
+      name: 'wrench',
+      aliases: ['tool', 'tools'],
+      description: 'There’s nothing special about the wrench.',
+      portable: true,
+      size: 10,
+      tags: [],
+    },
+    match: {
+      name: 'matchbook',
+      aliases: ['match', 'matches', 'match book'],
+      description: 'The matchbook isn’t very interesting, except for what’s written on it.',
+      roomDescription: 'There is a matchbook whose cover says “Visit Beautiful FCD#3” here.',
+      portable: true,
+      size: 2,
+      tags: [],
+      switchable: true,
+      flaming: true,
+      light: true,
+      text: '\n(Close cover before striking)\n\nYOU too can make BIG MONEY in the exciting field of PAPER SHUFFLING!\n\nMr. Anderson of Muddle, Mass. says: “Before I took this course I was a lowly bit twiddler. Now with what I learned at GUE Tech I feel really important and can obfuscate and confuse with the best.”\n\nDr. Blank had this to say: “Ten short days ago all I could look forward to was a dead-end job as a doctor. Now I have a promising future and make really big Zorkmids.”\n\nGUE Tech can’t promise these fantastic results to everyone. But when you earn your degree from GUE Tech, your future will be brighter.',
+      // MATCH-FUNCTION.
+      instead: {
+        turn_on: [{ as: 'target', then: 'strike_match' }],
+        burn: [{ as: 'target', then: 'strike_match' }],
+        turn_off: [{ if: 'on:match', then: 'match_out_now' }],
+        count: [{ then: 'count_matches' }],
+        open: [{ then: 'count_matches' }],
+        examine: [{ if: 'on:match', say: ['The match is burning.'] }],
+      },
+    },
+    guide: {
+      name: 'tour guidebook',
+      aliases: ['guide', 'book', 'books', 'guidebook', 'guidebooks', 'tour guide'],
+      description: '',
+      initialDescription: 'Some guidebooks entitled “Flood Control Dam #3” are on the reception desk.',
+      portable: true,
+      burnable: true,
+      tags: [],
+      text: '“\tFlood Control Dam #3\n\nFCD#3 was constructed in year 783 of the Great Underground Empire to harness the mighty Frigid River. This work was supported by a grant of 37 million zorkmids from your omnipotent local tyrant Lord Dimwit Flathead the Excessive. This impressive structure is composed of 370,000 cubic feet of concrete, is 256 feet tall at the center, and 193 feet wide at the top. The lake created behind the dam has a volume of 1.7 billion cubic feet, an area of 12 million square feet, and a shore line of 36 thousand feet.\n\nThe construction of FCD#3 took 112 days from ground breaking to the dedication. It required a work force of 384 slaves, 34 slave drivers, 12 engineers, 2 turtle doves, and a partridge in a pear tree. The work was managed by a command team composed of 2345 bureaucrats, 2347 secretaries (at least two of whom could type), 12,256 paper shufflers, 52,469 rubber stampers, 245,193 red tape processors, and nearly one million dead trees.\n\nWe will now point out some of the more interesting features of FCD#3 as we conduct you on a guided tour of the facilities:\n\n        1) You start your tour here in the Dam Lobby. You will notice on your right that....',
+    },
+    trunk: {
+      name: 'trunk of jewels',
+      aliases: ['trunk', 'chest', 'jewels', 'treasure', 'old trunk'],
+      description: 'There’s nothing special about the trunk of jewels.',
+      initialDescription: 'Lying half buried in the mud is an old trunk, bulging with jewels.',
+      roomDescription: 'There is an old trunk here, bulging with assorted jewels.',
+      portable: true,
+      size: 35,
+      treasure: 5,
+      tags: [],
+      after: { take: [{ if: '!flag:took_trunk', then: 'took_trunk' }] },
+    },
+    pump: {
+      name: 'hand-held air pump',
+      aliases: ['pump', 'air-pump', 'air pump', 'tool', 'tools', 'small pump', 'hand-held pump'],
+      description: 'There’s nothing special about the hand-held air pump.',
+      portable: true,
+      tags: [],
+    },
+    // The boat, folded: it inflates in stage 5b.
+    inflatable_boat: {
+      name: 'pile of plastic',
+      aliases: ['boat', 'pile', 'plastic', 'valve', 'plastic pile'],
+      description: 'There’s nothing special about the pile of plastic.',
+      roomDescription: 'There is a folded pile of plastic here which has a small valve attached.',
+      portable: true,
+      size: 20,
+      burnable: true,
+      tags: [],
+    },
     // West of House
     mailbox: {
       name: 'small mailbox',
@@ -928,12 +1311,15 @@ export const zork1: World = {
     bottle: {
       name: 'glass bottle',
       aliases: ['bottle', 'clear bottle', 'container'],
-      description: 'The glass bottle contains:\n  A quantity of water',
+      // EXAMINE lists what's in it, or says it's empty.
+      description: '',
       initialDescription: 'A bottle is sitting on the table.',
       portable: true,
       tags: [],
       container: { openable: true, transparent: true, weight: 4 },
       contains: ['water'],
+      // PRE-FILL: from the water here, if there is any.
+      instead: { fill: [{ if: 'here:global_water', then: 'fill_bottle' }, { say: ['There is nothing to fill it with.'] }] },
     },
     water: {
       name: 'quantity of water',
@@ -942,6 +1328,14 @@ export const zork1: World = {
       portable: true,
       size: 4,
       tags: [],
+      // WATER-F: POUR is DROP, and TAKE fills the bottle.
+      instead: {
+        take: [{ then: 'fill_bottle' }],
+        pour: [
+          { if: 'inside:water:bottle & !open:bottle', say: ['The bottle is closed.'] },
+          { then: 'water_spills' },
+        ],
+      },
     },
     chimney: {
       name: 'chimney',
@@ -1490,6 +1884,71 @@ export const zork1: World = {
   carry: { limit: 100, self: 5, fumble: { over: 7, chance: 8 } },
 
   scripts: {
+    // BOLT-F: TURN BOLT WITH WRENCH, while the yellow button's gate flag is set.
+    bolt_turn: (ctx) => {
+      const tool = ctx.command?.indirect;
+      if (tool !== 'wrench') return [`The bolt won’t turn using the ${tool ? ctx.world.items[tool]?.name : 'nothing'}.`];
+      if (!ctx.state.flags.gate_flag) return ['The bolt won’t turn with your best effort.'];
+      if (ctx.state.flags.gates_open)
+        return [
+          { unvisit: 'reservoir_south' },
+          { clear: 'gates_open' },
+          { unvisit: 'loud_room' },
+          'The sluice gates close and water starts to collect behind the dam.',
+          { schedule: 'reservoir_fills', in: 7 },
+          { cancel: 'reservoir_empties' },
+        ];
+      return [
+        { unvisit: 'reservoir_south' },
+        { set: 'gates_open' },
+        'The sluice gates open and water pours through the dam.',
+        { schedule: 'reservoir_empties', in: 7 },
+        { cancel: 'reservoir_fills' },
+      ];
+    },
+    // DAM-FUNCTION's PLUG.
+    dam_plug: (ctx) => [`With a ${ctx.world.items[ctx.command?.indirect ?? '']?.name ?? 'thing'}? Do you know how big this dam is? You could only stop a tiny leak with that.`],
+    // WITH-TELL.
+    with_tell: (ctx) => [`With a ${ctx.world.items[ctx.command?.indirect ?? '']?.name ?? 'thing'}?`],
+    // TUBE-FUNCTION's SQUEEZE.
+    squeeze_tube: (ctx) => {
+      const open = ctx.state.itemState.tube?.open;
+      if (open && ctx.holder('putty') === 'tube') return [{ move: 'putty', to: 'player' }, 'The viscous material oozes into your hand.'];
+      return [open ? 'The tube is apparently empty.' : 'The tube is closed.'];
+    },
+    // I-MAINT-ROOM, every turn while the leak runs.
+    maint_rising: (ctx) => {
+      const level = ctx.state.vars?.water_level ?? 0;
+      const here = ctx.room() === 'maintenance_room';
+      const steps: EventStep[] = [];
+      if (here) steps.push(`The water level here is now ${DROWNINGS[Math.floor(level / 2)]}`);
+      steps.push({ setVar: 'water_level', to: level + 1 });
+      if (level + 1 >= 14) {
+        steps.push({ set: 'maint_flooded' }, { clear: 'leaking' });
+        if (here) steps.push({ die: 'I’m afraid you have done drowned yourself.' });
+      }
+      return steps;
+    },
+    // MATCH-FUNCTION's LAMP-ON and BURN.
+    strike_match: (ctx) => {
+      if (ctx.command?.target !== 'match') return [];
+      const count = Math.max((ctx.state.vars?.match_count ?? 0) - 1, 0);
+      const steps: EventStep[] = [{ setVar: 'match_count', to: count }];
+      if (count <= 0) return [...steps, 'I’m afraid that you have run out of matches.'];
+      return [...steps, { switch: 'match', on: true }, { schedule: 'match_out', in: 1 }, 'One of the matches starts to burn.'];
+    },
+    // MATCH-FUNCTION's COUNT.
+    count_matches: (ctx) => {
+      const n = (ctx.state.vars?.match_count ?? 0) - 1;
+      return [`You have ${n > 0 ? n : 'no'} match${n === 1 ? '' : 'es'}.`];
+    },
+    // WATER-F's FILL: PUT WATER IN BOTTLE.
+    fill_bottle: (ctx) => {
+      if (!ctx.carried('bottle')) return [ctx.holder('water') === 'bottle' && ctx.command?.target === 'water' ? 'It’s in the bottle. Perhaps you should take that instead.' : 'The water slips through your fingers.'];
+      if (!ctx.state.itemState.bottle?.open) return ['The bottle is closed.'];
+      if (ctx.children('bottle').length > 0) return ['The water slips through your fingers.'];
+      return [{ move: 'water', to: 'bottle' }, 'The bottle is now full of water.'];
+    },
     // TROLL-FCN's F-BUSY?: picks his axe back up (75%), or cowers.
     troll_busy: (ctx) =>
       ctx.holder('axe') === 'troll_room' && ctx.roll(100) < 75
@@ -1721,6 +2180,9 @@ export const zork1: World = {
     listen: { words: ['listen to', 'listen'], target: 'required', reply: 'At the moment, there is nothing to hear.' },
     count: { words: ['count'], target: 'required' },
     pray: { words: ['pray'], target: 'none', reply: 'If you pray enough, your prayers may be answered.' },
+    squeeze: { words: ['squeeze'], target: 'required', reply: 'How singularly useless.' },
+    fill: { words: ['fill'], target: 'required', indirect: ['with'] },
+    pour: { words: ['pour', 'spill'], target: 'required', indirect: ['on', 'in', 'from'], held: true },
   },
 
   flagLabels: {
@@ -1743,10 +2205,14 @@ export const zork1: World = {
     { if: 'inside:egg:trophy_case', points: 5 },
     { if: 'inside:canary:trophy_case', points: 4 },
     { flag: 'took_painting', points: 4 },
+    { flag: 'took_trunk', points: 15 },
+    { if: 'inside:trunk:trophy_case', points: 5 },
     // Treasures count while they're in the trophy case.
     { if: 'inside:painting:trophy_case', points: 6 },
   ],
   maxScore: 350,
+  // V-WAIT: three turns of the clock, or fewer if something happens.
+  wait: { turns: 3 },
   ranks: [
     { min: 0, title: 'Beginner' },
     { min: 26, title: 'Amateur Adventurer' },
@@ -1758,17 +2224,20 @@ export const zork1: World = {
     { min: 350, title: 'Master Adventurer' },
   ],
 
-  vars: { lamp_fuel: 185, sword_glow: 0, troll_ldesc: 0, cyclowrath: 0 },
+  vars: { water_level: 0, match_count: 6, lamp_fuel: 385, sword_glow: 0, troll_ldesc: 0, cyclowrath: 0 },
 
   // Zork's LAMP-TABLE: warnings after 100, 170 and 185 lit turns; out on the next.
   daemons: [
+    // I-MAINT-ROOM.
+    { if: 'flag:leaking', then: [{ script: 'maint_rising' }] },
     // I-CYCLOPS: queued during play, so it's the newest interrupt and runs first.
     { if: 'flag:cyclops_daemon', then: [{ script: 'cyclops_turn' }] },
     { if: 'on:lamp', then: [{ add: 'lamp_fuel', by: -1 }] },
-    { if: 'on:lamp & var:lamp_fuel=85 & here:lamp', then: ['The lamp appears a bit dimmer.'] },
-    { if: 'on:lamp & var:lamp_fuel=15 & here:lamp', then: ['The lamp is definitely dimmer now.'] },
-    { if: 'on:lamp & var:lamp_fuel=0 & here:lamp', then: ['The lamp is nearly out.'] },
-    { if: 'on:lamp & var:lamp_fuel<0', then: 'lamp_dies' },
+    // I-LANTERN and LAMP-TABLE: 200 turns of light, then 100, 70 and 15.
+    { if: 'on:lamp & var:lamp_fuel=185 & here:lamp', then: ['The lamp appears a bit dimmer.'] },
+    { if: 'on:lamp & var:lamp_fuel=85 & here:lamp', then: ['The lamp is definitely dimmer now.'] },
+    { if: 'on:lamp & var:lamp_fuel=15 & here:lamp', then: ['The lamp is nearly out.'] },
+    { if: 'on:lamp & var:lamp_fuel=0', then: 'lamp_dies' },
     // I-THIEF: GO queues it after the sword and before the lantern, so it runs between them.
     { if: 'alive:thief & awake:thief', then: [{ script: 'thief_turn' }] },
     // I-SWORD, which runs after the lantern and before the fight.
@@ -1801,6 +2270,55 @@ export const zork1: World = {
   idle: 'Time passes...',
 
   events: {
+    // BUTTON-F.
+    gate_flag_on: [{ unvisit: 'dam_room' }, { set: 'gate_flag' }, 'Click.'],
+    gate_flag_off: [{ unvisit: 'dam_room' }, { clear: 'gate_flag' }, 'Click.'],
+    lights_on: [{ switch: 'maintenance_lights', on: true }, 'The lights within the room come on.'],
+    lights_off: [{ switch: 'maintenance_lights', on: false }, 'The lights within the room shut off.'],
+    leak_starts: [
+      { reveal: 'leak' },
+      'There is a rumbling sound and a stream of water appears to burst from the east wall of the room (apparently, a leak has occurred in a pipe).',
+      { setVar: 'water_level', to: 1 },
+      { set: 'leaking' },
+    ],
+    // FIX-MAINT-LEAK.
+    leak_fixed: [{ setVar: 'water_level', to: -1 }, { clear: 'leaking' }, 'By some miracle of Zorkian technology, you have managed to stop the leak in the dam.'],
+    // TOOL-CHEST-FCN.
+    chests_crumble: [{ move: 'tool_chest', to: null }, 'The chests are so rusty and corroded that they crumble when you touch them.'],
+    // I-MATCH.
+    match_out: ['The match has gone out.', { switch: 'match', on: false }],
+    match_out_now: ['The match is out.', { switch: 'match', on: false }, { cancel: 'match_out' }],
+    // I-REMPTY.
+    reservoir_empties: [
+      { unvisit: 'deep_canyon' },
+      { reveal: 'trunk' },
+      { set: 'low_tide' },
+      { if: 'in:deep_canyon', then: ['The roar of rushing water is quieter now.'] },
+      { if: 'in:reservoir_north', then: ['The water level is now quite low here and you could easily cross over to the other side.'] },
+      { if: 'in:reservoir_south', then: ['The water level is now quite low here and you could easily cross over to the other side.'] },
+    ],
+    // I-RFILL.
+    reservoir_fills: [
+      { unvisit: 'deep_canyon' },
+      { if: 'inside:trunk:reservoir', then: [{ hide: 'trunk' }] },
+      { clear: 'low_tide' },
+      {
+        if: 'in:reservoir',
+        then: [{ die: 'You are lifted up by the rising river! You try to swim, but the currents are too strong. You come closer, closer to the awesome structure of Flood Control Dam #3. The dam beckons to you. The roar of the water nearly deafens you, but you remain conscious as you tumble over the dam toward your certain doom among the rocks at its base.' }],
+      },
+      { if: 'in:deep_canyon', then: ['A sound, like that of flowing water, starts to come from below.'] },
+      { if: 'in:reservoir_north', then: ['You notice that the water level has risen to the point that it is impossible to cross.'] },
+      { if: 'in:reservoir_south', then: ['You notice that the water level has risen to the point that it is impossible to cross.'] },
+    ],
+    took_trunk: [{ set: 'took_trunk' }],
+    fill_bottle: [{ script: 'fill_bottle' }],
+    bolt_turn: [{ script: 'bolt_turn' }],
+    dam_plug: [{ script: 'dam_plug' }],
+    with_tell: [{ script: 'with_tell' }],
+    squeeze_tube: [{ script: 'squeeze_tube' }],
+    strike_match: [{ script: 'strike_match' }],
+    count_matches: [{ script: 'count_matches' }],
+    water_spills: [{ move: 'water', to: null }, 'The water spills to the floor and evaporates immediately.'],
     intro: [
       'ZORK I: The Great Underground Empire',
       'Infocom interactive fiction - a fantasy story',
@@ -1808,6 +2326,9 @@ export const zork1: World = {
       'ZORK is a registered trademark of Infocom, Inc.',
       'Release 119 / Serial number 880429',
       '[A native Brass Lantern port: the house, the forest, the first rooms below and the troll. The rest comes later.]',
+      // INVISIBLE until something reveals them.
+      { hide: 'leak' },
+      { hide: 'trunk' },
     ],
     rug_moved: [
       'With a great effort, the rug is moved to one side of the room, revealing the dusty cover of a closed trap door.',

@@ -26,11 +26,11 @@ describe('Zork I, natively: the thief', () => {
   it('starts hidden in the Round Room and walks Zork’s room order, never into sacred rooms', () => {
     const { state, run } = at('living_room', 1);
     expect(thiefRoom(state)).toBe('round_room');
-    run('wait');
+    run('look');
     expect(thiefRoom(state)).toBe('ew_passage');
     const visited = new Set<string>();
     for (let i = 0; i < 60; i++) {
-      run('wait');
+      run('look');
       visited.add(thiefRoom(state)!);
     }
     for (const room of visited) expect(zork1.rooms[room].tags ?? []).not.toContain('sacred');
@@ -42,7 +42,7 @@ describe('Zork I, natively: the thief', () => {
         s.locations.painting = 'ew_passage';
         s.visited.push('ew_passage');
       });
-      run('wait');
+      run('look');
       return state.locations.painting === 'thief';
     });
   });
@@ -50,14 +50,14 @@ describe('Zork I, natively: the thief', () => {
   it('turns up in your dark room', () => {
     seedWhere((seed) => {
       const { run } = at('ew_passage', seed);
-      return run('wait').some((l) => l.startsWith('Someone carrying a large bag is casually leaning against one of the walls here.'));
+      return run('look').some((l) => l.startsWith('Someone carrying a large bag is casually leaning against one of the walls here.'));
     });
   });
 
   it('robs you in passing', () => {
     seedWhere((seed) => {
       const { state, run } = at('ew_passage', seed, (s) => (s.locations.egg = 'player'));
-      const lines = [...run('wait'), ...run('wait')];
+      const lines = [...run('look'), ...run('look')];
       // The next turn he may already have left it in his lair.
       return lines.some((l) => l.includes('quietly abstracted some valuables from your possession')) && state.locations.egg !== 'player';
     });
@@ -84,7 +84,7 @@ describe('Zork I, natively: the thief', () => {
         s.visited.push('maze_15');
         s.locations.knife = 'maze_15';
       });
-      const lines = [...run('wait'), ...run('wait')];
+      const lines = [...run('look'), ...run('look')];
       return lines.some((l) => l.startsWith('You hear, off in the distance, someone saying “My, I wonder what this fine'));
     }, 800);
   });

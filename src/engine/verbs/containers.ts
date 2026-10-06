@@ -117,6 +117,7 @@ export function handlePut(
   indirect: string | undefined,
   world: World,
   state: GameState,
+  prep?: string,
 ): EngineResult {
   if (!target) needObject();
   const id = pickItem(target, inventoryOf(world, state), world, 'target', state);
@@ -137,7 +138,8 @@ export function handlePut(
   if (sealed) return sealed;
   const d = world.items[dest];
   if ((!d.container || d.door) && !d.surface) {
-    return useFallback(id, dest, world, state) ?? ok(['You can’t put things there.']);
+    const refusal = world.style === 'infocom' && prep === 'on' ? `There’s no good surface on the ${d.name}.` : 'You can’t put things there.';
+    return useFallback(id, dest, world, state) ?? ok([refusal]);
   }
   if (dest === id || isInside(state, dest, id)) return ok([`You can’t put the ${name(world, id)} inside itself.`]);
   if (!canReachInside(world, state, dest)) return ok([`The ${d.name} is closed.`]);
