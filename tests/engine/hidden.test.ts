@@ -55,3 +55,23 @@ describe('hidden characters', () => {
   });
 });
 
+
+describe('hidden items (review fixes)', () => {
+  it('Infocom TAKE ALL doesn’t name a hidden item', () => {
+    const w = { ...world, style: 'infocom' as const };
+    const s = stateWith(w, { room: 'living' });
+    runSteps([{ hide: 'wallet' }], w, s);
+    const out = execute({ action: 'take', target: 'all' }, { world: w, state: s }).lines.join(' ');
+    expect(out).not.toContain('wallet');
+    expect(s.locations.wallet).toBe('living');
+  });
+
+  it('opening or looking in a container doesn’t list a hidden item inside', () => {
+    const w = { ...world, style: 'infocom' as const };
+    const s = stateWith(w, { room: 'living' });
+    s.locations.jar = 'living';
+    runSteps([{ hide: 'marble' }], w, s);
+    expect(execute({ action: 'examine', target: 'jar' }, { world: w, state: s }).lines.join(' ')).not.toContain('marble');
+    expect(execute({ action: 'open', target: 'jar' }, { world: w, state: s }).lines.join(' ')).not.toContain('marble');
+  });
+});

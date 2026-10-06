@@ -1366,6 +1366,7 @@ export const zork1: World = {
         { if: 'var:troll_ldesc=2', text: 'A troll is here.' },
       ],
       holds: ['axe'],
+      refuseOrder: 'The troll isn’t much of a conversationalist.',
       combat: {
         strength: 2,
         weapon: 'axe',
@@ -1429,8 +1430,9 @@ export const zork1: World = {
     },
   },
   dialogue: {
-    cyclops: { default: 'The cyclops prefers eating to making conversation.' },
+    cyclops: { default: 'The cyclops prefers eating to making conversation.', 'flag:cyclops_asleep': 'No use talking to him. He’s fast asleep.' },
     troll: { default: 'The troll isn’t much of a conversationalist.' },
+    thief: { default: 'The thief is a strong, silent type.' },
   },
 
   // Zork's HERO-MELEE, FIGHT-STRENGTH and CURE-WAIT.

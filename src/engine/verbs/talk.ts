@@ -4,7 +4,8 @@ import { evaluateCondition } from '../conditions';
 import { fuzzyCandidates } from '../fuzzy';
 import { matchNpc, needObject } from '../model';
 import { miss, ok, type EngineResult } from '../result';
-import { runEvent, withRules } from '../rules';
+import { applyRule, findRule, runEvent } from '../rules';
+import { setCommand } from '../scripts';
 import { handleTalk, talkLine } from './people';
 
 /** ASK/TELL X ABOUT Y: the character's topic for Y, else its noTopic or TALK line. */
@@ -33,5 +34,9 @@ export function handleOrder(action: ParsedAction, world: World, state: GameState
   const npc = matchNpc(action.target, world, state);
   if (!npc) return miss(`There is no “${action.target}” here.`);
   const person = world.npcs[npc];
-  return withRules('order', action, world, state, () => ok([person.refuseOrder ?? `${person.name} ignores you.`]));
+  // Only the character addressed answers, and the order's words stay words: they
+  // aren't resolved as things (“give me the key” mustn't ask which key).
+  setCommand(state, { verb: 'order', target: npc, words: { target: action.target, indirect: action.indirect } });
+  const rule = findRule(world, state, 'instead', 'order', { target: null, indirect: null, room: state.currentRoom, npcs: [npc] }, []);
+  return rule ? applyRule(rule, world, state) : ok([person.refuseOrder ?? `${person.name} ignores you.`]);
 }

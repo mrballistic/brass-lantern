@@ -73,3 +73,26 @@ describe('orders', () => {
     expect(say(s, { action: 'order', target: 'neighbor', indirect: 'sit' }).understood).toBe(false);
   });
 });
+
+describe('orders (review fixes)', () => {
+  it('in the dark, a comma line that isn’t an order to anyone here stays a miss, so the LLM can read it', () => {
+    const s = stateWith(w, { room: 'cellar' });
+    const parsed = fallbackParse('ok, turn on the lamp')!;
+    expect(parsed.action).toBe('order');
+    expect(say(s, parsed).understood).toBe(false);
+  });
+
+  it('the order’s words aren’t resolved as things: no question about which key', () => {
+    const s = stateWith(w, { room: 'yard' });
+    s.locations.key = 'yard';
+    s.locations.rusty_key = 'yard';
+    expect(say(s, { action: 'order', target: 'neighbor', indirect: 'give me the key' }).lines).toEqual(['Neighbor ignores you.']);
+  });
+
+  it('only the character addressed answers: another character’s order rule doesn’t fire', () => {
+    const ruled: World = { ...w, npcs: { ...w.npcs, guard: { ...w.npcs.guard, instead: { order: [{ say: ['The guard barks.'] }] } } } };
+    const s = stateWith(ruled, { room: 'yard' });
+    s.npcs = { guard: { room: 'yard' } };
+    expect(say(s, { action: 'order', target: 'neighbor', indirect: 'talk to guard' }, ruled).lines).toEqual(['Neighbor ignores you.']);
+  });
+});

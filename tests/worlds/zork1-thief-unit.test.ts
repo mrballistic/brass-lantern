@@ -142,4 +142,12 @@ describe('Zork I, natively: the thief', () => {
     }
     expect([...outcomes].sort()).toEqual(['You evidentl', 'You missed. '].sort());
   });
+
+  it('talking to Zork’s characters gets their own replies (review fix)', () => {
+    const thief = () => at('ew_passage', 2, (s) => (s.npcs = { thief: { room: 'ew_passage', hidden: false } }));
+    for (const c of ['talk to thief', 'ask thief about bag', 'tell thief about bag']) expect(thief().run(c)[0]).toBe('The thief is a strong, silent type.');
+    const asleep = () => at('cyclops_room', 2, (s) => (s.flags.cyclops_asleep = true));
+    for (const c of ['talk to cyclops', 'tell cyclops about food', 'cyclops, hello']) expect(asleep().run(c)[0]).toBe('No use talking to him. He’s fast asleep.');
+    expect(at('troll_room', 2).run('troll, hello')[0]).toBe('The troll isn’t much of a conversationalist.');
+  });
 });

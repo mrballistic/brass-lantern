@@ -86,7 +86,8 @@ export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
   }
   result = { ...result, acted: takeActed(state) };
   // You can't find things in the dark: an understood refusal, so the LLM isn't asked to re-guess.
-  if (result.understood === false && action.target && action.action !== 'go' && !isLit(world, state)) {
+  // Not an order: “ok, light the lamp” parses as one, and the LLM must still get to read it.
+  if (result.understood === false && action.target && action.action !== 'go' && action.action !== 'order' && !isLit(world, state)) {
     // Like a parser failure in Zork: no time passes.
     result = { ...ok([tooDark(world)]), free: true };
   }

@@ -51,7 +51,8 @@ export function isNpcHidden(world: World, state: GameState, id: string): boolean
   return state.npcs?.[id]?.hidden ?? world.npcs[id]?.hidden ?? false;
 }
 
-const shown = (state: GameState) => (id: string) => !state.itemState[id]?.hidden;
+/** A filter for items that aren't hidden (the `hide` effect). */
+export const shown = (state: GameState) => (id: string) => !state.itemState[id]?.hidden;
 
 /** A character's state, created on first use. */
 export function npcStateOf(state: GameState, id: string): NpcState {
