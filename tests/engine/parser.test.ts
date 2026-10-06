@@ -175,11 +175,8 @@ describe('fallbackParse', () => {
       });
     });
 
-    it('parses "ask gary about fire"', () => {
-      expect(fallbackParse('ask gary about fire')).toEqual({
-        action: 'talk',
-        target: 'gary',
-      });
+    it('parses "ask gary about fire" as a topic (TALK TO when gary has none)', () => {
+      expect(fallbackParse('ask gary about fire')).toEqual({ action: 'ask', target: 'gary', indirect: 'fire' });
     });
   });
 

@@ -21,6 +21,7 @@ import { handleClose, handleLock, handleOpen, handlePut, handleSearch, handleTak
 import { handleRead, handleSwitch } from './verbs/objects';
 import { handleGive, handleTalk } from './verbs/people';
 import { handleAttack, handleThrow } from './verbs/attack';
+import { handleAsk, handleOrder } from './verbs/talk';
 import { setCommand } from './scripts';
 import { diagnoseLines } from './combat';
 import { handleHelp, handleHint, handleScore, handleUnknown, scoreLines } from './verbs/meta';
@@ -174,6 +175,10 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
       return handleAttack(action, world, state, () => dispatch({ ...action, action: 'smash' }, world, state));
     case 'throw':
       return handleThrow(action, world, state);
+    case 'ask':
+      return handleAsk(action, world, state);
+    case 'order':
+      return handleOrder(action, world, state);
     case 'diagnose':
       return ok(diagnoseLines(world, state));
     case 'hint':

@@ -48,7 +48,10 @@ const RE = {
   give: /^(?:give|hand|offer|return)\s+(?:the\s+)?(.+?)(?:\s+(?:back\s+)?to\s+(?:the\s+)?(.+?))?(?:\s+back)?$/i,
   wear: /^(?:wear|put\s+on)\s+(?:the\s+)?(.+)$/i,
   talk: /^(?:talk|speak|chat)\s+(?:to|with)\s+(?:the\s+)?(.+)$/i,
-  ask: /^(?:ask|question)\s+(?:the\s+)?(.+?)(?:\s+about\s+.+)?$/i,
+  askAbout: /^(?:ask|question|tell)\s+(?:the\s+)?(.+?)\s+about\s+(.+)$/i,
+  orderTo: /^(?:tell|order|ask)\s+(?:the\s+)?(.+?)\s+to\s+(.+)$/i,
+  tellAlone: /^tell\s+(?:the\s+)?(.+)$/i,
+  ask: /^(?:ask|question)\s+(?:the\s+)?(.+)$/i,
   smash: /^(?:smash|destroy|break|wreck|whack|beat)\s+(?:up\s+)?(?:the\s+)?(.+?)(?:\s+with\s+(?:the\s+)?(.+))?$/i,
   attack: /^(?:kill|hit|attack|fight|stab|murder|slay)\s+(?:the\s+)?(.+?)(?:\s+with\s+(?:the\s+|a\s+|my\s+)?(.+))?$/i,
   throw: /^(?:throw|toss|hurl)\s+(?:the\s+)?(.+?)(?:\s+(?:at|to)\s+(?:the\s+)?(.+))?$/i,
@@ -119,6 +122,9 @@ const VERB_PATTERNS: ReadonlyArray<readonly [RegExp, string, ('in' | 'on')?]> = 
   [RE.insert, 'use'],
   [RE.throw, 'throw'],
   [RE.give, 'give'],
+  [RE.askAbout, 'ask'],
+  [RE.orderTo, 'order'],
+  [RE.tellAlone, 'order'],
   [RE.talk, 'talk'],
   [RE.ask, 'talk'],
   [RE.smash, 'smash'],
@@ -134,7 +140,7 @@ export const BUILT_IN_WORDS: ReadonlySet<string> = new Set([
   'drop', 'put down', 'leave', 'examine', 'inspect', 'look at', 'x', 'read', 'use', 'operate', 'open',
   'push', 'pull', 'press', 'insert', 'put', 'slide', 'stick', 'feed', 'plug', 'attach', 'give', 'hand',
   'offer', 'return', 'wear', 'put on', 'close', 'shut', 'lock', 'unlock', 'place', 'set', 'remove',
-  'search', 'look in', 'look inside', 'climb', 'go into', 'turn', 'switch', 'light', 'talk', 'speak', 'chat', 'ask', 'question', 'smash', 'destroy',
+  'search', 'look in', 'look inside', 'climb', 'go into', 'turn', 'switch', 'light', 'talk', 'speak', 'chat', 'ask', 'question', 'tell', 'order', 'smash', 'destroy',
   'break', 'kill', 'hit', 'attack', 'fight', 'stab', 'murder', 'slay', 'throw', 'toss', 'hurl', 'wreck', 'whack', 'beat', 'sit', 'sit down', 'relax', 'wait', 'z',
   ...Object.keys(SINGLE_WORD),
   ...Object.keys(DIRECTIONS),
@@ -249,7 +255,19 @@ function parseAll(input: string): ParsedAction | null {
   return null;
 }
 
+/** “neighbor, give me the key”: an order, when the part before the comma isn't a command of its own. */
+function orderInLine(input: string, verbs?: World['verbs']): ParsedAction | null {
+  const m = input.match(/^(?:the\s+)?([^,]+?)\s*,\s*(.+)$/i);
+  if (!m || /\b(?:all|everything)\b/i.test(m[1])) return null;
+  const head = m[1].trim();
+  const first = head.split(/\s+/)[0].toLowerCase();
+  if (BUILT_IN_WORDS.has(first) || strictParse(head, verbs)) return null;
+  if (Object.values(verbs ?? {}).some((v) => v.words.some((w) => w.toLowerCase() === first))) return null;
+  return { action: 'order', target: head, indirect: m[2].trim() };
+}
+
 function splitClause(clause: string, verbs?: World['verbs']): string[] {
+  if (orderInLine(clause, verbs)) return [clause];
   // “take all but the wallet and shirt” is one command.
   if (/\b(?:all|everything)\b.*\b(?:but|except)\b/i.test(clause)) return [clause];
   const pieces = clause.split(LIST_BREAK).filter(Boolean);
@@ -282,6 +300,10 @@ function parse(rawInput: string, allowBareWord: boolean, verbs?: World['verbs'])
   {
     const m = input.match(RE.climb);
     if (m) return m[2] || m[1] ? { action: 'climb', target: (m[2] ?? m[1]).trim() } : { action: 'climb' };
+  }
+  {
+    const order = orderInLine(input, verbs);
+    if (order) return order;
   }
 
   // A world's multi-word phrases go first, so "hit the snooze button" isn't

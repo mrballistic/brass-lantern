@@ -179,6 +179,14 @@ export interface NPC {
   after?: RuleTable;
   /** Makes it someone the player can fight. */
   combat?: Combatant;
+  /** ASK/TELL X ABOUT a topic: a line, or lines with conditions (the first that holds). */
+  topics?: Record<string, string | Array<{ if?: string; text: string }>>;
+  /** Other words for a topic. */
+  topicAliases?: Record<string, string[]>;
+  /** For a topic it has nothing on. Default: its TALK line. */
+  noTopic?: string;
+  /** Its answer to an order (“thief, give me the bag”). Default: “Name ignores you.” */
+  refuseOrder?: string;
 }
 
 /** What a blow did (Zork's blow results). */

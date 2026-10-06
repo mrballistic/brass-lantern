@@ -13,16 +13,19 @@ export function handleTalk(target: string | undefined, world: World, state: Game
   }
   const npcId = matchNpc(target, world, state);
   if (!npcId) return miss(`There is no “${target}” here to talk to.`);
-  const dialogue = world.dialogue[npcId];
-  if (!dialogue) return ok(['They have nothing to say.']);
+  return ok([talkLine(world, state, npcId)]);
+}
 
-  // Pick the most specific (last-matching) condition-gated line; fall back to default.
+/** What TALK TO says: the most specific (last-matching) condition-gated line, else the default. */
+export function talkLine(world: World, state: GameState, npcId: string): string {
+  const dialogue = world.dialogue[npcId];
+  if (!dialogue) return 'They have nothing to say.';
   let chosen = dialogue.default;
   for (const [key, value] of Object.entries(dialogue)) {
     if (key === 'default') continue;
     if (evaluateCondition(key, state, world)) chosen = value;
   }
-  return ok([chosen]);
+  return chosen;
 }
 
 export function handleGive(

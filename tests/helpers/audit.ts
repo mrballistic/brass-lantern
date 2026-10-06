@@ -119,6 +119,9 @@ export function auditWorld(world: World): string[] {
   }
   for (const [id, npc] of Object.entries(world.npcs)) {
     for (const key of Object.values(npc.onGive ?? {})) checkEvent(key, `npc ${id} onGive`);
+    for (const [topic, entries] of Object.entries(npc.topics ?? {})) {
+      for (const e of typeof entries === 'string' ? [] : entries) checkCondition(e.if, `npc ${id} topic ${topic}`);
+    }
   }
   for (const [i, d] of (world.daemons ?? []).entries()) checkCondition(d.if, `daemon ${i}`);
   for (const h of world.hints ?? []) checkCondition(h.if, 'hint');
