@@ -95,4 +95,11 @@ describe('death', () => {
     expect(r.lines).toContain('Zapped.');
     expect(r.lines.join('\n')).not.toContain('NOT AFTER DEATH');
   });
+
+  it('a death can run an event after the resurrection', () => {
+    const w: World = { ...world, death: { ...world.death!, then: 'reborn' }, events: { ...world.events, reborn: ['You feel new.'] } };
+    const s = stateWith(w, { room: 'yard' });
+    const lines = runSteps([{ die: 'Oops.' }], w, s);
+    expect(lines.at(-1)).toBe('You feel new.');
+  });
 });

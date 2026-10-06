@@ -254,4 +254,12 @@ describe('Zork I, natively: the troll', () => {
     run('kill troll with sword');
     expect(state.locations.axe).toBe('player');
   });
+
+  it('dying un-bars the trap door, as Zork’s JIGS-UP does', async () => {
+    const { runSteps } = await import('@/engine/effects');
+    const { state } = cellar();
+    state.flags.trap_door_barred = true;
+    runSteps([{ die: 'Oops.' }], zork1, state);
+    expect(state.flags.trap_door_barred).toBeFalsy();
+  });
 });

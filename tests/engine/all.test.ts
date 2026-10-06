@@ -109,4 +109,13 @@ describe('ALL and EXCEPT', () => {
   it('a bare TALK talks to the one person here', () => {
     expect(fallbackParse('talk')).toEqual({ action: 'talk' });
   });
+
+  it('PUT ALL IN X never tries to put X in itself', () => {
+    const s = stateWith(world, { room: 'shed' });
+    s.locations.jar = 'player';
+    s.locations.wallet = 'player';
+    s.itemState.jar = { open: true };
+    const lines = execute({ action: 'put', target: 'all', indirect: 'glass jar', prep: 'in' }, { world, state: s }).lines;
+    expect(lines.some((l) => l.startsWith('glass jar:'))).toBe(false);
+  });
 });

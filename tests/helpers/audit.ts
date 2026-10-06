@@ -119,6 +119,16 @@ export function auditWorld(world: World): string[] {
   }
   for (const [id, npc] of Object.entries(world.npcs)) {
     for (const key of Object.values(npc.onGive ?? {})) checkEvent(key, `npc ${id} onGive`);
+    const c = npc.combat;
+    if (c) {
+      for (const hook of ['onDeath', 'onUnconscious', 'onWake', 'onBusy'] as const) checkEvent(c[hook], `npc ${id} combat ${hook}`);
+      if (c.weapon && !isItem(c.weapon)) problems.push(`npc ${id} combat: weapon names no item “${c.weapon}”`);
+      if (c.fears && !isItem(c.fears.item)) problems.push(`npc ${id} combat fears: names no item “${c.fears.item}”`);
+    }
+    for (const held of npc.holds ?? []) if (!isItem(held)) problems.push(`npc ${id} holds: no item “${held}”`);
+    for (const d of npc.descriptions ?? []) checkCondition(d.if, `npc ${id} descriptions`);
+    checkTable(npc.instead, 'instead', `npc ${id}`);
+    checkTable(npc.after, 'after', `npc ${id}`);
     for (const [topic, entries] of Object.entries(npc.topics ?? {})) {
       for (const e of typeof entries === 'string' ? [] : entries) checkCondition(e.if, `npc ${id} topic ${topic}`);
     }

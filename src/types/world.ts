@@ -387,6 +387,8 @@ export interface World {
     scatter?: string[];
     /** Printed on the last death, which ends the game. */
     final?: string[];
+    /** An event run after a resurrection (Zork's JIGS-UP resets things). */
+    then?: string;
   };
   /** Run after every acted-on turn while their condition holds (a lamp burning down). */
   daemons?: Array<{ if: string; then: string | EventStep[] }>;

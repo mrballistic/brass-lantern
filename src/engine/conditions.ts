@@ -126,6 +126,8 @@ export function conditionProblems(condition: string, world: World): string[] {
       case 'on':
       case 'open':
       case 'locked':
+        if (!(value in world.items)) noItem();
+        break;
       case 'here':
         if (!item(value)) noItem();
         break;

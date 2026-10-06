@@ -147,3 +147,33 @@ describe('turns that change only health or characters still count as changes', (
     expect(execute({ action: 'wait' }, { world, state: s }).mutated).toBe(true);
   });
 });
+
+describe('backlog fixes', () => {
+  it('DIAGNOSE without combat says only how you are', () => {
+    expect(execute({ action: 'diagnose' }, { world: fixtureWorld, state: stateWith(fixtureWorld) }).lines).toEqual(['[You are in perfect health.]']);
+  });
+
+  it('the player’s weapon is the one most recently taken (Zork’s FIRST? order)', async () => {
+    const { weaponHeldBy } = await import('@/engine/combat');
+    const s = stateWith(world, { room: 'shed' });
+    s.locations.bat = 'shed';
+    s.locations.cudgel = 'shed';
+    execute({ action: 'take', target: 'bat' }, { world, state: s });
+    execute({ action: 'take', target: 'cudgel' }, { world, state: s });
+    expect(weaponHeldBy(world, s, 'player')).toBe('cudgel');
+  });
+
+  it('a character who wakes while you’re away keeps its wake counter', () => {
+    const s = armed(4);
+    s.npcs = { guard: { strength: -2, wake: 50 } };
+    execute({ action: 'go', target: 'out' }, { world, state: s });
+    expect(s.npcs.guard.strength).toBe(2);
+    expect(s.npcs.guard.wake).toBe(50);
+  });
+
+  it('in a combat world, an item’s own attack rule answers ATTACK', () => {
+    const w: World = { ...world, items: { ...world.items, crate: { ...world.items.crate, instead: { attack: [{ say: ['The crate creaks.'] }] } } } };
+    const s = stateWith(w, { room: 'shed' });
+    expect(execute({ action: 'attack', target: 'crate' }, { world: w, state: s }).lines).toEqual(['The crate creaks.']);
+  });
+});

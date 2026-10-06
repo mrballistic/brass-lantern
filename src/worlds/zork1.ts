@@ -986,6 +986,8 @@ export const zork1: World = {
     penalty: -10,
     lives: 2,
     respawn: 'forest_1',
+    // JIGS-UP clears the trap door's TOUCHBIT: it slams again next time.
+    then: 'death_resets',
     resurrection: [
       'Now, let’s take a look here... Well, you probably deserve another chance. I can’t quite fix you up completely, but you can’t have everything.',
     ],
@@ -1015,6 +1017,7 @@ export const zork1: World = {
     kitchen_points: ['[Flag set: kitchen visited]'],
     trap_door_slams: [{ close: 'trap_door' }, { set: 'trap_door_barred' }, 'The trap door crashes shut, and you hear someone barring it.'],
     chimney_climbed: [{ script: 'chimney_climbed' }],
+    death_resets: [{ clear: 'trap_door_barred' }],
     cellar_points: [{ set: 'cellar_visited' }],
     ew_passage_points: [{ set: 'ew_passage_visited' }],
     troll_drops_axe: [{ script: 'troll_drops_axe' }],

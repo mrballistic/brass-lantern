@@ -143,3 +143,11 @@ describe('world conditions', () => {
     expect(evaluateCondition('here:crate', s, fixtureWorld)).toBe(false);
   });
 });
+
+describe('conditionProblems and characters', () => {
+  it('has: and on: name items only; here: can name a person', () => {
+    expect(conditionProblems('has:neighbor', fixtureWorld)).toEqual(['“has:neighbor” names no item “neighbor”']);
+    expect(conditionProblems('on:neighbor', fixtureWorld)).toEqual(['“on:neighbor” names no item “neighbor”']);
+    expect(conditionProblems('here:neighbor', fixtureWorld)).toEqual([]);
+  });
+});
