@@ -7,7 +7,7 @@ import type { GameState, ParsedAction } from '@/types/game';
 import { zork1 } from '@/worlds/zork1';
 import { LocalStorageDialog } from '@/zmachine/dialog';
 import { ZMachineSession } from '@/zmachine/session';
-import { RANDOM_LINES } from '../worlds/zork1-allowlist';
+import { RANDOM_LINES } from './zork1-allowlist';
 
 // Runs commands through native Zork I and through the real story file, both seeded,
 // for the differential tests. Callers need the happy-dom environment (saves use localStorage).

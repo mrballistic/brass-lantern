@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { newConversation } from '@/engine/conversation';
 import { initialState, openingLines } from '@/engine/engine';
 import { zork1 } from '@/worlds/zork1';
-import { nativeTurn, normalize, openOriginal, THIEF } from '../helpers/zsession';
+import { nativeTurn, normalize, openOriginal, THIEF } from './zsession';
 import { ALLOWED, SYNC, WALKTHROUGH } from './zork1-allowlist';
 
 // Native Zork I against the real story file, reply by reply. The yardstick for

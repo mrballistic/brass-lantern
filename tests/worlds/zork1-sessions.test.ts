@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it } from 'vitest';
-import { compare, nativeRun, originalRun, prefixed } from '../helpers/zsession';
+import { compare, nativeRun, originalRun, prefixed } from './zsession';
 import { DAM_SESSIONS, DOME_SESSIONS, LOUD_SESSIONS, TEMPLE_SESSIONS } from './zork1-sessions';
 
 // Scripted sessions: each puzzle chain runs in native Zork I and in the real story
