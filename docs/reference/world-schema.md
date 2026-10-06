@@ -37,6 +37,8 @@ Every field a world can use. The source of truth is [`src/types/world.ts`](https
 | `carry?` | `Carry` | Carrying weight. Without it there's no limit. See [Weight](#weight). |
 | `combat?` | `CombatRules` | The player's side of fights. See [Combat](#combat). |
 | `scripts?` | `Record<name, Script>` | The code hatch: functions that return steps. See [Scripts](#scripts). |
+| `capture?` | `Capture` | Takes input anywhere, after the room's own capture. See [Capture](#capture). |
+| `wait?` | `{ turns }` | WAIT runs the clock up to `turns` times, stopping after a turn where something happened (Zork: 3). Each counts as a move. |
 | `statusLine?` | `'moves'` or `'score'` | The header in brass style: `MOVES: n` (the default) or `SCORE: n  MOVES: n`. Infocom style always shows the room, score and moves. |
 
 ## Room
@@ -58,6 +60,8 @@ Every field a world can use. The source of truth is [`src/types/world.ts`](https
 | `scenery?` | item ID[] | Items present here without being in the room: a door shared by two rooms, a window, the sky. Examinable and usable, never listed or taken. |
 | `instead?`, `after?` | `Record<verb, Rule[]>` | Rules for verbs used in this room. See [Rules](#rules). |
 | `tags?` | string[] | Free-form labels for scripts to read (`maze`, `sacred`). The engine doesn't. |
+| `capture?` | `Capture` | Takes input here before it's parsed. See [Capture](#capture). |
+| `onEnd?` | `{ if, then }[]` | Run at the end of every command here, after the action and before the clock (Zork's M-END). After WAIT's turns when `wait` is set. |
 
 ### Exit
 
@@ -93,6 +97,8 @@ Message-only exits aren't listed unless `listExits` names them.
 | `door?` | boolean | A door between rooms; exits name it. Uses `container` for openable/open/locked/key. |
 | `size?` | number | Its weight, in worlds with `carry` (Zork's SIZE). Default 5. |
 | `weapon?` | boolean | Something to fight with. |
+| `burnable?` | boolean | BURN can set it alight (Zork's BURNBIT). |
+| `flaming?` | boolean | It can set things alight: always, or while it's on if it switches (Zork's FLAMEBIT). |
 | `treasure?` | number | What it's worth (Zork's TVALUE). The engine doesn't read it; scripts and scoring can. |
 | `text?` | string | What READ shows. Default: the description. |
 | `initialDescription?` | string | Its own sentence in a room until first taken. |
@@ -147,6 +153,9 @@ after: { take: [{ if: '!flag:took_egg', then: 'took_egg' }] },
 - **`after`** rules run after the default succeeds and changes something.
 - **Lookup order:** the target item's rules, then the indirect item's, then the room's. The first rule whose `if` holds (and whose `with` matches the other object, when given) wins.
 - A rule is the same shape as a UseRule (above).
+- **`as: 'target'` or `'indirect'`** limits a rule to its item's role in the command (Zork's PRSO and PRSI): a tube that refuses things put *into* it, not itself put somewhere.
+- **`prep`** limits it to a preposition: `prep: 'in'` answers PUT … IN, not PUT … ON.
+- **In Infocom style** the second object's rules are asked before the first's, as Zork's PERFORM does (POUR WATER ON BELL asks the bell first).
 - **`continue: true`** on an `instead` rule runs it and then lets the verb's default go on as well (Zork's “print, then RFALSE”): a line before the TAKE that still happens.
 - **On a character**, rules answer verbs aimed at it, including `order` (see [NPC](#npc)).
 - **The older hooks still work:** `onUse` is `instead.use`, and `onTake` is a one-shot `after.take`.
@@ -169,6 +178,7 @@ verbs: {
 | `target` | `'none'`, `'optional'` or `'required'` | |
 | `indirect?` | string[] | Prepositions that introduce a second object (`with`, `on`). |
 | `reply?` | string | When no rule applies. Default: “Nothing happens.” |
+| `held?` | boolean | The object must be something you hold, or can see inside something you hold (Zork's HELD): POUR WATER means the water in your bottle. |
 | `go?` | boolean | Treat it as GO: through the target exit, or the exit labeled with the verb's ID. |
 
 - A world verb does nothing by itself: give items or rooms `instead` rules for it.
@@ -187,10 +197,16 @@ verbs: {
   - the header shows the room, score and moves, like Zork's status line;
   - questions, TAKE ALL and transcripts use Zork's wording;
   - bookkeeping lines like `[Flag set: …]` act without being shown.
+  - each thing's contents are listed right after it;
+  - READ takes the thing first (“(Taken)”), EXAMINE of a thing with no description reads it, and opening a container whose one untouched thing has a first-seen sentence says “The coffin opens.” and that sentence;
+  - PUT … ON something that isn't a surface says “There’s no good surface on the …”;
+  - a room's `scenery` (Zork's local globals) only answers to a word when nothing else in reach does;
+  - the second object's rules come before the first's.
 
 ## Time
 
 After every turn the engine acts on (never after a misunderstood command), these happen in order:
+0. **The room's end routines** (`onEnd`, Zork's M-END).
 1. **Fuses** count down, and those reaching zero run. A fuse is set by the `schedule` effect and removed by `cancel`; one set during a turn starts counting the next turn.
 2. **Daemons** run, in order, each while its `if` holds.
 3. **Ambient lines** print.
@@ -206,6 +222,8 @@ daemons: [
 ],
 ```
 
+With the world's `wait` set, WAIT runs steps 1 to 3 up to that many times, stopping after one where something happened (a line printed or a fuse fired), and the room's end routines run after them.
+
 A **move** is one of these turns: MOVES in the header and SCORE count them. Commands that take no game time (VERBOSE, BRIEF, SUPERBRIEF, UNDO, SAVE, RESTORE, SCRIPT, VERSION, a question back to the player) don't count, and nothing runs after them.
 
 ## Darkness
@@ -215,6 +233,7 @@ A **move** is one of these turns: MOVES in the header and SCORE count them. Comm
 | `look?` | string | LOOK and arriving in an unlit dark room. Default: “It is pitch black.” |
 | `tooDark?` | string | Acting on something you can't see. Default: “It’s too dark to see.” |
 | `fall?` | string | When the room goes dark around you. Default: “It is now pitch black.” |
+| `litIf?` | condition | While it holds, every room is lit (Zork's ALWAYS-LIT, for a spirit). Mustn't use `lit:`. |
 | `blunder?` | `EventStep[]` | Run when the player tries a direction with no exit in the dark. Zork's grue: `[{ chance: 80, then: [{ die: '…' }], else: ['You can’t go that way.'] }]`. |
 
 In an unlit dark room you can only find what you're carrying. Trying to act on anything else gets `tooDark`: an understood refusal, so the intent server isn't asked to re-guess. Turning a light on or off says so (`fall`, or the room's description).
@@ -223,7 +242,7 @@ In an unlit dark room you can only find what you're carrying. Trying to act on a
 
 | Field | Type | |
 |---|---|---|
-| `message?` | string[] | Printed after the cause. |
+| `message?` | `(string or { if, text })[]` | Printed after the cause; an entry with `if` only while it holds (Zork's “Bad luck, huh?”). |
 | `penalty?` | number | Added to the score. |
 | `lives?` | number | Deaths survived before the final one. |
 | `respawn?` | room ID | Where the player wakes. |
@@ -231,6 +250,8 @@ In an unlit dark room you can only find what you're carrying. Trying to act on a
 | `scatter?` | room ID[] | Carried things are spread over these, at random (seeded). Things with a `home` go there instead; with no scatter rooms, they stay where the player fell. |
 | `final?` | string[] | The last death, which ends the game. |
 | `then?` | event | Runs after a resurrection, to reset things (Zork's trap door, unbarred). |
+| `variants?` | `{ if, resurrection?, respawn?, then?, before? }[]` | The first whose `if` holds (decided as you die) replaces those fields; `before` runs ahead of the respawn. Zork sends you to Hades as a spirit once you've seen the Altar. |
+| `instead?` | `{ if, lines }[]` | Checked first: the first that holds prints its lines (not the cause) and ends the game. Dying while already dead. |
 
 The `die` effect uses it. Without a `death` block, dying prints the cause and ends the game. Pending fuses are cancelled on death.
 
@@ -324,10 +345,26 @@ A script gets a read-only view of the game and returns ordinary steps, which the
 - `children(place)`, what's directly in a room, item or character, in listing order;
 - `treasure(id)`, an item's `treasure` value or 0;
 - `playerStrength()`, the player's fight strength now;
+- `line`, the raw input, when a [capture](#capture) runs the script; `parse(text)`, which reads a command with the world's verbs as the parser would;
 - `arg`, from `{ script, arg }`;
 - `command`, the command being run with its objects resolved to IDs, when a rule ran the script. `command.words` keeps the words typed for objects that didn't resolve.
 
 Scripts run only where events run, so a command the engine didn't understand still changes nothing. The world audit fails on a `script` effect naming no script. See the [scripts recipe](../guide/building-worlds/recipes#scripts).
+
+## Capture
+
+```ts
+capture: { if: '!flag:quiet', script: 'echo' },
+```
+
+A room's capture, then the world's, sees each command of a line before it's parsed, while its `if` holds. The script reads `ctx.line` and returns steps to take it, or nothing to let it parse as usual. Add `{ free: true }` for a reply that takes no time.
+
+- Taking a command ends the line: the rest is dropped, as Zork's Loud Room drops it.
+- It runs ahead of the intent server, so captured input is never sent to the LLM.
+- SAVE, RESTORE, UNDO and the other store commands come first, so a capture can't trap the player; it never runs once the game is over.
+- A capture that declines changes nothing, even if it rolled the dice.
+
+Zork uses it twice: the Loud Room, which hears everything as noise until you say ECHO, and a spirit's limits (DEAD-FUNCTION) after death. See the [listening room recipe](../guide/building-worlds/recipes#a-room-that-listens).
 
 ## Dialogue
 

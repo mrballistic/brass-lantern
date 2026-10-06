@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.9.0 (2026-10-06)
+
+Engine parity, stage 5a: the dam, the Loud Room, the temple and Hades.
+
+- **Capture:** a room or the world can take input before it's parsed (`capture`): the script sees the raw line and answers, or declines. Captured input never reaches the intent server, and the store's own commands come first.
+- **BURN** *something* WITH *something* (and LIGHT … WITH, IGNITE), with `burnable` and `flaming` items; TURN … WITH and PLUG … WITH carry their second object to rules.
+- **New steps:** `{ if, then, else }`, `{ go, quiet }`, `{ unvisit }`, `{ free }`, `{ look }`, `{ unlist }` / `{ relist }`, `{ noDarkLine }`. Scripts get the raw line (`ctx.line`) and the parser (`ctx.parse`).
+- **Zork's clock:** `world.wait` (WAIT runs several turns, stopping when something happens) and room end routines (`onEnd`, Zork's M-END).
+- **Rules** can be limited to an item's role (`as`) or a preposition (`prep`); world verbs can want something held (`held`).
+- **Death:** conditional message lines, `variants` (another resurrection, room and event, decided as you die), `instead` (dying while dead), and `darkness.litIf`.
+- **Infocom style** picks up more of Zork's habits: READ takes the thing first, EXAMINE reads a thing with no description, “The coffin opens.” with its first-seen sentence, contents listed right after each thing, Zork's PUT … ON refusal, local globals that give way to real objects, and the second object's rules before the first's.
+- **Fixes:** the thief's darkness line is said once; a fixture moved out of its room no longer shows there; the intent server hears only about characters you can see.
+- **Zork I · Native** gains the dam and the reservoir (the control panel, the leak, draining and refilling), the Loud Room (its echo, and the roar that throws you out), the mirrors, Atlantis, the dome and the torch, the temple, and Hades: the exorcism by Zork's own timers, the hot bell, candles and matches burning down, the coffin and the prayer, and ghost mode after dying past the Altar. Seven treasures. The thief leaves sacred and buried things alone, and the lamp now lasts as long as Zork's.
+- **Tests:** scripted sessions play every new puzzle, its wrong orders and branches included, in both versions, with the real story file **seeded** so each session replays exactly.
+- **Docs:** a recipe for a room that listens; the schema's capture, steps, death variants and Infocom habits; porting notes for 5a.
+
 ## 1.8.0 (2026-10-05)
 
 Engine parity, stage 4b: the thief, the cyclops, topics and orders.

@@ -41,13 +41,19 @@ An event is a named list of steps, run in order. A string is printed. An object 
 | `{ npcState: 'npc', fighting?, staggered?, strength?, hidden? }` | Sets a character's combat state, or hides and reveals it. |
 | `{ script: 'name', arg? }` | Runs one of the world's [scripts](./world-schema#scripts) and the steps it returns. |
 | `{ hide: 'item' }`, `{ reveal: 'item' }` | Hides an item where it is (not seen, listed or taken), or shows it again. |
+| `{ unlist: 'item' }`, `{ relist: 'item' }` | Keeps an item where it is, seen and usable but out of the room's list, or lists it again (the tied rope). |
 | `{ open }`, `{ close }`, `{ lock }`, `{ unlock }` | Changes a container's or door's state. |
 | `{ switch: 'item', on: true }` | Switches a light (or anything switchable). |
 | `{ add: 'var', by: n }`, `{ setVar: 'var', to: n }` | Changes a numeric variable. |
 | `{ score: n }` | Adds to the score. |
-| `{ go: 'room' }` | Moves the player there and describes it. |
+| `{ go: 'room' }` | Moves the player there and describes it. With `quiet: true`, without describing it (Zork's mirror). |
+| `{ look: true }` | Describes the player's room in full, as LOOK does. |
+| `{ unvisit: 'room' }` | Forgets the player has been there, so the next arrival shows the full description (Zork clears TOUCHBIT when the dam drains). |
 | `{ schedule: 'event', in: n }`, `{ cancel: 'event' }` | Runs an event after `n` turns, or stops it. |
 | `{ chance: 80, then: [...], else: [...] }` | Picks a branch at random (from a seeded generator, so saves replay exactly). |
+| `{ if: 'condition', then: [...], else: [...] }` | Picks a branch by a [condition](#conditions). `else` is optional. |
+| `{ free: true }` | The turn takes no time: no move, no timers or daemons (a capture's echo). |
+| `{ noDarkLine: true }` | A line already said the light went out, so the engine doesn't add its own. |
 | `{ run: 'event' }` | Runs another event here. |
 | `{ die: 'cause' }` | Kills the player. See [Death](./world-schema#death). Nothing after it runs. |
 | `{ end: 'ending' }` | Plays an ending. See [Endings](./world-schema#endings). Nothing after it runs. |

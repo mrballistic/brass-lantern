@@ -5,9 +5,9 @@ Known gaps the reviews found and deferred. Each stage's spec picks up the ones i
 ## From stage 4b (1.8.0)
 
 - **Differential coverage of the thief's and cyclops's rarer lines:** the lair (scream, vanish), his death and treasures reappearing, the maze “off in the distance” line, the junk lines, and the cyclops's food, sleep and eats-you lines are checked against ZIL-derived unit tests, not `zork1.z3`. Stage 5's full map should let a scripted original session reach them.
-- **The thief taking the last light** prints his line and then the engine's generic “It is now pitch black.”; Zork prints only his. No trigger until the torch (a treasure) arrives.
+- ~~**The thief taking the last light**~~ (1.9.0) prints his line and then the engine's generic “It is now pitch black.”; Zork prints only his. No trigger until the torch (a treasure) arrives.
 - **A `continue` rule** applies (and may run `then`) before the verb's default; if the default then misses or asks a question, state changed under `understood: false`. No current rule hits it.
-- **The intent context** sends `room.npcs` as authored, so hidden or departed characters reach the LLM. Use `npcsSeen`.
+- ~~**The intent context**~~ (1.9.0) sends `room.npcs` as authored, so hidden or departed characters reach the LLM. Use `npcsSeen`.
 - **“tell bob to ask about x”** parses as ASK before ORDER (a miss; the LLM retries).
 - **effects.ts `hide`/`reveal`** use an obscure comma expression.
 - **commands.md** doesn't say a bare “TELL X” is an order.
