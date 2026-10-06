@@ -188,6 +188,13 @@ describe('POST /api/parse-intent', () => {
     }
   });
 
+  it('accepts board and disembark', async () => {
+    fetchMock.mockResolvedValueOnce(geminiReply('{"action":"board","target":"boat"}'));
+    expect((await post({ input: 'climb into the boat', context: makeContext() })).body).toEqual({ action: 'board', target: 'boat' });
+    fetchMock.mockResolvedValueOnce(geminiReply('{"action":"disembark"}'));
+    expect((await post({ input: 'hop out', context: makeContext() })).body).toEqual({ action: 'disembark' });
+  });
+
   it('normalizes spaced and dashed targets to snake_case', async () => {
     fetchMock.mockResolvedValueOnce(geminiReply('{"action":"take","target":"Red Mug"}'));
     const res = await post({ input: 'take the red mug', context: makeContext() });

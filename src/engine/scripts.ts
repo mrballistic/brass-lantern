@@ -2,7 +2,7 @@ import type { GameState, NpcState, ParsedAction, Place } from '@/types/game';
 import type { EventStep, World } from '@/types/world';
 import { fightStrength } from './combat';
 import { fallbackParse } from './parser';
-import { childrenOf, isCarried, isLit, isNpcHidden, isNpcIn, isReachable, parentOf } from './model';
+import { childrenOf, isCarried, isLit, isNpcHidden, isNpcIn, isReachable, isWater, parentOf } from './model';
 import { nextRandom, roll } from './rng';
 
 // The code hatch: a world's own functions for behavior its data can't express.
@@ -44,6 +44,10 @@ export interface ScriptContext {
   playerStrength(): number;
   /** Is the character hidden? */
   hidden(id: string): boolean;
+  /** The vehicle the player is in, if any. */
+  aboard(): string | undefined;
+  /** Is the room (default: the player's) water? */
+  water(room?: string): boolean;
   /** The raw input, when a capture runs this script on a line. */
   line?: string;
   /** The command, when a capture runs this script on one already parsed (AGAIN, an answer, the intent server's reading). */
@@ -115,6 +119,8 @@ export function scriptSteps(name: string, arg: string | undefined, world: World,
     children: (place) => childrenOf(world, state, place),
     playerStrength: () => fightStrength(world, state),
     hidden: (id) => isNpcHidden(world, state, id),
+    aboard: () => state.aboard,
+    water: (room) => isWater(world, state, room ?? state.currentRoom),
     line,
     action,
     parse: (text) => fallbackParse(text, world.verbs),

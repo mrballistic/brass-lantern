@@ -71,6 +71,7 @@ export function handleHelp(world: World): EngineResult {
     'READ <thing>             Read what’s written on it',
     'TURN ON / OFF <thing>    Lamps and the like (also LIGHT)',
     'BURN <thing> WITH <item> Set it alight (also LIGHT … WITH)',
+    'BOARD / DISEMBARK <thing> Get in or out of a vehicle (also GET IN, GET OUT, EXIT)',
     'USE <item> [ON <thing>]  Use an item, or use it on something',
     'OPEN / CLOSE <thing>     Containers and doors',
     'LOCK / UNLOCK <thing> WITH <key>',

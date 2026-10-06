@@ -23,6 +23,7 @@ import { handleRead, handleSwitch } from './verbs/objects';
 import { handleGive, handleTalk } from './verbs/people';
 import { handleAttack, handleThrow } from './verbs/attack';
 import { handleBurn, handleNoEffect } from './verbs/burn';
+import { handleBoard, handleDisembark } from './verbs/vehicle';
 import { handleAsk, handleOrder } from './verbs/talk';
 import { scriptSteps, setCommand } from './scripts';
 import { diagnoseLines } from './combat';
@@ -196,6 +197,10 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
       return withRules('read', action, world, state, () => handleRead(action.target, world, state));
     case 'turn_on':
       return withRules('turn_on', action, world, state, () => handleSwitch(action.target, true, world, state));
+    case 'board':
+      return withRules('board', action, world, state, () => handleBoard(action, world, state));
+    case 'disembark':
+      return withRules('disembark', action, world, state, () => handleDisembark(action, world, state));
     case 'burn':
       return withRules('burn', action, world, state, () => handleBurn(action, world, state));
     // Zork's V-TURN and V-PLUG: a rule on the thing does the work.

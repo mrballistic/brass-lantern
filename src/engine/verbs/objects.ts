@@ -1,3 +1,4 @@
+import { handleDisembark } from './vehicle';
 import type { GameState } from '@/types/game';
 import type { Item, World } from '@/types/world';
 import { evaluateCondition } from '../conditions';
@@ -44,6 +45,7 @@ export function handleTake(target: string | undefined, world: World, state: Game
 /** Take an item the player can see: refusals first, so a refusal changes nothing. */
 export function takeItem(itemId: string, world: World, state: GameState): EngineResult {
   const item = world.items[itemId];
+  if (itemId === state.aboard) return ok(['You’re inside of it!']);
   if (!item.portable) return ok([item.refusal ?? `You can’t take the ${item.name}.`]);
   const closed = closedAround(world, state, itemId);
   if (closed) return ok([`The ${world.items[closed].name} is closed.`]);
@@ -57,10 +59,13 @@ export function takeItem(itemId: string, world: World, state: GameState): Engine
 
 export function handleDrop(target: string | undefined, world: World, state: GameState): EngineResult {
   if (!target) needObject();
+  // Dropping the vehicle you're in is getting out of it (Zork's PRE-DROP).
+  if (state.aboard && pickItem(target, [state.aboard], world, 'target', state)) return handleDisembark({ action: 'disembark' }, world, state);
   const itemId = pickItem(target, inventoryOf(world, state), world, 'target', state);
   if (!itemId) return miss(`You aren’t carrying a “${target}”.`);
 
-  moveItem(state, itemId, state.currentRoom);
+  // Aboard, things land in the vehicle (IDROP).
+  moveItem(state, itemId, state.aboard ?? state.currentRoom);
 
   return ok([world.style === 'infocom' ? 'Dropped.' : `Dropped: ${world.items[itemId]?.name ?? itemId}.`], true);
 }
