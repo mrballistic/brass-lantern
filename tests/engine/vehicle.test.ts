@@ -218,3 +218,15 @@ describe('Zork’s listing aboard (PRINT-CONT) (5b)', () => {
     expect(run(s, { action: 'look' }).lines.slice(2)).toEqual(['There is a bat here. (outside the raft)', '  The raft contains:', '    A loud shirt']);
   });
 });
+
+describe('DISEMBARK in a brass world (5b)', () => {
+  it('is a miss when you’re not aboard, so the intent server can read “get out of bed” again', () => {
+    const s = stateWith(fixtureWorld, { room: 'bedroom' });
+    expect(execute({ action: 'disembark', target: 'bed' }, { world: fixtureWorld, state: s }).understood).toBe(false);
+    expect(execute({ action: 'disembark' }, { world: fixtureWorld, state: s }).understood).toBe(false);
+  });
+  it('BOARD of something that isn’t a vehicle is a miss too (“get in bed”)', () => {
+    const s = stateWith(fixtureWorld, { room: 'bedroom' });
+    expect(execute({ action: 'board', target: 'bed' }, { world: fixtureWorld, state: s }).understood).toBe(false);
+  });
+});
