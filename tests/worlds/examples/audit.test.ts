@@ -6,7 +6,9 @@ import { endings } from '@/worlds/examples/endings';
 import { fortune } from '@/worlds/examples/fortune';
 import { guard } from '@/worlds/examples/guard';
 import { timers } from '@/worlds/examples/timers';
+import { topics } from '@/worlds/examples/topics';
 import { twoRooms } from '@/worlds/examples/two-rooms';
+import { wanderer } from '@/worlds/examples/wanderer';
 import { auditWorld } from '../../helpers/audit';
 
 const examples: Array<[string, World]> = [
@@ -17,6 +19,8 @@ const examples: Array<[string, World]> = [
   ['the endings recipe', endings],
   ['the guard recipe', guard],
   ['the scripts recipe', fortune],
+  ['the topics recipe', topics],
+  ['the wanderer recipe', wanderer],
 ];
 
 describe('the example worlds', () => {

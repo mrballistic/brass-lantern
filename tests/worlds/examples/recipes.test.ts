@@ -5,6 +5,8 @@ import { endings } from '@/worlds/examples/endings';
 import { fortune } from '@/worlds/examples/fortune';
 import { guard } from '@/worlds/examples/guard';
 import { timers } from '@/worlds/examples/timers';
+import { topics } from '@/worlds/examples/topics';
+import { wanderer } from '@/worlds/examples/wanderer';
 import { play } from '../../helpers/play';
 
 // The recipes in docs/guide/building-worlds/recipes.md. If these break, that page is wrong.
@@ -179,6 +181,76 @@ describe('recipes', () => {
       > consult madame
       “I have told you already,” she sighs.
       “You will find what you lost under the sofa.”"
+    `);
+  });
+
+  it('topics and orders', () => {
+    expect(play(topics, ['ask librarian about books', 'ask librarian about dragons', 'ask librarian about the weather', 'librarian, open the door', 'ask librarian about the archive', 'ask librarian about the archive', 'unlock door with key', 'open door', 'north']).text).toMatchInlineSnapshot(`
+      "📍 Library
+      Tall shelves, a reading lamp, and a locked door marked ARCHIVE.
+      Present: librarian.
+      Exits: north.
+      > ask librarian about books
+      “Shelved by colour. Don’t ask.”
+      > ask librarian about dragons
+      “Second floor, between the cookbooks and the tax law.”
+      > ask librarian about the weather
+      “I couldn’t say, dear.”
+      > librarian, open the door
+      “Shh.”
+      > ask librarian about the archive
+      “Oh, the archive.” She slides a brass key across the desk.
+      > ask librarian about the archive
+      “You have the key. Go on, then.”
+      > unlock door with key
+      Unlocked.
+      > open door
+      Opened.
+      > north
+      📍 Archive
+      Boxes of old letters. You found it.
+      Exits: south.
+      ✨ The letters are all here.
+      You found what you came for."
+    `);
+  });
+
+  it('a wandering cat', () => {
+    expect(play(wanderer, ['wait', 'wait', 'wait', 'wait', 'wait', 'wait', 'look', 'east', 'look']).text).toMatchInlineSnapshot(`
+      "📍 Hall
+      A narrow hall. The kitchen is east, the garden south.
+      You can see: sock.
+      Exits: east, south.
+      > wait
+      Time passes.
+      > wait
+      Time passes.
+      > wait
+      Time passes.
+      > wait
+      Time passes.
+      > wait
+      Time passes.
+      > wait
+      Time passes.
+      The cat pads in.
+      The cat bats the sock away somewhere. It’s gone.
+      > look
+      📍 Hall
+      A narrow hall. The kitchen is east, the garden south.
+      Present: cat.
+      Exits: east, south.
+      > east
+      📍 Kitchen
+      A warm kitchen. The hall is west.
+      Exits: west.
+      The cat pads in.
+      > look
+      📍 Kitchen
+      A warm kitchen. The hall is west.
+      Present: cat.
+      Exits: west.
+      The cat stalks off."
     `);
   });
 });

@@ -57,6 +57,7 @@ Every field a world can use. The source of truth is [`src/types/world.ts`](https
 | `denial?` | string | Shown when `requires` fails. |
 | `scenery?` | item ID[] | Items present here without being in the room: a door shared by two rooms, a window, the sky. Examinable and usable, never listed or taken. |
 | `instead?`, `after?` | `Record<verb, Rule[]>` | Rules for verbs used in this room. See [Rules](#rules). |
+| `tags?` | string[] | Free-form labels for scripts to read (`maze`, `sacred`). The engine doesn't. |
 
 ### Exit
 
@@ -92,6 +93,7 @@ Message-only exits aren't listed unless `listExits` names them.
 | `door?` | boolean | A door between rooms; exits name it. Uses `container` for openable/open/locked/key. |
 | `size?` | number | Its weight, in worlds with `carry` (Zork's SIZE). Default 5. |
 | `weapon?` | boolean | Something to fight with. |
+| `treasure?` | number | What it's worth (Zork's TVALUE). The engine doesn't read it; scripts and scoring can. |
 | `text?` | string | What READ shows. Default: the description. |
 | `initialDescription?` | string | Its own sentence in a room until first taken. |
 | `roomDescription?` | string | Its own sentence in a room after that. Items with neither are gathered into “You can see: …”. |
@@ -145,6 +147,8 @@ after: { take: [{ if: '!flag:took_egg', then: 'took_egg' }] },
 - **`after`** rules run after the default succeeds and changes something.
 - **Lookup order:** the target item's rules, then the indirect item's, then the room's. The first rule whose `if` holds (and whose `with` matches the other object, when given) wins.
 - A rule is the same shape as a UseRule (above).
+- **`continue: true`** on an `instead` rule runs it and then lets the verb's default go on as well (Zork's “print, then RFALSE”): a line before the TAKE that still happens.
+- **On a character**, rules answer verbs aimed at it, including `order` (see [NPC](#npc)).
 - **The older hooks still work:** `onUse` is `instead.use`, and `onTake` is a one-shot `after.take`.
 
 ## World verbs
@@ -226,6 +230,7 @@ In an unlit dark room you can only find what you're carrying. Trying to act on a
 | `resurrection?` | string[] | |
 | `scatter?` | room ID[] | Carried things are spread over these, at random (seeded). Things with a `home` go there instead; with no scatter rooms, they stay where the player fell. |
 | `final?` | string[] | The last death, which ends the game. |
+| `then?` | event | Runs after a resurrection, to reset things (Zork's trap door, unbarred). |
 
 The `die` effect uses it. Without a `death` block, dying prints the cause and ends the game. Pending fuses are cancelled on death.
 
@@ -246,8 +251,19 @@ The `die` effect uses it. Without a `death` block, dying prints the cause and en
 | `descriptions?` | `{ if, text }[]` | Its line in the room and its EXAMINE reply, by state; the first whose condition holds wins. |
 | `instead?`, `after?` | `Record<verb, Rule[]>` | Rules for verbs aimed at it: THROW X AT it, GIVE, TAKE, a world verb. |
 | `combat?` | `Combatant` | Makes it someone you can fight. See [Combat](#combat). |
+| `aliases?` | string[] | Other words for it (“robber”, “man”). |
+| `scenery?` | boolean | Present but not listed: the room's own description mentions it (Zork's cyclops). |
+| `hidden?` | boolean | Starts hidden: in its room for scripts, but not seen, listed, matched or fought until revealed. |
+| `topics?` | `Record<topic, string or { if?, text }[]>` | ASK or TELL it ABOUT a topic. A list is tried in order; the first entry whose `if` holds answers. Text that names an event runs it. |
+| `topicAliases?` | `Record<topic, string[]>` | Other words for a topic. |
+| `noTopic?` | string | For a topic it has nothing on. Default: its TALK TO line. |
+| `refuseOrder?` | string | Its answer to an order. Default: “*Name* ignores you.” |
 
 Characters' places and states live in the game state (`npcs`), starting from the rooms that list them. In brass style the room shows “Present: …”; in Infocom style each character prints its own line.
+
+**Hidden characters.** A character that's `hidden` (from the start, or by the `npcState` effect with `hidden: true`) is still in its room: `ctx.npcIn` and conditions like `with:` see it, but the player doesn't, and it doesn't fight. `{ npcState: 'thief', hidden: false }` reveals it. The `seen:` condition is true only when it's in the player's room and not hidden.
+
+**Orders.** “*name*, *command*” and “tell *name* to *command*” are orders. The character's `instead.order` rules answer first, then `refuseOrder`. Characters don't obey yet.
 
 ## Weight
 
@@ -303,8 +319,13 @@ A script gets a read-only view of the game and returns ordinary steps, which the
 - `state` (frozen in development and tests), `world`;
 - `random()` and `roll(n)`, from the game's seeded generator, so saves and UNDO replay exactly;
 - `here(id)`, `carried(id)`, `holder(id)`, `room()`, `npc(id)`;
+- `npcIn(id, room)` (hidden or not), `hidden(id)`;
+- `rooms()` in the world's order, `visited(room)`, `tags(room)`, `lit(room?)`;
+- `children(place)`, what's directly in a room, item or character, in listing order;
+- `treasure(id)`, an item's `treasure` value or 0;
+- `playerStrength()`, the player's fight strength now;
 - `arg`, from `{ script, arg }`;
-- `command`, the command being run with its objects resolved to IDs, when a rule ran the script.
+- `command`, the command being run with its objects resolved to IDs, when a rule ran the script. `command.words` keeps the words typed for objects that didn't resolve.
 
 Scripts run only where events run, so a command the engine didn't understand still changes nothing. The world audit fails on a `script` effect naming no script. See the [scripts recipe](../guide/building-worlds/recipes#scripts).
 

@@ -9,10 +9,10 @@ Known gaps the reviews found and deferred. Each stage's spec picks up the ones i
 - ~~**The `sword_glow` script**~~ (1.8.0) in `src/worlds/zork1.ts` finds characters its own way (the first room listing them) instead of `isNpcIn`. Scripts could get `ctx.npcIn(id, room)`.
 - **Fidelity gaps against zork1.z3:**
   - worn things don't count 1 toward weight (there's no worn state yet), and CCOUNT's worn exclusion for the fumble count isn't ported;
-  - the player's weapon (FIND-WEAPON) is the first in `world.items` order, not the most recently taken (Zork's FIRST? order);
+  - ~~the player's weapon (FIND-WEAPON) is the first in `world.items` order, not the most recently taken~~ (1.8.0);
   - the troll's first strike (F-FIRST?) doesn't cancel the rest of a compound command (P-CONT);
-  - waking the troll while you're away resets his wake counter; Zork's AWAKEN doesn't;
-  - the trap door doesn't re-bar after a death (Zork's JIGS-UP clears its TOUCHBIT; the death block has no event hook).
+  - ~~waking the troll while you're away resets his wake counter; Zork's AWAKEN doesn't~~ (1.8.0);
+  - ~~the trap door doesn't re-bar after a death~~ (1.8.0: `death.then`).
 - ~~**The world audit**~~ (1.8.0) doesn't check characters' combat hooks (`onDeath`, `onBusy`, `onWake`, `onUnconscious`), `combat.weapon`, `fears.item`, `holds`, `descriptions[].if`, or characters' `instead`/`after` rules. A typo there silently does nothing.
 - ~~**In a world with combat, ATTACK at an item**~~ (1.8.0) skips `withRules`, so an item's `instead.attack` rule can never fire.
 - ~~**Stale comment**~~ (1.8.0) at `tests/worlds/zork1-allowlist.ts` (“The walkthrough skips the sword”).

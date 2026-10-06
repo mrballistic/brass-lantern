@@ -21,7 +21,9 @@ The verbs are fixed; a world gives them things to act on. Anything the regex par
 | TURN ON / OFF *thing* | `switch on`, `light` | Switchable items. |
 | USE *item* [ON *thing*] | `push` `pull` `press` `operate` `attach X to Y` | See [use rules](./world-schema#userule). OPEN and PUT fall back to an item's use rules when it isn't a container. |
 | GIVE *item* TO *person* | `hand` `offer` `return` | With one person present, GIVE *item* is enough. |
-| TALK TO *person* | `speak/chat with`, `question`, `ask … about …` | With one person present, TALK is enough. |
+| TALK TO *person* | `speak/chat with`, `question` | With one person present, TALK is enough. |
+| ASK *person* ABOUT *topic* | `tell … about …` | The person's answer on that topic, if the world gives it [topics](./world-schema#npc); otherwise what TALK TO says. |
+| *person*, *command* | `tell/order/ask … to …` | An order. People answer orders; they don't carry them out yet. |
 | WEAR *item* | `put on` | |
 | SMASH *thing* [WITH *item*] | `break` `destroy` `wreck` `whack` `beat` | |
 | ATTACK *someone* WITH *weapon* | `kill` `hit` `fight` `stab` | At a character who fights, combat; at anything else, SMASH (in a world without combat). In Infocom style, `kill troll` picks the one weapon you hold, or asks. |
@@ -50,7 +52,7 @@ The verbs are fixed; a world gives them things to act on. Anything the regex par
 | CANCEL | | At a SAVE or RESTORE prompt, or a story file’s. |
 | HELP | `?` | |
 
-**World verbs:** a world can add its own (SNOOZE, PRAY, MOVE …); they're listed in its HELP. See [World verbs](./world-schema#world-verbs).
+**World verbs:** a world can add its own (SNOOZE, PRAY, MOVE, Zork's ULYSSES …); they're listed in its HELP. See [World verbs](./world-schema#world-verbs).
 
 **Chaining:** `take key and wallet`, `north then look`, `west. take lamp.` Each piece runs separately (and gets its own intent-server retry if it misses).
 

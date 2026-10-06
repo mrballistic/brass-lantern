@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.8.0 (2026-10-05)
+
+Engine parity, stage 4b: the thief, the cyclops, topics and orders.
+
+- **Topics:** ASK (or TELL) *someone* ABOUT *something* answers from the character's `topics`, with `topicAliases`, condition-gated entries, entries that run events, and a `noTopic` fallback. Without topics, ASK behaves as TALK TO.
+- **Orders:** “*someone*, *do this*” and “tell *someone* to *do this*”. Characters answer with `refuseOrder`, an `instead.order` rule, or “*Name* ignores you.” They don't obey yet.
+- **Hidden characters and things:** a character can be `hidden` (in its room, but unseen, unlisted and unfought until revealed), with the `seen:` condition; items can be hidden and revealed with the `hide` and `reveal` effects. Characters also get `aliases` and `scenery`.
+- **For scripts:** `npcIn`, `rooms`, `visited`, `treasure`, `tags`, `lit`, `children`, `playerStrength`, `hidden`, and the words typed for objects that didn't resolve. Items get a `treasure` value and rooms free-form `tags`.
+- **Rules** can print and let the verb go on (`continue: true`), and **death** can run an event after a resurrection (`death.then`).
+- **Fixes:** the player fights with the weapon taken most recently, as Zork does; a knocked-out fighter's wake counter survives your leaving; DIAGNOSE in a world without combat says only how healthy you are; ATTACK at an item in a combat world runs its rules; PUT ALL IN *X* never tries to put *X* in itself; the world audit checks characters' combat hooks, weapons, holdings, descriptions, rules and topics.
+- **Zork I · Native** gains the maze, the grating, the Cyclops Room, the Strange Passage and the Treasure Room: the thief (wandering in the story file's room order, stealing treasures, fighting with his stiletto, and his lair) and the cyclops (his moods, his lunch, ULYSSES). The trap door re-bars after a death. The walkthrough runs through the maze and past the cyclops; a new test requires every line of 100 native thief encounters to be one 60 original sessions print.
+- **Docs:** recipes for topics and orders and for a wandering character; the world schema's new fields and script helpers; porting notes for the thief and the cyclops.
+
 ## 1.7.0 (2026-10-05)
 
 Engine parity, stage 4a: characters, weight, combat and the code hatch.
