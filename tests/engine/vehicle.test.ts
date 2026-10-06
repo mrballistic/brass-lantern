@@ -67,7 +67,8 @@ describe('boarding and leaving', () => {
   });
   it('not aboard, bare EXIT walks out exactly as OUT does', () => {
     const a = stateWith(fixtureWorld, { room: 'bedroom' });
-    const b = stateWith(fixtureWorld, { room: 'bedroom' });
+    // A clone, not a second stateWith: each seeds its generator from the clock (the old flake).
+    const b = structuredClone(a);
     expect(execute(fallbackParse('exit')!, { world: fixtureWorld, state: a })).toEqual(execute(fallbackParse('out')!, { world: fixtureWorld, state: b }));
     expect(a).toEqual(b);
   });
