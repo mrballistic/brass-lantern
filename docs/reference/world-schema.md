@@ -255,6 +255,7 @@ In an unlit dark room you can only find what you're carrying. Trying to act on a
 | `respawn?` | room ID | Where the player wakes. |
 | `resurrection?` | string[] | |
 | `scatter?` | room ID[] | Carried things are spread over these, at random (seeded). Things with a `home` go there instead; with no scatter rooms, they stay where the player fell. |
+| `treasures?` | `'dark'` | Treasures go to an unlit land room instead, walking the rooms in order at even odds each (Zork's RANDOMIZE-OBJECTS). |
 | `final?` | string[] | The last death, which ends the game. |
 | `then?` | event | Runs after a resurrection, to reset things (Zork's trap door, unbarred). |
 | `variants?` | `{ if, resurrection?, respawn?, then?, before? }[]` | The first whose `if` holds (decided as you die) replaces those fields; `before` runs ahead of the respawn. Zork sends you to Hades as a spirit once you've seen the Altar. |
