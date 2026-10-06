@@ -318,20 +318,17 @@ describe('useGameStore', () => {
       expect(store.output.at(-1)!.text).toMatch(/^\[TEST TERMINAL v\d+\.\d+\.\d+\]$/);
     });
 
-    it('VERSION and SCRIPT use Zork’s title and credits in an Infocom world', async () => {
-      const { zork1 } = await import('@/worlds/zork1');
+    it('VERSION and SCRIPT use the title and credits, in Zork’s words in an Infocom world', async () => {
+      const { fixtureWorld } = await import('../fixtures/world');
+      const world = { ...fixtureWorld, style: 'infocom' as const, title: 'TEST HOUSE: A Domestic Adventure', credits: ['Copyright (c) nobody.', 'All rights reversed.'] };
       const store = freshStore();
-      store.initialize({ kind: 'world', id: 'zork1', title: 'ZORK I', world: zork1, saveKey: 'test:zork1' });
+      store.initialize({ kind: 'world', id: 'house', title: 'TEST HOUSE', world, saveKey: 'test:house' });
       setDownload(vi.fn());
       await store.submit('version');
-      expect(store.output.slice(-3).map((l) => l.text)).toEqual([
-        'ZORK I: The Great Underground Empire',
-        'Copyright (c) 1981, 1982, 1983 Infocom, Inc. All rights reserved.',
-        'ZORK is a registered trademark of Infocom, Inc.',
-      ]);
+      expect(store.output.slice(-3).map((l) => l.text)).toEqual(['TEST HOUSE: A Domestic Adventure', 'Copyright (c) nobody.', 'All rights reversed.']);
       await store.submit('script');
-      expect(store.output.slice(-2).map((l) => l.text)).toEqual(['Here begins a transcript of interaction with', 'ZORK I: The Great Underground Empire']);
-      expect(store.headerStatus).toBe('West of House  Score: 0  Moves: 0');
+      expect(store.output.slice(-2).map((l) => l.text)).toEqual(['Here begins a transcript of interaction with', 'TEST HOUSE: A Domestic Adventure']);
+      expect(store.headerStatus).toBe(`${world.rooms[world.startRoom].name}  Score: 0  Moves: 0`);
     });
 
     it('saves and restores by name, and lists saves', async () => {

@@ -3,7 +3,6 @@ import { execute, initialState } from '@/engine/engine';
 import { fallbackParse } from '@/engine/parser';
 import { statusText } from '@/engine/verbs/meta';
 import type { GameState } from '@/types/game';
-import { zork1 } from '@/worlds/zork1';
 import { stateWith } from '../helpers/state';
 import { fixtureWorld as world } from '../fixtures/world';
 
@@ -20,7 +19,8 @@ describe('moves, the status line, SCRIPT and VERSION', () => {
   });
 
   it('shows Zork’s status line in Infocom style, MOVES in brass', () => {
-    expect(statusText(zork1, initialState(zork1))).toBe('West of House  Score: 0  Moves: 0');
+    const infocom = { ...world, style: 'infocom' as const };
+    expect(statusText(infocom, initialState(infocom))).toBe(`${world.rooms[world.startRoom].name}  Score: 0  Moves: 0`);
     const s = stateWith(world, { room: 'living' });
     run(s, 'look');
     expect(statusText(world, s)).toBe('MOVES: 1');
