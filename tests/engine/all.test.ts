@@ -71,4 +71,42 @@ describe('ALL and EXCEPT', () => {
     expect(examine('chest')).toEqual(['The wooden chest is empty.']);
     expect(examine('socket')).toEqual(['There’s nothing special about the socket.']);
   });
+
+  it('in Infocom style, TAKE ALL in the dark finds nothing to take, and names nothing unseen', () => {
+    const w = { ...world, style: 'infocom' as const, rooms: { ...world.rooms, living: { ...world.rooms.living, dark: true } } };
+    const s = stateWith(w, { room: 'living' });
+    expect(execute({ action: 'take', target: 'all' }, { world: w, state: s }).lines).toEqual(['There is nothing here to take.']);
+  });
+
+  it('stops at a death partway through', () => {
+    const w = {
+      ...world,
+      items: { ...world.items, wallet: { ...world.items.wallet, after: { take: [{ then: 'boom' }] } } },
+      events: { ...world.events, boom: [{ die: 'The wallet was trapped.' }] },
+    };
+    const s = stateWith(w, { room: 'living' });
+    const r = execute({ action: 'take', target: 'all' }, { world: w, state: s });
+    expect(r.lines).toContain('The wallet was trapped.');
+    expect(r.lines.some((l) => l.startsWith('loud shirt'))).toBe(false);
+    expect(s.locations.shirt).toBe('living');
+  });
+
+  it('a TAKE ALL where everything refuses changes nothing', () => {
+    const w = { ...world, style: 'infocom' as const };
+    const s = stateWith(w, { room: 'shed' });
+    s.locations.jar = null;
+    const r = execute({ action: 'take', target: 'all' }, { world: w, state: s });
+    expect(r.lines.length).toBeGreaterThan(0);
+    expect(r.mutated).toBe(false);
+  });
+
+  it('READ of an item with no description and no text says there’s nothing special', () => {
+    const w = { ...world, items: { ...world.items, socket: { ...world.items.socket, description: '' } } };
+    const s = stateWith(w, { room: 'shed' });
+    expect(execute({ action: 'read', target: 'socket' }, { world: w, state: s }).lines).toEqual(['There’s nothing special about the socket.']);
+  });
+
+  it('a bare TALK talks to the one person here', () => {
+    expect(fallbackParse('talk')).toEqual({ action: 'talk' });
+  });
 });

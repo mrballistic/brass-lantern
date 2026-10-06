@@ -186,7 +186,7 @@ export function handleRead(target: string | undefined, world: World, state: Game
   const id = pickItem(target, visibleItems(world, state), world, 'target', state);
   if (!id) return miss(`You don’t see a “${target}” here.`);
   const item = world.items[id];
-  return ok([item.text ?? item.description]);
+  return ok([item.text ?? (item.description || `There’s nothing special about the ${item.name}.`)]);
 }
 
 export function handleSwitch(target: string | undefined, on: boolean, world: World, state: GameState): EngineResult {

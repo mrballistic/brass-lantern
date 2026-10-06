@@ -41,6 +41,16 @@ let cartridgeId = initialCartridge?.id ?? 'game';
 /** Where the transcript started in the output, while SCRIPT is on. */
 let scriptFrom: number | null = null;
 
+/** This line's UNDO snapshot, taken before it runs and kept if it changes anything. */
+let line: { snapshot: { state: GameState; outputLength: number }; changed: boolean } = {
+  snapshot: { state: freshGame(), outputLength: 0 },
+  changed: false,
+};
+
+function beginLine(game: GameState, outputLength: number): void {
+  line = { snapshot: { state: structuredClone(toRaw(game)), outputLength }, changed: false };
+}
+
 /** Saves a transcript as a file. Tests swap it out with setDownload. */
 let download = (filename: string, text: string): void => {
   const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
@@ -54,11 +64,14 @@ let download = (filename: string, text: string): void => {
 export function setDownload(fn: (filename: string, text: string) => void): void {
   download = fn;
 }
-/** Save names: lowercase letters, digits, spaces, _ and -, at most 32. */
+/** Save names: lowercase letters, digits, spaces (or _) and -, at most 32. */
 function saveName(raw: string): string {
   return raw
     .toLowerCase()
-    .replace(/[^a-z0-9 _-]/g, '')
+    // The LLM names things in snake_case: my_game is the typed my game.
+    .replace(/_/g, ' ')
+    .replace(/[^a-z0-9 -]/g, '')
+    .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 32)
     .trim();
@@ -68,8 +81,6 @@ let persistence = createPersistenceService(initialCartridge ? saveKeyFor(initial
 // Between-command state (questions, pronouns, AGAIN, OOPS, UNDO). Not saved.
 let conversation = newConversation();
 const UNDO_LIMIT = 50;
-/** The output length when the current command was typed, before its echo. */
-let turnStart = 0;
 
 interface State {
   game: GameState;
@@ -213,52 +224,18 @@ export const useGameStore = defineStore('game', {
       const input = rawInput.trim();
       if (!input) return;
 
-      // Where the screen stood before this turn, for UNDO.
-      turnStart = this.output.length;
+      // Where the screen and the game stood before this line, for UNDO.
+      beginLine(this.game, this.output.length);
+      const movesBefore = this.game.moveCount;
       this.appendInput(input);
 
-      // Meta commands handled by the store, not the engine.
-      const lower = input.toLowerCase();
       // SAVE or RESTORE asked for a name: this line is the answer.
       const prompt = conversation.prompt;
       conversation.prompt = null;
       if (prompt) {
-        if (lower === 'cancel') this.appendSystem('[Cancelled.]');
+        if (input.toLowerCase() === 'cancel') this.appendSystem('[Cancelled.]');
         else if (prompt === 'save') this.saveAs(input);
         else this.restoreFrom(input);
-        return;
-      }
-      const saveOrRestore = lower.match(/^(save|restore)(?:\s+(.+))?$/);
-      if (saveOrRestore) {
-        const [, verb, name] = saveOrRestore;
-        if (verb === 'save') this.saveAs(name);
-        else this.restoreFrom(name);
-        return;
-      }
-      if (lower === 'load') {
-        const loaded = migrateSave(world, persistence.loadRaw());
-        if (!loaded) {
-          this.appendSystem('No saved game found.');
-          return;
-        }
-        this.game = loaded.gameState;
-        this.gameOverTracked = loaded.gameState.gameOver;
-        this.output = loaded.outputHistory;
-        this.appendSystem('[Session restored from local terminal memory]');
-        this.appendLines(describeCurrentRoom(world, this.game));
-        return;
-      }
-      if (lower === 'undo') {
-        this.undo();
-        return;
-      }
-      if (lower === 'restart') {
-        this.restartGame();
-        return;
-      }
-
-      if (lower === 'cookies' || lower === 'privacy') {
-        this.appendSystem(cookiesCommand());
         return;
       }
 
@@ -266,8 +243,66 @@ export const useGameStore = defineStore('game', {
       // on its own, so each gets the LLM fallback if it misses.
       for (const command of splitCommands(input, world.verbs)) {
         if (this.game.gameOver) break;
+        if (this.storeCommand(command)) {
+          if (conversation.prompt) break;
+          continue;
+        }
         await this.runCommand(command);
+        // A question stops the line, as in Zork: the next line answers it.
+        if (conversation.pending) break;
       }
+      this.endLine();
+      // MOVES counts turns that changed nothing else, too.
+      if (this.game.moveCount !== movesBefore) this.persist();
+    },
+
+    /** The one UNDO snapshot for a line, kept if any piece of it changed the game. */
+    endLine(): void {
+      if (!line.changed) return;
+      conversation.history.push(line.snapshot);
+      if (conversation.history.length > UNDO_LIMIT) conversation.history.shift();
+      line.changed = false;
+    },
+
+    /**
+     * Commands the store handles itself, not the engine: saves, UNDO, RESTART,
+     * COOKIES. Returns false for anything else.
+     */
+    storeCommand(command: string): boolean {
+      const lower = command.trim().toLowerCase();
+      const saveOrRestore = lower.match(/^(save|restore)(?:\s+(.+))?$/);
+      const isStore = Boolean(saveOrRestore) || ['load', 'undo', 'restart', 'cookies', 'privacy'].includes(lower);
+      if (!isStore) return false;
+      // A store command answers no question, and UNDO and the rest act on the line so far.
+      conversation.pending = null;
+      this.endLine();
+      if (saveOrRestore) {
+        const [, verb, name] = saveOrRestore;
+        if (verb === 'save') this.saveAs(name);
+        else this.restoreFrom(name);
+      } else if (lower === 'load') this.loadAutosave();
+      else if (lower === 'undo') this.undo();
+      else if (lower === 'restart') this.restartGame();
+      else this.appendSystem(cookiesCommand());
+      beginLine(this.game, this.output.length);
+      return true;
+    },
+
+    /** LOAD: back to the autosave. */
+    loadAutosave(): void {
+      const loaded = migrateSave(world, persistence.loadRaw());
+      if (!loaded) {
+        this.appendSystem('No saved game found.');
+        return;
+      }
+      this.game = loaded.gameState;
+      this.gameOverTracked = loaded.gameState.gameOver;
+      this.output = loaded.outputHistory;
+      // Another timeline: its undo history, question and pronouns don't apply.
+      conversation = newConversation();
+      if (scriptFrom !== null) scriptFrom = Math.min(scriptFrom, this.output.length);
+      this.appendSystem('[Session restored from local terminal memory]');
+      this.appendLines(describeCurrentRoom(world, this.game));
     },
 
     /**
@@ -323,9 +358,9 @@ export const useGameStore = defineStore('game', {
         // The intent server names things by ID, so they resolve by ID first.
         const action = { ...(await parseIntentRemote(input, ctx)), byId: true };
         if (action.action === 'unknown') return null;
-        // “Take that back”, “do that again”: the store's own commands.
-        if (action.action === 'undo') {
-          this.undo();
+        // “Take that back”, “save this as cellar”: the store's own commands.
+        if (['undo', 'load', 'restart'].includes(action.action)) {
+          this.storeCommand(action.action);
           return { lines: [], mutated: false };
         }
         if (action.action === 'save' || action.action === 'restore') {
@@ -348,13 +383,9 @@ export const useGameStore = defineStore('game', {
     },
 
     execute(action: ParsedAction): EngineResult {
-      // Snapshot before; kept only if the turn changed something.
-      const snapshot = { state: structuredClone(toRaw(this.game)), outputLength: turnStart };
       const result = execute(action, { world, state: this.game });
-      if (result.mutated) {
-        conversation.history.push(snapshot);
-        if (conversation.history.length > UNDO_LIMIT) conversation.history.shift();
-      }
+      // The line's snapshot is kept for UNDO if any piece changes something.
+      if (result.mutated) line.changed = true;
       remember(conversation, action, result);
       return result;
     },
@@ -369,6 +400,8 @@ export const useGameStore = defineStore('game', {
       this.game = snapshot.state;
       this.gameOverTracked = snapshot.state.gameOver;
       this.output = this.output.slice(0, snapshot.outputLength);
+      conversation.pending = null;
+      if (scriptFrom !== null) scriptFrom = Math.min(scriptFrom, this.output.length);
       this.appendSystem(world.style === 'infocom' ? 'Undone.' : '[Previous turn undone.]');
       this.persist();
     },
@@ -397,6 +430,7 @@ export const useGameStore = defineStore('game', {
 
     restartGame(): void {
       conversation = newConversation();
+      if (scriptFrom !== null) scriptFrom = 0;
       persistence.clear();
       this.game = freshGame();
       this.gameOverTracked = false;

@@ -9,7 +9,10 @@ export interface PersistenceService {
   loadRaw(): unknown;
   clear(): void;
   isAvailable(): boolean;
-  /** A named save, stored beside the autosave under `<key>:<name>`. */
+  /**
+   * A named save, stored beside the autosave under `<key>:named:<name>`. Its own
+   * namespace: one cartridge's save key can be a prefix of another's.
+   */
   saveNamed(name: string, state: GameState, outputHistory: OutputLine[]): void;
   loadNamed(name: string): unknown;
   /** The names of the named saves, sorted. */
@@ -63,13 +66,13 @@ export function createPersistenceService(key: string = SAVE_KEY): PersistenceSer
 
     loadRaw: () => read(key),
 
-    saveNamed: (name, state, outputHistory) => write(`${key}:${name}`, state, outputHistory),
+    saveNamed: (name, state, outputHistory) => write(`${key}:named:${name}`, state, outputHistory),
 
-    loadNamed: (name) => read(`${key}:${name}`),
+    loadNamed: (name) => read(`${key}:named:${name}`),
 
     listNamed() {
       if (!storage) return [];
-      const prefix = `${key}:`;
+      const prefix = `${key}:named:`;
       const names: string[] = [];
       for (let i = 0; i < storage.length; i++) {
         const k = storage.key(i);

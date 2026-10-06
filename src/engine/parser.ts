@@ -64,6 +64,7 @@ const BARE_VERBS: Record<string, string> = {
 const SINGLE_WORD: Record<string, ParsedAction> = {
   look: { action: 'look' },
   l: { action: 'look' },
+  talk: { action: 'talk' },
   inventory: { action: 'inventory' },
   inv: { action: 'inventory' },
   i: { action: 'inventory' },

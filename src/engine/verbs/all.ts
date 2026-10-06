@@ -1,7 +1,8 @@
 import type { GameState, ParsedAction } from '@/types/game';
 import type { World } from '@/types/world';
 import { fuzzyCandidates } from '../fuzzy';
-import { childrenOf, closedAround, inventoryOf, isCarried, setResolveById, visibleItems } from '../model';
+import { childrenOf, closedAround, inventoryOf, isCarried, isLit, setResolveById, visibleItems } from '../model';
+import { turnHalted } from '../effects';
 import { ok, type EngineResult } from '../result';
 import { withRules } from '../rules';
 import { handlePut } from './containers';
@@ -15,7 +16,7 @@ const NOTHING: Record<string, string> = {
 
 /** The items ALL covers for a verb, before EXCEPT. */
 function covered(verb: string, action: ParsedAction, world: World, state: GameState): string[] {
-  if (verb === 'take' && world.style === 'infocom') {
+  if (verb === 'take' && world.style === 'infocom' && isLit(world, state)) {
     // Zork's ALL is what's directly in the room, fixed things too (each says why it can't be taken);
     // not things inside containers, nor doors and walls shared with other rooms.
     return childrenOf(world, state, state.currentRoom);
@@ -50,6 +51,7 @@ export function handleAll(action: ParsedAction, world: World, state: GameState):
   if (ids.length === 0) return ok([NOTHING[verb] ?? NOTHING.take]);
 
   const lines: string[] = [];
+  let changed = false;
   // These are item IDs, so they resolve by ID (no “which one?” mid-list).
   setResolveById(state, true);
   try {
@@ -62,9 +64,12 @@ export function handleAll(action: ParsedAction, world: World, state: GameState):
       const result = withRules(verb, one, world, state, run);
       const [first = '', ...rest] = result.lines;
       lines.push(`${world.items[id]?.name ?? id}: ${short(first)}`, ...rest);
+      changed ||= result.mutated;
+      // A death or an ending partway through ends the list too.
+      if (turnHalted(state) || state.gameOver) break;
     }
   } finally {
     setResolveById(state, false);
   }
-  return ok(lines, true);
+  return ok(lines, changed);
 }
