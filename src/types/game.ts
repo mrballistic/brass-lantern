@@ -24,6 +24,18 @@ export interface NpcState {
   wake?: number;
 }
 
+/** The player's condition, once anything has hurt them. */
+export interface PlayerState {
+  /** Strength lost to wounds. */
+  wounds?: number;
+  /** The carry limit now; absent means the world's limit. */
+  load?: number;
+  /** Acted-on turns until the next wound heals. */
+  cureIn?: number;
+  /** Lost the next attack to a blow. */
+  staggered?: boolean;
+}
+
 export interface GameState {
   currentRoom: string;
   /** Every item's parent. Inventory and room contents are derived from it. */
@@ -50,6 +62,8 @@ export interface GameState {
   misses?: number;
   /** Commands the engine acted on; drives timed ambient lines. Absent in older saves. */
   turns?: number;
+  /** The player's condition: wounds, the carry limit they lower, healing. Absent in older saves. */
+  player?: PlayerState;
   /** Characters' places and states. Absent in older saves. */
   npcs?: Record<string, NpcState>;
 }

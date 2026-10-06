@@ -102,6 +102,8 @@ export interface Item {
   onWear?: string;
   /** Items that start inside or on this one. */
   contains?: string[];
+  /** Weight, for worlds with `carry` (Zork's SIZE). Default 5. */
+  size?: number;
   /** Makes the item a container; doors use the same block for openable/open/locked/key. */
   container?: Container;
   /** Things can be put on it, and what's on it is always visible and reachable. */
@@ -141,6 +143,8 @@ export interface Container {
   transparent?: boolean;
   /** How many items fit directly inside. */
   capacity?: number;
+  /** The total weight it holds (Zork's CAPACITY). */
+  weight?: number;
   /** Printed when it opens, instead of the default. */
   opened?: string;
   /** Printed when it closes, instead of the default. */
@@ -220,6 +224,18 @@ export interface Rank {
   /** Minimum score for this rank. */
   min: number;
   title: string;
+}
+
+/** How much the player can carry (Zork's LOAD-MAX and the fumble rule). */
+export interface Carry {
+  /** The total weight the player can carry when healthy. */
+  limit: number;
+  /** Carrying more than `over` things, each TAKE has `count × chance` percent to fumble. */
+  fumble?: { over: number; chance: number };
+  tooHeavy?: string;
+  /** When wounds have lowered the limit. */
+  tooHeavyHurt?: string;
+  fumbled?: string;
 }
 
 export interface World {
@@ -303,6 +319,8 @@ export interface World {
   smashRefusal?: string;
   /** The code hatch: named functions that return steps. See `src/engine/scripts.ts`. */
   scripts?: Record<string, Script>;
+  /** Carrying weight. Without it there's no limit. */
+  carry?: Carry;
 }
 
 /**

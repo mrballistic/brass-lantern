@@ -21,6 +21,7 @@ import {
 import { miss, ok, type EngineResult } from '../result';
 import { applyRule, findRule } from '../rules';
 import { takeItem } from './objects';
+import { weightOf } from '../weight';
 
 // Every handler checks everything it needs before it changes anything, so a
 // refusal is an understood reply that leaves the game as it was.
@@ -140,7 +141,11 @@ export function handlePut(
   if (dest === id || isInside(state, dest, id)) return ok([`You can’t put the ${name(world, id)} inside itself.`]);
   if (!canReachInside(world, state, dest)) return ok([`The ${d.name} is closed.`]);
   const capacity = d.container?.capacity;
-  if (capacity !== undefined && childrenOf(world, state, dest).length >= capacity) {
+  const holds = d.container?.weight;
+  const full =
+    (capacity !== undefined && childrenOf(world, state, dest).length >= capacity) ||
+    (holds !== undefined && weightOf(world, state, dest) - (d.size ?? 5) + weightOf(world, state, id) > holds);
+  if (full) {
     return ok([`There’s no room in the ${d.name}.`]);
   }
   moveItem(state, id, dest);

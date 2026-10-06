@@ -7,6 +7,7 @@ import {
 } from '../model';
 import { miss, ok, type EngineResult } from '../result';
 import { applyRule, findRule, runEvent } from '../rules';
+import { takeRefusal } from '../weight';
 import { finishEnding } from '../endings';
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -46,6 +47,8 @@ export function takeItem(itemId: string, world: World, state: GameState): Engine
   if (!item.portable) return ok([item.refusal ?? `You can’t take the ${item.name}.`]);
   const closed = closedAround(world, state, itemId);
   if (closed) return ok([`The ${world.items[closed].name} is closed.`]);
+  const refusal = takeRefusal(world, state, itemId);
+  if (refusal) return ok([refusal]);
 
   moveItem(state, itemId, PLAYER);
   (state.itemState[itemId] ??= {}).moved = true;
