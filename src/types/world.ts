@@ -300,6 +300,9 @@ export type Effect =
   /** Hides an item where it is, or reveals it again (Zork's INVISIBLE). */
   | { hide: string }
   | { reveal: string }
+  /** Keeps an item where it is but out of listings, or lists it again (Zork's NDESCBIT, set in play: the tied rope). */
+  | { unlist: string }
+  | { relist: string }
   /** Runs one of the world's scripts and the steps it returns. */
   | { script: string; arg?: string }
   | { open: string }

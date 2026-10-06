@@ -36,3 +36,23 @@ export const LOUD_SESSIONS: Record<string, string[]> = {
   thrown: [...OPEN_GATES, 'south', 'down', 'look'],
   quiet: [...OPEN_GATES, 'drop sword', ...waits(4), 'turn bolt with wrench', 'south', 'down', 'look', 'take bar', ...waits(4), 'look'],
 };
+
+export const DOME_SESSIONS: Record<string, string[]> = {
+  // The sword glows near Hades's spirits (stage 5a's temple task); these sessions leave it behind.
+  mirror: [
+    'drop sword', 'south', 'look', 'south', 'look', 'examine mirror', 'take mirror', 'drop rope', 'rub mirror', 'look', 'north', 'look',
+    'south', 'rub mirror', 'look', 'east', 'look', 'west', 'west', 'look', 'north', 'look',
+  ],
+  'mirror-break': ['south', 'south', 'rub mirror with sword', 'break mirror with sword', 'look', 'break mirror with sword', 'examine mirror'],
+  dome: [
+    'southeast', 'look', 'read engravings', 'east', 'look', 'down', 'tie rope to railing', 'tie rope to railing', 'look',
+    'take rope', 'down', 'look', 'examine pedestal', 'take torch', 'examine torch', 'turn off torch', 'up',
+  ],
+  untie: ['southeast', 'east', 'tie rope to railing', 'untie rope', 'untie rope', 'take rope', 'drop rope', 'look', 'down'],
+  leap: ['southeast', 'east', 'drop sword', 'drop rope', 'drop bottle', 'jump'],
+  atlantis: [
+    ...OPEN_GATES, 'drop sword', ...waits(4), 'west', 'north', 'north', 'look', 'north', 'look', 'take trident', 'up', 'look', 'north',
+    'look', 'west', 'look', 'east', 'north', 'north', 'look', 'south', 'south',
+  ],
+  passages: ['drop sword', 'south', 'south', 'west', 'look', 'north', 'east', 'look', 'west', 'north', 'north'],
+};

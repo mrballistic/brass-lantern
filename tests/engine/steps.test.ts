@@ -143,3 +143,24 @@ describe('room end routines (Zork’s M-END) (5a)', () => {
     expect(t.moveCount).toBe(3);
   });
 });
+
+describe('unlist and relist (Zork’s NDESCBIT, set in play) (5a)', () => {
+  it('keeps a thing where it is but out of the room’s list', () => {
+    const s = stateWith(fixtureWorld, { room: 'living' });
+    runSteps([{ unlist: 'wallet' }], fixtureWorld, s);
+    const look = execute({ action: 'look' }, { world: fixtureWorld, state: s }).lines.join(' ');
+    expect(look).not.toContain('wallet');
+    expect(execute({ action: 'examine', target: 'wallet' }, { world: fixtureWorld, state: s }).understood).not.toBe(false);
+    runSteps([{ relist: 'wallet' }], fixtureWorld, s);
+    expect(execute({ action: 'look' }, { world: fixtureWorld, state: s }).lines.join(' ')).toContain('wallet');
+  });
+});
+
+describe('shared fixtures (5a)', () => {
+  it('a fixture moved by an effect is no longer seen where it started', async () => {
+    const { visibleItems } = await import('@/engine/model');
+    const s = stateWith(fixtureWorld, { room: 'shed' });
+    runSteps([{ move: 'socket', to: 'yard' }], fixtureWorld, s);
+    expect(visibleItems(fixtureWorld, s)).not.toContain('socket');
+  });
+});

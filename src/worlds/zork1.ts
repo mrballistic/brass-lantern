@@ -17,6 +17,20 @@ const GRUE = 'Oh, no! You have walked into the slavering fangs of a lurking grue
 const OFF_MAP = 'That part of the map isn’t built yet.';
 // The Maintenance Room's flood, by half-levels (Zork's DROWNINGS).
 const DROWNINGS = ['up to your ankles.', 'up to your shin.', 'up to your knees.', 'up to your hips.', 'up to your waist.', 'up to your chest.', 'up to your neck.', 'over your head.', 'high in your lungs.'];
+/**
+ * Zork's PICK-ONE: a random entry not yet used, until all have been (the order is
+ * kept in vars `<key>_1..n`, the count in `<key>`). Returns the steps that save it.
+ */
+function pickOne(ctx: ScriptContext, key: string, list: string[]): [EventStep[], string] {
+  const v = ctx.state.vars ?? {};
+  const order = list.map((_, i) => v[`${key}_${i + 1}`] ?? i);
+  const count = v[key] ?? 0;
+  const pick = count + ctx.roll(list.length - count) - 1;
+  const chosen = order[pick];
+  [order[pick], order[count]] = [order[count], chosen];
+  const next = count + 1 === list.length ? 0 : count + 1;
+  return [[...order.map((o, i): EventStep => ({ setVar: `${key}_${i + 1}`, to: o })), { setVar: key, to: next }], list[chosen]];
+}
 const NO_TREE = 'There is no tree here suitable for climbing.';
 const BOARDED = 'The windows are all boarded.';
 
@@ -278,6 +292,39 @@ export const zork1: World = {
       onEnter: [],
       scenery: ['bolt', 'bubble', 'dam', 'control_panel', 'global_water'],
     },
+    // Stage 5a: the dome. TORCH-ROOM through ENGRAVINGS-CAVE, in story order (the temple and Hades come between).
+    torch_room: {
+      name: 'Torch Room',
+      description: 'This is a large room with a prominent doorway leading to a down staircase. Above you is a large dome. Up around the edge of the dome (20 feet up) is a wooden railing. In the center of the room sits a white marble pedestal.',
+      // TORCH-ROOM-FCN's M-LOOK.
+      descriptions: [{ if: 'flag:dome_flag', text: 'This is a large room with a prominent doorway leading to a down staircase. Above you is a large dome. Up around the edge of the dome (20 feet up) is a wooden railing. In the center of the room sits a white marble pedestal.\nA piece of rope descends from the railing above, ending some five feet above your head.' }],
+      dark: true,
+      exits: { up: { denial: 'You cannot reach the rope.' }, south: { denial: 'That part of the Great Underground Empire isn’t built yet.' }, down: { denial: 'That part of the Great Underground Empire isn’t built yet.' } },
+      items: ['pedestal'],
+      npcs: [],
+      onEnter: [],
+    },
+    dome_room: {
+      name: 'Dome Room',
+      description: 'You are at the periphery of a large dome, which forms the ceiling of another room below. Protecting you from a precipitous drop is a wooden railing which circles the dome.',
+      // DOME-ROOM-FCN's M-LOOK.
+      descriptions: [{ if: 'flag:dome_flag', text: 'You are at the periphery of a large dome, which forms the ceiling of another room below. Protecting you from a precipitous drop is a wooden railing which circles the dome.\nHanging down from the railing is a rope which ends about ten feet from the floor below.' }],
+      instead: { jump: [{ if: '!flag:dome_flag', then: 'jump_death' }] },
+      dark: true,
+      exits: { west: 'engravings_cave', down: { to: 'torch_room', if: 'flag:dome_flag', denial: 'You cannot go down without fracturing many bones.' } },
+      items: ['railing'],
+      npcs: [],
+      onEnter: [],
+    },
+    engravings_cave: {
+      name: 'Engravings Cave',
+      description: 'You have entered a low cave with passages leading northwest and east.',
+      dark: true,
+      exits: { northwest: 'round_room', east: 'dome_room' },
+      items: ['engravings'],
+      npcs: [],
+      onEnter: [],
+    },
     chasm_room: {
       name: 'Chasm',
       description: 'A chasm runs southwest to northeast and the path follows it. You are on the south side of the chasm, where a crack opens into a passage.',
@@ -345,8 +392,8 @@ export const zork1: World = {
         west: 'ew_passage',
         east: 'loud_room',
         north: 'ns_passage',
-        south: { denial: 'That part of the Great Underground Empire isn’t built yet.' },
-        southeast: { denial: 'That part of the Great Underground Empire isn’t built yet.' },
+        south: 'narrow_passage',
+        southeast: 'engravings_cave',
       },
       items: [],
       npcs: ['thief'],
@@ -366,6 +413,89 @@ export const zork1: World = {
       npcs: [],
       // Zork's VALUE 5.
       onEnter: [{ if: '!flag:ew_passage_visited', then: 'ew_passage_points' }],
+    },
+    // Stage 5a: the mirrors. ATLANTIS-ROOM through MIRROR-ROOM-1, in story order.
+    atlantis_room: {
+      name: 'Atlantis Room',
+      description: 'This is an ancient room, long under water. There is an exit to the south and a staircase leading up.',
+      dark: true,
+      exits: { up: 'small_cave', south: 'reservoir_north' },
+      items: ['trident'],
+      npcs: [],
+      onEnter: [],
+    },
+    twisting_passage: {
+      name: 'Twisting Passage',
+      description: 'This is a winding passage. It seems that there are only exits on the east and north.',
+      dark: true,
+      exits: { north: 'mirror_room_1', east: 'small_cave' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+    },
+    winding_passage: {
+      name: 'Winding Passage',
+      description: 'This is a winding passage. It seems that there are only exits on the east and north.',
+      dark: true,
+      exits: { north: 'mirror_room_2', east: 'tiny_cave' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+    },
+    narrow_passage: {
+      name: 'Narrow Passage',
+      description: 'This is a long and narrow corridor where a long north-south passageway briefly narrows even further.',
+      dark: true,
+      exits: { north: 'round_room', south: 'mirror_room_2' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+    },
+    cold_passage: {
+      name: 'Cold Passage',
+      description: 'This is a cold and damp corridor where a long east-west passageway turns into a southward path.',
+      dark: true,
+      exits: { south: 'mirror_room_1', west: { denial: 'That part of the Great Underground Empire isn’t built yet.' } },
+      items: [],
+      npcs: [],
+      onEnter: [],
+    },
+    tiny_cave: {
+      name: 'Cave',
+      description: 'This is a tiny cave with entrances west and north, and a dark, forbidding staircase leading down.',
+      dark: true,
+      exits: { north: 'mirror_room_2', west: 'winding_passage', down: { denial: 'That part of the Great Underground Empire isn’t built yet.' } },
+      items: [],
+      npcs: [],
+      onEnter: [],
+    },
+    small_cave: {
+      name: 'Cave',
+      description: 'This is a tiny cave with entrances west and north, and a staircase leading down.',
+      dark: true,
+      exits: { north: 'mirror_room_1', down: 'atlantis_room', south: 'atlantis_room', west: 'twisting_passage' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+    },
+    mirror_room_2: {
+      name: 'Mirror Room',
+      description: 'You are in a large square room with tall ceilings. On the south wall is an enormous mirror which fills the entire wall. There are exits on the other three sides of the room.',
+      descriptions: [{ if: 'flag:mirror_mung', text: 'You are in a large square room with tall ceilings. On the south wall is an enormous mirror which fills the entire wall. There are exits on the other three sides of the room.\nUnfortunately, the mirror has been destroyed by your recklessness.' }],
+      exits: { west: 'winding_passage', north: 'narrow_passage', east: 'tiny_cave' },
+      items: ['mirror_2'],
+      npcs: [],
+      onEnter: [],
+    },
+    mirror_room_1: {
+      name: 'Mirror Room',
+      description: 'You are in a large square room with tall ceilings. On the south wall is an enormous mirror which fills the entire wall. There are exits on the other three sides of the room.',
+      descriptions: [{ if: 'flag:mirror_mung', text: 'You are in a large square room with tall ceilings. On the south wall is an enormous mirror which fills the entire wall. There are exits on the other three sides of the room.\nUnfortunately, the mirror has been destroyed by your recklessness.' }],
+      dark: true,
+      exits: { north: 'cold_passage', west: 'twisting_passage', east: 'small_cave' },
+      items: ['mirror_1'],
+      npcs: [],
+      onEnter: [],
     },
     // Stage 5a: the reservoir. STREAM-VIEW through RESERVOIR-SOUTH, in story order.
     stream_view: {
@@ -388,7 +518,7 @@ export const zork1: World = {
       ],
       dark: true,
       exits: {
-        north: { denial: 'That part of the Great Underground Empire isn’t built yet.' },
+        north: 'atlantis_room',
         south: { to: 'reservoir', if: 'flag:low_tide', denial: 'You would drown.' },
       },
       items: ['pump'],
@@ -992,6 +1122,103 @@ export const zork1: World = {
   },
 
   items: {
+    mirror_1: {
+      name: 'mirror',
+      aliases: ['reflection', 'enormous mirror', 'enormous'],
+      description: 'There is an ugly person staring back at you.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      // MIRROR-MIRROR.
+      instead: {
+        rub: [{ if: '!flag:mirror_mung', as: 'target', then: 'mirror_rub' }],
+        examine: [{ if: 'flag:mirror_mung', say: ['The mirror is broken into many pieces.'] }],
+        search: [{ if: 'flag:mirror_mung', say: ['The mirror is broken into many pieces.'] }, { say: ['There is an ugly person staring back at you.'] }],
+        take: [{ say: ['The mirror is many times your size. Give up.'] }],
+        smash: [{ if: 'flag:mirror_mung', say: ['Haven’t you done enough damage already?'] }, { then: 'mirror_breaks' }],
+        attack: [{ if: 'flag:mirror_mung', say: ['Haven’t you done enough damage already?'] }, { then: 'mirror_breaks' }],
+        throw: [{ as: 'indirect', if: 'flag:mirror_mung', say: ['Haven’t you done enough damage already?'] }, { as: 'indirect', then: 'mirror_breaks' }],
+      },
+    },
+    mirror_2: {
+      name: 'mirror',
+      aliases: ['reflection', 'enormous mirror', 'enormous'],
+      description: 'There is an ugly person staring back at you.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      // MIRROR-MIRROR.
+      instead: {
+        rub: [{ if: '!flag:mirror_mung', as: 'target', then: 'mirror_rub' }],
+        examine: [{ if: 'flag:mirror_mung', say: ['The mirror is broken into many pieces.'] }],
+        search: [{ if: 'flag:mirror_mung', say: ['The mirror is broken into many pieces.'] }, { say: ['There is an ugly person staring back at you.'] }],
+        take: [{ say: ['The mirror is many times your size. Give up.'] }],
+        smash: [{ if: 'flag:mirror_mung', say: ['Haven’t you done enough damage already?'] }, { then: 'mirror_breaks' }],
+        attack: [{ if: 'flag:mirror_mung', say: ['Haven’t you done enough damage already?'] }, { then: 'mirror_breaks' }],
+        throw: [{ as: 'indirect', if: 'flag:mirror_mung', say: ['Haven’t you done enough damage already?'] }, { as: 'indirect', then: 'mirror_breaks' }],
+      },
+    },
+    trident: {
+      name: 'crystal trident',
+      aliases: ['trident', 'fork', 'treasure', 'poseidon’s trident', 'crystal'],
+      description: 'There’s nothing special about the crystal trident.',
+      initialDescription: 'On the shore lies Poseidon’s own crystal trident.',
+      portable: true,
+      size: 20,
+      treasure: 11,
+      tags: [],
+      after: { take: [{ if: '!flag:took_trident', then: 'took_trident' }] },
+    },
+    engravings: {
+      name: 'wall with engravings',
+      aliases: ['wall', 'engravings', 'inscription', 'old engravings', 'ancient engravings'],
+      description: '',
+      roomDescription: 'There are old engravings on the walls here.',
+      portable: false,
+      tags: ['sacred'],
+      text: 'The engravings were incised in the living rock of the cave wall by an unknown hand. They depict, in symbolic form, the beliefs of the ancient Zorkers. Skillfully interwoven with the bas reliefs are excerpts illustrating the major religious tenets of that time. Unfortunately, a later age seems to have considered them blasphemous and just as skillfully excised them.',
+    },
+    railing: {
+      name: 'wooden railing',
+      aliases: ['railing', 'rail'],
+      description: 'There’s nothing special about the wooden railing.',
+      portable: false,
+      tags: [],
+      scenery: true,
+    },
+    pedestal: {
+      name: 'pedestal',
+      aliases: ['white pedestal', 'marble pedestal'],
+      description: '',
+      portable: false,
+      tags: [],
+      scenery: true,
+      surface: true,
+      container: { open: true, weight: 30 },
+      contains: ['torch'],
+      // DUMB-CONTAINER.
+      instead: {
+        examine: [{ say: ['It looks pretty much like a pedestal.'] }],
+        open: [{ say: ['You can’t do that.'] }],
+        close: [{ say: ['You can’t do that.'] }],
+        search: [{ say: ['You can’t do that.'] }],
+      },
+    },
+    torch: {
+      name: 'torch',
+      aliases: ['ivory torch', 'ivory', 'treasure', 'flaming torch'],
+      description: 'The torch is burning.',
+      initialDescription: 'Sitting on the pedestal is a flaming torch, made of ivory.',
+      portable: true,
+      size: 20,
+      treasure: 6,
+      tags: [],
+      light: true,
+      flaming: true,
+      // TORCH-OBJECT: it won't go out.
+      instead: { turn_off: [{ say: ['You nearly burn your hand trying to extinguish the flame.'] }] },
+      after: { take: [{ if: '!flag:took_torch', then: 'took_torch' }] },
+    },
     // Stage 5a: the dam and the reservoir.
     bar: {
       name: 'platinum bar',
@@ -1405,7 +1632,18 @@ export const zork1: World = {
       initialDescription: 'A large coil of rope is lying in the corner.',
       portable: true,
       size: 10,
-      tags: [],
+      tags: ['sacred'],
+      // ROPE-FUNCTION.
+      instead: {
+        tie: [
+          { if: '!in:dome_room', as: 'target', then: 'rope_tie_elsewhere' },
+          { if: 'flag:dome_flag', as: 'target', with: 'railing', say: ['The rope is already tied to it.'] },
+          { as: 'target', with: 'railing', then: 'rope_tied' },
+        ],
+        untie: [{ if: 'flag:dome_flag & in:dome_room', then: 'rope_untied' }, { say: ['It is not tied to anything.'] }],
+        drop: [{ if: 'in:dome_room & !flag:dome_flag', then: 'rope_drops' }],
+        take: [{ if: 'flag:dome_flag & in:dome_room', say: ['The rope is tied to the railing.'] }],
+      },
     },
     knife: {
       name: 'nasty knife',
@@ -1946,22 +2184,30 @@ export const zork1: World = {
       const last = words[words.length - 1];
       return [`${last} ${last} ...`, { free: true }];
     },
-    // PICK-ONE over LOUD-RUNS: a random room not yet used, until all three have been.
+    // PICK-ONE over LOUD-RUNS.
     loud_run: (ctx) => {
-      const v = ctx.state.vars ?? {};
-      const order = [v.loud_run_1 ?? 0, v.loud_run_2 ?? 1, v.loud_run_3 ?? 2];
-      const count = v.loud_runs ?? 0;
-      const pick = count + ctx.roll(3 - count) - 1;
-      const room = order[pick];
-      [order[pick], order[count]] = [order[count], room];
-      const next = count + 1 === 3 ? 0 : count + 1;
-      return [
-        { setVar: 'loud_run_1', to: order[0] },
-        { setVar: 'loud_run_2', to: order[1] },
-        { setVar: 'loud_run_3', to: order[2] },
-        { setVar: 'loud_runs', to: next },
-        { go: ['damp_cave', 'round_room', 'deep_canyon'][room] },
-      ];
+      const [steps, room] = pickOne(ctx, 'loud_runs', ['damp_cave', 'round_room', 'deep_canyon']);
+      return [...steps, { go: room }];
+    },
+    // V-LEAP where there's no way down: PICK-ONE over JUMPLOSS.
+    jump_loss: (ctx) => {
+      const [steps, line] = pickOne(ctx, 'jumploss', ['You should have looked before you leaped.', 'In the movies, your life would be passing before your eyes.', 'Geronimo...']);
+      return [...steps, { die: line }];
+    },
+    // MIRROR-MIRROR: the two rooms swap everything in them, and you're in the other one.
+    mirror_rub: (ctx) => {
+      const tool = ctx.command?.indirect;
+      if (tool) return [`You feel a faint tingling transmitted through the ${ctx.world.items[tool]?.name ?? tool}.`];
+      const here = ctx.room();
+      const there = here === 'mirror_room_2' ? 'mirror_room_1' : 'mirror_room_2';
+      const steps: EventStep[] = [];
+      for (const id of ctx.children(here)) steps.push({ move: id, to: there });
+      for (const id of ctx.children(there)) steps.push({ move: id, to: here });
+      for (const id of Object.keys(ctx.world.npcs)) {
+        if (ctx.npcIn(id, here)) steps.push({ moveNpc: id, to: there });
+        else if (ctx.npcIn(id, there)) steps.push({ moveNpc: id, to: here });
+      }
+      return [...steps, { go: there, quiet: true }, 'There is a rumble from deep within the earth and the room shakes.'];
     },
     // BOLT-F: TURN BOLT WITH WRENCH, while the yellow button's gate flag is set.
     bolt_turn: (ctx) => {
@@ -2261,6 +2507,10 @@ export const zork1: World = {
     pray: { words: ['pray'], target: 'none', reply: 'If you pray enough, your prayers may be answered.' },
     squeeze: { words: ['squeeze'], target: 'required', reply: 'How singularly useless.' },
     fill: { words: ['fill'], target: 'required', indirect: ['with'] },
+    rub: { words: ['rub', 'touch', 'feel', 'pat', 'pet'], target: 'required', indirect: ['with'], reply: 'Fiddling with that doesn’t seem to work.' },
+    tie: { words: ['tie', 'fasten', 'secure'], target: 'required', indirect: ['to'], reply: 'You can’t tie that to that.' },
+    untie: { words: ['untie', 'unfasten', 'unhook'], target: 'required', indirect: ['from'], reply: 'This cannot be tied, so it cannot be untied!' },
+    jump: { words: ['jump', 'leap', 'dive'], target: 'none', reply: 'Wheeeeeeeeee!!!!!' },
     pour: { words: ['pour', 'spill'], target: 'required', indirect: ['on', 'in', 'from'], held: true },
   },
 
@@ -2287,6 +2537,10 @@ export const zork1: World = {
     { flag: 'took_trunk', points: 15 },
     { flag: 'took_bar', points: 10 },
     { if: 'inside:bar:trophy_case', points: 5 },
+    { flag: 'took_trident', points: 4 },
+    { if: 'inside:trident:trophy_case', points: 11 },
+    { flag: 'took_torch', points: 14 },
+    { if: 'inside:torch:trophy_case', points: 6 },
     { if: 'inside:trunk:trophy_case', points: 5 },
     // Treasures count while they're in the trophy case.
     { if: 'inside:painting:trophy_case', points: 6 },
@@ -2396,6 +2650,20 @@ export const zork1: World = {
     ],
     took_trunk: [{ set: 'took_trunk' }],
     took_bar: [{ set: 'took_bar' }],
+    took_trident: [{ set: 'took_trident' }],
+    took_torch: [{ set: 'took_torch' }],
+    mirror_rub: [{ script: 'mirror_rub' }],
+    mirror_breaks: [{ set: 'mirror_mung' }, { set: 'unlucky' }, 'You have broken the mirror. I hope you have a seven years’ supply of good luck handy.'],
+    rope_tie_elsewhere: [{ clear: 'dome_flag' }, 'You can’t tie the rope to that.'],
+    rope_tied: [
+      'The rope drops over the side and comes within ten feet of the floor.',
+      { set: 'dome_flag' },
+      { unlist: 'rope' },
+      { if: 'has:rope', then: [{ move: 'rope', to: 'here' }] },
+    ],
+    rope_untied: [{ clear: 'dome_flag' }, { relist: 'rope' }, 'The rope is now untied.'],
+    rope_drops: [{ move: 'rope', to: 'torch_room' }, 'The rope drops gently to the floor below.'],
+    jump_death: ['This was not a very safe place to try jumping.', { script: 'jump_loss' }],
     loud_room_ejects: [
       'It is unbearably loud here, with an ear-splitting roar seeming to come from all around you. There is a pounding in your head which won’t stop. With a tremendous effort, you scramble out of the room.',
       '',
@@ -2419,6 +2687,8 @@ export const zork1: World = {
       // INVISIBLE until something reveals them.
       { hide: 'leak' },
       { hide: 'trunk' },
+      // The torch is lit from the start (ONBIT).
+      { switch: 'torch', on: true },
     ],
     rug_moved: [
       'With a great effort, the rug is moved to one side of the room, revealing the dusty cover of a closed trap door.',

@@ -9,7 +9,7 @@ import type { Effect, EventStep, Rule, RuleTable, World } from '@/types/world';
 const EFFECT_KINDS = new Set([
   'say', 'set', 'clear', 'move', 'open', 'close', 'lock', 'unlock', 'switch', 'add', 'setVar', 'score',
   'go', 'schedule', 'cancel', 'chance', 'run', 'die', 'end', 'moveNpc', 'npcState', 'script', 'hide', 'reveal',
-  'if', 'unvisit', 'free', 'noDarkLine',
+  'if', 'unvisit', 'free', 'noDarkLine', 'unlist', 'relist',
 ]);
 
 export function auditWorld(world: World): string[] {
@@ -28,7 +28,7 @@ export function auditWorld(world: World): string[] {
       }
       const e = step as Effect & Record<string, unknown>;
       const target = e[kind] as unknown;
-      if (['open', 'close', 'lock', 'unlock', 'switch'].includes(kind) && !isItem(target as string)) problems.push(`${where}: ${kind} names no item “${target}”`);
+      if (['open', 'close', 'lock', 'unlock', 'switch', 'unlist', 'relist'].includes(kind) && !isItem(target as string)) problems.push(`${where}: ${kind} names no item “${target}”`);
       if (kind === 'move') {
         if (!isItem(e.move as string)) problems.push(`${where}: move names no item “${e.move}”`);
         const to = e.to as string | null;

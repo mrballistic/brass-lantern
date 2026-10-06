@@ -126,13 +126,14 @@ export function moveItem(state: GameState, id: string, place: Place): void {
 function fixturesIn(world: World, state: GameState, roomId: string): string[] {
   return (world.rooms[roomId]?.items ?? []).filter((id) => {
     const home = state.locations[id];
-    return world.items[id] && !world.items[id].portable && home !== roomId && home != null && home in world.rooms;
+    // Shared: it sits in another room that lists it too (a door between two rooms), not merely moved away.
+    return world.items[id] && !world.items[id].portable && home !== roomId && home != null && home in world.rooms && (world.rooms[home].items ?? []).includes(id);
   });
 }
 
 /** What a room lists: its direct contents (and fixtures it shares), minus scenery. */
 export function visibleItemsIn(roomId: string, world: World, state: GameState): string[] {
-  return [...childrenOf(world, state, roomId), ...fixturesIn(world, state, roomId)].filter((id) => !world.items[id]?.scenery && shown(state)(id));
+  return [...childrenOf(world, state, roomId), ...fixturesIn(world, state, roomId)].filter((id) => !world.items[id]?.scenery && !state.itemState[id]?.unlisted && shown(state)(id));
 }
 
 /** Fuzzy candidates for items, with aliases folded into the matchable name. */
