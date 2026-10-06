@@ -20,7 +20,7 @@ export const ACTION_VOCAB = [
   'go', 'take', 'drop', 'use', 'examine', 'look', 'talk', 'inventory',
   'smash', 'wear', 'give', 'sit', 'wait', 'hint', 'score', 'help',
   'open', 'close', 'lock', 'unlock', 'put', 'search', 'enter', 'climb', 'read', 'turn_on', 'turn_off', 'verbose', 'brief', 'superbrief', 'undo', 'again',
-  'restart', 'quit', 'save', 'restore', 'load', 'script', 'unscript', 'version', 'attack', 'throw', 'diagnose', 'unknown',
+  'restart', 'quit', 'save', 'restore', 'load', 'script', 'unscript', 'version', 'attack', 'throw', 'diagnose', 'ask', 'order', 'unknown',
 ] as const;
 
 const ACTIONS: ReadonlySet<string> = new Set(ACTION_VOCAB);
@@ -88,6 +88,8 @@ function buildSystemInstruction(ctx: IntentContext): string {
     '- Fighting a person or creature is attack: target is the person, indirect is the weapon (omit it if none was named).',
     '- Throwing something is throw: target is the thing thrown, indirect is what it is thrown at.',
     '- Asking how hurt or healthy the player is is diagnose.',
+    '- Asking or telling someone about something is ask: target is the person, indirect is the topic.',
+    '- Telling someone to do something is order: target is the person, indirect is what they were told to do.',
     '- Asking for help with the puzzle, a clue, or what to do next is hint.',
     "- If the input is ambiguous or doesn't fit any verb, use action 'unknown' and omit target.",
     '- Some verbs (look, inventory, hint, score, help, restart, quit, load, script, unscript, version, diagnose, sit, wait, verbose, brief, superbrief, undo, again) take no target. Taking back the last move is undo; repeating it is again. Save and restore take an optional save name as the target, in snake_case.',

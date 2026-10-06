@@ -1,28 +1,31 @@
 import type { GameState } from '@/types/game';
 import type { World } from '@/types/world';
 import { evaluateCondition } from '../conditions';
-import { inventoryOf, matchNpc, moveItem, needObject, npcsIn, pickItem } from '../model';
+import { inventoryOf, matchNpc, moveItem, needObject, npcsSeen, pickItem } from '../model';
 import { miss, ok, type EngineResult } from '../result';
 import { runEvent } from '../rules';
 
 export function handleTalk(target: string | undefined, world: World, state: GameState): EngineResult {
-  const present = npcsIn(world, state, state.currentRoom);
+  const present = npcsSeen(world, state, state.currentRoom);
   if (!target) {
     if (present.length !== 1) return ok(['Talk to whom?']);
     target = present[0];
   }
   const npcId = matchNpc(target, world, state);
   if (!npcId) return miss(`There is no “${target}” here to talk to.`);
-  const dialogue = world.dialogue[npcId];
-  if (!dialogue) return ok(['They have nothing to say.']);
+  return ok([talkLine(world, state, npcId)]);
+}
 
-  // Pick the most specific (last-matching) condition-gated line; fall back to default.
+/** What TALK TO says: the most specific (last-matching) condition-gated line, else the default. */
+export function talkLine(world: World, state: GameState, npcId: string): string {
+  const dialogue = world.dialogue[npcId];
+  if (!dialogue) return 'They have nothing to say.';
   let chosen = dialogue.default;
   for (const [key, value] of Object.entries(dialogue)) {
     if (key === 'default') continue;
     if (evaluateCondition(key, state, world)) chosen = value;
   }
-  return ok([chosen]);
+  return chosen;
 }
 
 export function handleGive(
@@ -35,7 +38,7 @@ export function handleGive(
   const itemId = pickItem(target, inventoryOf(world, state), world, 'target', state);
   if (!itemId) return miss(`You aren’t carrying a “${target}”.`);
 
-  const present = npcsIn(world, state, state.currentRoom);
+  const present = npcsSeen(world, state, state.currentRoom);
   let npcId: string | null;
   if (indirect) {
     npcId = matchNpc(indirect, world, state);

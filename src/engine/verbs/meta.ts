@@ -84,6 +84,8 @@ export function handleHelp(world: World): EngineResult {
     'ATTACK <someone> WITH <weapon>  Fight (also KILL, STAB)',
     'THROW <item> [AT <target>]      Throw something',
     'DIAGNOSE                 How badly you’re hurt',
+    'ASK <someone> ABOUT <thing>     Ask (or TELL) about something',
+    '<someone>, <command>     Tell someone to do something',
     'WAIT / Z                 Let time pass',
     'HINT                     A nudge in the right direction',
     'SCORE                    Your score so far',

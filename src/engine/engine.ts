@@ -21,6 +21,7 @@ import { handleClose, handleLock, handleOpen, handlePut, handleSearch, handleTak
 import { handleRead, handleSwitch } from './verbs/objects';
 import { handleGive, handleTalk } from './verbs/people';
 import { handleAttack, handleThrow } from './verbs/attack';
+import { handleAsk, handleOrder } from './verbs/talk';
 import { setCommand } from './scripts';
 import { diagnoseLines } from './combat';
 import { handleHelp, handleHint, handleScore, handleUnknown, scoreLines } from './verbs/meta';
@@ -85,7 +86,8 @@ export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
   }
   result = { ...result, acted: takeActed(state) };
   // You can't find things in the dark: an understood refusal, so the LLM isn't asked to re-guess.
-  if (result.understood === false && action.target && action.action !== 'go' && !isLit(world, state)) {
+  // Not an order: “ok, light the lamp” parses as one, and the LLM must still get to read it.
+  if (result.understood === false && action.target && action.action !== 'go' && action.action !== 'order' && !isLit(world, state)) {
     // Like a parser failure in Zork: no time passes.
     result = { ...ok([tooDark(world)]), free: true };
   }
@@ -174,6 +176,10 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
       return handleAttack(action, world, state, () => dispatch({ ...action, action: 'smash' }, world, state));
     case 'throw':
       return handleThrow(action, world, state);
+    case 'ask':
+      return handleAsk(action, world, state);
+    case 'order':
+      return handleOrder(action, world, state);
     case 'diagnose':
       return ok(diagnoseLines(world, state));
     case 'hint':

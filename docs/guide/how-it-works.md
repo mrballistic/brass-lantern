@@ -67,11 +67,12 @@ Inserting or ejecting a cartridge clears the screen.
 | Conditions | anywhere | `flag:`, `has:`, `in:`, `visited:`, `inside:`, `open:`, `locked:`, `on:`, `here:`, `var:`, `carrying`, `lit:`, `alive:`, `awake:`, `fighting:`, `with:`, `!`, `&`. One parser, `src/engine/conditions.ts`. |
 | Rules | `instead`, `after` on items and rooms | Replace a verb's default, or follow it. `src/engine/rules.ts`. |
 | Containers, doors | `item.container`, `item.surface`, `item.door` | Open, close, lock, put in, take from. |
-| Exits | `room.exits` | A room ID, or `{ to, if, denial, door, denials }`. |
+| Exits | `room.exits` | A room ID, or `{ to, if, denial, door, denials, then }`. |
 | Effects | `events` | Lines and typed effects: flags, moves, variables, timers, chance, death, endings (`src/engine/effects.ts`). |
 | Darkness | `room.dark`, `item.light`, `world.darkness` | In an unlit dark room you can only find what you carry (`src/engine/model.ts` `isLit`). |
 | Death, endings | `world.death`, `world.endings` | `src/engine/death.ts`, `src/engine/endings.ts`. |
-| Characters | `npcs`, `room.npcs` | Places, held things, states and descriptions (`GameState.npcs`, read through `src/engine/model.ts`). |
+| Characters | `npcs`, `room.npcs` | Places, held things, states, hiding and descriptions (`GameState.npcs`, read through `src/engine/model.ts`). |
+| Topics, orders | `npc.topics`, `npc.refuseOrder`, `instead.order` | ASK *X* ABOUT *Y* and “*X*, do this” (`src/engine/verbs/talk.ts`). |
 | Combat, health | `npc.combat`, `world.combat` | Zork's blows, tables, wounds and healing (`src/engine/combat.ts`). |
 | Weight | `world.carry`, `item.size` | `src/engine/weight.ts`. |
 | Scripts | `world.scripts` | The code hatch: functions that return steps (`src/engine/scripts.ts`). |

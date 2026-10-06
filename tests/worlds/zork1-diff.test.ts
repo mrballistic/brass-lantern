@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -111,7 +112,7 @@ async function originalOnce(commands: string[]): Promise<string[][]> {
 
 /** The original's replies. Its dice aren't ours, so a run that misses a sync point starts over. */
 async function original(commands: string[]): Promise<string[][]> {
-  for (let attempt = 0; attempt < 25; attempt++) {
+  for (let attempt = 0; attempt < 300; attempt++) {
     try {
       return await originalOnce(commands);
     } catch (e) {
@@ -122,9 +123,24 @@ async function original(commands: string[]): Promise<string[][]> {
   throw new Error('the original never got through the sync points');
 }
 
-/** The game store's turn, minus the LLM: questions, AGAIN and OOPS included. */
+/** The native replies, from a fixed seed; a run the native thief turns up in starts over with the next. */
 function native(commands: string[]): string[][] {
+  for (let seed = 1; seed <= 400; seed++) {
+    const replies = nativeOnce(commands, seed);
+    if (replies && !replies.some((reply) => THIEF.test(reply.join(' ')))) return replies;
+  }
+  throw new Error('the native thief turned up in every run');
+}
+
+/** The game store's turn, minus the LLM: questions, AGAIN and OOPS included. */
+/** Null when the thief took anything along the way (he can do it unseen). */
+function nativeOnce(commands: string[], seed: number): string[][] | null {
   let state = initialState(zork1);
+  state.rng = seed;
+  // With a third of Zork's rooms built, the native thief comes round three times as often as the
+  // original's, so the walkthrough parks him offstage (the original restarts when its thief shows);
+  // his behavior is checked by zork1-thief.test.ts and zork1-thief-unit.test.ts. Stage 5 lifts this.
+  state.npcs = { thief: { room: null } };
   openingLines(zork1, state);
   let conv = newConversation();
   const turn = (c: string, st: GameState, cv: ReturnType<typeof newConversation>): string[] => {
@@ -143,8 +159,10 @@ function native(commands: string[]): string[][] {
   };
   const replies: string[][] = [];
   for (const c of commands) {
+    const pilfered = () => Object.entries(state.locations).some(([id, place]) => place === 'thief' && !['stiletto', 'large_bag'].includes(id));
     if (!(c in SYNC)) {
       replies.push(turn(c, state, conv));
+      if (pilfered()) return null;
       continue;
     }
     // Try seeds until this side gets through, then carry on from there.
@@ -168,8 +186,8 @@ function native(commands: string[]): string[][] {
 describe('native Zork I against the original', () => {
   beforeEach(() => localStorage.clear());
 
-  it('the walkthrough has no repeated commands', () => {
-    expect(new Set(WALKTHROUGH).size).toBe(WALKTHROUGH.length);
+  it('allowlisted and sync commands appear once (they’re looked up by name)', () => {
+    for (const c of [...ALLOWED.map((a) => a.command), ...Object.keys(SYNC)]) expect(WALKTHROUGH.filter((w) => w === c)).toHaveLength(1);
   });
 
   it('matches reply for reply along the walkthrough, apart from listed differences', async () => {

@@ -127,6 +127,8 @@ function runEffect(e: Effect, world: World, state: GameState): { lines: string[]
     const hit = nextRandom(state) * 100 < e.chance;
     return { lines: runSteps((hit ? e.then : e.else) ?? [], world, state), stop: state.gameOver };
   }
+  if ('hide' in e) return void (world.items[e.hide] && (itemState(state, e.hide).hidden = true)), { lines: [] };
+  if ('reveal' in e) return void (world.items[e.reveal] && (itemState(state, e.reveal).hidden = false)), { lines: [] };
   if ('script' in e) return { lines: runSteps(scriptSteps(e.script, e.arg, world, state), world, state), stop: state.gameOver || halted.has(state) };
   if ('run' in e) return { lines: world.events[e.run] ? runEventKey(e.run, world, state) : [], stop: state.gameOver };
   if ('go' in e) return { lines: hooks.go ? hooks.go(e.go, world, state) : [] };

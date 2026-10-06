@@ -19,7 +19,8 @@ export function handleAttack(action: ParsedAction, world: World, state: GameStat
   if (!npc) {
     const thing = pickItem(action.target, visibleItems(world, state), world, 'target', state);
     if (!thing) return miss(`You don’t see a “${action.target}” here.`);
-    return ok([combatText(world, 'notPerson', { defender: world.items[thing].name })]);
+    // Its own attack rule answers first; otherwise Zork's refusal.
+    return withRules('attack', action, world, state, () => ok([combatText(world, 'notPerson', { defender: world.items[thing].name })]));
   }
   return withRules('attack', action, world, state, () => attackNpc(npc, action.indirect, world, state));
 }

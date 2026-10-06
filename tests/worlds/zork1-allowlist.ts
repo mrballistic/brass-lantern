@@ -94,6 +94,25 @@ export const WALKTHROUGH: string[] = [
   'SCORE',
   'West',
   'WEST',
+  // Stage 4b: through the maze to the cyclops, ULYSSES, and the Strange Passage home.
+  'west',
+  'south',
+  'east',
+  'up',
+  'take key',
+  'take coins',
+  'take rusty knife',
+  'southwest',
+  'east',
+  'south',
+  'southeast',
+  'throw axe at cyclops',
+  'wait',
+  'wait',
+  'ulysses',
+  'east',
+  'east',
+  'put coins in case',
 ];
 
 /**
@@ -109,8 +128,7 @@ export const SYNC: Record<string, { command: string; until: 'noFirstStrike' | 't
   '@fight': { command: 'kill troll with sword', until: 'trollDead' },
 };
 
-// The walkthrough skips the sword: with it, Zork's weight limit refuses the egg
-// (“Your load is too heavy.”), and carrying weight is stage 4.
+// The walkthrough carries the sword from stage 4a on; the egg-and-sword load is checked in zork1.test.ts.
 export const ALLOWED: AllowedDifference[] = [
   { command: '@fight', random: true, reason: 'A random fight: compared line by line in zork1-fight.test.ts instead.' },
   { command: 'diagnose', random: true, reason: 'Wounds depend on how the random fight went.' },

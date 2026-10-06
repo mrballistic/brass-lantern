@@ -254,4 +254,158 @@ describe('Zork I, natively: the troll', () => {
     run('kill troll with sword');
     expect(state.locations.axe).toBe('player');
   });
+
+  it('dying un-bars the trap door, as Zork’s JIGS-UP does', async () => {
+    const { runSteps } = await import('@/engine/effects');
+    const { state } = cellar();
+    state.flags.trap_door_barred = true;
+    runSteps([{ die: 'Oops.' }], zork1, state);
+    expect(state.flags.trap_door_barred).toBeFalsy();
+  });
 });
+
+describe('Zork I, natively: the maze and the cyclops’s rooms', () => {
+  function at(room: string, seed = 1) {
+    const state = initialState(zork1);
+    state.currentRoom = room;
+    state.locations.lamp = 'player';
+    state.itemState.lamp = { on: true, moved: true };
+    state.rng = seed;
+    const run = (c: string) => execute(fallbackParse(c, zork1.verbs) ?? { action: 'unknown' }, { world: zork1, state }).lines;
+    return { state, run };
+  }
+
+  it('the maze goes where the ZIL says', () => {
+    expect(zork1.rooms.maze_1.exits).toMatchObject({ east: 'troll_room', north: 'maze_1', south: 'maze_2', west: 'maze_4' });
+    expect(zork1.rooms.maze_15.exits).toMatchObject({ west: 'maze_14', south: 'maze_7', southeast: 'cyclops_room' });
+    expect(zork1.rooms.dead_end_1.exits).toMatchObject({ south: 'maze_4' });
+    expect(zork1.rooms.maze_1.tags).toContain('maze');
+  });
+
+  it('a one-way drop warns you first', () => {
+    const { state, run } = at('maze_2');
+    const lines = run('down');
+    expect(lines[0]).toBe('You won’t be able to get back up to the tunnel you are going through when it gets to the next room.');
+    expect(state.currentRoom).toBe('maze_4');
+  });
+
+  it('the skeleton, the lantern, the knife, the key and the coins lie in MAZE-5', () => {
+    for (const id of ['bones', 'burned_out_lantern', 'rusty_knife', 'keys', 'bag_of_coins']) expect(initialState(zork1).locations[id]).toBe('maze_5');
+    expect(zork1.items.bag_of_coins.treasure).toBe(5);
+    expect(zork1.items.rusty_knife.weapon).toBe(true);
+  });
+
+  it('the grating unlocks from below with the skeleton key, opens to daylight, and drops the leaves', () => {
+    const { state, run } = at('grating_room');
+    state.locations.keys = 'player';
+    expect(run('open grating')[0]).toBe('The grating is locked.');
+    expect(run('unlock grating with key')[0]).toBe('The grate is unlocked.');
+    const lines = run('open grating');
+    expect(lines[0]).toBe('The grating opens to reveal trees above you.');
+    expect(lines).toContain('A pile of leaves falls onto your head and to the ground.');
+    expect(run('up')[0]).toBe('📍 Clearing');
+  });
+
+  it('from above, the lock is out of reach', () => {
+    const { state, run } = at('grating_clearing');
+    state.flags.grate_revealed = true;
+    state.locations.keys = 'player';
+    expect(run('unlock grating with key')[0]).toBe('You can’t reach the lock from here.');
+  });
+
+  it('the Treasure Room is worth 25 points, once', () => {
+    const { state, run } = at('cyclops_room');
+    state.flags.cyclops_asleep = true;
+    const before = currentScore(zork1, state);
+    run('up');
+    run('down');
+    run('up');
+    expect(currentScore(zork1, state) - before).toBe(25);
+  });
+
+  it('the Strange Passage leads east into the living room', () => {
+    expect(zork1.rooms.strange_passage.exits).toMatchObject({ west: 'cyclops_room', east: 'living_room' });
+  });
+
+  it('touching the skeleton brings the ghost, who curses your valuables away', () => {
+    const { state, run } = at('maze_5');
+    state.locations.painting = 'player';
+    expect(run('take skeleton')[0]).toMatch(/^A ghost appears in the room and is appalled/);
+    expect(state.locations.painting).toBe(null);
+    expect(state.locations.bag_of_coins).toBe(null);
+  });
+});
+
+describe('Zork I, natively: the cyclops', () => {
+  function room(seed = 1) {
+    const state = initialState(zork1);
+    state.currentRoom = 'maze_15';
+    state.locations.lamp = 'player';
+    state.itemState.lamp = { on: true, moved: true };
+    state.rng = seed;
+    const run = (c: string) => execute(fallbackParse(c, zork1.verbs) ?? { action: 'unknown' }, { world: zork1, state }).lines;
+    return { state, run };
+  }
+  const BLOCKS = 'A cyclops, who looks prepared to eat horses (much less mere adventurers), blocks the staircase. From his state of health, and the bloodstains on the walls, you gather that he is not very friendly, though he likes people.';
+
+  it('stands at the foot of the stairs, blocking them', () => {
+    const { run } = room();
+    const lines = run('southeast');
+    expect(lines.join(' ')).toContain(BLOCKS);
+    expect(run('up')[0]).toBe('The cyclops doesn’t look like he’ll let you past.');
+    expect(run('east')[0]).toBe('The east wall is solid rock.');
+  });
+
+  it('provoked, he grows angrier each turn, then eats you', () => {
+    const { state, run } = room();
+    run('southeast');
+    state.locations.knife = 'player';
+    expect(run('throw knife at cyclops')).toContain('The cyclops shrugs but otherwise ignores your pitiful attempt.');
+    const said: string[] = [];
+    for (let i = 0; i < 6; i++) said.push(...run('wait'));
+    expect(said).toContain('The cyclops appears to be getting more agitated.');
+    expect(said).toContain('You have two choices: 1. Leave  2. Become dinner.');
+    expect(said.join(' ')).toContain('The cyclops, tired of all of your games and trickery, grabs you firmly.');
+  });
+
+  it('the lunch, then the water, puts him to sleep and opens the stairs', () => {
+    const { state, run } = room();
+    run('southeast');
+    state.locations.lunch = 'player';
+    state.locations.bottle = 'player';
+    expect(run('give water to cyclops')[0]).toBe('The cyclops apparently is not thirsty and refuses your generous offer.');
+    expect(run('give lunch to cyclops')[0]).toMatch(/^The cyclops says “Mmm Mmm. I love hot peppers!/);
+    expect(run('give water to cyclops')[0]).toMatch(/^The cyclops takes the bottle, checks that it’s open, and drinks the water./);
+    expect(run('look').join(' ')).toContain('The cyclops is sleeping blissfully at the foot of the stairs.');
+    // Up the stairs: the thief rushes to defend his lair.
+    expect(run('up')).toContain('📍 Treasure Room');
+  });
+
+  it('refuses garlic and anything else', () => {
+    const { state, run } = room();
+    run('southeast');
+    state.locations.garlic = 'player';
+    state.locations.leaflet = 'player';
+    expect(run('give garlic to cyclops')[0]).toBe('The cyclops may be hungry, but there is a limit.');
+    expect(run('give leaflet to cyclops')[0]).toBe('The cyclops is not so stupid as to eat THAT!');
+  });
+
+  it('ULYSSES drives him off through the east wall', () => {
+    const { run } = room();
+    run('southeast');
+    expect(run('ulysses')[0]).toBe('The cyclops, hearing the name of his father’s deadly nemesis, flees the room by knocking down the wall on the east of the room.');
+    expect(run('look').join(' ')).toContain('The east wall, previously solid, now has a cyclops-sized opening in it.');
+    expect(run('east')[0]).toBe('📍 Strange Passage');
+    expect(run('ulysses')[0]).toBe('Wasn’t he a sailor?');
+  });
+
+  it('won’t talk, won’t be grabbed, and his stomach rumbles', () => {
+    const { run } = room();
+    run('southeast');
+    expect(run('cyclops, go away')[0]).toBe('The cyclops prefers eating to making conversation.');
+    expect(run('take cyclops')[0]).toBe('The cyclops doesn’t take kindly to being grabbed.');
+    expect(run('listen to cyclops')[0]).toBe('You can hear his stomach rumbling.');
+    expect(run('examine cyclops')[0]).toBe('A hungry cyclops is standing at the foot of the stairs.');
+  });
+});
+

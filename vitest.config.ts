@@ -13,7 +13,10 @@ export default defineConfig({
     },
   },
   test: {
-    environment: 'happy-dom',
+    // Most tests (the whole engine) need no DOM. Files that do say so with a
+    // `// @vitest-environment happy-dom` comment: creating happy-dom for every
+    // file was three quarters of the run.
+    environment: 'node',
     globals: true,
     include: ['tests/**/*.test.ts'],
     exclude: ['node_modules', 'dist', 'cdk', 'lambda'],

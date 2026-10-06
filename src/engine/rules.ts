@@ -110,15 +110,21 @@ export function withRules(
   const target = action.target ? pickItem(action.target, targetScope(verb, world, state), world, 'target', state) : null;
   const indirect = action.indirect ? pickItem(action.indirect, visibleItems(world, state), world, 'indirect', state) : null;
   // Words that aren't items may name characters, whose rules count too.
-  const npcs = [
-    !target && action.target ? matchNpc(action.target, world, state) : null,
-    !indirect && action.indirect ? matchNpc(action.indirect, world, state) : null,
-  ].filter((id): id is string => Boolean(id));
+  const targetNpc = !target && action.target ? matchNpc(action.target, world, state) : null;
+  const indirectNpc = !indirect && action.indirect ? matchNpc(action.indirect, world, state) : null;
+  const npcs = [targetNpc, indirectNpc].filter((id): id is string => Boolean(id));
   const ids = { target, indirect, room: state.currentRoom, npcs };
-  setCommand(state, { verb, target: target ?? npcs[0], indirect: indirect ?? (target ? npcs[0] : npcs[1]) });
+  setCommand(state, {
+    verb,
+    target: target ?? targetNpc ?? undefined,
+    indirect: indirect ?? indirectNpc ?? undefined,
+    words: { target: action.target, indirect: action.indirect },
+  });
   const instead = findRule(world, state, 'instead', verb, ids, reach);
-  if (instead) return applyRule(instead, world, state);
-  const result = run();
+  if (instead && !instead.continue) return applyRule(instead, world, state);
+  const before = instead ? applyRule(instead, world, state) : null;
+  const ran = run();
+  const result = before ? { ...ran, lines: [...before.lines, ...ran.lines], mutated: ran.mutated || before.mutated } : ran;
   if (result.understood === false || !result.mutated) return result;
   const after = findRule(world, state, 'after', verb, ids, reachableItems(world, state));
   // onTake (folded into after.take) has always fired only once.

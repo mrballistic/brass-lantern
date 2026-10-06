@@ -1,7 +1,7 @@
 import type { GameState, ParsedAction } from '@/types/game';
 import type { World } from '@/types/world';
 import { fuzzyCandidates } from '../fuzzy';
-import { childrenOf, closedAround, inventoryOf, isCarried, isLit, setResolveById, visibleItems } from '../model';
+import { childrenOf, closedAround, inventoryOf, isCarried, isLit, pickItem, setResolveById, shown, visibleItems } from '../model';
 import { turnHalted } from '../effects';
 import { ok, type EngineResult } from '../result';
 import { withRules } from '../rules';
@@ -19,7 +19,7 @@ function covered(verb: string, action: ParsedAction, world: World, state: GameSt
   if (verb === 'take' && world.style === 'infocom' && isLit(world, state)) {
     // Zork's ALL is what's directly in the room, fixed things too (each says why it can't be taken);
     // not things inside containers, nor doors and walls shared with other rooms.
-    return childrenOf(world, state, state.currentRoom);
+    return childrenOf(world, state, state.currentRoom).filter(shown(state));
   }
   if (verb === 'take') {
     return visibleItems(world, state).filter(
@@ -27,7 +27,10 @@ function covered(verb: string, action: ParsedAction, world: World, state: GameSt
     );
   }
   const carried = inventoryOf(world, state);
-  return verb === 'put' ? carried.filter((id) => id !== action.indirect) : carried;
+  if (verb !== 'put') return carried;
+  // The destination as the verb resolves it, so PUT ALL IN GLASS JAR leaves the jar out.
+  const dest = action.indirect ? pickItem(action.indirect, visibleItems(world, state), world, 'indirect', state) : null;
+  return carried.filter((id) => id !== dest && id !== action.indirect);
 }
 
 function insideCarried(world: World, state: GameState, id: string): boolean {

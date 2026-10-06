@@ -64,4 +64,12 @@ describe('characters', () => {
     expect(npcsIn(w, s, 'living')).not.toContain('neighbor');
     expect(npcsIn(w, s, 'yard')).toContain('neighbor');
   });
+
+  it('a scenery character isn’t listed in the room, but can be examined', () => {
+    const w = { ...world, style: 'infocom' as const, npcs: { ...world.npcs, guard: { ...world.npcs.guard, scenery: true } } };
+    const s = stateWith(w, { room: 'shed' });
+    expect(execute({ action: 'look' }, { world: w, state: s }).lines).not.toContain('A guard watches you.');
+    expect(execute({ action: 'examine', target: 'guard' }, { world: w, state: s }).lines).toEqual(['A guard watches you.']);
+  });
 });
+

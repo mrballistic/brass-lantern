@@ -1,6 +1,6 @@
 import type { GameState } from '@/types/game';
 import type { BlowMessages, BlowResult, CombatText, World } from '@/types/world';
-import { childrenOf, isAlive, isAwake, isCarried, isNpcIn, moveItem, npcStateOf } from './model';
+import { childrenOf, isAlive, isAwake, isCarried, isNpcHidden, isNpcIn, moveItem, npcStateOf } from './model';
 import { commandOf } from './scripts';
 import { runEventKey, runSteps, turnHalted } from './effects';
 import { prob, roll } from './rng';
@@ -62,7 +62,12 @@ export function villainStrength(world: World, state: GameState, npc: string, wea
 
 /** The first weapon someone holds (Zork's FIND-WEAPON). */
 export function weaponHeldBy(world: World, state: GameState, holder: string): string | null {
-  if (holder === 'player') return Object.keys(world.items).find((id) => world.items[id].weapon && isCarried(state, id)) ?? null;
+  if (holder === 'player') {
+    // The most recently taken first, as Zork's FIRST? reads the inventory.
+    const placed = state.placed ?? {};
+    const carried = Object.keys(world.items).filter((id) => world.items[id].weapon && isCarried(state, id));
+    return carried.sort((a, b) => (placed[b] ?? -1) - (placed[a] ?? -1))[0] ?? null;
+  }
   return childrenOf(world, state, holder).find((id) => world.items[id]?.weapon) ?? null;
 }
 
@@ -210,7 +215,6 @@ function awaken(world: World, state: GameState, npc: string): string[] {
   if ((state.npcs?.[npc]?.strength ?? 0) >= 0) return [];
   const s = npcStateOf(state, npc);
   s.strength = -(s.strength ?? 0);
-  s.wake = 0;
   const hook = world.npcs[npc].combat?.onWake;
   return hook ? runEventKey(hook, world, state) : [];
 }
@@ -294,10 +298,13 @@ export function fightTurn(world: World, state: GameState): string[] {
     const combat = npc.combat;
     if (!combat || !isAlive(world, state, id)) continue;
     const s = state.npcs?.[id];
-    if (isNpcIn(world, state, id, state.currentRoom)) {
+    if (isNpcIn(world, state, id, state.currentRoom) && !isNpcHidden(world, state, id)) {
       if ((s?.strength ?? 0) < 0) {
         const p = s?.wake ?? 0;
-        if (p > 0 && prob(state, p)) lines.push(...awaken(world, state, id));
+        if (p > 0 && prob(state, p)) {
+          npcStateOf(state, id).wake = 0; // Zork's <PUT .OO ,V-PROB 0>, before AWAKEN
+          lines.push(...awaken(world, state, id));
+        }
         else npcStateOf(state, id).wake = p + (combat.wake ?? 25);
       } else if (s?.fighting || (combat.firstStrike !== undefined && combat.firstStrike > 0 && prob(state, combat.firstStrike))) {
         npcStateOf(state, id).fighting = true;
@@ -351,6 +358,9 @@ const OUTLOOK = ['expect death soon', 'be killed by one more light wound', 'be k
 export function diagnoseLines(world: World, state: GameState): string[] {
   const p = state.player;
   const wounds = p?.cureIn !== undefined ? (p.wounds ?? 0) : 0;
+  const style = (lines: string[]) => (world.style === 'infocom' ? lines : lines.map((l) => `[${l}]`));
+  // A world without fights has nothing more to say than how you are.
+  if (!world.combat) return style([wounds === 0 ? 'You are in perfect health.' : `You have ${WOUNDS[wounds] ?? 'serious wounds,'} which will be cured after ${(30 * (wounds - 1)) + (p?.cureIn ?? 0)} moves.`]);
   const rs = fightStrength(world, state, false) - (p?.wounds ?? 0);
   const lines: string[] = [];
   if (wounds === 0) lines.push('You are in perfect health.');

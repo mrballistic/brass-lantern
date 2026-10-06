@@ -29,6 +29,8 @@ export interface Room {
   after?: RuleTable;
   /** Items present here without being in the room: doors, windows, the sky. Never listed. */
   scenery?: string[];
+  /** Free-form labels scripts can read (`maze`, `sacred`). The engine doesn't. */
+  tags?: string[];
 }
 
 /**
@@ -43,6 +45,8 @@ export interface Rule {
   with?: string;
   then?: string;
   say?: string[];
+  /** An instead rule that runs, then lets the verb's default go on (Zork's “print, then RFALSE”). */
+  continue?: boolean;
 }
 
 /** Verb → rules. */
@@ -110,6 +114,8 @@ export interface Item {
   size?: number;
   /** Something to fight with. */
   weapon?: boolean;
+  /** What it's worth (Zork's TVALUE). The engine doesn't read it; scripts and scoring can. */
+  treasure?: number;
   /** Makes the item a container; doors use the same block for openable/open/locked/key. */
   container?: Container;
   /** Things can be put on it, and what's on it is always visible and reachable. */
@@ -175,6 +181,20 @@ export interface NPC {
   after?: RuleTable;
   /** Makes it someone the player can fight. */
   combat?: Combatant;
+  /** ASK/TELL X ABOUT a topic: a line, or lines with conditions (the first that holds). */
+  topics?: Record<string, string | Array<{ if?: string; text: string }>>;
+  /** Other words for a topic. */
+  topicAliases?: Record<string, string[]>;
+  /** For a topic it has nothing on. Default: its TALK line. */
+  noTopic?: string;
+  /** Its answer to an order (“thief, give me the bag”). Default: “Name ignores you.” */
+  refuseOrder?: string;
+  /** Present but not listed in the room: the room's own description mentions it (Zork's NDESCBIT). */
+  scenery?: boolean;
+  /** Starts hidden (in its room, unseen). Its state's `hidden` overrides this. */
+  hidden?: boolean;
+  /** Other words for it (“robber”, “man”). */
+  aliases?: string[];
 }
 
 /** What a blow did (Zork's blow results). */
@@ -256,7 +276,10 @@ export type Effect =
   /** A character to a room, or null (gone). */
   | { moveNpc: string; to: string | null }
   /** Sets a character's combat state. */
-  | { npcState: string; fighting?: boolean; staggered?: boolean; strength?: number }
+  | { npcState: string; fighting?: boolean; staggered?: boolean; strength?: number; hidden?: boolean }
+  /** Hides an item where it is, or reveals it again (Zork's INVISIBLE). */
+  | { hide: string }
+  | { reveal: string }
   /** Runs one of the world's scripts and the steps it returns. */
   | { script: string; arg?: string }
   | { open: string }
@@ -375,6 +398,8 @@ export interface World {
     scatter?: string[];
     /** Printed on the last death, which ends the game. */
     final?: string[];
+    /** An event run after a resurrection (Zork's JIGS-UP resets things). */
+    then?: string;
   };
   /** Run after every acted-on turn while their condition holds (a lamp burning down). */
   daemons?: Array<{ if: string; then: string | EventStep[] }>;

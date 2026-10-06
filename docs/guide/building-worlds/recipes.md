@@ -204,3 +204,60 @@ A fortune teller who tells you one of three fortunes, then sticks to it.
 
 Reach for a script only when data can't say it. Most behavior is rules, conditions and effects.
 
+
+## Topics and orders
+
+A librarian who answers questions, and won't be bossed about.
+
+<<< ../../../src/worlds/examples/topics.ts#librarian{ts}
+
+- **`topics`** answer ASK (or TELL) *librarian* ABOUT *something*. Each topic is a line, or a list of entries tried in order; the first whose `if` holds wins.
+- **An entry can name an event**, which runs instead of printing. Asking about the archive lends you the key, once; after that the `has:brass_key` entry answers first.
+- **`topicAliases`** are other words for a topic, matched the same way item names are, so “the archive”, “archives” and “key” all find `archive`.
+- **`noTopic`** answers anything else. Without it, ASK falls back to what TALK TO would say.
+- **`refuseOrder`** answers an order: “librarian, open the door” or “tell librarian to open the door”. Without it the reply is “librarian ignores you.” A rule on the character (`instead.order`) can answer a particular order instead; in a script it runs, `ctx.command.words.indirect` is what was ordered (“open the door”).
+
+```
+> ask librarian about books
+“Shelved by colour. Don’t ask.”
+> ask librarian about the weather
+“I couldn’t say, dear.”
+> librarian, open the door
+“Shh.”
+> ask librarian about the archive
+“Oh, the archive.” She slides a brass key across the desk.
+> ask librarian about the archive
+“You have the key. Go on, then.”
+```
+
+Characters don't carry out orders yet; they answer them.
+
+## A wandering character
+
+A cat who wanders three rooms and walks off with your sock.
+
+<<< ../../../src/worlds/examples/wanderer.ts#cat{ts}
+
+- **A daemon** runs after every turn the engine acts on. This one's `if` (`alive:cat`) keeps the cat moving for as long as it lives, and its step is a script.
+- **The script decides; its steps act.** `ctx.npcIn` finds the cat, `ctx.roll` decides whether it moves, and `{ moveNpc }` moves it. Lines are printed only when the player can see the cat leave or arrive (`ctx.room()` is where the player is).
+- **`ctx.children(room)`** lists what's on the floor there. `{ move: 'sock', to: 'cat' }` puts the sock in the cat's keeping; a character's holdings aren't listed in a room.
+- The world's **`seed`** fixes the cat's path, so the transcript below plays the same way every time.
+
+```
+> wait
+Time passes.
+The cat pads in.
+The cat bats the sock away somewhere. It’s gone.
+> look
+📍 Hall
+A narrow hall. The kitchen is east, the garden south.
+Present: cat.
+Exits: east, south.
+> east
+📍 Kitchen
+A warm kitchen. The hall is west.
+Exits: west.
+The cat pads in.
+```
+
+Native Zork I's thief is this recipe grown up: he moves through the rooms, steals what's worth stealing, and stays out of sight (`hidden`) until he chooses to show himself.

@@ -2,7 +2,7 @@ import type { GameState } from '@/types/game';
 import type { Room, World } from '@/types/world';
 import { evaluateCondition } from './conditions';
 import { darknessLook } from './light';
-import { canSeeInside, childrenOf, isLit, npcsIn, visibleItemsIn } from './model';
+import { canSeeInside, childrenOf, isLit, npcsSeen, shown, visibleItemsIn } from './model';
 
 export const COMPASS = ['north', 'south', 'east', 'west', 'northeast', 'northwest', 'southeast', 'southwest', 'up', 'down'];
 
@@ -73,7 +73,7 @@ function heading(world: World, id: string): string {
  */
 export function contentsLines(world: World, state: GameState, id: string, depth = 0): string[] {
   if (!canSeeInside(world, state, id)) return [];
-  const kids = childrenOf(world, state, id).filter((k) => !world.items[k]?.scenery);
+  const kids = childrenOf(world, state, id).filter((k) => !world.items[k]?.scenery && shown(state)(k));
   const lines: string[] = [];
   // Untouched things with a first-seen sentence describe themselves (“On the table is a brown sack.”).
   const told = kids.filter((k) => !state.itemState[k]?.moved && world.items[k]?.initialDescription);
@@ -143,7 +143,7 @@ export function describeRoom(
     lines.push(...contentsLines(world, state, id));
   }
 
-  const people = npcsIn(world, state, roomId);
+  const people = npcsSeen(world, state, roomId).filter((id) => !world.npcs[id]?.scenery);
   // Infocom style: each character's own line, as Zork's LDESC; brass: a list.
   if (infocom) for (const id of people) lines.push(npcDescription(world, state, id));
   else if (people.length > 0) lines.push(`Present: ${people.map((id) => world.npcs[id]?.name ?? id).join(', ')}.`);

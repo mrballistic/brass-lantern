@@ -54,6 +54,30 @@ describe('world audit', () => {
         'finale epilogue: “visited:mars” names no room “mars”',
       ]),
     );
+    const ghostly: World = {
+      ...fixtureWorld,
+      npcs: {
+        ...fixtureWorld.npcs,
+        ghost: {
+          name: 'ghost',
+          description: '',
+          combat: { strength: 1, weapon: 'nothing', onDeath: 'missing', fears: { item: 'nope', by: 1 } },
+          holds: ['void'],
+          descriptions: [{ if: 'flagg:x', text: '' }],
+          instead: { take: [{ then: 'gone' }] },
+        },
+      },
+    };
+    expect(auditWorld(ghostly)).toEqual(
+      expect.arrayContaining([
+        'npc ghost combat: weapon names no item “nothing”',
+        'npc ghost combat onDeath: names no event “missing”',
+        'npc ghost combat fears: names no item “nope”',
+        'npc ghost holds: no item “void”',
+        'npc ghost descriptions: unknown condition “flagg:x”',
+        'npc ghost instead.take: names no event “gone”',
+      ]),
+    );
     expect(problems).toEqual(
       expect.arrayContaining([
         'event bad: move names no item “unicorn”',

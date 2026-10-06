@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -122,10 +123,11 @@ function untilDeath(lines: string[]): string[] {
 
 describe('the troll fight against the original', () => {
   it('prints nothing the original never prints', async () => {
-    const lines = new Set<string>();
+    // Every line the original printed, and how often.
+    const seen = new Map<string, number>();
     for (let i = 0; i < FIGHTS; i++) {
       try {
-        for (const line of untilDeath((await originalFight()).split('\n'))) lines.add(normalize(line));
+        for (const line of untilDeath((await originalFight()).split('\n'))) seen.set(normalize(line), (seen.get(normalize(line)) ?? 0) + 1);
       } catch (e) {
         throw new Error(`fight ${i}: ${(e as Error).message}`, { cause: e });
       }
@@ -135,12 +137,15 @@ describe('the troll fight against the original', () => {
     for (let seed = 1; seed <= 200; seed++) {
       for (const line of untilDeath(nativeFight(seed))) counts.set(line, (counts.get(line) ?? 0) + 1);
     }
-    // A message variant that never turned up in the original is excused only when it's rare
-    // (fewer than RARE in our 200 fights) and its kind of result did turn up. A common one must match.
-    const RARE = 5;
-    const seenKinds = messagesByResult().filter((k) => k.texts.some((t) => lines.has(t)));
-    const excused = (line: string, count: number) => count < RARE && seenKinds.some((k) => k.texts.includes(line));
-    const strays = [...counts].filter(([line, count]) => !lines.has(normalize(line)) && !excused(normalize(line), count)).map(([line]) => line);
+    // A message variant that never turned up in the original is excused when its kind of result
+    // did turn up, but too seldom (under COMMON times) for a fair pick to be sure of showing every
+    // variant. (The original's dice aren't fair across consecutive rolls: of 18 deaths, one used
+    // its second death message.) Variants of common kinds, like misses, must match.
+    const COMMON = 20;
+    const kindCount = (texts: string[]) => texts.reduce((n, t) => n + (seen.get(t) ?? 0), 0);
+    const excusedKinds = messagesByResult().filter((k) => kindCount(k.texts) > 0 && kindCount(k.texts) < COMMON);
+    const excused = (line: string) => excusedKinds.some((k) => k.texts.includes(line));
+    const strays = [...counts.keys()].filter((line) => !seen.has(normalize(line)) && !excused(normalize(line)));
     expect(strays).toEqual([]);
   }, 300_000);
 });

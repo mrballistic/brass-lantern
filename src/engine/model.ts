@@ -41,6 +41,19 @@ export function npcsIn(world: World, state: GameState, roomId: string): string[]
   return [...listed.filter((id) => here.includes(id)), ...here.filter((id) => !listed.includes(id)).sort()];
 }
 
+/** The characters in a room the player can see: present and not hidden. */
+export function npcsSeen(world: World, state: GameState, roomId: string): string[] {
+  return npcsIn(world, state, roomId).filter((id) => !isNpcHidden(world, state, id));
+}
+
+/** Is a character unseen? Its state says, else whether it starts hidden. */
+export function isNpcHidden(world: World, state: GameState, id: string): boolean {
+  return state.npcs?.[id]?.hidden ?? world.npcs[id]?.hidden ?? false;
+}
+
+/** A filter for items that aren't hidden (the `hide` effect). */
+export const shown = (state: GameState) => (id: string) => !state.itemState[id]?.hidden;
+
 /** A character's state, created on first use. */
 export function npcStateOf(state: GameState, id: string): NpcState {
   return ((state.npcs ??= {})[id] ??= {});
@@ -109,7 +122,7 @@ function fixturesIn(world: World, state: GameState, roomId: string): string[] {
 
 /** What a room lists: its direct contents (and fixtures it shares), minus scenery. */
 export function visibleItemsIn(roomId: string, world: World, state: GameState): string[] {
-  return [...childrenOf(world, state, roomId), ...fixturesIn(world, state, roomId)].filter((id) => !world.items[id]?.scenery);
+  return [...childrenOf(world, state, roomId), ...fixturesIn(world, state, roomId)].filter((id) => !world.items[id]?.scenery && shown(state)(id));
 }
 
 /** Fuzzy candidates for items, with aliases folded into the matchable name. */
@@ -127,11 +140,9 @@ export function matchItem(target: string, ids: string[], world: World): string |
 }
 
 export function matchNpc(target: string, world: World, state: GameState): string | null {
-  const present = npcsIn(world, state, state.currentRoom);
-  const id = fuzzyMatch(
-    target,
-    present.map((id) => ({ id, name: world.npcs[id]?.name ?? id })),
-  );
+  const present = npcsSeen(world, state, state.currentRoom);
+  // Names and aliases, through the one fuzzy matcher.
+  const [id = null] = fuzzyCandidates(target, present.map((id) => ({ id, name: world.npcs[id]?.name ?? id, aliases: world.npcs[id]?.aliases })));
   if (id) noteActed(state, 'npc', id);
   return id;
 }
@@ -202,7 +213,7 @@ function roots(world: World, state: GameState): string[] {
     ...fixturesIn(world, state, room),
     ...(world.rooms[room]?.scenery ?? []),
     ...inventoryOf(world, state),
-  ];
+  ].filter(shown(state));
 }
 
 function collect(world: World, state: GameState, into: (id: string) => boolean): string[] {
@@ -210,7 +221,7 @@ function collect(world: World, state: GameState, into: (id: string) => boolean):
   const walk = (id: string) => {
     if (out.includes(id)) return;
     out.push(id);
-    if (into(id)) for (const child of childrenOf(world, state, id)) walk(child);
+    if (into(id)) for (const child of childrenOf(world, state, id).filter(shown(state))) walk(child);
   };
   roots(world, state).forEach(walk);
   return out;

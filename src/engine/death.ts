@@ -2,6 +2,7 @@ import type { GameState } from '@/types/game';
 import type { World } from '@/types/world';
 import { inventoryOf, moveItem } from './model';
 import { nextRandom } from './rng';
+import { runEventKey } from './effects';
 
 type GoTo = (room: string, world: World, state: GameState) => string[];
 
@@ -43,5 +44,6 @@ export function die(cause: string, world: World, state: GameState, goTo: GoTo): 
   state.fuses = {};
   lines.push(...(d.resurrection ?? []));
   if (d.respawn && world.rooms[d.respawn]) lines.push(...goTo(d.respawn, world, state));
+  if (d.then) lines.push(...runEventKey(d.then, world, state));
   return lines;
 }
