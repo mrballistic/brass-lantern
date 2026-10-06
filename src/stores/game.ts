@@ -244,12 +244,14 @@ export const useGameStore = defineStore('game', {
 
       // "get key and wallet", "take wallet then go outside": each piece runs
       // on its own, so each gets the LLM fallback if it misses.
-      for (const command of splitCommands(input, world.verbs)) {
-        if (this.game.gameOver) break;
+      for (const [i, command] of splitCommands(input, world.verbs).entries()) {
+        // Store commands (RESTART above all) work even after the game has ended.
         if (this.storeCommand(command)) {
           if (conversation.prompt) break;
           continue;
         }
+        // Once the game is over, one command hears that it has ended; the rest of the line is dropped.
+        if (this.game.gameOver && i > 0) break;
         await this.runCommand(command);
         // A question stops the line, as in Zork: the next line answers it.
         if (conversation.pending) break;
