@@ -8,7 +8,7 @@ export const DAM_SESSIONS: Record<string, string[]> = {
     ...TO_DAM, 'look', 'examine bubble', 'take bolt', 'north', 'take matchbook', 'north', 'take wrench', 'take screwdriver',
     'south', 'south', 'turn bolt with wrench', 'turn bolt with screwdriver', 'north', 'north', 'push yellow button',
     'south', 'south', 'look', 'turn bolt with wrench', 'look', ...waits(8), 'look', 'west', 'drop sword', 'drop wrench',
-    'drop screwdriver', 'look', 'north', 'look', 'take trunk', 'north', 'look', 'south', 'south', 'southeast', 'look',
+    'drop screwdriver', 'look', 'north', 'look', 'take trunk', 'north', 'look', 'south', 'south', 'southeast', 'look', 'score',
   ],
   leak: [
     ...TO_DAM, 'north', 'north', 'examine tube', 'read tube', 'squeeze tube', 'open tube', 'examine chests', 'push red button',
@@ -32,7 +32,7 @@ export const DAM_SESSIONS: Record<string, string[]> = {
 const OPEN_GATES = [...TO_DAM, 'north', 'north', 'push yellow button', 'take wrench', 'south', 'south', 'turn bolt with wrench'];
 
 export const LOUD_SESSIONS: Record<string, string[]> = {
-  echo: ['east', 'hello there', 'bug', 'take bar', 'echo', 'look', 'take bar', 'east', 'look', 'west', 'west'],
+  echo: ['east', 'hello there', 'bug', 'take bar', 'echo', 'look', 'take bar', 'east', 'look', 'west', 'west', 'score'],
   thrown: [...OPEN_GATES, 'south', 'down', 'look'],
   quiet: [...OPEN_GATES, 'drop sword', ...waits(4), 'turn bolt with wrench', 'south', 'down', 'look', 'take bar', ...waits(4), 'look'],
 };
@@ -46,13 +46,13 @@ export const DOME_SESSIONS: Record<string, string[]> = {
   'mirror-break': ['south', 'south', 'rub mirror with sword', 'break mirror with sword', 'look', 'break mirror with sword', 'examine mirror'],
   dome: [
     'southeast', 'look', 'read engravings', 'east', 'look', 'down', 'tie rope to railing', 'tie rope to railing', 'look',
-    'take rope', 'down', 'look', 'examine pedestal', 'take torch', 'examine torch', 'turn off torch', 'up',
+    'take rope', 'down', 'look', 'examine pedestal', 'take torch', 'examine torch', 'turn off torch', 'up', 'score',
   ],
   untie: ['southeast', 'east', 'tie rope to railing', 'untie rope', 'untie rope', 'take rope', 'drop rope', 'look', 'down'],
   leap: ['southeast', 'east', 'drop sword', 'drop rope', 'drop bottle', 'jump'],
   atlantis: [
     ...OPEN_GATES, 'drop sword', ...waits(4), 'west', 'north', 'north', 'look', 'north', 'look', 'take trident', 'up', 'look', 'north',
-    'look', 'west', 'look', 'east', 'north', 'north', 'look', 'south', 'south',
+    'look', 'west', 'look', 'east', 'north', 'north', 'look', 'south', 'south', 'score',
   ],
   passages: ['drop sword', 'south', 'south', 'west', 'look', 'north', 'east', 'look', 'west', 'north', 'north'],
 };
@@ -67,7 +67,7 @@ const TO_HADES = ['take bell', 'south', 'take candles', 'take book', 'down', 'do
 export const TEMPLE_SESSIONS: Record<string, string[]> = {
   exorcism: [
     'drop sword', ...MATCHES, ...TO_TEMPLE, 'look', 'read prayer', ...TO_HADES, 'look', 'south', 'ring bell', 'take candles',
-    'light match', 'light candles with match', 'read book', 'south', 'look', 'take skull', 'north', 'ring bell',
+    'light match', 'light candles with match', 'read book', 'south', 'look', 'take skull', 'north', 'ring bell', 'score',
   ],
   // No candles: the tiny cave's gust is random on each side.
   'read-first': ['drop sword', ...TO_TEMPLE, 'take bell', 'south', 'take book', 'down', 'down', 'read book', 'ring bell', 'read book', 'take bell', 'ring bell'],
@@ -81,7 +81,7 @@ export const TEMPLE_SESSIONS: Record<string, string[]> = {
   candles: ['drop sword', ...TO_TEMPLE, 'south', 'examine candles', 'take candles', 'count candles', 'turn off candles', 'turn off candles', 'light candles', ...waits(30), 'examine candles', 'light candles'],
   coffin: [
     'drop sword', 'drop bottle', ...TO_TEMPLE, 'east', 'look', 'open coffin', 'take sceptre', 'take coffin', 'west', 'south',
-    'look', 'down', 'pray', 'look',
+    'look', 'down', 'pray', 'look', 'score',
   ],
   ghost: [
     'drop sword', 'drop bottle', 'southeast', 'east', 'tie rope to railing', 'down', 'take torch', 'south', 'south',

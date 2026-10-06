@@ -2708,7 +2708,7 @@ export const zork1: World = {
     },
     chimney_climbed: (ctx) => (ctx.state.itemState.trap_door?.open ? [] : [{ clear: 'trap_door_barred' }]),
     thief_turn: thiefTurn,
-    thief_stole_light: (ctx) => (ctx.arg === 'lit' && !ctx.lit() ? ['The thief seems to have left you in the dark.'] : []),
+    thief_stole_light: (ctx) => (ctx.arg === 'lit' && !ctx.lit() ? ['The thief seems to have left you in the dark.', { noDarkLine: true }] : []),
     // TREASURE-ROOM-FCN: he rushes in, fights, and his treasures vanish.
     thief_lair: (ctx) => [
       ...(ctx.npcIn('thief', 'treasure_room')
@@ -2843,7 +2843,6 @@ export const zork1: World = {
     { if: 'inside:sceptre:trophy_case', points: 6 },
     { flag: 'took_skull', points: 10 },
     { if: 'inside:skull:trophy_case', points: 10 },
-    { if: 'inside:torch:trophy_case', points: 6 },
     { if: 'inside:trunk:trophy_case', points: 5 },
     // Treasures count while they're in the trophy case.
     { if: 'inside:painting:trophy_case', points: 6 },
@@ -3060,7 +3059,7 @@ export const zork1: World = {
       'Copyright (c) 1981, 1982, 1983, 1984, 1985, 1986 Infocom, Inc. All rights reserved.',
       'ZORK is a registered trademark of Infocom, Inc.',
       'Release 119 / Serial number 880429',
-      '[A native Brass Lantern port: the house, the forest, the first rooms below and the troll. The rest comes later.]',
+      '[A native Brass Lantern port. Still to come: the river, the rainbow, the coal mine and the barrow.]',
       // INVISIBLE until something reveals them.
       { hide: 'leak' },
       { hide: 'trunk' },

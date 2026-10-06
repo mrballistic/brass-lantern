@@ -452,3 +452,30 @@ describe('Zork I, natively: the temple and Hades (5a)', () => {
     expect(state.gameOver).toBe(true);
   });
 });
+
+describe('Zork I, natively: 5a’s treasures score as the ZIL says', () => {
+  // VALUE on finding, TVALUE in the trophy case (1dungeon.zil).
+  const TREASURES: Array<[string, number, number]> = [
+    ['bar', 10, 5],
+    ['trunk', 15, 5],
+    ['trident', 4, 11],
+    ['skull', 10, 10],
+    ['coffin', 10, 15],
+    ['sceptre', 4, 6],
+    ['torch', 14, 6],
+  ];
+  it.each(TREASURES)('%s: %i for taking, %i in the case', (id, value, tvalue) => {
+    const state = initialState(zork1);
+    const room = zork1.rooms.living_room ? 'living_room' : state.currentRoom;
+    state.currentRoom = room;
+    state.locations[id] = room;
+    state.itemState[id] = { ...state.itemState[id], hidden: false };
+    state.flags.unsacred_bar = true;
+    const before = currentScore(zork1, state);
+    execute({ action: 'take', target: id, byId: true }, { world: zork1, state });
+    expect(currentScore(zork1, state) - before).toBe(value);
+    state.itemState.trophy_case = { ...state.itemState.trophy_case, open: true };
+    state.locations[id] = 'trophy_case';
+    expect(currentScore(zork1, state) - before).toBe(value + tvalue);
+  });
+});

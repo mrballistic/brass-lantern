@@ -175,8 +175,10 @@ export async function findSeed(side: Side, commands: string[], accept: (replies:
 /** Mismatch reports, one per differing reply; empty when the sides agree. */
 export function compare(native: string[][], original: string[][], commands: string[]): string[] {
   const out: string[] = [];
+  // SCORE's move count depends on how long each side's troll fight in PREFIX ran.
+  const same = (r: string[]) => normalize(r).replace(/, in \d+ moves?\./g, ', in # moves.');
   commands.forEach((command, i) => {
-    if (normalize(native[i] ?? []) === normalize(original[i] ?? [])) return;
+    if (same(native[i] ?? []) === same(original[i] ?? [])) return;
     out.push(`> ${command}\n  native:   ${(native[i] ?? []).join(' / ')}\n  original: ${(original[i] ?? []).join(' / ')}`);
   });
   return out;

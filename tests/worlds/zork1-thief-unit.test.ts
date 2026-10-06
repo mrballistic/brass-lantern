@@ -170,4 +170,23 @@ describe('Zork I, natively: the thief', () => {
     expect(robbed(['loud_flag', 'unsacred_bar'], 'bar')).toBe(true);
     expect(robbed([], 'trunk', true)).toBe(false);
   });
+
+  it('taking your only light says so once: his line, not the engine’s too', () => {
+    let checked = false;
+    for (let seed = 1; seed <= 400 && !checked; seed++) {
+      const { state, run } = at('ns_passage', seed, (s) => {
+        s.locations.lamp = null;
+        s.locations.torch = 'player';
+        s.itemState.torch = { on: true, moved: true };
+        s.npcs = { thief: { room: 'ns_passage', hidden: false } };
+        s.flags.thief_here = true;
+      });
+      const lines = run('look');
+      if (state.locations.torch === 'player') continue;
+      if (!lines.some((l) => l.includes('left you in the dark'))) continue;
+      checked = true;
+      expect(lines.filter((l) => /pitch black/i.test(l))).toEqual([]);
+    }
+    expect(checked).toBe(true);
+  });
 });
