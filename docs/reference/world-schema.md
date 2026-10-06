@@ -61,6 +61,7 @@ Every field a world can use. The source of truth is [`src/types/world.ts`](https
 | `instead?`, `after?` | `Record<verb, Rule[]>` | Rules for verbs used in this room. See [Rules](#rules). |
 | `tags?` | string[] | Free-form labels for scripts to read (`maze`, `sacred`). The engine doesn't. |
 | `capture?` | `Capture` | Takes input here before it's parsed. See [Capture](#capture). |
+| `water?` | boolean or condition | Water (Zork's NONLANDBIT): only a water vehicle goes here. A condition for a room that changes (a reservoir that drains: `'!flag:low_tide'`). See [Vehicles](#vehicles). |
 | `onEnd?` | `{ if, then }[]` | Run at the end of every command here, after the action and before the clock (Zork's M-END). After WAIT's turns when `wait` is set. |
 
 ### Exit
@@ -97,6 +98,8 @@ Message-only exits aren't listed unless `listExits` names them.
 | `door?` | boolean | A door between rooms; exits name it. Uses `container` for openable/open/locked/key. |
 | `size?` | number | Its weight, in worlds with `carry` (Zork's SIZE). Default 5. |
 | `weapon?` | boolean | Something to fight with. |
+| `vehicle?` | `{ travels: 'water' }` | Something the player can get into and travel in. See [Vehicles](#vehicles). |
+| `onEnd?` | `{ if, then }[]` | A vehicle's end routines: while the player is aboard they run instead of the room's. |
 | `burnable?` | boolean | BURN can set it alight (Zork's BURNBIT). |
 | `flaming?` | boolean | It can set things alight: always, or while it's on if it switches (Zork's FLAMEBIT). |
 | `treasure?` | number | What it's worth (Zork's TVALUE). The engine doesn't read it; scripts and scoring can. |
@@ -201,7 +204,9 @@ verbs: {
   - READ takes the thing first (“(Taken)”), EXAMINE of a thing with no description reads it, and opening a container whose one untouched thing has a first-seen sentence says “The coffin opens.” and that sentence;
   - PUT … ON something that isn't a surface says “There’s no good surface on the …”;
   - a room's `scenery` (Zork's local globals) only answers to a word when nothing else in reach does;
-  - the second object's rules come before the first's.
+  - the second object's rules come before the first's;
+  - untouched things' first-seen sentences are listed before everything else;
+  - EXAMINE of a closed box says “The box is closed.”
 
 ## Time
 
@@ -233,6 +238,7 @@ A **move** is one of these turns: MOVES in the header and SCORE count them. Comm
 | `look?` | string | LOOK and arriving in an unlit dark room. Default: “It is pitch black.” |
 | `tooDark?` | string | Acting on something you can't see. Default: “It’s too dark to see.” |
 | `fall?` | string | When the room goes dark around you. Default: “It is now pitch black.” |
+| `stumble?` | `{ chance, then, aboard? }` | Walking from an unlit dark room into another: `chance`% of `then` instead (Zork's grue, 80), or `aboard` in a vehicle. |
 | `litIf?` | condition | While it holds, every room is lit (Zork's ALWAYS-LIT, for a spirit). Mustn't use `lit:`. |
 | `blunder?` | `EventStep[]` | Run when the player tries a direction with no exit in the dark. Zork's grue: `[{ chance: 80, then: [{ die: '…' }], else: ['You can’t go that way.'] }]`. |
 
@@ -341,6 +347,7 @@ A script gets a read-only view of the game and returns ordinary steps, which the
 - `random()` and `roll(n)`, from the game's seeded generator, so saves and UNDO replay exactly;
 - `here(id)`, `carried(id)`, `holder(id)`, `room()`, `npc(id)`;
 - `npcIn(id, room)` (hidden or not), `hidden(id)`;
+- `aboard()`, the vehicle the player is in, and `water(room?)`;
 - `rooms()` in the world's order, `visited(room)`, `tags(room)`, `lit(room?)`;
 - `children(place)`, what's directly in a room, item or character, in listing order;
 - `treasure(id)`, an item's `treasure` value or 0;
@@ -350,6 +357,21 @@ A script gets a read-only view of the game and returns ordinary steps, which the
 - `command`, the command being run with its objects resolved to IDs, when a rule ran the script. `command.words` keeps the words typed for objects that didn't resolve.
 
 Scripts run only where events run, so a command the engine didn't understand still changes nothing. The world audit fails on a `script` effect naming no script. See the [scripts recipe](../guide/building-worlds/recipes#scripts).
+
+## Vehicles
+
+```ts
+raft: { name: 'raft', vehicle: { travels: 'water' }, container: { open: true }, … },
+pond: { name: 'Pond', water: true, … },
+```
+
+- **BOARD** (GET IN, CLIMB IN) gets in a vehicle that's on the ground here; **DISEMBARK** (GET OUT, GET OFF, STAND) gets out, except on water: “You realize that getting out here would be fatal.” In Infocom style, DISEMBARK with no object names the one vehicle in sight: “(raft)”.
+- **Moving:** without a vehicle, water is out of reach (“You can’t go there without a vehicle.”); aboard, the vehicle won't go overland (“You can’t go there in a raft.”); coming from water onto land it rests on the shore (“The raft comes to a rest on the shore.”), and you stay aboard. The vehicle goes wherever you go, scripted moves included.
+- **Aboard:** DROP puts things in the vehicle, TAKE *vehicle* says “You’re inside of it!”, and the room's things stay in reach. The vehicle's rules are asked before the room's (Zork's M-BEG): an `instead.go` on it can refuse directions. Its `onEnd` runs in place of the room's. GO goes through rules too, so a room can have `instead.go` rules.
+- **Looking:** the header names the vehicle (“Pond, in the raft”); the vehicle isn't listed, its contents are; in Infocom style the room's things are “(outside the raft)”, as Zork's PRINT-CONT does.
+- Dying takes you out of the vehicle, which stays where you died. Conditions `aboard`, `aboard:ITEM` and `water:here|ROOM`; effects `{ board }` and `{ disembark }`; script helpers `ctx.aboard()` and `ctx.water(room?)`.
+
+See the [raft recipe](../guide/building-worlds/recipes#a-raft-on-a-pond).
 
 ## Capture
 

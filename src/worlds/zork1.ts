@@ -3654,7 +3654,7 @@ export const zork1: World = {
       'Copyright (c) 1981, 1982, 1983, 1984, 1985, 1986 Infocom, Inc. All rights reserved.',
       'ZORK is a registered trademark of Infocom, Inc.',
       'Release 119 / Serial number 880429',
-      '[A native Brass Lantern port. Still to come: the river, the rainbow, the coal mine and the barrow.]',
+      '[A native Brass Lantern port. Still to come: the coal mine and the barrow.]',
       // INVISIBLE until something reveals them.
       { hide: 'leak' },
       { hide: 'trunk' },

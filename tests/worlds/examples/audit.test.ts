@@ -3,6 +3,7 @@ import type { World } from '@/types/world';
 import { containers } from '@/worlds/examples/containers';
 import { darkness } from '@/worlds/examples/darkness';
 import { echo } from '@/worlds/examples/echo';
+import { raft } from '@/worlds/examples/raft';
 import { endings } from '@/worlds/examples/endings';
 import { fortune } from '@/worlds/examples/fortune';
 import { guard } from '@/worlds/examples/guard';
@@ -23,6 +24,7 @@ const examples: Array<[string, World]> = [
   ['the topics recipe', topics],
   ['the wanderer recipe', wanderer],
   ['the echo recipe', echo],
+  ['the raft recipe', raft],
 ];
 
 describe('the example worlds', () => {

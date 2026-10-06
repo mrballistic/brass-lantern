@@ -292,3 +292,36 @@ Ledge
 ```
 
 Native Zork I's Loud Room is this recipe with Zork's rules: ECHO quiets it, and when the dam's gates are open at high tide its end routine (`onEnd`) throws you out.
+
+## A raft on a pond
+
+A raft, a pond you can't wade, and an island beyond it.
+
+<<< ../../../src/worlds/examples/raft.ts#raft{ts}
+
+<<< ../../../src/worlds/examples/raft.ts#pond{ts}
+
+- **`vehicle`** makes an item something to get into: BOARD it while it's on the ground, DISEMBARK to get out.
+- **`water`** marks a room only a water vehicle reaches. On foot it's “You can’t go there without a vehicle.”; aboard, getting out there is refused.
+- **The raft goes where you go**, and comes to rest on the island's shore with you still aboard. Things you drop land in the raft, and the room's things are “(outside the raft)”.
+
+```
+> east
+You can’t go there without a vehicle.
+> board raft
+You are now in the raft.
+> east
+Pond, in the raft
+The middle of the pond. Lily pads drift by. An island lies to the east, the bank to the west.
+> disembark
+(raft)
+You realize that getting out here would be fatal.
+> east
+The raft comes to a rest on the shore.
+
+Island, in the raft
+A tiny island with one tree. The pond is west.
+There is a pine cone here. (outside the raft)
+```
+
+Native Zork I's magic boat is this recipe with Zork's rules on top: inflating it, the label, LAUNCH, punctures and the river's current.
