@@ -42,9 +42,9 @@ export function enterRoom(targetId: string, world: World, state: GameState): str
     const arrival = runOnEnter(targetId, world, state);
     // An arrival that moved the player on, or ended things, has said all there is to say.
     if (state.currentRoom !== targetId || state.gameOver || turnHalted(state)) return arrival;
-    return [...arrival, ...describeRoom(targetId, world, state, { first, brief })];
+    return [...arrival, ...describeRoom(targetId, world, state, { first, brief, namesOnly: verbosity === 'superbrief' })];
   }
-  const lines = describeRoom(targetId, world, state, { first, brief });
+  const lines = describeRoom(targetId, world, state, { first, brief, namesOnly: verbosity === 'superbrief' });
   lines.push(...runOnEnter(targetId, world, state));
   return lines;
 }

@@ -48,6 +48,16 @@ describe('daemons and fuses', () => {
     expect(s.fuses?.alarm_bell).toBeUndefined();
   });
 
+  it('rescheduling a pending fuse restarts its count, as a fresh schedule would', () => {
+    const s = stateWith(world);
+    run(s, 'use', 'bed'); // alarm_bell: 2
+    run(s, 'look'); // 1
+    run(s, 'use', 'bed'); // reset to 2; not counted down this turn
+    expect(s.fuses?.alarm_bell).toBe(2);
+    expect(run(s, 'look').lines).not.toContain('🔔 Ring!');
+    expect(run(s, 'look').lines).toContain('🔔 Ring!');
+  });
+
   it('cancel removes a pending fuse', () => {
     const s = stateWith(world);
     s.fuses = { alarm_bell: 2 }; // counts down to 1 first, then the daemon cancels it

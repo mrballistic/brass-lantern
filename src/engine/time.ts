@@ -1,7 +1,7 @@
 import type { GameState } from '@/types/game';
 import type { World } from '@/types/world';
 import { evaluateCondition } from './conditions';
-import { runEventKey, runSteps, turnHalted } from './effects';
+import { runEventKey, runSteps, scheduledThisTurn, turnHalted } from './effects';
 
 /**
  * After every turn the engine acted on: fuses count down and fire, then
@@ -12,7 +12,7 @@ import { runEventKey, runSteps, turnHalted } from './effects';
 export function afterTurn(world: World, state: GameState, existing: Set<string>): string[] {
   const out: string[] = [];
   for (const [key, left] of Object.entries(state.fuses ?? {})) {
-    if (!existing.has(key) || state.fuses?.[key] === undefined) continue;
+    if (!existing.has(key) || scheduledThisTurn(state, key) || state.fuses?.[key] === undefined) continue;
     if (left <= 1) {
       delete state.fuses![key];
       out.push(...runEventKey(key, world, state));

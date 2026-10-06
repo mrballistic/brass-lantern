@@ -32,12 +32,14 @@ export function buildContext(
   world: World,
   inventory: string[],
   visibleItemIds: string[],
+  dark = false,
 ): IntentContext {
+  // In the dark the player can't see where they are or who's there, so neither does the LLM.
   return {
-    roomName: room.name,
+    roomName: dark ? 'darkness' : room.name,
     exits: Object.keys(room.exits),
     items: visibleItemIds.map((id) => label(id, world.items[id]?.name)),
-    npcs: room.npcs.map((id) => label(id, world.npcs[id]?.name)),
+    npcs: dark ? [] : room.npcs.map((id) => label(id, world.npcs[id]?.name)),
     inventory: inventory.map((id) => label(id, world.items[id]?.name)),
     verbs: sendableVerbs(world),
   };

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { cartridges } from '@/app.config';
+import { conditionProblems } from '@/engine/conditions';
 import { verbClashes } from '@/engine/parser';
-import type { Effect, EventStep, World } from '@/types/world';
+import type { Effect, EventStep, Rule, RuleTable, World } from '@/types/world';
 import { fixtureWorld } from '../fixtures/world';
 
 // Checks the data of every native world this repo has: effects naming things
@@ -74,6 +75,58 @@ export function auditWorld(world: World): string[] {
       if (typeof exit !== 'string' && exit.door && !isItem(exit.door)) problems.push(`room ${id}: exit ${label} has no door “${exit.door}”`);
     }
   }
+  // Rules, triggers and the finale: the events they name, and their conditions.
+  const checkEvent = (key: string | undefined, where: string) => {
+    if (key !== undefined && !isEvent(key)) problems.push(`${where}: names no event “${key}”`);
+  };
+  const checkCondition = (condition: string | undefined, where: string) => {
+    if (condition !== undefined) for (const p of conditionProblems(condition, world)) problems.push(`${where}: ${p}`);
+  };
+  const checkRules = (rules: Rule[] | undefined, where: string) => {
+    for (const r of rules ?? []) {
+      checkEvent(r.then, where);
+      checkCondition(r.if, where);
+    }
+  };
+  const checkTable = (table: RuleTable | undefined, kind: string, where: string) => {
+    for (const [verb, rules] of Object.entries(table ?? {})) checkRules(rules, `${where} ${kind}.${verb}`);
+  };
+  const checkTriggers = (triggers: Array<{ if: string; then: string }>, where: string) => {
+    for (const t of triggers) {
+      checkEvent(t.then, where);
+      checkCondition(t.if, where);
+    }
+  };
+  for (const [id, room] of Object.entries(world.rooms)) {
+    checkTriggers(room.onEnter, `room ${id} onEnter`);
+    checkTable(room.instead, 'instead', `room ${id}`);
+    checkTable(room.after, 'after', `room ${id}`);
+    checkCondition(room.requires, `room ${id} requires`);
+    for (const [label, exit] of Object.entries(room.exits)) {
+      if (typeof exit === 'string') continue;
+      checkCondition(exit.if, `room ${id} exit ${label}`);
+      for (const d of exit.denials ?? []) checkCondition(d.if, `room ${id} exit ${label}`);
+    }
+  }
+  for (const [id, item] of Object.entries(world.items)) {
+    checkTable(item.instead, 'instead', `item ${id}`);
+    checkTable(item.after, 'after', `item ${id}`);
+    checkRules(item.onUse, `item ${id} onUse`);
+    checkEvent(item.onTake, `item ${id} onTake`);
+    checkEvent(item.onSmash, `item ${id} onSmash`);
+    checkEvent(item.onWear, `item ${id} onWear`);
+  }
+  for (const [id, npc] of Object.entries(world.npcs)) {
+    for (const key of Object.values(npc.onGive ?? {})) checkEvent(key, `npc ${id} onGive`);
+  }
+  for (const [i, d] of (world.daemons ?? []).entries()) checkCondition(d.if, `daemon ${i}`);
+  for (const h of world.hints ?? []) checkCondition(h.if, 'hint');
+  for (const s of world.scoring ?? []) checkCondition(s.if, 'scoring');
+  if (world.finale) {
+    checkEvent(world.finale.event, 'finale');
+    checkEvent(world.finale.bareHanded, 'finale');
+    checkTriggers(world.finale.epilogue, 'finale epilogue');
+  }
   if (!isRoom(world.startRoom)) problems.push(`startRoom “${world.startRoom}” isn’t a room`);
   for (const w of verbClashes(world.verbs)) problems.push(`verb word “${w}” is a built-in`);
   return problems;
@@ -97,6 +150,34 @@ describe('world audit', () => {
       daemons: [{ if: 'in:bedroom', then: 'absent' }],
     };
     const problems = auditWorld(broken);
+    const worse: World = {
+      ...fixtureWorld,
+      rooms: {
+        ...fixtureWorld.rooms,
+        yard: {
+          ...fixtureWorld.rooms.yard,
+          onEnter: [{ if: 'flagg:x', then: 'enter_nowhere' }],
+          instead: { take: [{ if: 'in:atlantis', then: 'missing_rule_event' }] },
+        },
+      },
+      items: { ...fixtureWorld.items, wallet: { ...fixtureWorld.items.wallet, onTake: 'missing_take', onUse: [{ if: 'has:unicorn', say: ['x'] }] } },
+      npcs: { ...fixtureWorld.npcs, neighbor: { ...fixtureWorld.npcs.neighbor, onGive: { wallet: 'missing_give' } } },
+      finale: { ...fixtureWorld.finale!, event: 'missing_finale', epilogue: [{ if: 'visited:mars', then: 'missing_epilogue' }] },
+    };
+    expect(auditWorld(worse)).toEqual(
+      expect.arrayContaining([
+        'room yard onEnter: names no event “enter_nowhere”',
+        'room yard onEnter: unknown condition “flagg:x”',
+        'room yard instead.take: names no event “missing_rule_event”',
+        'room yard instead.take: “in:atlantis” names no room “atlantis”',
+        'item wallet onTake: names no event “missing_take”',
+        'item wallet onUse: “has:unicorn” names no item “unicorn”',
+        'npc neighbor onGive: names no event “missing_give”',
+        'finale: names no event “missing_finale”',
+        'finale epilogue: names no event “missing_epilogue”',
+        'finale epilogue: “visited:mars” names no room “mars”',
+      ]),
+    );
     expect(problems).toEqual(
       expect.arrayContaining([
         'event bad: move names no item “unicorn”',

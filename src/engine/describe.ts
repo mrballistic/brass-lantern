@@ -109,7 +109,7 @@ export function describeRoom(
   roomId: string,
   world: World,
   state: GameState,
-  opts: { first?: boolean; brief?: boolean } = {},
+  opts: { first?: boolean; brief?: boolean; namesOnly?: boolean } = {},
 ): string[] {
   const room = world.rooms[roomId];
   if (!room) return [`The world frays. Room “${roomId}” does not exist.`];
@@ -120,6 +120,8 @@ export function describeRoom(
   }
   const lines: string[] = [];
   lines.push(`📍 ${room.name}`);
+  // SUPERBRIEF: the name and nothing else, as Zork skips DESCRIBE-OBJECTS.
+  if (opts.namesOnly) return lines;
   // BRIEF (Infocom's default) and SUPERBRIEF: just the name and contents.
   if (!opts.brief) {
     const varied = room.descriptions?.find((d) => evaluateCondition(d.if, state, world))?.text;

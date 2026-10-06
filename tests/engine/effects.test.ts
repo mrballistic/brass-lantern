@@ -12,6 +12,28 @@ describe('effects', () => {
     expect(s.flags.paid).toBe(true);
   });
 
+  it('effects naming things that don’t exist change nothing', () => {
+    const s = stateWith(world);
+    const before = structuredClone(s);
+    expect(
+      runSteps(
+        [
+          { move: 'ghost', to: 'player' },
+          { open: 'ghost' },
+          { close: 'ghost' },
+          { lock: 'ghost' },
+          { unlock: 'ghost' },
+          { switch: 'ghost', on: true },
+          { run: 'no_such_event' },
+          { schedule: 'no_such_event', in: 2 },
+        ],
+        world,
+        s,
+      ),
+    ).toEqual([]);
+    expect(s).toEqual(before);
+  });
+
   it('sets and clears flags, moves items, opens/locks/switches things, all silently', () => {
     const s = stateWith(world);
     expect(

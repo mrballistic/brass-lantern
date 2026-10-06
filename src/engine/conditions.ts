@@ -89,3 +89,45 @@ export function evaluateCondition(condition: string, state: GameState, world?: W
   }
   return negated ? !result : result;
 }
+
+/**
+ * What's wrong with a condition string, for the world audit: unknown kinds,
+ * and items, rooms or places that don't exist. Empty when it's sound.
+ */
+export function conditionProblems(condition: string, world: World): string[] {
+  const problems: string[] = [];
+  for (const part of condition.split('&')) {
+    const body = part.trim().replace(/^!/, '');
+    if (/^(?:var:\w+|carrying)\s*(<=|>=|=|<|>)\s*-?\d+$/.test(body)) continue;
+    const [kind, value = '', extra] = body.split(':');
+    const item = (id: string) => id in world.items || id in world.npcs;
+    const room = (id: string) => id in world.rooms;
+    const noItem = () => problems.push(`“${body}” names no item “${value}”`);
+    const noRoom = () => problems.push(`“${body}” names no room “${value}”`);
+    switch (kind) {
+      case 'flag':
+        break;
+      case 'has':
+      case 'on':
+      case 'open':
+      case 'locked':
+      case 'here':
+        if (!item(value)) noItem();
+        break;
+      case 'in':
+      case 'visited':
+        if (!room(value)) noRoom();
+        break;
+      case 'lit':
+        if (value !== 'here' && !room(value)) noRoom();
+        break;
+      case 'inside':
+        if (!item(value)) noItem();
+        if (extra !== undefined && extra !== 'player' && !item(extra) && !room(extra)) problems.push(`“${body}” names no place “${extra}”`);
+        break;
+      default:
+        problems.push(`unknown condition “${body}”`);
+    }
+  }
+  return problems;
+}

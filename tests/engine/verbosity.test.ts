@@ -24,6 +24,14 @@ describe('VERBOSE, BRIEF, SUPERBRIEF', () => {
     expect(go('east')).toContain('A small bedroom.');
   });
 
+  it('SUPERBRIEF shows only the room’s name on arrival, not its contents', () => {
+    const s = stateWith(world);
+    execute({ action: 'superbrief' }, { world, state: s });
+    const lines = execute({ action: 'go', target: 'west' }, { world, state: s }).lines;
+    expect(lines[0]).toBe('📍 Living Room');
+    expect(lines.some((l) => l.startsWith('You can see') || l.startsWith('Exits'))).toBe(false);
+  });
+
   it('Infocom style replies the way Zork does', () => {
     const w = { ...world, style: 'infocom' as const };
     const s = stateWith(w);

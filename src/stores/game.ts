@@ -318,6 +318,7 @@ export const useGameStore = defineStore('game', {
           world,
           inventoryOf(world, this.game),
           this.visibleItems,
+          !isLit(world, this.game),
         );
         // The intent server names things by ID, so they resolve by ID first.
         const action = { ...(await parseIntentRemote(input, ctx)), byId: true };
