@@ -130,6 +130,27 @@ const trollDied = (reply: string[]) => normalize(reply).includes('almost as soon
 
 export type Side = 'native' | 'original';
 
+/** Plays an opening (PREFIX's `@fight` kills the troll); its replies, or null if the player died, the troll lived, or something was stolen. */
+export async function playPrefix(send: (c: string) => Promise<string[]> | string[], opening: string[] = PREFIX, pilfered: () => boolean = () => false): Promise<string[][] | null> {
+  const seen: string[][] = [];
+  for (const c of opening) {
+    if (c !== '@fight') {
+      seen.push(await send(c));
+      if (pilfered()) return null;
+      continue;
+    }
+    let dead = false;
+    for (let i = 0; i < 12 && !dead; i++) {
+      const reply = await send('kill troll with sword');
+      seen.push(reply);
+      if (died(reply)) return null;
+      dead = trollDied(reply);
+    }
+    if (!dead) return null;
+  }
+  return seen;
+}
+
 /**
  * PREFIX, then `commands`; the replies to `commands` only. Null if the player died
  * in the prefix, the troll survived, or the thief showed up anywhere.
@@ -149,22 +170,8 @@ export async function prefixed(side: Side, commands: string[], seed: number): Pr
     send = game.send;
     pilfered = () => Object.entries(game.state.locations).some(([id, place]) => place === 'thief' && !['stiletto', 'large_bag'].includes(id));
   }
-  const seen: string[][] = [];
-  for (const c of opening) {
-    if (c !== '@fight') {
-      seen.push(await send(c));
-      if (pilfered()) return null;
-      continue;
-    }
-    let dead = false;
-    for (let i = 0; i < 12 && !dead; i++) {
-      const reply = await send('kill troll with sword');
-      seen.push(reply);
-      if (died(reply)) return null;
-      dead = trollDied(reply);
-    }
-    if (!dead) return null;
-  }
+  const seen = await playPrefix(send, opening, pilfered);
+  if (!seen) return null;
   const replies: string[][] = [];
   for (const c of commands) {
     replies.push(await send(c));

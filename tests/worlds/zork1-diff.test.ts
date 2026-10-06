@@ -91,10 +91,8 @@ function native(commands: string[]): string[][] {
 function nativeOnce(commands: string[], seed: number): string[][] | null {
   let state = initialState(zork1);
   state.rng = seed;
-  // With a third of Zork's rooms built, the native thief comes round three times as often as the
-  // original's, so the walkthrough parks him offstage (the original restarts when its thief shows);
-  // his behavior is checked by zork1-thief.test.ts and zork1-thief-unit.test.ts. Stage 5 lifts this.
-  state.npcs = { thief: { room: null } };
+  // The thief roams as in the original: a run he turns up in starts over with the next seed, on
+  // both sides (stage 5d; his arrival rate is checked by zork1-thief-timing.test.ts).
   openingLines(zork1, state);
   let conv = newConversation();
   const turn = nativeTurn;
@@ -108,10 +106,11 @@ function nativeOnce(commands: string[], seed: number): string[][] | null {
     }
     // Try seeds until this side gets through, then carry on from there.
     let done = false;
-    for (let seed = 1; seed <= 500 && !done; seed++) {
+    for (let attempt = 1; attempt <= 500 && !done; attempt++) {
       const st = structuredClone(state);
       const cv = structuredClone(conv);
-      st.rng = seed;
+      // The run's own seed stays in play past the fight, so each run differs after it too.
+      st.rng = seed * 1000 + attempt;
       const reply = syncNow(c, (cmd) => turn(cmd, st, cv));
       if (reply) {
         replies.push(reply);
