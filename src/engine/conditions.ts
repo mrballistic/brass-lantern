@@ -1,6 +1,6 @@
 import type { GameState } from '@/types/game';
 import type { World } from '@/types/world';
-import { isAlive, isAwake, isLit, isLocked, isOn, isOpen, isReachable, npcRoom } from './model';
+import { isAlive, isAwake, isLit, isLocked, isNpcIn, isOn, isOpen, isReachable } from './model';
 
 /**
  * Evaluate a condition string against the current game state.
@@ -94,7 +94,7 @@ export function evaluateCondition(condition: string, state: GameState, world?: W
       result = Boolean(state.npcs?.[value]?.fighting) && (world ? isAwake(world, state, value) : false);
       break;
     case 'with':
-      result = world ? npcRoom(world, state, value) === state.currentRoom : false;
+      result = world ? isNpcIn(world, state, value, state.currentRoom) : false;
       break;
     default:
       return false;

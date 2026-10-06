@@ -22,18 +22,21 @@ export function initialLocations(world: World): Record<string, Place> {
   return loc;
 }
 
-/** Where a character is: its state, else the room that lists it. Null when it's gone (or dead). */
-export function npcRoom(world: World, state: GameState, id: string): string | null {
+/**
+ * Is a character in this room? Until something moves it, a character is in
+ * every room that lists it (Office Space's Lumbergh is in three); once moved,
+ * it's in one place. Dead or gone, it's nowhere.
+ */
+export function isNpcIn(world: World, state: GameState, id: string, roomId: string): boolean {
   const s = state.npcs?.[id];
-  if (s?.strength === 0) return null;
-  if (s && s.room !== undefined) return s.room;
-  for (const [roomId, room] of Object.entries(world.rooms)) if (room.npcs.includes(id)) return roomId;
-  return null;
+  if (s?.strength === 0) return false;
+  if (s && s.room !== undefined) return s.room === roomId;
+  return world.rooms[roomId]?.npcs.includes(id) ?? false;
 }
 
 /** The characters in a room: the room's own list order, then any who arrived. */
 export function npcsIn(world: World, state: GameState, roomId: string): string[] {
-  const here = Object.keys(world.npcs).filter((id) => npcRoom(world, state, id) === roomId);
+  const here = Object.keys(world.npcs).filter((id) => isNpcIn(world, state, id, roomId));
   const listed = world.rooms[roomId]?.npcs ?? [];
   return [...listed.filter((id) => here.includes(id)), ...here.filter((id) => !listed.includes(id)).sort()];
 }
@@ -43,8 +46,9 @@ export function npcStateOf(state: GameState, id: string): NpcState {
   return ((state.npcs ??= {})[id] ??= {});
 }
 
-export function isAlive(world: World, state: GameState, id: string): boolean {
-  return npcRoom(world, state, id) !== null;
+export function isAlive(_world: World, state: GameState, id: string): boolean {
+  const s = state.npcs?.[id];
+  return s?.strength !== 0 && s?.room !== null;
 }
 
 /** Alive and conscious. */

@@ -53,4 +53,15 @@ describe('characters', () => {
     expect(conditionProblems('fighting:guard & with:guard & alive:guard & awake:guard', world)).toEqual([]);
     expect(conditionProblems('alive:ghost', world)).toEqual(['“alive:ghost” names no character “ghost”']);
   });
+
+  it('a character listed in several rooms is in each of them, until something moves it', () => {
+    const w = { ...world, rooms: { ...world.rooms, living: { ...world.rooms.living, npcs: ['neighbor'] } } };
+    const s = stateWith(w, { room: 'living' });
+    expect(npcsIn(w, s, 'living')).toContain('neighbor');
+    expect(npcsIn(w, s, 'yard')).toContain('neighbor');
+    expect(evaluateCondition('with:neighbor', s, w)).toBe(true);
+    runSteps([{ moveNpc: 'neighbor', to: 'yard' }], w, s);
+    expect(npcsIn(w, s, 'living')).not.toContain('neighbor');
+    expect(npcsIn(w, s, 'yard')).toContain('neighbor');
+  });
 });
