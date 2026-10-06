@@ -121,8 +121,10 @@ export function withRules(
     words: { target: action.target, indirect: action.indirect },
   });
   const instead = findRule(world, state, 'instead', verb, ids, reach);
-  if (instead) return applyRule(instead, world, state);
-  const result = run();
+  if (instead && !instead.continue) return applyRule(instead, world, state);
+  const before = instead ? applyRule(instead, world, state) : null;
+  const ran = run();
+  const result = before ? { ...ran, lines: [...before.lines, ...ran.lines], mutated: ran.mutated || before.mutated } : ran;
   if (result.understood === false || !result.mutated) return result;
   const after = findRule(world, state, 'after', verb, ids, reachableItems(world, state));
   // onTake (folded into after.take) has always fired only once.

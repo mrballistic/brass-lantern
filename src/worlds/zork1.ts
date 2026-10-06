@@ -447,7 +447,7 @@ export const zork1: World = {
       dark: true,
       tags: ['maze'],
       exits: { east: 'dead_end_2', north: 'maze_3', southwest: 'maze_6' },
-      items: ['bones', 'burned_out_lantern', 'rusty_knife', 'keys', 'bag_of_coins'],
+      items: ['bones', 'bag_of_coins', 'keys', 'burned_out_lantern', 'rusty_knife'],
       npcs: [],
       onEnter: [],
     },
@@ -555,7 +555,7 @@ export const zork1: World = {
       exits: {
         south: 'cellar',
         east: { to: 'ew_passage', denials: [{ if: 'awake:troll', text: 'The troll fends you off with a menacing gesture.' }] },
-        west: { denials: [{ if: 'awake:troll', text: 'The troll fends you off with a menacing gesture.' }], denial: 'The maze isn’t built yet.' },
+        west: { to: 'maze_1', denials: [{ if: 'awake:troll', text: 'The troll fends you off with a menacing gesture.' }] },
       },
       items: [],
       npcs: ['troll'],
@@ -1073,7 +1073,7 @@ export const zork1: World = {
       tags: [],
       // RUSTY-KNIFE-FCN: the sword knows it; and it turns on whoever fights with it.
       instead: {
-        take: [{ if: 'has:sword & !inside:rusty_knife:player', then: 'rusty_knife_pulse' }],
+        take: [{ if: 'has:sword', say: ['As you touch the rusty knife, your sword gives a single pulse of blinding blue light.'], continue: true }],
         attack: [{ then: 'rusty_knife_kills' }],
       },
     },
@@ -1840,7 +1840,6 @@ export const zork1: World = {
     grate_opens: [{ script: 'grate_opens' }],
     grate_closes: [{ close: 'grate' }, { switch: 'sunlight', on: false }, 'The grating is closed.'],
     ghost_curse: [{ script: 'ghost_curse' }],
-    rusty_knife_pulse: ['As you touch the rusty knife, your sword gives a single pulse of blinding blue light.', { move: 'rusty_knife', to: 'player' }, 'Taken.'],
     rusty_knife_kills: [
       { move: 'rusty_knife', to: null },
       { die: 'As the knife approaches its victim, your mind is submerged by an overmastering will. Slowly, your hand turns, until the rusty blade is an inch from your neck. The knife seems to sing as it savagely slits your throat.' },

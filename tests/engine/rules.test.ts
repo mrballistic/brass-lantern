@@ -50,4 +50,13 @@ describe('instead and after rules', () => {
     expect(r.lines).not.toContain('The lamp rolls under the fence.');
     expect(s.flags.lamp_rolled).toBeUndefined();
   });
+
+  it('an instead rule can say its piece and let the default go on (continue)', () => {
+    const w = { ...world, items: { ...world.items, wallet: { ...world.items.wallet, instead: { take: [{ say: ['It’s warm.'], continue: true }] } } } };
+    const s = stateWith(w, { room: 'living' });
+    const lines = execute({ action: 'take', target: 'wallet' }, { world: w, state: s }).lines;
+    expect(lines.slice(0, 2)).toEqual(['It’s warm.', 'Taken: wallet.']);
+    expect(s.locations.wallet).toBe('player');
+  });
 });
+

@@ -45,6 +45,8 @@ export interface Rule {
   with?: string;
   then?: string;
   say?: string[];
+  /** An instead rule that runs, then lets the verb's default go on (Zork's “print, then RFALSE”). */
+  continue?: boolean;
 }
 
 /** Verb → rules. */

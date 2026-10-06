@@ -94,6 +94,25 @@ export const WALKTHROUGH: string[] = [
   'SCORE',
   'West',
   'WEST',
+  // Stage 4b: through the maze to the cyclops, ULYSSES, and the Strange Passage home.
+  'west',
+  'south',
+  'east',
+  'up',
+  'take key',
+  'take coins',
+  'take rusty knife',
+  'southwest',
+  'east',
+  'south',
+  'southeast',
+  'throw axe at cyclops',
+  'wait',
+  'wait',
+  'ulysses',
+  'east',
+  'east',
+  'put coins in case',
 ];
 
 /**
