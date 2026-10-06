@@ -78,4 +78,10 @@ describe('world verbs', () => {
     const s = stateWith(w, { room: 'shed' });
     expect(execute({ action: 'salute', target: 'guard' }, { world: w, state: s }).lines).toEqual(['The guard salutes back.']);
   });
+
+  it('aimed at a person with no rule for it, it’s a miss (the LLM gets a turn)', () => {
+    const w = { ...world, verbs: { ...world.verbs, salute: { words: ['salute'], target: 'required' as const } } };
+    const s = stateWith(w, { room: 'shed' });
+    expect(execute({ action: 'salute', target: 'guard' }, { world: w, state: s }).understood).toBe(false);
+  });
 });

@@ -27,6 +27,8 @@ const world: World = {
     },
   },
 };
+// Brass style, but with combat: the short default wording.
+const brass: World = { ...fixtureWorld, combat: {} };
 const act = (s: GameState, a: ParsedAction, w: World = world) => execute(a, { world: w, state: s }).lines;
 const attack = (s: GameState, target: string, indirect?: string, w: World = world) =>
   act(s, indirect ? { action: 'attack', target, indirect } : { action: 'attack', target }, w);
@@ -73,18 +75,19 @@ describe('combat: the player’s blow', () => {
   });
 
   it('in Infocom style, a weapon you don’t have is the parser’s refusal: no turn passes', () => {
-    const s = stateWith(world, { room: 'yard' });
-    const r = execute({ action: 'attack', target: 'neighbor', indirect: 'bat' }, { world, state: s });
+    const s = stateWith(world, { room: 'shed' });
+    s.locations.bat = 'shed';
+    const r = execute({ action: 'attack', target: 'guard', indirect: 'bat' }, { world, state: s });
     expect(r.lines).toEqual(['You don’t have the bat.']);
     expect(r.free).toBe(true);
     expect(s.moveCount).toBe(0);
   });
 
   it('refuses in Zork’s order and words, changing nothing', () => {
-    const s = stateWith(fixtureWorld, { room: 'shed' });
+    const s = stateWith(brass, { room: 'shed' });
     carry(s, 'wallet');
     const before = structuredClone(s);
-    expect(attack(s, 'guard', undefined, fixtureWorld)).toEqual(['You can’t fight the guard with your bare hands.']);
+    expect(attack(s, 'guard', undefined, brass)).toEqual(['You can’t fight the guard with your bare hands.']);
     expect(attack(s, 'guard', 'hands')).toEqual(['Trying to attack a guard with your bare hands is suicidal.']);
     expect(execute({ action: 'attack', target: 'guard', indirect: 'bat' }, { world, state: s }).understood).toBe(false); // no bat here: a miss
     expect(attack(s, 'guard', 'wallet')).toEqual(['Trying to attack the guard with a wallet is suicidal.']);
@@ -94,7 +97,9 @@ describe('combat: the player’s blow', () => {
 
   it('not holding the weapon (brass), and characters with no fight in them', () => {
     const s = stateWith(world, { room: 'yard' });
-    expect(attack(stateWith(fixtureWorld, { room: 'yard' }), 'neighbor', 'bat', fixtureWorld)[0]).toBe('You aren’t holding the bat.');
+    const shed = stateWith(brass, { room: 'shed' });
+    shed.locations.bat = 'shed';
+    expect(attack(shed, 'guard', 'bat', brass)[0]).toBe('You aren’t holding the bat.');
     carry(s, 'bat');
     expect(attack(s, 'neighbor', 'bat')[0]).toBe('Neighbor won’t fight you.');
   });
@@ -122,10 +127,10 @@ describe('combat: the player’s blow', () => {
   });
 
   it('brass worlds get short defaults', () => {
-    const s = stateWith(fixtureWorld, { room: 'shed' });
+    const s = stateWith(brass, { room: 'shed' });
     carry(s, 'bat');
     s.locations.cudgel = null;
-    expect(attack(s, 'guard', 'bat', fixtureWorld)).toEqual(['The guard can’t defend themselves.', 'The guard is dead.']);
+    expect(attack(s, 'guard', 'bat', brass)).toEqual(['The guard can’t defend themselves.', 'The guard is dead.']);
   });
 
   it('SMASH and ATTACK at things still smash in a world without combat', () => {
@@ -140,5 +145,39 @@ describe('combat: the player’s blow', () => {
     expect(act(s, { action: 'throw', target: 'shirt' })).toEqual(['Thrown.']);
     expect(s.locations.shirt).toBe('shed');
     expect(execute({ action: 'throw', target: 'lamp' }, { world, state: s }).understood).toBe(false);
+  });
+
+  it('a guessed weapon weakens the defender as a named one does (Zork’s GWIM sets PRSI)', () => {
+    for (let seed = 1; seed <= 40; seed++) {
+      const a = stateWith(world, { room: 'shed' });
+      carry(a, 'bat');
+      a.rng = seed;
+      // Staggered: the player's blow is lost, so the guard swings back at full strength unless the weapon counts.
+      a.player = { staggered: true };
+      a.npcs = { guard: { fighting: true } };
+      const b = structuredClone(a);
+      expect(attack(a, 'guard').slice(1)).toEqual(attack(b, 'guard', 'bat'));
+    }
+  });
+
+  it('in a world without combat, attacking a person is SMASH, as before (a miss the LLM can retry)', () => {
+    const s = stateWith(fixtureWorld, { room: 'yard' });
+    carry(s, 'bat');
+    expect(execute({ action: 'attack', target: 'neighbor', indirect: 'bat' }, { world: fixtureWorld, state: s })).toEqual(
+      execute({ action: 'smash', target: 'neighbor', indirect: 'bat' }, { world: fixtureWorld, state: structuredClone(s) }),
+    );
+  });
+
+  it('in a world with combat, someone who doesn’t fight says so before any weapon check', () => {
+    const s = stateWith(world, { room: 'yard' });
+    expect(attack(s, 'neighbor')[0]).toBe('Neighbor won’t fight you.');
+  });
+
+  it('THROW at a person with no rule for it is a miss, so the LLM can read it another way', () => {
+    const s = stateWith(world, { room: 'yard' });
+    carry(s, 'wallet');
+    const r = execute({ action: 'throw', target: 'wallet', indirect: 'neighbor' }, { world, state: s });
+    expect(r.understood).toBe(false);
+    expect(s.locations.wallet).toBe('player');
   });
 });

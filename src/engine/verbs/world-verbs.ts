@@ -32,5 +32,7 @@ export function handleWorldVerb(action: ParsedAction, world: World, state: GameS
     }
   }
   if (rule) return applyRule(rule, world, state);
+  // Aimed at a person who has no rule for it: a miss, so the intent server gets a turn.
+  if (person) return miss(verb.reply ?? 'Nothing happens.');
   return ok([verb.reply ?? 'Nothing happens.']);
 }

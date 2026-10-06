@@ -122,21 +122,25 @@ function untilDeath(lines: string[]): string[] {
 
 describe('the troll fight against the original', () => {
   it('prints nothing the original never prints', async () => {
-    let corpus = '';
+    const lines = new Set<string>();
     for (let i = 0; i < FIGHTS; i++) {
       try {
-        corpus += ' | ' + normalize(untilDeath((await originalFight()).split('\n')).join('\n'));
+        for (const line of untilDeath((await originalFight()).split('\n'))) lines.add(normalize(line));
       } catch (e) {
         throw new Error(`fight ${i}: ${(e as Error).message}`, { cause: e });
       }
     }
-    // A message variant too rare to have turned up is fine when its kind of result did.
-    const seenKinds = messagesByResult().filter((k) => k.texts.some((t) => corpus.includes(t)));
-    const accepted = (line: string) => corpus.includes(line) || seenKinds.some((k) => k.texts.includes(line));
-    const strays = new Set<string>();
+    // How often each line turns up in our own fights.
+    const counts = new Map<string, number>();
     for (let seed = 1; seed <= 200; seed++) {
-      for (const line of untilDeath(nativeFight(seed))) if (!accepted(normalize(line))) strays.add(line);
+      for (const line of untilDeath(nativeFight(seed))) counts.set(line, (counts.get(line) ?? 0) + 1);
     }
-    expect([...strays]).toEqual([]);
+    // A message variant that never turned up in the original is excused only when it's rare
+    // (fewer than RARE in our 200 fights) and its kind of result did turn up. A common one must match.
+    const RARE = 5;
+    const seenKinds = messagesByResult().filter((k) => k.texts.some((t) => lines.has(t)));
+    const excused = (line: string, count: number) => count < RARE && seenKinds.some((k) => k.texts.includes(line));
+    const strays = [...counts].filter(([line, count]) => !lines.has(normalize(line)) && !excused(normalize(line), count)).map(([line]) => line);
+    expect(strays).toEqual([]);
   }, 300_000);
 });

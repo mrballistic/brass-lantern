@@ -245,4 +245,13 @@ describe('Zork I, natively: the troll', () => {
     // (The sword's glow follows: the troll is next door.)
     expect(run('diagnose').slice(0, 2)).toEqual(['You are in perfect health.', 'You can be killed by a serious wound.']);
   });
+
+  it('the troll’s death doesn’t take the axe out of your hands', () => {
+    const { state, run } = cellar(3);
+    run('north');
+    state.locations.axe = 'player';
+    state.npcs = { troll: { fighting: true } };
+    run('kill troll with sword');
+    expect(state.locations.axe).toBe('player');
+  });
 });

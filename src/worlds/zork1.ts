@@ -899,6 +899,8 @@ export const zork1: World = {
       }
       return [...wake, { move: item, to: null }, `${opening} and not having the most discriminating tastes, gleefully eats it.`];
     },
+    // F-DEAD / F-UNCONSCIOUS: the axe falls only if he was holding it.
+    troll_drops_axe: (ctx) => (ctx.holder('axe') === 'troll' ? [{ move: 'axe', to: 'troll_room' }] : []),
     chimney_climbed: (ctx) => (ctx.state.itemState.trap_door?.open ? [] : [{ clear: 'trap_door_barred' }]),
     // AWAKEN: a knocked-out troll comes round when you meddle with him.
     troll_wake_if_out: (ctx) => {
@@ -1015,7 +1017,7 @@ export const zork1: World = {
     chimney_climbed: [{ script: 'chimney_climbed' }],
     cellar_points: [{ set: 'cellar_visited' }],
     ew_passage_points: [{ set: 'ew_passage_visited' }],
-    troll_drops_axe: [{ move: 'axe', to: 'troll_room' }],
+    troll_drops_axe: [{ script: 'troll_drops_axe' }],
     troll_wakes: [{ script: 'troll_wakes' }],
     troll_busy: [{ script: 'troll_busy' }],
     troll_catches: [{ script: 'troll_catches' }],

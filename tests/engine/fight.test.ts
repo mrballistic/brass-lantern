@@ -139,3 +139,11 @@ describe('DIAGNOSE', () => {
     expect(fallbackParse('diagnose')).toEqual({ action: 'diagnose' });
   });
 });
+
+describe('turns that change only health or characters still count as changes', () => {
+  it('healing is a change (saved, undoable)', () => {
+    const s = armed(1);
+    s.player = { wounds: 1, load: 90, cureIn: 1 };
+    expect(execute({ action: 'wait' }, { world, state: s }).mutated).toBe(true);
+  });
+});

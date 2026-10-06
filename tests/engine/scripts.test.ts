@@ -66,4 +66,12 @@ describe('scripts', () => {
     expect(Math.min(...rolls)).toBe(1);
     expect(Math.max(...rolls)).toBe(9);
   });
+
+  it('a character’s state is read-only too', () => {
+    const w: World = { ...world, scripts: { ...world.scripts, kill: (ctx) => { (ctx.npc('guard') as { strength: number }).strength = 0; return []; } } };
+    const s = stateWith(w, { room: 'shed' });
+    s.npcs = { guard: { strength: 2 } };
+    expect(() => runSteps([{ script: 'kill' }], w, s)).toThrow();
+    expect(s.npcs.guard.strength).toBe(2);
+  });
 });

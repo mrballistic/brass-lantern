@@ -65,7 +65,8 @@ function deepFreeze<T>(value: T): T {
 export function scriptSteps(name: string, arg: string | undefined, world: World, state: GameState): EventStep[] {
   const script = world.scripts?.[name];
   if (!script) return [];
-  const view: Readonly<GameState> = FREEZE ? deepFreeze(structuredClone(state)) : state;
+  // A JSON copy: the store's state is a reactive proxy, which structuredClone can't copy.
+  const view: Readonly<GameState> = FREEZE ? deepFreeze(JSON.parse(JSON.stringify(state)) as GameState) : state;
   const steps = script({
     world,
     state: view,
@@ -76,7 +77,7 @@ export function scriptSteps(name: string, arg: string | undefined, world: World,
     carried: (id) => isCarried(state, id),
     holder: (id) => parentOf(state, id),
     room: () => state.currentRoom,
-    npc: (id) => state.npcs?.[id],
+    npc: (id) => view.npcs?.[id],
     command: commands.get(state) ?? undefined,
   });
   return steps ?? [];

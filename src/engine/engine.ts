@@ -94,7 +94,7 @@ export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
   // Misses don't count as turns: they must not mutate state (see EngineResult).
   state.turns = (state.turns ?? 0) + 1;
   state.moveCount += 1;
-  const before = JSON.stringify([state.vars, state.fuses, state.flags, state.locations, state.itemState, state.currentRoom]);
+  const before = JSON.stringify([state.vars, state.fuses, state.flags, state.locations, state.itemState, state.currentRoom, state.player, state.npcs, state.rng]);
   // A death this turn ends it: no timers or daemons after the resurrection.
   const later = turnHalted(state) ? [] : afterTurn(world, state, pendingFuses);
   // Light arriving or leaving while the player stays put.
@@ -106,7 +106,7 @@ export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
     }
     if (!litNow && litBefore) later.push(darknessFalls(world));
   }
-  const changed = before !== JSON.stringify([state.vars, state.fuses, state.flags, state.locations, state.itemState, state.currentRoom]);
+  const changed = before !== JSON.stringify([state.vars, state.fuses, state.flags, state.locations, state.itemState, state.currentRoom, state.player, state.npcs, state.rng]);
   if (later.length === 0 && !changed) return result;
   return { ...result, lines: [...result.lines, ...later], mutated: true };
 }
