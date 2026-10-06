@@ -650,3 +650,60 @@ describe('Zork I, natively: 5c’s scoring', () => {
     expect(score() - before).toBe(13);
   });
 });
+
+describe('Zork I, natively: the end (5d)', () => {
+  const WHISPER = 'An almost inaudible voice whispers in your ear, “Look to your treasures for the final secret.”';
+  const fresh = (room: string) => {
+    const state = initialState(zork1);
+    state.currentRoom = room;
+    state.npcs = { thief: { room: null } };
+    return state;
+  };
+  const say = (state: ReturnType<typeof initialState>, line: string) =>
+    execute(fallbackParse(line, zork1.verbs) ?? { action: 'unknown' }, { world: zork1, state }).lines;
+  it('the Mountains are impassable', () => {
+    const s = fresh('forest_2');
+    say(s, 'east');
+    expect(s.currentRoom).toBe('mountains');
+    expect(say(s, 'up')).toEqual(['The mountains are impassable.']);
+    expect(say(s, 'east')).toEqual(['The mountains are impassable.']);
+    expect(say(s, 'climb mountains')).toEqual(['Don’t you believe me? The mountains are impassable!']);
+    say(s, 'west');
+    expect(s.currentRoom).toBe('forest_2');
+  });
+  it('before winning, there is no way southwest', () => {
+    const s = fresh('west_of_house');
+    expect(say(s, 'southwest')).toEqual(['You can’t go that way.']);
+    expect(say(s, 'in')[0]).toBe('You can’t go that way.');
+    expect(s.currentRoom).toBe('west_of_house');
+  });
+  it('350 points: the whisper once, the map, the secret path; dying keeps it', () => {
+    const s = fresh('living_room');
+    s.locations.jade = 'living_room';
+    s.itemState.trophy_case = { ...s.itemState.trophy_case, open: true };
+    s.vars = { ...s.vars, score: 0 };
+    s.vars.score = 340 - currentScore(zork1, s);
+    say(s, 'take jade');
+    const won = say(s, 'put jade in case');
+    expect(won.at(-1)).toBe(WHISPER);
+    expect(s.flags.won).toBe(true);
+    expect(say(s, 'take jade')).not.toContain(WHISPER);
+    expect(say(s, 'put jade in case')).not.toContain(WHISPER);
+    expect(say(s, 'read map').join(' ')).toContain('To Stone Barrow');
+    s.currentRoom = 'north_of_house';
+    expect(say(s, 'west').join(' ')).toContain('A secret path leads southwest into the forest.');
+    runSteps([{ die: 'Oops.' }], zork1, s);
+    expect(s.flags.won).toBe(true);
+  });
+  it('the barrow ends the game', () => {
+    const s = fresh('west_of_house');
+    s.flags.won = true;
+    say(s, 'southwest');
+    expect(s.currentRoom).toBe('stone_barrow');
+    expect(say(s, 'open door')).toEqual(['The door is too heavy.']);
+    const end = say(s, 'west');
+    expect(end[0]).toBe('Inside the Barrow');
+    expect(end.join(' ')).toContain('Your score is');
+    expect(s.gameOver).toBe(true);
+  });
+});

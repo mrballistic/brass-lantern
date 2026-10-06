@@ -14,7 +14,6 @@ import type { EventStep, World } from '@/types/world';
 
 const CARRYING = 'You can’t get up there with what you’re carrying.';
 const GRUE = 'Oh, no! You have walked into the slavering fangs of a lurking grue!';
-const OFF_MAP = 'That part of the map isn’t built yet.';
 // The Maintenance Room's flood, by half-levels (Zork's DROWNINGS).
 const DROWNINGS = ['up to your ankles.', 'up to your shin.', 'up to your knees.', 'up to your hips.', 'up to your waist.', 'up to your chest.', 'up to your neck.', 'over your head.', 'high in your lungs.'];
 /**
@@ -1603,6 +1602,23 @@ export const zork1: World = {
       onEnter: [],
       scenery: inForest,
     },
+    // Stage 5d: MOUNTAINS.
+    mountains: {
+      name: 'Forest',
+      description: 'The forest thins out, revealing impassable mountains.',
+      exits: {
+        up: { denial: 'The mountains are impassable.' },
+        north: 'forest_2',
+        east: { denial: 'The mountains are impassable.' },
+        south: 'forest_2',
+        west: 'forest_2',
+      },
+      items: ['mountain_range'],
+      npcs: [],
+      onEnter: [],
+      scenery: ['tree', 'white_house'],
+      tags: ['sacred'],
+    },
     forest_2: {
       tags: ['sacred'],
       name: 'Forest',
@@ -1610,7 +1626,7 @@ export const zork1: World = {
       exits: {
         up: { denial: NO_TREE },
         north: { denial: 'The forest becomes impenetrable to the north.' },
-        east: { denial: OFF_MAP },
+        east: 'mountains',
         south: 'clearing',
         west: 'path',
       },
@@ -1689,10 +1705,26 @@ export const zork1: World = {
       onEnter: [],
       scenery: [...outside, 'boarded_window', 'board'],
     },
+    // Stage 5d: STONE-BARROW. Going in ends the game (STONE-BARROW-FCN).
+    stone_barrow: {
+      name: 'Stone Barrow',
+      description: 'You are standing in front of a massive barrow of stone. In the east face is a huge stone door which is open. You cannot see into the dark of the tomb.',
+      exits: {
+        northeast: 'west_of_house',
+        west: { to: 'stone_barrow', then: 'barrow_end' },
+        in: { to: 'stone_barrow', then: 'barrow_end' },
+      },
+      items: ['barrow_door', 'barrow'],
+      npcs: [],
+      onEnter: [],
+      tags: ['sacred'],
+    },
     west_of_house: {
       tags: ['sacred'],
       name: 'West of House',
       description: 'You are standing in an open field west of a white house, with a boarded front door.',
+      // WEST-HOUSE: once you've won, the secret path.
+      descriptions: [{ if: 'flag:won', text: 'You are standing in an open field west of a white house, with a boarded front door. A secret path leads southwest into the forest.' }],
       exits: {
         north: 'north_of_house',
         south: 'south_of_house',
@@ -1700,6 +1732,8 @@ export const zork1: World = {
         southeast: 'south_of_house',
         west: 'forest_1',
         east: { denial: 'The door is boarded and you can’t remove the boards.' },
+        southwest: { to: 'stone_barrow', if: 'flag:won' },
+        in: { to: 'stone_barrow', if: 'flag:won' },
       },
       items: ['mailbox', 'front_door'],
       npcs: [],
@@ -1836,6 +1870,44 @@ export const zork1: World = {
       tags: [],
       scenery: true,
       instead: { throw: [{ as: 'indirect', then: 'over_the_cliff' }], put: [{ as: 'indirect', then: 'over_the_cliff' }] },
+    },
+    // Stage 5d: the end.
+    mountain_range: {
+      name: 'mountain range',
+      aliases: ['mountain', 'mountains', 'range', 'impassable mountains', 'flathead mountains'],
+      description: 'There’s nothing special about the mountain range.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      instead: { climb: [{ say: ['Don’t you believe me? The mountains are impassable!'] }] },
+    },
+    map: {
+      name: 'ancient map',
+      aliases: ['map', 'parchment', 'antique map', 'old map', 'ancient parchment'],
+      description: 'There’s nothing special about the ancient map.',
+      initialDescription: 'In the trophy case is an ancient parchment which appears to be a map.',
+      text: 'The map shows a forest with three clearings. The largest clearing contains a house. Three paths leave the large clearing. One of these paths, leading southwest, is marked “To Stone Barrow”.',
+      portable: true,
+      size: 2,
+      tags: [],
+    },
+    barrow_door: {
+      name: 'stone door',
+      aliases: ['door', 'huge door', 'stone door'],
+      description: 'There’s nothing special about the stone door.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      instead: { open: [{ say: ['The door is too heavy.'] }], close: [{ say: ['The door is too heavy.'] }] },
+    },
+    barrow: {
+      name: 'stone barrow',
+      aliases: ['barrow', 'tomb', 'massive barrow', 'stone barrow'],
+      description: 'There’s nothing special about the stone barrow.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      instead: { enter: [{ then: 'barrow_end' }] },
     },
     // Stage 5c: the coal mine.
     jade: {
@@ -2707,6 +2779,7 @@ export const zork1: World = {
       tags: [],
       scenery: true,
       container: { openable: true, transparent: true },
+      contains: ['map'],
       contentsHeading: 'Your collection of treasures consists of:',
     },
     lamp: {
@@ -3868,6 +3941,8 @@ export const zork1: World = {
 
   // Zork's LAMP-TABLE: warnings after 100, 170 and 185 lit turns; out on the next.
   daemons: [
+    // SCORE-UPD: at 350, the whisper, the map, and West of House's secret path.
+    { if: 'score>=350 & !flag:won', then: 'won' },
     // I-MAINT-ROOM.
     { if: 'flag:leaking', then: [{ script: 'maint_rising' }] },
     // I-CYCLOPS: queued during play, so it's the newest interrupt and runs first.
@@ -3901,6 +3976,20 @@ export const zork1: World = {
       chance: 80,
       then: [{ die: 'Oh, no! A lurking grue slithered into the room and devoured you!' }],
       aboard: [{ die: 'Oh, no! A lurking grue slithered into the magic boat and devoured you!' }],
+    },
+  },
+
+  // STONE-BARROW-FCN, then FINISH: the score and Zork's last question.
+  endings: {
+    barrow: {
+      lines: [
+        'Inside the Barrow',
+        'As you enter the barrow, the door closes inexorably behind you. Around you it is dark, but ahead is an enormous cavern, brightly lit. Through its center runs a wide stream. Spanning the stream is a small wooden footbridge, and beyond a path leads into a dark tunnel. Above the bridge, floating in the air, is a large sign. It reads:  All ye who stand before this bridge have completed a great and perilous adventure which has tested your wit and courage. You have mastered the first part of the ZORK trilogy. Those who pass over this bridge must be prepared to undertake an even greater adventure that will severely test your skill and bravery!',
+        '',
+        'The ZORK trilogy continues with “ZORK II: The Wizard of Frobozz” and is completed in “ZORK III: The Dungeon Master.”',
+      ],
+      score: true,
+      footer: ['', 'Would you like to restart the game from the beginning, restore a saved game position, or end this session of the game?', '(Type RESTART, RESTORE, or QUIT):'],
     },
   },
 
@@ -4002,6 +4091,13 @@ export const zork1: World = {
     slide_down: ['You tumble down the slide....', { go: 'cellar' }],
     canyon_jump: [{ if: '!aboard', then: [{ die: 'Nice view, lousy place to jump.' }] }],
     took_scarab: [{ set: 'took_scarab' }],
+    won: [
+      { set: 'won' },
+      { reveal: 'map' },
+      { unvisit: 'west_of_house' },
+      'An almost inaudible voice whispers in your ear, “Look to your treasures for the final secret.”',
+    ],
+    barrow_end: [{ end: 'barrow' }],
     took_jade: [{ set: 'took_jade' }],
     took_bracelet: [{ set: 'took_bracelet' }],
     took_diamond: [{ set: 'took_diamond' }],
@@ -4105,12 +4201,13 @@ export const zork1: World = {
       'Copyright (c) 1981, 1982, 1983, 1984, 1985, 1986 Infocom, Inc. All rights reserved.',
       'ZORK is a registered trademark of Infocom, Inc.',
       'Release 119 / Serial number 880429',
-      '[A native Brass Lantern port. Still to come: the coal mine and the barrow.]',
+      '[A native Brass Lantern port.]',
       // INVISIBLE until something reveals them.
       { hide: 'leak' },
       { hide: 'trunk' },
       { hide: 'scarab' },
       { hide: 'pot_of_gold' },
+      { hide: 'map' },
       // The torch and the candles are lit from the start (ONBIT); the hot bell waits offstage.
       { switch: 'torch', on: true },
       { switch: 'candles', on: true },

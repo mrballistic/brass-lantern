@@ -56,3 +56,22 @@ describe('the coal mine and UNDO (5c)', () => {
     expect(s.game.locations.lowered_basket).toBe('lower_shaft');
   });
 });
+
+describe('the barrow and RESTORE (5d)', () => {
+  it('after the ending only RESTART and RESTORE work; a save from before plays on', async () => {
+    const s = store(1);
+    s.game.npcs = { thief: { room: null } };
+    s.game.currentRoom = 'stone_barrow';
+    s.game.flags.won = true;
+    await s.submit('save');
+    await s.submit('before');
+    await s.submit('west');
+    expect(s.game.gameOver).toBe(true);
+    await s.submit('look');
+    expect(s.output.at(-1)!.text).toContain('The game has ended');
+    await s.submit('restore');
+    await s.submit('before');
+    expect(s.game.gameOver).toBeFalsy();
+    expect(s.game.currentRoom).toBe('stone_barrow');
+  });
+});

@@ -121,6 +121,8 @@ export const PREFIX = [
 export const PREFIXES: Record<string, string[]> = {
   // The garlic from the kitchen's sack, for the bat.
   garlic: [...PREFIX.slice(0, 5), 'open sack', 'take garlic', ...PREFIX.slice(5)],
+  // Into the house and the lamp lit, but still above ground (5d).
+  surface: PREFIX.slice(0, 9),
 };
 
 const died = (reply: string[]) => normalize(reply).includes('you have died');
