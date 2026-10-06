@@ -50,4 +50,25 @@ describe('ALL and EXCEPT', () => {
     expect(s2.locations.wallet).toBe('shelf');
     expect(run(stateWith(world, { room: 'bedroom' }), 'take all').lines).toEqual(['There is nothing here to take.']);
   });
+
+  it('in Infocom style, takes what’s directly in the room, fixed things saying why not', () => {
+    const w = { ...world, style: 'infocom' as const };
+    const s = stateWith(w, { room: 'shed' });
+    const lines = execute({ action: 'take', target: 'all' }, { world: w, state: s }).lines;
+    expect(lines).toContain('crate: It is too heavy.');
+    expect(lines).toContain('glass jar: Taken.');
+    // Not what's on the shelf, nor the sky and hatch shared with other rooms.
+    expect(lines.some((l) => l.startsWith('book') || l.startsWith('sky') || l.startsWith('hatch'))).toBe(false);
+  });
+
+  it('EXAMINE of a container with no description of its own lists its contents, or says it’s empty', () => {
+    const w = { ...world, items: { ...world.items, chest: { ...world.items.chest, description: '' }, socket: { ...world.items.socket, description: '' } } };
+    const s = stateWith(w, { room: 'shed' });
+    s.itemState.chest = { open: true, locked: false };
+    const examine = (t: string) => execute({ action: 'examine', target: t }, { world: w, state: s }).lines;
+    expect(examine('chest').join(' ')).toContain('gold coin');
+    s.locations.coin = null;
+    expect(examine('chest')).toEqual(['The wooden chest is empty.']);
+    expect(examine('socket')).toEqual(['There’s nothing special about the socket.']);
+  });
 });

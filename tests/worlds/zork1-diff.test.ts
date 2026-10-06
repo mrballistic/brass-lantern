@@ -1,7 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { execute, initialState, openingLines } from '@/engine/engine';
+import { interpret, newConversation, remember, resolvePronouns } from '@/engine/conversation';
+import { execute, initialState, openingLines, type EngineResult } from '@/engine/engine';
+import type { ParsedAction } from '@/types/game';
 import { fallbackParse } from '@/engine/parser';
 import { zork1 } from '@/worlds/zork1';
 import { LocalStorageDialog } from '@/zmachine/dialog';
@@ -61,12 +63,25 @@ async function original(commands: string[]): Promise<string[][]> {
   return replies;
 }
 
+/** The game store's turn, minus the LLM: questions, AGAIN and OOPS included. */
 function native(commands: string[]): string[][] {
   const state = initialState(zork1);
   openingLines(zork1, state);
-  return commands.map(
-    (c) => execute(fallbackParse(c, zork1.verbs) ?? { action: 'unknown' }, { world: zork1, state }).lines,
-  );
+  const conv = newConversation();
+  const run = (action: ParsedAction): EngineResult => {
+    const result = execute(action, { world: zork1, state });
+    remember(conv, action, result);
+    return result;
+  };
+  return commands.map((c) => {
+    const step = interpret(c, conv, zork1, state);
+    if ('reply' in step) return step.reply;
+    if ('run' in step) return run(step.run).lines;
+    const parsed = fallbackParse(step.parse, zork1.verbs);
+    const result = run(parsed ? resolvePronouns(parsed, conv) : { action: 'unknown' });
+    conv.lastUnknown = result.understood === false ? step.parse : null;
+    return [...(step.note ?? []), ...result.lines];
+  });
 }
 
 describe('native Zork I against the original', () => {

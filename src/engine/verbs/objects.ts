@@ -66,7 +66,14 @@ export function handleExamine(target: string | undefined, world: World, state: G
   if (!target) needObject();
   const matchedItem = pickItem(target, visibleItems(world, state), world, 'target', state);
   if (matchedItem) {
-    return ok([world.items[matchedItem]?.description ?? 'It’s nondescript.', ...contentsLines(world, state, matchedItem)]);
+    const item = world.items[matchedItem];
+    const contents = contentsLines(world, state, matchedItem);
+    // No description of its own: a container shows what's in it, as Zork's EXAMINE does.
+    if (item && !item.description) {
+      if (contents.length > 0) return ok(contents);
+      return ok([item.container ? `The ${item.name} is empty.` : `There’s nothing special about the ${item.name}.`]);
+    }
+    return ok([item?.description ?? 'It’s nondescript.', ...contents]);
   }
 
   const matchedNpc = matchNpc(target, world, state);

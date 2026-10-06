@@ -1,7 +1,7 @@
 import type { GameState, ParsedAction } from '@/types/game';
 import type { World } from '@/types/world';
 import { fuzzyCandidates } from '../fuzzy';
-import { closedAround, inventoryOf, isCarried, setResolveById, visibleItems } from '../model';
+import { childrenOf, closedAround, inventoryOf, isCarried, setResolveById, visibleItems } from '../model';
 import { ok, type EngineResult } from '../result';
 import { withRules } from '../rules';
 import { handlePut } from './containers';
@@ -15,6 +15,11 @@ const NOTHING: Record<string, string> = {
 
 /** The items ALL covers for a verb, before EXCEPT. */
 function covered(verb: string, action: ParsedAction, world: World, state: GameState): string[] {
+  if (verb === 'take' && world.style === 'infocom') {
+    // Zork's ALL is what's directly in the room, fixed things too (each says why it can't be taken);
+    // not things inside containers, nor doors and walls shared with other rooms.
+    return childrenOf(world, state, state.currentRoom);
+  }
   if (verb === 'take') {
     return visibleItems(world, state).filter(
       (id) => !isCarried(state, id) && world.items[id]?.portable && !world.items[id]?.scenery && !closedAround(world, state, id) && !insideCarried(world, state, id),

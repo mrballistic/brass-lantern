@@ -68,11 +68,27 @@ export const WALKTHROUGH: string[] = [
   'l',
   'brief',
   'score',
+  // Stage 3: the parser. Questions and their answers, AGAIN, OOPS, ALL.
+  'examine case',
+  'g',
+  'examine lanturn',
+  'oops lantern',
+  'take',
+  'the sword',
+  'open door',
+  'trap',
+  'drop all',
+  'take all',
 ];
 
 // The walkthrough skips the sword: with it, Zork's weight limit refuses the egg
 // (“Your load is too heavy.”), and carrying weight is stage 4.
-export const ALLOWED: AllowedDifference[] = [];
+export const ALLOWED: AllowedDifference[] = [
+  {
+    command: 'examine lanturn',
+    reason: 'Unknown words differ by design: Zork names the word, the native engine says it didn’t understand and asks the LLM.',
+  },
+];
 
 /**
  * Lines the original prints at random, removed from its replies before
