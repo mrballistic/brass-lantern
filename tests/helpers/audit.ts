@@ -111,6 +111,8 @@ export function auditWorld(world: World): string[] {
   };
   checkCapture(world.capture, 'world capture');
   checkCondition(world.darkness?.litIf, 'darkness.litIf');
+  checkSteps(world.darkness?.stumble?.then ?? [], 'darkness.stumble');
+  checkSteps(world.darkness?.stumble?.aboard ?? [], 'darkness.stumble');
   for (const m of d?.message ?? []) if (typeof m !== 'string') checkCondition(m.if, 'death.message');
   for (const x of d?.instead ?? []) checkCondition(x.if, 'death.instead');
   for (const v of d?.variants ?? []) {

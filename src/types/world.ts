@@ -426,6 +426,8 @@ export interface World {
     fall?: string;
     /** Run when the player tries a direction with no exit in the dark (Zork's grue). */
     blunder?: EventStep[];
+    /** Walking from an unlit dark room into another: `chance`% of `then` instead (Zork's GOTO grue), or `aboard` in a vehicle. */
+    stumble?: { chance: number; then: EventStep[]; aboard?: EventStep[] };
     /** While this condition holds every room is lit (Zork's ALWAYS-LIT, for a spirit). Mustn't use `lit:`. */
     litIf?: string;
   };

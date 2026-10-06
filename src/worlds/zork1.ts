@@ -2889,6 +2889,12 @@ export const zork1: World = {
     look: 'It is pitch black. You are likely to be eaten by a grue.',
     tooDark: 'It’s too dark to see!',
     blunder: [{ chance: 80, then: [{ die: GRUE }], else: ['You can’t go that way.'] }],
+    // GOTO, from one unlit room into another (PROB 80).
+    stumble: {
+      chance: 80,
+      then: [{ die: 'Oh, no! A lurking grue slithered into the room and devoured you!' }],
+      aboard: [{ die: 'Oh, no! A lurking grue slithered into the magic boat and devoured you!' }],
+    },
   },
 
   death: {

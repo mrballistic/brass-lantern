@@ -500,3 +500,19 @@ describe('Zork I, natively: a spirit can’t take things, however asked (5a revi
     expect(state.locations.skull).toBe('land_of_living_dead');
   });
 });
+
+describe('Zork I, natively: the grue in a dark move (5b)', () => {
+  it('kills about 80% of the time, moving unlit between dark rooms', () => {
+    let killed = 0;
+    for (let seed = 1; seed <= 400; seed++) {
+      const state = initialState(zork1);
+      state.currentRoom = 'maze_1';
+      state.rng = seed;
+      state.npcs = { thief: { room: null } };
+      const lines = execute({ action: 'go', target: 'south' }, { world: zork1, state }).lines.join(' ');
+      if (lines.includes('Oh, no! A lurking grue slithered into the room and devoured you!')) killed++;
+    }
+    expect(killed / 400).toBeGreaterThan(0.74);
+    expect(killed / 400).toBeLessThan(0.86);
+  });
+});
