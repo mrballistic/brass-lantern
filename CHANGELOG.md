@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.2 (2026-10-05)
+
+- **RESTART works after the game ends.** In 1.6.1 a finished game ignored every command, RESTART included (a regression from 1.6.0’s compound-line changes). Now RESTART and the other store commands always work, and anything else says “The game has ended. Type RESTART to play again.”
+
 ## 1.6.1 (2026-10-05)
 
 - **UNDO keeps the screen.** Taking back a move no longer clears the terminal and types everything out again; the lines that stay are shown at once and only “[Previous turn undone.]” types.

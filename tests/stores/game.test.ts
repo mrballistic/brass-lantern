@@ -441,6 +441,30 @@ describe('useGameStore', () => {
       expect(store.output.some((l) => l.text === 'Restored my game.')).toBe(true);
     });
 
+    it('after the game ends, RESTART starts over and other commands say it has ended', async () => {
+      const store = freshStore();
+      store.initialize();
+      store.game.gameOver = true;
+      await store.submit('look');
+      expect(store.output.at(-1)!.text).toBe('The game has ended. Type RESTART to play again.');
+      await store.submit('restart');
+      expect(store.game.gameOver).toBe(false);
+      expect(store.output.some((l) => l.text.startsWith('📍'))).toBe(true);
+      expect(store.output.some((l) => l.text === '> look')).toBe(false);
+    });
+
+    it('a finished game restored from the autosave can still be restarted', async () => {
+      const first = freshStore();
+      first.initialize();
+      first.game.gameOver = true;
+      first.persist();
+      const store = freshStore();
+      store.initialize();
+      expect(store.game.gameOver).toBe(true);
+      await store.submit('restart');
+      expect(store.game.gameOver).toBe(false);
+    });
+
     it('saves and restores by name, and lists saves', async () => {
       const store = freshStore();
       store.initialize();
