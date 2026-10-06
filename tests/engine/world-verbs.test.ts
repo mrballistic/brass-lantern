@@ -85,3 +85,18 @@ describe('world verbs', () => {
     expect(execute({ action: 'salute', target: 'guard' }, { world: w, state: s }).understood).toBe(false);
   });
 });
+
+describe('a world verb’s reply can name its object (5c)', () => {
+  it('{a target} is the object with its article', () => {
+    const w = {
+      ...world,
+      items: { ...world.items, sock: { name: 'sock', description: '', portable: true, tags: [] } },
+      verbs: { ...world.verbs, sniff: { words: ['sniff'], target: 'required' as const, reply: 'It smells like {a target}.' } },
+    };
+    const s = stateWith(w, { room: 'bedroom' });
+    s.locations.sock = 'bedroom';
+    expect(execute({ action: 'sniff', target: 'sock' }, { world: w, state: s }).lines).toEqual(['It smells like a sock.']);
+    const v = { ...w, verbs: { ...w.verbs, sniff: { ...w.verbs.sniff, reply: 'It smells like an {target}.' } } };
+    expect(execute({ action: 'sniff', target: 'sock' }, { world: v, state: s }).lines).toEqual(['It smells like an sock.']);
+  });
+});

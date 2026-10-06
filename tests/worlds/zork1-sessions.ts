@@ -177,3 +177,22 @@ export const MINE_SESSIONS: Record<string, string[]> = {
   'upper-rooms': [...MINE_PREFIX, 'north', 'look', 'west', 'look', 'east', 'south'],
   garlic: ['@prefix:garlic', ...MINE_PREFIX, 'north', 'west', 'north', 'look', 'take bat', 'kill bat', 'talk to bat', 'take jade', 'east', 'look', 'take basket', 'take chain', 'examine chain'],
 };
+
+/** From the Slide Room past the bat (with the garlic) down to the Gas Room. */
+const TO_GAS = ['north', 'west', 'north', 'east', 'north', 'down'];
+/** The lit torch from the Torch Room, then out by the temple, the Tiny Cave and the mirror, into the Slide Room. */
+const TORCH_TO_MINE = ['southeast', 'east', 'tie rope to railing', 'down', 'take torch', 'south', 'south', 'down', 'north', 'rub mirror', 'north', 'west'];
+
+export const GAS_SESSIONS: Record<string, string[]> = {
+  'gas-safe': [
+    '@prefix:garlic', 'drop sword', ...MINE_PREFIX, ...TO_GAS, 'look', 'take bracelet', 'smell gas', 'smell bracelet', 'east', 'look', 'northeast', 'southeast', 'southwest',
+    'down', 'look', 'climb down ladder', 'look', 'south', 'take coal', 'look', 'north', 'up', 'up',
+  ],
+  'gas-arrive': ['@prefix:garlic', 'drop sword', ...TORCH_TO_MINE, ...TO_GAS],
+  'gas-light': ['@prefix:garlic', 'drop sword', ...MATCHES, ...MINE_PREFIX, ...TO_GAS, 'light match'],
+  maze: [
+    '@prefix:garlic', ...MINE_PREFIX, ...TO_GAS, 'east', 'east', 'northeast', 'north', 'southeast', 'south', 'southwest', 'west', 'north', 'east',
+    'south', 'north', 'look',
+  ],
+  'bat-flight': [...MINE_PREFIX, 'north', 'west', 'north', 'look'],
+};

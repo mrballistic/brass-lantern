@@ -315,7 +315,10 @@ function parse(rawInput: string, allowBareWord: boolean, verbs?: World['verbs'])
   if (input === 'enter') return { action: 'enter' };
   {
     const m = RE.board.test(input) ? null : input.match(RE.climb);
-    if (m) return m[2] || m[1] ? { action: 'climb', target: (m[2] ?? m[1]).trim() } : { action: 'climb' };
+    if (m) {
+      if (m[2] && m[1]) return { action: 'climb', target: m[2].trim(), direction: m[1] as 'up' | 'down' };
+      return m[2] || m[1] ? { action: 'climb', target: (m[2] ?? m[1]).trim() } : { action: 'climb' };
+    }
   }
   {
     const order = orderInLine(input, verbs);

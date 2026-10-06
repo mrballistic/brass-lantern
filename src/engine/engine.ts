@@ -217,7 +217,7 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
     case 'enter':
       return withRules('enter', action, world, state, () => handleEnter(action.target, world, state));
     case 'climb':
-      return withRules('climb', action, world, state, () => handleClimb(action.target, world, state));
+      return withRules('climb', action, world, state, () => handleClimb(action.target, world, state, action.direction));
     case 'verbose':
     case 'brief':
     case 'superbrief':

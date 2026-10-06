@@ -5,6 +5,7 @@ import { setCommand } from '../scripts';
 import { miss, ok, type EngineResult } from '../result';
 import { applyRule, findRule } from '../rules';
 import { handleGo } from './movement';
+import { withArticle } from '../describe';
 
 
 /** A verb the world declared. Null if the world has no such verb. */
@@ -35,5 +36,7 @@ export function handleWorldVerb(action: ParsedAction, world: World, state: GameS
   if (rule) return applyRule(rule, world, state);
   // Aimed at a person who has no rule for it: a miss, so the intent server gets a turn.
   if (person) return miss(verb.reply ?? 'Nothing happens.');
-  return ok([verb.reply ?? 'Nothing happens.']);
+  // `{a target}` names the object with its article, `{target}` without (Zork's V-SMELL: “It smells like a bat.”).
+  const reply = (verb.reply ?? 'Nothing happens.').replace('{a target}', target ? withArticle(world, target) : 'it').replace('{target}', target ? world.items[target].name : 'it');
+  return ok([reply]);
 }

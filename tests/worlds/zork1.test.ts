@@ -615,4 +615,13 @@ describe('Zork I, natively: the coal mine (5c)', () => {
     execute({ action: 'go', target: 'north' }, { world: zork1, state });
     expect(state.currentRoom).toBe('bat_room');
   });
+  it('without the garlic, the bat carries you off to one of BAT-DROPS', () => {
+    const state = initialState(zork1);
+    state.currentRoom = 'squeeky_room';
+    state.npcs = { thief: { room: null } };
+    state.locations.lamp = 'player';
+    state.itemState.lamp = { ...state.itemState.lamp, on: true };
+    execute({ action: 'go', target: 'north' }, { world: zork1, state });
+    expect(['mine_1', 'mine_2', 'mine_3', 'mine_4', 'ladder_top', 'ladder_bottom', 'squeeky_room', 'mine_entrance']).toContain(state.currentRoom);
+  });
 });

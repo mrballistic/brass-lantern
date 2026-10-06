@@ -381,11 +381,99 @@ export const zork1: World = {
       onEnter: [],
       scenery: ['slide'],
     },
+    mine_4: {
+      name: 'Coal Mine',
+      description: 'This is a nondescript part of a coal mine.',
+      dark: true,
+      exits: { north: 'mine_3', west: 'mine_4', down: 'ladder_top' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+    },
+    mine_3: {
+      name: 'Coal Mine',
+      description: 'This is a nondescript part of a coal mine.',
+      dark: true,
+      exits: { south: 'mine_3', southwest: 'mine_4', east: 'mine_2' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+    },
+    mine_2: {
+      name: 'Coal Mine',
+      description: 'This is a nondescript part of a coal mine.',
+      dark: true,
+      exits: { north: 'mine_2', south: 'mine_1', southeast: 'mine_3' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+    },
+    mine_1: {
+      name: 'Coal Mine',
+      description: 'This is a nondescript part of a coal mine.',
+      dark: true,
+      exits: { north: 'gas_room', east: 'mine_1', northeast: 'mine_2' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+    },
+    dead_end_5: {
+      name: 'Dead End',
+      description: 'You have come to a dead end in the mine.',
+      dark: true,
+      exits: { north: 'ladder_bottom' },
+      items: ['coal'],
+      npcs: [],
+      onEnter: [],
+    },
+    ladder_bottom: {
+      name: 'Ladder Bottom',
+      description: 'This is a rather wide room. On one side is the bottom of a narrow wooden ladder. To the west and the south are passages leaving the room.',
+      dark: true,
+      exits: { south: 'dead_end_5', west: { denial: OFF_MAP }, up: 'ladder_top' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      scenery: ['ladder'],
+    },
+    ladder_top: {
+      name: 'Ladder Top',
+      description: 'This is a very small room. In the corner is a rickety wooden ladder, leading downward. It might be safe to descend. There is also a staircase leading upward.',
+      dark: true,
+      exits: { down: 'ladder_bottom', up: 'mine_4' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      scenery: ['ladder'],
+    },
+    // BOOM-ROOM: a flame here at the end of a turn ignites the coal gas.
+    gas_room: {
+      name: 'Gas Room',
+      description: 'This is a small room which smells strongly of coal gas. There is a short climb up some stairs and a narrow tunnel leading east.',
+      dark: true,
+      exits: { up: 'smelly_room', east: 'mine_1' },
+      items: ['bracelet'],
+      npcs: [],
+      onEnter: [],
+      onEnd: [{ if: 'in:gas_room', then: [{ script: 'gas_check' }] }],
+      scenery: ['coal_gas'],
+      tags: ['sacred'],
+    },
+    smelly_room: {
+      name: 'Smelly Room',
+      description: 'This is a small nondescript room. However, from the direction of a small descending staircase a foul odor can be detected. To the south is a narrow tunnel.',
+      dark: true,
+      exits: { down: 'gas_room', south: 'shaft_room' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      scenery: ['coal_gas'],
+    },
     shaft_room: {
       name: 'Shaft Room',
       description: 'This is a large room, in the middle of which is a small shaft descending through the floor into darkness below. To the west and the north are exits from this room. Constructed over the top of the shaft is a metal framework to which a heavy iron chain is attached.',
       dark: true,
-      exits: { down: { denial: 'You wouldn’t fit and would die if you could.' }, west: 'bat_room', north: { denial: OFF_MAP } },
+      exits: { down: { denial: 'You wouldn’t fit and would die if you could.' }, west: 'bat_room', north: 'smelly_room' },
       items: ['raised_basket'],
       npcs: [],
       onEnter: [],
@@ -399,7 +487,7 @@ export const zork1: World = {
       exits: { south: 'squeeky_room', east: 'shaft_room' },
       items: ['jade'],
       npcs: ['bat'],
-      onEnter: [{ if: '!has:garlic & !here:garlic & !flag:dead', then: 'bat_flight', repeat: true }],
+      onEnter: [{ if: '!has:garlic & !here:garlic & !flag:dead', then: 'bat_arrival', repeat: true }],
       tags: ['sacred'],
     },
     squeeky_room: {
@@ -1721,6 +1809,42 @@ export const zork1: World = {
       size: 10,
       treasure: 5,
       tags: [],
+    },
+    bracelet: {
+      name: 'sapphire-encrusted bracelet',
+      aliases: ['bracelet', 'jewel', 'sapphire', 'treasure', 'sapphire bracelet'],
+      description: 'There’s nothing special about the sapphire-encrusted bracelet.',
+      portable: true,
+      size: 10,
+      treasure: 5,
+      tags: [],
+    },
+    coal: {
+      name: 'small pile of coal',
+      aliases: ['coal', 'pile', 'heap', 'small pile', 'pile of coal'],
+      description: 'There’s nothing special about the small pile of coal.',
+      portable: true,
+      size: 20,
+      burnable: true,
+      tags: [],
+    },
+    ladder: {
+      name: 'wooden ladder',
+      aliases: ['ladder', 'wooden ladder', 'rickety ladder', 'narrow ladder'],
+      description: 'There’s nothing special about the wooden ladder.',
+      portable: false,
+      tags: [],
+      scenery: true,
+    },
+    // GAS-PSEUDO.
+    coal_gas: {
+      name: 'gas',
+      aliases: ['gas', 'odor', 'coal gas'],
+      description: 'There’s nothing special about the gas.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      instead: { smell: [{ say: ['It smells like coal gas in here.'] }], breathe: [{ say: ['There is too much gas to blow away.'] }] },
     },
     // SLIDE-FUNCTION: a local global of the Slide Room and the Cellar.
     slide: {
@@ -3137,6 +3261,19 @@ export const zork1: World = {
       const last = words[words.length - 1];
       return [`${last} ${last} ...`, { free: true }];
     },
+    // BOOM-ROOM's M-END: a flame held here ignites the gas, more pointedly if you just lit it.
+    gas_check: (ctx) => {
+      const flames = ['candles', 'torch', 'match'];
+      if (!flames.some((id) => ctx.carried(id) && ctx.state.itemState[id]?.on)) return;
+      const c = ctx.command;
+      const lit = c && ['turn_on', 'burn'].includes(c.verb) && c.target && flames.includes(c.target) ? c.target : undefined;
+      return [
+        lit
+          ? `How sad for an aspiring adventurer to light a ${ctx.world.items[lit].name} in a room which reeks of gas. Fortunately, there is justice in the world.`
+          : 'Oh dear. It appears that the smell coming from this room was coal gas. I would have thought twice about carrying flaming objects in here.',
+        { die: '\n      ** BOOOOOOOOOOOM **' },
+      ];
+    },
     // FLY-ME: the bat drops you in a random part of the mine (PICK-ONE over BAT-DROPS).
     bat_flight: (ctx) => {
       const [steps, room] = pickOne(ctx, 'bat_drops', ['mine_1', 'mine_2', 'mine_3', 'mine_4', 'ladder_top', 'ladder_bottom', 'squeeky_room', 'mine_entrance']);
@@ -3476,6 +3613,8 @@ export const zork1: World = {
     count: { words: ['count'], target: 'required' },
     pray: { words: ['pray'], target: 'none', reply: 'If you pray enough, your prayers may be answered.' },
     squeeze: { words: ['squeeze'], target: 'required', reply: 'How singularly useless.' },
+    // V-SMELL.
+    smell: { words: ['smell', 'sniff'], target: 'required', reply: 'It smells like a {target}.' },
     fill: { words: ['fill'], target: 'required', indirect: ['with'] },
     rub: { words: ['rub', 'touch', 'feel', 'pat', 'pet'], target: 'required', indirect: ['with'], reply: 'Fiddling with that doesn’t seem to work.' },
     tie: { words: ['tie', 'fasten', 'secure'], target: 'required', indirect: ['to'], reply: 'You can’t tie that to that.' },
@@ -3678,6 +3817,8 @@ export const zork1: World = {
     sceptre_waved: [{ script: 'sceptre_waved' }],
     cross_rainbow: [{ script: 'cross_rainbow' }],
     over_the_cliff: [{ script: 'over_the_cliff' }],
+    // BATS-ROOM's M-ENTER describes the room before FLY-ME; TAKE BAT doesn't.
+    bat_arrival: [{ look: true }, { script: 'bat_flight' }],
     bat_flight: [{ script: 'bat_flight' }],
     slider: [{ script: 'slider' }],
     slide_down: ['You tumble down the slide....', { go: 'cellar' }],
