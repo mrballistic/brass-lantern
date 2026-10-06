@@ -69,3 +69,51 @@ describe('local globals give way (5a)', () => {
     expect(run(t, { action: 'examine', target: 'sky' }, world).join(' ')).not.toMatch(/kite/);
   });
 });
+
+describe('more of Zork’s habits (5a)', () => {
+  it('rules on the second object come first (PRSI before PRSO)', () => {
+    const world: World = {
+      ...w,
+      items: {
+        ...w.items,
+        flask: { ...w.items.flask, instead: { pour: [{ say: ['Splash.'] }] } },
+        tub: { ...w.items.tub, instead: { pour: [{ as: 'indirect', say: ['The tub hisses.'] }] } },
+      },
+      verbs: { ...w.verbs, pour: { words: ['pour'], target: 'required', held: true, indirect: ['on'] } },
+    };
+    const s = stateWith(world, { room: 'living', carrying: ['flask'] });
+    s.locations.tub = 'living';
+    expect(run(s, fallbackParse('pour water on tub', world.verbs)!, world)).toEqual(['The tub hisses.']);
+  });
+  it('opening a container whose one untouched thing has a first-seen sentence', () => {
+    const world: World = {
+      ...w,
+      items: {
+        ...w.items,
+        box: { name: 'box', description: '', portable: false, tags: [], container: { openable: true }, contains: ['gem'] },
+        gem: { name: 'gem', description: 'A gem.', initialDescription: 'A gem glitters in the box.', portable: true, tags: [] },
+      },
+    };
+    const s = stateWith(world, { room: 'living' });
+    s.locations.box = 'living';
+    expect(run(s, { action: 'open', target: 'box' }, world)).toEqual(['The box opens.', 'A gem glitters in the box.']);
+  });
+  it('a room lists each thing’s contents right after it', () => {
+    const world: World = {
+      ...w,
+      items: {
+        ...w.items,
+        jug: { name: 'jug', description: '', portable: true, tags: [], container: { open: true }, contains: ['marble'] },
+        bat: { ...w.items.bat },
+      },
+    };
+    const s = stateWith(world, { room: 'yard' });
+    for (const id of Object.keys(s.locations)) if (s.locations[id] === 'yard') s.locations[id] = null;
+    s.locations.jug = 'yard';
+    s.locations.bat = 'yard';
+    s.locations.marble = 'jug';
+    const lines = run(s, { action: 'look' }, world);
+    const jug = lines.findIndex((l) => /jug/.test(l));
+    expect(lines[jug + 1]).toMatch(/jug contains/);
+  });
+});

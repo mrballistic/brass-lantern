@@ -61,6 +61,7 @@ setEffectHooks({
   go: (room, world, state, opts) => enterRoom(room, world, state, opts),
   die: (cause, world, state) => die(cause, world, state, enterRoom),
   end: (id, world, state) => runEnding(id, world, state),
+  look: (world, state) => handleLook(world, state).lines,
 });
 
 /** The player's room's end routines (Zork's M-END): after the action, before the clock. */

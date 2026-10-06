@@ -54,9 +54,11 @@ export function findRule(
   reach: string[],
 ): Rule | null {
   type Role = 'target' | 'indirect' | undefined;
+  const target: [Item | undefined, string | null | undefined, Role] = [ids.target ? world.items[ids.target] : undefined, ids.indirect, 'target'];
+  const indirect: [Item | undefined, string | null | undefined, Role] = [ids.indirect ? world.items[ids.indirect] : undefined, ids.target, 'indirect'];
+  // Zork's PERFORM asks the second object before the first (PRSI, then PRSO).
   const owners: Array<[Item | Room | NPC | undefined, string | null | undefined, Role]> = [
-    [ids.target ? world.items[ids.target] : undefined, ids.indirect, 'target'],
-    [ids.indirect ? world.items[ids.indirect] : undefined, ids.target, 'indirect'],
+    ...(world.style === 'infocom' ? [indirect, target] : [target, indirect]),
     ...(ids.npcs ?? []).map((id): [NPC | undefined, string | null | undefined, Role] => [world.npcs[id], ids.target ?? ids.indirect, undefined]),
     [world.rooms[ids.room], ids.indirect ?? ids.target, undefined],
   ];

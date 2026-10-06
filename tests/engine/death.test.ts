@@ -149,3 +149,16 @@ describe('the audit checks death variants and litIf', () => {
     for (const n of ['nowhere1', 'nowhere2', 'nowhere3', 'nowhere4', 'nothing5', 'nowhere6']) expect(p).toContain(n);
   });
 });
+
+describe('death variants: before (5a)', () => {
+  it('runs `before` ahead of the respawn, so the new room is described as it now is', () => {
+    const w: World = {
+      ...world,
+      rooms: { ...world.rooms, bedroom: { ...world.rooms.bedroom, descriptions: [{ if: 'flag:dead', text: 'A ghostly bedroom.' }] } },
+      events: { ...world.events, ghosted: [{ set: 'dead' }] },
+      death: { lives: 2, respawn: 'living', variants: [{ if: 'in:yard', respawn: 'bedroom', before: 'ghosted' }] },
+    };
+    const s = stateWith(w, { room: 'yard' });
+    expect(runSteps([{ die: 'Splat.' }], w, s)).toContain('A ghostly bedroom.');
+  });
+});

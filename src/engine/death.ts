@@ -54,6 +54,7 @@ export function die(cause: string, world: World, state: GameState, goTo: GoTo): 
   }
   state.fuses = {};
   lines.push(...(variant?.resurrection ?? d.resurrection ?? []));
+  if (variant?.before) lines.push(...runEventKey(variant.before, world, state));
   if (respawn && world.rooms[respawn]) lines.push(...goTo(respawn, world, state));
   if (then) lines.push(...runEventKey(then, world, state));
   return lines;

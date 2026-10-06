@@ -63,6 +63,11 @@ export function handleOpen(target: string | undefined, world: World, state: Game
   const inside = childrenOf(world, state, id).filter((k) => !world.items[k]?.scenery && shown(state)(k));
   if (item.container.opened) return ok([item.container.opened], true);
   if (item.door || inside.length === 0 || item.container.transparent) return ok(['Opened.'], true);
+  // Zork's V-OPEN: one untouched thing with a first-seen sentence speaks for itself.
+  const only = world.items[inside[0]];
+  if (world.style === 'infocom' && inside.length === 1 && only?.initialDescription && !state.itemState[inside[0]]?.moved) {
+    return ok([`The ${item.name} opens.`, only.initialDescription], true);
+  }
   return ok([`Opening the ${item.name} reveals ${listPhrase(world, inside)}.`], true);
 }
 

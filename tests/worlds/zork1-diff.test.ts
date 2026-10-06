@@ -166,7 +166,9 @@ describe('native Zork I against the original', () => {
       console.warn('The original never died in 20 tries; skipping the death-text comparison.');
       return;
     }
-    const ours = [...(zork1.death?.message ?? []), ...(zork1.death?.resurrection ?? [])];
+    // The luck line only shows once the mirror's broken.
+    const message = (zork1.death?.message ?? []).filter((m): m is string => typeof m === 'string');
+    const ours = [...message, ...(zork1.death?.resurrection ?? [])];
     expect(normalize(death)).toContain(normalize(ours));
   }, 180_000);
 });

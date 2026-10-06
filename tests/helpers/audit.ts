@@ -9,7 +9,7 @@ import type { Effect, EventStep, Rule, RuleTable, World } from '@/types/world';
 const EFFECT_KINDS = new Set([
   'say', 'set', 'clear', 'move', 'open', 'close', 'lock', 'unlock', 'switch', 'add', 'setVar', 'score',
   'go', 'schedule', 'cancel', 'chance', 'run', 'die', 'end', 'moveNpc', 'npcState', 'script', 'hide', 'reveal',
-  'if', 'unvisit', 'free', 'noDarkLine', 'unlist', 'relist',
+  'if', 'unvisit', 'free', 'noDarkLine', 'unlist', 'relist', 'look',
 ]);
 
 export function auditWorld(world: World): string[] {
@@ -117,6 +117,7 @@ export function auditWorld(world: World): string[] {
     checkCondition(v.if, 'death.variants');
     if (v.respawn && !isRoom(v.respawn)) problems.push(`death.variants respawn names no room “${v.respawn}”`);
     if (v.then && !isEvent(v.then)) problems.push(`death.variants then names no event “${v.then}”`);
+    if (v.before && !isEvent(v.before)) problems.push(`death.variants before names no event “${v.before}”`);
   }
   for (const [id, room] of Object.entries(world.rooms)) {
     checkTriggers(room.onEnter, `room ${id} onEnter`);

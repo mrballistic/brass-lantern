@@ -135,9 +135,11 @@ export function describeRoom(
     if (sentence) lines.push(sentence);
     else if (infocom) lines.push(`There is ${withArticle(world, id)} here.`);
     else plain.push(world.items[id]?.name ?? id);
+    // Zork describes what's in each thing right after it.
+    if (infocom) lines.push(...contentsLines(world, state, id));
   }
   if (plain.length > 0) lines.push(`You can see: ${plain.join(', ')}.`);
-  for (const id of visibleItems) lines.push(...contentsLines(world, state, id));
+  if (!infocom) for (const id of visibleItems) lines.push(...contentsLines(world, state, id));
   // Scenery isn't listed, but what's on or in it is (the kitchen table's sack).
   for (const id of childrenOf(world, state, roomId).filter((k) => world.items[k]?.scenery)) {
     lines.push(...contentsLines(world, state, id));

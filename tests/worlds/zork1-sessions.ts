@@ -56,3 +56,36 @@ export const DOME_SESSIONS: Record<string, string[]> = {
   ],
   passages: ['drop sword', 'south', 'south', 'west', 'look', 'north', 'east', 'look', 'west', 'north', 'north'],
 };
+
+/** From the Round Room to the Temple, tying the rope on the way down. */
+const TO_TEMPLE = ['southeast', 'east', 'tie rope to railing', 'down', 'south'];
+/** The matchbook from the Dam Lobby, back to the Round Room. */
+const MATCHES = [...TO_DAM, 'north', 'take matchbook', 'south', 'south', 'southwest', 'south'];
+/** Bell, candles and book, then down the hole to Hades. */
+const TO_HADES = ['take bell', 'south', 'take candles', 'take book', 'down', 'down'];
+
+export const TEMPLE_SESSIONS: Record<string, string[]> = {
+  exorcism: [
+    'drop sword', ...MATCHES, ...TO_TEMPLE, 'look', 'read prayer', ...TO_HADES, 'look', 'south', 'ring bell', 'take candles',
+    'light match', 'light candles with match', 'read book', 'south', 'look', 'take skull', 'north', 'ring bell',
+  ],
+  // No candles: the tiny cave's gust is random on each side.
+  'read-first': ['drop sword', ...TO_TEMPLE, 'take bell', 'south', 'take book', 'down', 'down', 'read book', 'ring bell', 'read book', 'take bell', 'ring bell'],
+  // The sword stays: it glows here, with the spirits so close.
+  tension: [...TO_TEMPLE, 'take bell', 'south', 'take book', 'down', 'look', 'down', 'ring bell', ...waits(3), 'look'],
+  'hot-bell': [
+    'drop sword', ...TO_DAM, 'north', 'take guidebook', 'south', 'south', 'southwest', 'south', ...TO_TEMPLE, 'take bell',
+    'south', 'down', 'down', 'open bottle', 'ring bell', 'take bell', 'ring bell', 'rub bell', 'rub bell with guidebook',
+    'pour water on bell', 'take bell',
+  ],
+  candles: ['drop sword', ...TO_TEMPLE, 'south', 'examine candles', 'take candles', 'count candles', 'turn off candles', 'turn off candles', 'light candles', ...waits(30), 'examine candles', 'light candles'],
+  coffin: [
+    'drop sword', 'drop bottle', ...TO_TEMPLE, 'east', 'look', 'open coffin', 'take sceptre', 'take coffin', 'west', 'south',
+    'look', 'down', 'pray', 'look',
+  ],
+  ghost: [
+    'drop sword', 'drop bottle', 'southeast', 'east', 'tie rope to railing', 'down', 'take torch', 'south', 'south',
+    'burn book with torch', 'look', 'wait', 'score', 'diagnose', 'inventory', 'up', 'north', 'north', 'north', 'southeast',
+    'east', 'south', 'take bell', 'open bell', 'pray', 'south', 'turn on candles', 'pray', 'look',
+  ],
+};

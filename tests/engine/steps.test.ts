@@ -164,3 +164,12 @@ describe('shared fixtures (5a)', () => {
     expect(visibleItems(fixtureWorld, s)).not.toContain('socket');
   });
 });
+
+describe('look steps (5a)', () => {
+  it('describe the room in full, as LOOK does', () => {
+    const w: World = { ...fixtureWorld, style: 'infocom' };
+    const s = stateWith(w, { room: 'living' });
+    s.visited.push('living');
+    expect(runSteps([{ look: true }], w, s).join(' ')).toContain('A living room with a table by the door.');
+  });
+});

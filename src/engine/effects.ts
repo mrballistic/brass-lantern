@@ -13,7 +13,7 @@ type Hook = (arg: string, world: World, state: GameState, opts?: { quiet?: boole
  * Effects that need other engine modules (moving the player, death, endings)
  * are wired in by engine.ts, so this module doesn't import them in a cycle.
  */
-const hooks: { go?: Hook; die?: Hook; end?: Hook } = {};
+const hooks: { go?: Hook; die?: Hook; end?: Hook; look?: (world: World, state: GameState) => string[] } = {};
 
 export function setEffectHooks(h: typeof hooks): void {
   Object.assign(hooks, h);
@@ -145,6 +145,7 @@ function runEffect(e: Effect, world: World, state: GameState): { lines: string[]
   }
   if ('unvisit' in e) return void (state.visited = state.visited.filter((r) => r !== e.unvisit)), { lines: [] };
   if ('free' in e) return void freeTurns.add(state), { lines: [] };
+  if ('look' in e) return { lines: hooks.look ? hooks.look(world, state) : [] };
   if ('noDarkLine' in e) return void darkSaid.add(state), { lines: [] };
   if ('chance' in e) {
     const hit = nextRandom(state) * 100 < e.chance;

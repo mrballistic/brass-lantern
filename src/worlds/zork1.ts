@@ -31,6 +31,13 @@ function pickOne(ctx: ScriptContext, key: string, list: string[]): [EventStep[],
   const next = count + 1 === list.length ? 0 : count + 1;
   return [[...order.map((o, i): EventStep => ({ setVar: `${key}_${i + 1}`, to: o })), { setVar: key, to: next }], list[chosen]];
 }
+/** CANDLES-FCN: lighting the candles with something. */
+function lightWith(ctx: ScriptContext, tool: string): EventStep[] {
+  const lit = Boolean(ctx.state.itemState.candles?.on);
+  if (tool === 'match' && ctx.state.itemState.match?.on) return lit ? ['The candles are already lit.'] : [{ switch: 'candles', on: true }, 'The candles are lit.'];
+  if (tool === 'torch') return lit ? ['You realize, just in time, that the candles are already lighted.'] : [{ move: 'candles', to: null }, 'The heat from the torch is so intense that the candles are vaporized.'];
+  return ['You have to light them with something that’s burning, you know.'];
+}
 const NO_TREE = 'There is no tree here suitable for climbing.';
 const BOARDED = 'The windows are all boarded.';
 
@@ -293,13 +300,38 @@ export const zork1: World = {
       scenery: ['bolt', 'bubble', 'dam', 'control_panel', 'global_water'],
     },
     // Stage 5a: the dome. TORCH-ROOM through ENGRAVINGS-CAVE, in story order (the temple and Hades come between).
+    // Stage 5a: the temple. SOUTH-TEMPLE and NORTH-TEMPLE, in story order.
+    south_temple: {
+      name: 'Altar',
+      description: 'This is the south end of a large temple. In front of you is what appears to be an altar. In one corner is a small hole in the floor which leads into darkness. You probably could not get back up it.',
+      exits: {
+        north: 'north_temple',
+        // SOUTH-TEMPLE-FCN's COFFIN-CURE.
+        down: { to: 'tiny_cave', if: '!has:coffin', denial: 'You haven’t a prayer of getting the coffin down there.' },
+      },
+      items: ['altar', 'candles'],
+      npcs: [],
+      onEnter: [],
+      tags: ['sacred'],
+      // V-PRAY: at the altar, back to the forest.
+      instead: { pray: [{ then: 'prayer_answered' }] },
+    },
+    north_temple: {
+      name: 'Temple',
+      description: 'This is the north end of a large temple. On the east wall is an ancient inscription, probably a prayer in a long-forgotten language. Below the prayer is a staircase leading down. The west wall is solid granite. The exit to the north end of the room is through huge marble pillars.',
+      exits: { down: 'egypt_room', east: 'egypt_room', north: 'torch_room', out: 'torch_room', up: 'torch_room', south: 'south_temple' },
+      items: ['bell', 'prayer'],
+      npcs: [],
+      onEnter: [],
+      tags: ['sacred'],
+    },
     torch_room: {
       name: 'Torch Room',
       description: 'This is a large room with a prominent doorway leading to a down staircase. Above you is a large dome. Up around the edge of the dome (20 feet up) is a wooden railing. In the center of the room sits a white marble pedestal.',
       // TORCH-ROOM-FCN's M-LOOK.
       descriptions: [{ if: 'flag:dome_flag', text: 'This is a large room with a prominent doorway leading to a down staircase. Above you is a large dome. Up around the edge of the dome (20 feet up) is a wooden railing. In the center of the room sits a white marble pedestal.\nA piece of rope descends from the railing above, ending some five feet above your head.' }],
       dark: true,
-      exits: { up: { denial: 'You cannot reach the rope.' }, south: { denial: 'That part of the Great Underground Empire isn’t built yet.' }, down: { denial: 'That part of the Great Underground Empire isn’t built yet.' } },
+      exits: { up: { denial: 'You cannot reach the rope.' }, south: 'north_temple', down: 'north_temple' },
       items: ['pedestal'],
       npcs: [],
       onEnter: [],
@@ -314,6 +346,16 @@ export const zork1: World = {
       exits: { west: 'engravings_cave', down: { to: 'torch_room', if: 'flag:dome_flag', denial: 'You cannot go down without fracturing many bones.' } },
       items: ['railing'],
       npcs: [],
+      // DOME-ROOM-FCN's M-ENTER: a spirit is drawn over the railing.
+      onEnter: [{ if: 'flag:dead', then: 'spirit_falls', repeat: true }],
+    },
+    egypt_room: {
+      name: 'Egyptian Room',
+      description: 'This is a room which looks like an Egyptian tomb. There is an ascending staircase to the west.',
+      dark: true,
+      exits: { west: 'north_temple', up: 'north_temple' },
+      items: ['coffin'],
+      npcs: [],
       onEnter: [],
     },
     engravings_cave: {
@@ -324,6 +366,36 @@ export const zork1: World = {
       items: ['engravings'],
       npcs: [],
       onEnter: [],
+    },
+    // Stage 5a: Hades. LAND-OF-LIVING-DEAD and ENTRANCE-TO-HADES, in story order.
+    land_of_living_dead: {
+      name: 'Land of the Dead',
+      description: 'You have entered the Land of the Living Dead. Thousands of lost souls can be heard weeping and moaning. In the corner are stacked the remains of dozens of previous adventurers less fortunate than yourself. A passage exits to the north.',
+      exits: { out: 'entrance_to_hades', north: 'entrance_to_hades' },
+      items: ['skull'],
+      npcs: [],
+      onEnter: [],
+      scenery: ['bodies'],
+    },
+    entrance_to_hades: {
+      name: 'Entrance to Hades',
+      // LLD-ROOM's M-LOOK.
+      description: 'You are outside a large gateway, on which is inscribed\n\n  Abandon every hope\nall ye who enter here!\n\nThe gate is open; through it you can see a desolation, with a pile of mangled bodies in one corner. Thousands of voices, lamenting some hideous fate, can be heard.\nThe way through the gate is barred by evil spirits, who jeer at your attempts to pass.',
+      descriptions: [
+        { if: 'flag:lld_flag', text: 'You are outside a large gateway, on which is inscribed\n\n  Abandon every hope\nall ye who enter here!\n\nThe gate is open; through it you can see a desolation, with a pile of mangled bodies in one corner. Thousands of voices, lamenting some hideous fate, can be heard.' },
+        { if: 'flag:dead', text: 'You are outside a large gateway, on which is inscribed\n\n  Abandon every hope\nall ye who enter here!\n\nThe gate is open; through it you can see a desolation, with a pile of mangled bodies in one corner. Thousands of voices, lamenting some hideous fate, can be heard.' },
+      ],
+      exits: {
+        up: 'tiny_cave',
+        in: { to: 'land_of_living_dead', if: 'flag:lld_flag', denial: 'Some invisible force prevents you from passing through the gate.' },
+        south: { to: 'land_of_living_dead', if: 'flag:lld_flag', denial: 'Some invisible force prevents you from passing through the gate.' },
+      },
+      items: [],
+      npcs: ['ghosts'],
+      onEnter: [],
+      // LLD-ROOM's M-END: lit candles in hand while the bell's spell holds.
+      onEnd: [{ if: 'flag:xb & has:candles & on:candles & !flag:xc', then: 'exorcism_flames' }],
+      scenery: ['bodies'],
     },
     chasm_room: {
       name: 'Chasm',
@@ -464,10 +536,12 @@ export const zork1: World = {
       name: 'Cave',
       description: 'This is a tiny cave with entrances west and north, and a dark, forbidding staircase leading down.',
       dark: true,
-      exits: { north: 'mirror_room_2', west: 'winding_passage', down: { denial: 'That part of the Great Underground Empire isn’t built yet.' } },
+      exits: { north: 'mirror_room_2', west: 'winding_passage', down: 'entrance_to_hades' },
       items: [],
       npcs: [],
       onEnter: [],
+      // CAVE2-ROOM's M-END: a gust may blow your candles out.
+      onEnd: [{ if: 'has:candles & on:candles', then: [{ script: 'candle_gust' }] }],
     },
     small_cave: {
       name: 'Cave',
@@ -1219,6 +1293,141 @@ export const zork1: World = {
       instead: { turn_off: [{ say: ['You nearly burn your hand trying to extinguish the flame.'] }] },
       after: { take: [{ if: '!flag:took_torch', then: 'took_torch' }] },
     },
+    // Stage 5a: the temple and Hades.
+    altar: {
+      name: 'altar',
+      description: '',
+      portable: false,
+      tags: [],
+      scenery: true,
+      surface: true,
+      container: { open: true, weight: 50 },
+      contains: ['book'],
+    },
+    prayer: {
+      name: 'prayer',
+      aliases: ['inscription', 'ancient prayer', 'old prayer'],
+      description: '',
+      portable: false,
+      tags: ['sacred'],
+      scenery: true,
+      text: 'The prayer is inscribed in an ancient script, rarely used today. It seems to be a philippic against small insects, absent-mindedness, and the picking up and dropping of small objects. The final verse consigns trespassers to the land of the dead. All evidence indicates that the beliefs of the ancient Zorkers were obscure.',
+    },
+    bell: {
+      name: 'brass bell',
+      aliases: ['bell', 'small bell'],
+      description: 'There’s nothing special about the brass bell.',
+      portable: true,
+      tags: [],
+      // BELL-F, and LLD-ROOM's M-BEG.
+      instead: { ring: [{ if: 'in:entrance_to_hades & !flag:lld_flag', then: 'bell_rung' }, { say: ['Ding, dong.'] }] },
+    },
+    hot_bell: {
+      name: 'red hot brass bell',
+      aliases: ['bell', 'hot bell', 'red hot bell', 'brass bell', 'small bell'],
+      description: 'There’s nothing special about the red hot brass bell.',
+      roomDescription: 'On the ground is a red hot bell.',
+      portable: false,
+      refusal: 'The bell is very hot and cannot be taken.',
+      tags: [],
+      // HOT-BELL-F.
+      instead: {
+        take: [{ say: ['The bell is very hot and cannot be taken.'] }],
+        rub: [{ as: 'target', then: 'hot_bell_touched' }],
+        ring: [{ as: 'target', then: 'hot_bell_touched' }],
+        pour: [{ as: 'indirect', then: 'hot_bell_cooled' }],
+      },
+    },
+    candles: {
+      name: 'pair of candles',
+      aliases: ['candles', 'pair', 'burning candles', 'candle'],
+      description: 'The candles are out.',
+      initialDescription: 'On the two ends of the altar are burning candles.',
+      portable: true,
+      size: 10,
+      tags: [],
+      light: true,
+      flaming: true,
+      // CANDLES-FCN.
+      instead: {
+        turn_on: [{ as: 'target', then: 'candles_lit' }],
+        burn: [{ as: 'target', then: 'candles_lit' }],
+        turn_off: [{ then: 'candles_out' }],
+        count: [{ say: ['Let’s see, how many objects in a pair? Don’t tell me, I’ll get it.'] }],
+        examine: [{ if: 'on:candles', then: 'candles_examined_lit' }, { then: 'candles_examined' }],
+      },
+      after: { take: [{ if: '!flag:candles_touched', then: 'candles_touched' }] },
+    },
+    book: {
+      name: 'black book',
+      aliases: ['book', 'prayer book', 'page', 'books', 'large book'],
+      description: '',
+      initialDescription: 'On the altar is a large black book, open to page 569.',
+      portable: true,
+      burnable: true,
+      size: 10,
+      tags: [],
+      text: 'Commandment #12592\n\nOh ye who go about saying unto each:  “Hello sailor”:\nDost thou know the magnitude of thy sin before the gods?\nYea, verily, thou shalt be ground between two stones.\nShall the angry gods cast thy body into the whirlpool?\nSurely, thy eye shall be put out with a sharp stick!\nEven unto the ends of the earth shalt thou wander and\nUnto the land of the dead shalt thou be sent at last.\nSurely thou shalt repent of thy cunning.',
+      // BLACK-BOOK, and LLD-ROOM's M-BEG.
+      instead: {
+        read: [{ if: 'in:entrance_to_hades & flag:xc & !flag:lld_flag', then: 'exorcism_done' }],
+        open: [{ say: ['The book is already open to page 569.'] }],
+        close: [{ say: ['As hard as you try, the book cannot be closed.'] }],
+        turn: [{ say: ['Beside page 569, there is only one other page with any legible printing on it. Most of it is unreadable, but the subject seems to be the banishment of evil. Apparently, certain noises, lights, and prayers are efficacious in this regard.'] }],
+        burn: [{ as: 'target', then: 'book_burns' }],
+      },
+    },
+    coffin: {
+      name: 'gold coffin',
+      aliases: ['coffin', 'casket', 'treasure', 'solid coffin', 'gold casket'],
+      description: '',
+      roomDescription: 'The solid-gold coffin used for the burial of Ramses II is here.',
+      portable: true,
+      size: 55,
+      treasure: 15,
+      tags: ['sacred'],
+      container: { openable: true, weight: 35 },
+      contains: ['sceptre'],
+      after: { take: [{ if: '!flag:took_coffin', then: 'took_coffin' }] },
+    },
+    sceptre: {
+      name: 'sceptre',
+      aliases: ['scepter', 'treasure', 'egyptian sceptre', 'ancient sceptre'],
+      description: 'There’s nothing special about the sceptre.',
+      initialDescription: 'A sceptre, possibly that of ancient Egypt itself, is in the coffin. The sceptre is ornamented with colored enamel, and tapers to a sharp point.',
+      roomDescription: 'An ornamented sceptre, tapering to a sharp point, is here.',
+      portable: true,
+      size: 3,
+      treasure: 6,
+      weapon: true,
+      tags: [],
+      after: { take: [{ if: '!flag:took_sceptre', then: 'took_sceptre' }] },
+    },
+    skull: {
+      name: 'crystal skull',
+      aliases: ['skull', 'head', 'treasure', 'crystal'],
+      description: 'There’s nothing special about the crystal skull.',
+      initialDescription: 'Lying in one corner of the room is a beautifully carved crystal skull. It appears to be grinning at you rather nastily.',
+      portable: true,
+      treasure: 10,
+      tags: [],
+      after: { take: [{ if: '!flag:took_skull', then: 'took_skull' }] },
+    },
+    bodies: {
+      name: 'pile of bodies',
+      aliases: ['bodies', 'body', 'remains', 'pile', 'mangled bodies'],
+      description: 'There’s nothing special about the pile of bodies.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      // BODY-FUNCTION.
+      instead: {
+        take: [{ say: ['A force keeps you from taking the bodies.'] }],
+        smash: [{ then: 'bodies_defiled' }],
+        attack: [{ then: 'bodies_defiled' }],
+        burn: [{ as: 'target', then: 'bodies_defiled' }],
+      },
+    },
     // Stage 5a: the dam and the reservoir.
     bar: {
       name: 'platinum bar',
@@ -1947,6 +2156,21 @@ export const zork1: World = {
   },
 
   npcs: {
+    // GHOSTS-F: the spirits barring Hades.
+    ghosts: {
+      name: 'number of ghosts',
+      aliases: ['ghosts', 'spirits', 'fiends', 'force', 'evil spirits', 'invisible force'],
+      description: 'You seem unable to interact with these spirits.',
+      scenery: true,
+      refuseOrder: 'The spirits jeer loudly and ignore you.',
+      instead: {
+        attack: [{ say: ['How can you attack a spirit with material objects?'] }],
+        smash: [{ say: ['How can you attack a spirit with material objects?'] }],
+        take: [{ say: ['You seem unable to interact with these spirits.'] }],
+        give: [{ say: ['You seem unable to interact with these spirits.'] }],
+        throw: [{ say: ['You seem unable to interact with these spirits.'] }],
+      },
+    },
     thief: {
       name: 'thief',
       aliases: ['robber', 'man', 'person', 'suspicious man', 'seedy man', 'shady man'],
@@ -2105,6 +2329,7 @@ export const zork1: World = {
     },
   },
   dialogue: {
+    ghosts: { default: 'The spirits jeer loudly and ignore you.' },
     cyclops: { default: 'The cyclops prefers eating to making conversation.', 'flag:cyclops_asleep': 'No use talking to him. He’s fast asleep.' },
     troll: { default: 'The troll isn’t much of a conversationalist.' },
     thief: { default: 'The thief is a strong, silent type.' },
@@ -2165,6 +2390,76 @@ export const zork1: World = {
   carry: { limit: 100, self: 5, fumble: { over: 7, chance: 8 } },
 
   scripts: {
+    // CANDLES-FCN's LAMP-ON and BURN.
+    light_candles: (ctx) => {
+      if (ctx.state.flags.candles_burnt) return ['Alas, there’s not much left of the candles. Certainly not enough to burn.'];
+      const tool = ctx.command?.indirect;
+      const matchLit = Boolean(ctx.state.itemState.match?.on);
+      if (!tool) {
+        if (!matchLit) return ['You should say what to light them with.'];
+        return ['(with the match)', ...lightWith(ctx, 'match')];
+      }
+      return lightWith(ctx, tool);
+    },
+    // CANDLES-FCN's LAMP-OFF.
+    candles_out: (ctx) => {
+      if (!ctx.state.itemState.candles?.on) return ['The candles are not lighted.'];
+      const dark = !ctx.world.rooms[ctx.room()]?.dark ? false : !['lamp', 'torch', 'match'].some((id) => ctx.state.itemState[id]?.on && ctx.here(id));
+      return [{ switch: 'candles', on: false }, { noDarkLine: true }, `The flame is extinguished.${dark ? ' It’s really dark in here....' : ''}`];
+    },
+    // CAVE2-ROOM: ZPROB 50 (worse odds once your luck is gone).
+    candle_gust: (ctx) => {
+      if (ctx.roll(ctx.state.flags.unlucky ? 300 : 100) >= 50) return [];
+      const dark = !['lamp', 'torch', 'match'].some((id) => ctx.state.itemState[id]?.on && ctx.here(id));
+      return [{ switch: 'candles', on: false }, { noDarkLine: true }, 'A gust of wind blows out your candles!', ...(dark ? ['It is now completely dark.'] : [])];
+    },
+    // HOT-BELL-F: RUB, or RING WITH something.
+    hot_bell_touched: (ctx) => {
+      const tool = ctx.command?.indirect;
+      // With no tool there's no HANDS to blame: RUB finds it too intense.
+      if (!tool) return [ctx.command?.verb === 'ring' ? 'The bell is too hot to reach.' : 'The heat from the bell is too intense.'];
+      const item = ctx.world.items[tool];
+      if (item?.burnable) return [`The ${item.name} burns and is consumed.`, { move: tool, to: null }];
+      return ['The heat from the bell is too intense.'];
+    },
+    // DEAD-FUNCTION: a spirit's limits, before the parser's own verbs.
+    dead_function: (ctx) => {
+      const a = ctx.parse(ctx.line ?? '');
+      if (!a) return;
+      const seen = (word?: string) => {
+        if (!word) return false;
+        const w = word.toLowerCase().replace(/^the\s+/, '');
+        return Object.entries(ctx.world.items).some(
+          ([id, it]) => (it.name === w || (it.aliases ?? []).includes(w) || id === w) && (ctx.here(id) || (ctx.world.rooms[ctx.room()]?.scenery ?? []).includes(id)),
+        );
+      };
+      const verb = a.action;
+      if (['go', 'verbose', 'brief', 'superbrief', 'version', 'save', 'restore', 'load', 'quit', 'restart', 'undo', 'again', 'oops'].includes(verb)) return;
+      // The parser speaks first about things that aren't here.
+      if (a.target && !['pray'].includes(verb) && !seen(a.target)) return;
+      if (['attack', 'smash'].includes(verb)) return ['All such attacks are vain in your condition.'];
+      if (['open', 'close', 'eat', 'drink', 'inflate', 'deflate', 'turn', 'burn', 'tie', 'untie', 'rub'].includes(verb)) return ['Even such an action is beyond your capabilities.'];
+      if (verb === 'wait') return ['Might as well. You’ve got an eternity.'];
+      if (verb === 'turn_on') return ['You need no light to guide you.'];
+      if (verb === 'score') return ['You’re dead! How can you think of your score?'];
+      if (verb === 'take') return ['Your hand passes through its object.'];
+      if (['drop', 'throw', 'inventory'].includes(verb)) return ['You have no possessions.'];
+      if (verb === 'diagnose') return ['You are dead.'];
+      if (verb === 'look') {
+        const lit = !ctx.world.rooms[ctx.room()]?.dark;
+        return ['The room looks strange and unearthly and objects appear indistinct.', ...(lit ? [] : ['Although there is no light, the room seems dimly illuminated.']), '', { look: true }];
+      }
+      if (verb === 'pray') {
+        if (ctx.room() !== 'south_temple') return ['Your prayers are not heard.'];
+        return [
+          { clear: 'dead' },
+          'From the distance the sound of a lone trumpet is heard. The room becomes very bright and you feel disembodied. In a moment, the brightness fades and you find yourself rising as if from a long sleep, deep in the woods. In the distance you can faintly hear a songbird and the sounds of the forest.',
+          '',
+          { go: 'forest_1' },
+        ];
+      }
+      return ['You can’t even do that.'];
+    },
     // LOUD-ROOM-FCN's loop: the first word (after GO or SAY) decides; anything else echoes.
     loud_room_capture: (ctx) => {
       const flags = ctx.state.flags;
@@ -2511,6 +2806,7 @@ export const zork1: World = {
     tie: { words: ['tie', 'fasten', 'secure'], target: 'required', indirect: ['to'], reply: 'You can’t tie that to that.' },
     untie: { words: ['untie', 'unfasten', 'unhook'], target: 'required', indirect: ['from'], reply: 'This cannot be tied, so it cannot be untied!' },
     jump: { words: ['jump', 'leap', 'dive'], target: 'none', reply: 'Wheeeeeeeeee!!!!!' },
+    ring: { words: ['ring', 'peal'], target: 'required', indirect: ['with'], reply: 'How, exactly, can you ring that?' },
     pour: { words: ['pour', 'spill'], target: 'required', indirect: ['on', 'in', 'from'], held: true },
   },
 
@@ -2541,11 +2837,20 @@ export const zork1: World = {
     { if: 'inside:trident:trophy_case', points: 11 },
     { flag: 'took_torch', points: 14 },
     { if: 'inside:torch:trophy_case', points: 6 },
+    { flag: 'took_coffin', points: 10 },
+    { if: 'inside:coffin:trophy_case', points: 15 },
+    { flag: 'took_sceptre', points: 4 },
+    { if: 'inside:sceptre:trophy_case', points: 6 },
+    { flag: 'took_skull', points: 10 },
+    { if: 'inside:skull:trophy_case', points: 10 },
+    { if: 'inside:torch:trophy_case', points: 6 },
     { if: 'inside:trunk:trophy_case', points: 5 },
     // Treasures count while they're in the trophy case.
     { if: 'inside:painting:trophy_case', points: 6 },
   ],
   maxScore: 350,
+  // DEAD-FUNCTION: what a spirit can and can't do.
+  capture: { if: 'flag:dead', script: 'dead_function' },
   // V-WAIT: three turns of the clock, or fewer if something happens.
   wait: { turns: 3 },
   ranks: [
@@ -2559,7 +2864,7 @@ export const zork1: World = {
     { min: 350, title: 'Master Adventurer' },
   ],
 
-  vars: { water_level: 0, match_count: 6, lamp_fuel: 385, sword_glow: 0, troll_ldesc: 0, cyclowrath: 0 },
+  vars: { candle_life: 75, water_level: 0, match_count: 6, lamp_fuel: 385, sword_glow: 0, troll_ldesc: 0, cyclowrath: 0 },
 
   // Zork's LAMP-TABLE: warnings after 100, 170 and 185 lit turns; out on the next.
   daemons: [
@@ -2573,6 +2878,12 @@ export const zork1: World = {
     { if: 'on:lamp & var:lamp_fuel=85 & here:lamp', then: ['The lamp is definitely dimmer now.'] },
     { if: 'on:lamp & var:lamp_fuel=15 & here:lamp', then: ['The lamp is nearly out.'] },
     { if: 'on:lamp & var:lamp_fuel=0', then: 'lamp_dies' },
+    // I-CANDLES and CANDLE-TABLE: 40 turns once touched, then 20, 10 and 5, while lit.
+    { if: 'on:candles & flag:candles_touched', then: [{ add: 'candle_life', by: -1 }] },
+    { if: 'on:candles & flag:candles_touched & var:candle_life=35 & here:candles', then: ['The candles grow shorter.'] },
+    { if: 'on:candles & flag:candles_touched & var:candle_life=15 & here:candles', then: ['The candles are becoming quite short.'] },
+    { if: 'on:candles & flag:candles_touched & var:candle_life=5 & here:candles', then: ['The candles won’t last long now.'] },
+    { if: 'on:candles & flag:candles_touched & var:candle_life=0', then: 'candles_burn_out' },
     // I-THIEF: GO queues it after the sword and before the lantern, so it runs between them.
     { if: 'alive:thief & awake:thief', then: [{ script: 'thief_turn' }] },
     // I-SWORD, which runs after the lantern and before the fight.
@@ -2580,13 +2891,15 @@ export const zork1: World = {
   ],
 
   darkness: {
+    // ALWAYS-LIT, for a spirit.
+    litIf: 'flag:dead',
     look: 'It is pitch black. You are likely to be eaten by a grue.',
     tooDark: 'It’s too dark to see!',
     blunder: [{ chance: 80, then: [{ die: GRUE }], else: ['You can’t go that way.'] }],
   },
 
   death: {
-    message: ['', '****  You have died  ****', ''],
+    message: [{ if: 'flag:unlucky', text: 'Bad luck, huh?' }, '', '****  You have died  ****', ''],
     penalty: -10,
     lives: 2,
     respawn: 'forest_1',
@@ -2596,6 +2909,22 @@ export const zork1: World = {
       'Now, let’s take a look here... Well, you probably deserve another chance. I can’t quite fix you up completely, but you can’t have everything.',
     ],
     scatter: ['west_of_house', 'north_of_house', 'south_of_house', 'east_of_house', 'forest_1', 'forest_2', 'forest_3', 'path', 'clearing', 'grating_clearing'],
+    // JIGS-UP: once you've seen the Altar, you wake as a spirit before the gates of Hell.
+    variants: [
+      {
+        if: 'visited:south_temple',
+        resurrection: ['As you take your last breath, you feel relieved of your burdens. The feeling passes as you find yourself before the gates of Hell, where the spirits jeer at you and deny you entry. Your senses are disturbed. The objects in the dungeon appear indistinct, bleached of color, even unreal.', ''],
+        respawn: 'entrance_to_hades',
+        // DEAD is set before the GOTO, so Hades is described as a spirit sees it.
+        before: 'ghost_begins',
+      },
+    ],
+    instead: [
+      {
+        if: 'flag:dead',
+        lines: ['', 'It takes a talented person to be killed while already dead. YOU are such a talent. Unfortunately, it takes a talented person to deal with it. I am not such a talent. Sorry.'],
+      },
+    ],
     final: [
       'You clearly are a suicidal maniac. We don’t allow psychotics in the cave, since they may harm other adventurers. Your remains will be installed in the Land of the Living Dead, where your fellow adventurers may gloat over them.',
     ],
@@ -2651,6 +2980,54 @@ export const zork1: World = {
     took_trunk: [{ set: 'took_trunk' }],
     took_bar: [{ set: 'took_bar' }],
     took_trident: [{ set: 'took_trident' }],
+    took_coffin: [{ set: 'took_coffin' }],
+    took_sceptre: [{ set: 'took_sceptre' }],
+    took_skull: [{ set: 'took_skull' }],
+    prayer_answered: [{ go: 'forest_1' }],
+    // LLD-ROOM's M-BEG: RING BELL.
+    bell_rung: [
+      { set: 'xb' },
+      { move: 'bell', to: null },
+      { move: 'hot_bell', to: 'here' },
+      'The bell suddenly becomes red hot and falls to the ground. The wraiths, as if paralyzed, stop their jeering and slowly turn to face you. On their ashen faces, the expression of a long-forgotten terror takes shape.',
+      { if: 'has:candles', then: ['In your confusion, the candles drop to the ground (and they are out).', { move: 'candles', to: 'here' }, { switch: 'candles', on: false }] },
+      { schedule: 'xb_ends', in: 5 },
+      { schedule: 'hot_bell_cools', in: 19 },
+    ],
+    // LLD-ROOM's M-END.
+    exorcism_flames: [
+      { set: 'xc' },
+      'The flames flicker wildly and appear to dance. The earth beneath your feet trembles, and your legs nearly buckle beneath you. The spirits cower at your unearthly power.',
+      { cancel: 'xb_ends' },
+      { schedule: 'xc_ends', in: 2 },
+    ],
+    // LLD-ROOM's M-BEG: READ BOOK.
+    exorcism_done: [
+      'Each word of the prayer reverberates through the hall in a deafening confusion. As the last word fades, a voice, loud and commanding, speaks: “Begone, fiends!” A heart-stopping scream fills the cavern, and the spirits, sensing a greater power, flee through the walls.',
+      { moveNpc: 'ghosts', to: null },
+      { set: 'lld_flag' },
+      { cancel: 'xc_ends' },
+    ],
+    // I-XB.
+    xb_ends: [{ if: '!flag:xc & in:entrance_to_hades', then: ['The tension of this ceremony is broken, and the wraiths, amused but shaken at your clumsy attempt, resume their hideous jeering.'] }, { clear: 'xb' }],
+    // I-XC.
+    xc_ends: [{ clear: 'xc' }, { run: 'xb_ends' }],
+    // I-XBH.
+    hot_bell_cools: [{ move: 'hot_bell', to: null }, { move: 'bell', to: 'entrance_to_hades' }, { if: 'in:entrance_to_hades', then: ['The bell appears to have cooled down.'] }],
+    hot_bell_touched: [{ script: 'hot_bell_touched' }],
+    hot_bell_cooled: [{ move: 'water', to: null }, 'The water cools the bell and is evaporated.', { cancel: 'hot_bell_cools' }, { run: 'hot_bell_cools' }],
+    candles_touched: [{ set: 'candles_touched' }],
+    candles_lit: [{ set: 'candles_touched' }, { script: 'light_candles' }],
+    candles_out: [{ set: 'candles_touched' }, { script: 'candles_out' }],
+    candles_examined_lit: [{ set: 'candles_touched' }, 'The candles are burning.'],
+    candles_examined: [{ set: 'candles_touched' }, 'The candles are out.'],
+    // I-CANDLES at its last turn.
+    candles_burn_out: [{ switch: 'candles', on: false }, { set: 'candles_burnt' }, { if: 'here:candles', then: ['You’d better have more light than from the pair of candles.'] }],
+    book_burns: [{ move: 'book', to: null }, { die: 'A booming voice says “Wrong, cretin!” and you notice that you have turned into a pile of dust. How, I can’t imagine.' }],
+    bodies_defiled: [{ die: 'The voice of the guardian of the dungeon booms out from the darkness, “Your disrespect costs you your life!” and places your head on a sharp pole.' }],
+    // JIGS-UP after the Altar: a spirit now.
+    ghost_begins: [{ set: 'dead' }],
+    spirit_falls: ['As you enter the dome you feel a strong pull as if from a wind drawing you over the railing and down.', { go: 'torch_room', quiet: true }],
     took_torch: [{ set: 'took_torch' }],
     mirror_rub: [{ script: 'mirror_rub' }],
     mirror_breaks: [{ set: 'mirror_mung' }, { set: 'unlucky' }, 'You have broken the mirror. I hope you have a seven years’ supply of good luck handy.'],
@@ -2687,8 +3064,9 @@ export const zork1: World = {
       // INVISIBLE until something reveals them.
       { hide: 'leak' },
       { hide: 'trunk' },
-      // The torch is lit from the start (ONBIT).
+      // The torch and the candles are lit from the start (ONBIT); the hot bell waits offstage.
       { switch: 'torch', on: true },
+      { switch: 'candles', on: true },
     ],
     rug_moved: [
       'With a great effort, the rug is moved to one side of the room, revealing the dusty cover of a closed trap door.',

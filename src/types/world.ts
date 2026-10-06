@@ -324,6 +324,8 @@ export type Effect =
   | { free: true }
   /** A line already said the light went out, so the engine doesn't add its own. */
   | { noDarkLine: true }
+  /** Describes the player's room in full, as LOOK does. */
+  | { look: true }
   /** Runs an event after this many acted-on turns. */
   | { schedule: string; in: number }
   | { cancel: string }
@@ -437,8 +439,8 @@ export interface World {
     final?: string[];
     /** An event run after a resurrection (Zork's JIGS-UP resets things). */
     then?: string;
-    /** The first whose `if` holds replaces `resurrection`, `respawn` and `then` (Zork sends you to Hades once you've seen the Altar). */
-    variants?: Array<{ if: string; resurrection?: string[]; respawn?: string; then?: string }>;
+    /** The first whose `if` holds replaces `resurrection`, `respawn` and `then` (Zork sends you to Hades once you've seen the Altar); its `before` runs ahead of the respawn. */
+    variants?: Array<{ if: string; resurrection?: string[]; respawn?: string; then?: string; before?: string }>;
     /** Checked first: the first whose `if` holds prints its lines, not the cause, and ends the game (dying while already dead). */
     instead?: Array<{ if: string; lines: string[] }>;
   };
