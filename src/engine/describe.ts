@@ -163,7 +163,7 @@ export function describeRoom(
   // Zork lists a room's contents newest first: a character who moved in this turn comes before its things.
   const people = npcsSeen(world, state, roomId).filter((id) => !world.npcs[id]?.scenery);
   const newestThing = Math.max(0, ...inRoom.map((id) => state.placed?.[id] ?? 0));
-  const justArrived = infocom ? people.filter((id) => (state.npcs?.[id]?.arrived ?? -1) > newestThing) : [];
+  const justArrived = infocom ? people.filter((id) => (state.npcs?.[id]?.seq ?? -1) > newestThing) : [];
   for (const id of justArrived) lines.push(npcDescription(world, state, id));
   // Aboard, Zork marks the room's things “(outside the boat)”, all but first-seen sentences (PRINT-CONT).
   const outside = infocom && vehicle ? ` (outside the ${vehicle.name})` : '';

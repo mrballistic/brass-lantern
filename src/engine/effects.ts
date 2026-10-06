@@ -1,7 +1,7 @@
 import type { GameState, Place } from '@/types/game';
 import type { Effect, EventStep, World } from '@/types/world';
 import { evaluateCondition } from './conditions';
-import { isCarried, moveItem, npcStateOf, PLAYER } from './model';
+import { isCarried, moveItem, nextPlacing, npcStateOf, PLAYER } from './model';
 import { nextRandom } from './rng';
 import { scriptSteps } from './scripts';
 
@@ -124,7 +124,7 @@ function runEffect(e: Effect, world: World, state: GameState): { lines: string[]
   if ('move' in e) return void moveItem(state, e.move, (e.to === 'here' ? state.currentRoom : e.to) as Place), { lines: [] };
   if ('moveNpc' in e) {
     // Stamped on the same sequence as things' placings (`placed`): newest first, as Zork's MOVE.
-    if (world.npcs[e.moveNpc]) Object.assign(npcStateOf(state, e.moveNpc), { room: e.to, arrived: Math.max(0, ...Object.values(state.placed ?? {}), ...Object.values(state.npcs ?? {}).map((n) => n.arrived ?? 0)) + 1 });
+    if (world.npcs[e.moveNpc]) Object.assign(npcStateOf(state, e.moveNpc), { room: e.to, seq: nextPlacing(state) });
     return { lines: [] };
   }
   if ('npcState' in e) {

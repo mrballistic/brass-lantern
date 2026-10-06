@@ -28,8 +28,8 @@ export interface NpcState {
   wake?: number;
   /** In the room but unseen: not listed, matched, reached or fought (Zork's INVISIBLE). */
   hidden?: boolean;
-  /** When it last moved rooms, on the sequence of things' placings: listed before anything placed earlier (Zork's object order). */
-  arrived?: number;
+  /** When it last moved rooms, on the same sequence as things' placings (`placed`): listed before anything placed earlier (Zork's object order). */
+  seq?: number;
 }
 
 /** The player's condition, once anything has hurt them. */

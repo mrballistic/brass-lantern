@@ -57,6 +57,8 @@ export function migrateSave(world: World, raw: unknown): SavedState | null {
   const savedAt = typeof raw.savedAt === 'string' ? raw.savedAt : '';
   try {
     if (raw.version === SAVE_VERSION) {
+      // 1.12.0 stamped characters' arrivals with turn numbers (`arrived`); 1.12.5 uses `seq`.
+      if (isRecord(g.npcs)) for (const n of Object.values(g.npcs)) if (isRecord(n)) delete n.arrived;
       return { version: SAVE_VERSION, savedAt, gameState: g as unknown as GameState, outputHistory: history(raw) };
     }
     if (raw.version === '1.0') {

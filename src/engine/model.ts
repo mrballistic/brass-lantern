@@ -122,8 +122,12 @@ export function moveItem(state: GameState, id: string, place: Place): void {
   state.locations[id] = place;
   // A vehicle taken away from the player's room leaves them aboard nothing.
   if (state.aboard === id && place !== state.currentRoom) state.aboard = undefined;
-  const placed = (state.placed ??= {});
-  placed[id] = Math.max(0, ...Object.values(placed)) + 1;
+  (state.placed ??= {})[id] = nextPlacing(state);
+}
+
+/** The next number on the one sequence things' placings and characters' arrivals share (Zork's MOVE order). */
+export function nextPlacing(state: GameState): number {
+  return Math.max(0, ...Object.values(state.placed ?? {}), ...Object.values(state.npcs ?? {}).map((n) => n.seq ?? 0)) + 1;
 }
 
 /**

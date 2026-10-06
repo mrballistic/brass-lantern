@@ -93,3 +93,16 @@ describe('migrateSave', () => {
     expect(out.gameState.locations.wallet).toBeNull();
   });
 });
+
+describe('older saves’ arrival stamps (1.12.5)', () => {
+  it('drop the turn-numbered `arrived`', async () => {
+    const { migrateSave } = await import('@/engine/migrate');
+    const { SAVE_VERSION } = await import('@/types/game');
+    const { fixtureWorld } = await import('../fixtures/world');
+    const { stateWith } = await import('../helpers/state');
+    const g = stateWith(fixtureWorld, { room: 'bedroom' }) as unknown as Record<string, unknown>;
+    g.npcs = { guard: { room: 'shed', arrived: 412 } };
+    const out = migrateSave(fixtureWorld, { version: SAVE_VERSION, gameState: g, outputHistory: [] });
+    expect((out?.gameState.npcs?.guard as Record<string, unknown>).arrived).toBeUndefined();
+  });
+});

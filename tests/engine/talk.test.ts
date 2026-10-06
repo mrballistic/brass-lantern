@@ -111,3 +111,10 @@ describe('“tell bob to ask about x” (fast follow)', () => {
     expect(fallbackParse('tell neighbor about the fence')?.action).toBe('ask');
   });
 });
+
+describe('final review fixes (1.12.5)', () => {
+  it('ASK X ABOUT a topic with “to” in it stays ASK', () => {
+    expect(fallbackParse('ask neighbor about going to the store')).toEqual({ action: 'ask', target: 'neighbor', indirect: 'going to the store' });
+    expect(fallbackParse('tell neighbor to ask about the fence')?.action).toBe('order');
+  });
+});

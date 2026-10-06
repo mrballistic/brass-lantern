@@ -6,6 +6,11 @@ Known gaps the reviews found and deferred. Each stage's spec picks up the ones i
 
 - **A refused move** should drop the rest of a compound line (Zork's M-FATAL clears P-CONT); the room's end routine is skipped, but “north. take lamp” after a refused north still takes the lamp.
 - **KICK** isn't a native Zork verb, so the far basket (and everything else) can't answer it.
+- **The dark-room walk** on death advances before testing; Zork re-tests the room the last treasure landed in, so two can share it.
+- **READ's automatic take** runs after-take rules without the once-only guard `onTake` gets through withRules.
+- **V-CLIMB-UP's other replies:** “The stairs don't lead downward.” (plural), “There are no climbable trees here.”, “Climbing the walls is to no avail.”
+- **WAIT's fired-timer mark** survives a throw inside afterTurn (the next WAIT would stop after one tick).
+- **The changed check** (stateKey) leaves out firedEvents, placed and verbosity: a capture that only fires a once-event isn't saved.
 - Notes on items closed above: ENTER of an ambiguous non-vehicle keeps its question (Zork's parser asks too); the 350 whisper already lands where Zork's does for every reachable win; a failed conditional exit does cost a turn in Zork (only M-END and the rest of the line are skipped); the switch accepts a screwdriver on the floor in Zork too.
 
 ## From stage 5d (1.12.0)

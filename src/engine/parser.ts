@@ -57,7 +57,8 @@ const RE = {
   wear: /^(?:wear|put\s+on)\s+(?:the\s+)?(.+)$/i,
   talk: /^(?:talk|speak|chat)\s+(?:to|with)\s+(?:the\s+)?(.+)$/i,
   askAbout: /^(?:ask|question|tell)\s+(?:the\s+)?(.+?)\s+about\s+(.+)$/i,
-  orderTo: /^(?:tell|order|ask)\s+(?:the\s+)?(.+?)\s+to\s+(.+)$/i,
+  // The person can't run past an ABOUT: “ask bob about going to the store” is ASK.
+  orderTo: /^(?:tell|order|ask)\s+(?:the\s+)?((?:(?!\s+about\s).)+?)\s+to\s+(.+)$/i,
   tellAlone: /^tell\s+(?:the\s+)?(.+)$/i,
   ask: /^(?:ask|question)\s+(?:the\s+)?(.+)$/i,
   smash: /^(?:smash|destroy|break|wreck|whack|beat)\s+(?:up\s+)?(?:the\s+)?(.+?)(?:\s+with\s+(?:the\s+)?(.+))?$/i,

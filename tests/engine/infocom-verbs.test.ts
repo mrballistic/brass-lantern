@@ -339,3 +339,16 @@ describe('a character stays listed first until something else moves in (fast fol
     expect(lines.findIndex((l) => l.startsWith('A guard'))).toBeLessThan(lines.indexOf('There is a note here.'));
   });
 });
+
+describe('final review fixes (1.12.5): one sequence for things and characters', () => {
+  it('a character who has wandered a lot is still listed after a thing put down later', async () => {
+    const { runSteps } = await import('@/engine/effects');
+    const { describeCurrentRoom } = await import('@/engine/engine');
+    const s = stateWith(w, { room: 'shed', carrying: ['note'] });
+    s.npcs = { guard: { room: null } };
+    for (const r of ['yard', 'bedroom', 'yard', 'shed']) runSteps([{ moveNpc: 'guard', to: r }], w, s);
+    run(s, { action: 'drop', target: 'note' });
+    const lines = describeCurrentRoom(w, s);
+    expect(lines.indexOf('There is a note here.')).toBeLessThan(lines.findIndex((l) => l.startsWith('A guard')));
+  });
+});

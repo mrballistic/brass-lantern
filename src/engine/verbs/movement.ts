@@ -75,7 +75,7 @@ export function exitTarget(exit: string | Exit | undefined): string | undefined 
   return typeof exit === 'string' ? exit : exit?.to;
 }
 
-/** A refused move: it changes nothing, and (Zork's M-FATAL) skips the room's end routine. */
+/** An exit's own refusal (V-WALK's RFATAL): it changes nothing, and skips the room's end routine. */
 const refuse = (line: string): EngineResult => ({ ...ok([line]), fatal: true });
 
 /** Follow one exit. Every refusal comes before the move, so it changes nothing. */
@@ -88,13 +88,12 @@ export function followExit(exit: string | Exit, world: World, state: GameState):
     if (!exit.to) return refuse(exit.denial ?? 'You can’t go that way.');
   }
   const to = exitTarget(exit)!;
+  // GOTO's own refusals aren't fatal (they RFALSE): the room's end routine still runs.
   const refused = vehicleRefusal(to, world, state);
-  if (refused) return refuse(refused);
+  if (refused) return ok([refused]);
   const passing = typeof exit !== 'string' && exit.then ? runEvent(exit.then, world, state) : [];
   if (turnHalted(state) || state.gameOver) return ok(passing, true);
   const lines = [...passing, ...enterRoom(to, world, state)];
-  // The room turned you away (its `requires`).
-  if (state.currentRoom !== to && passing.length === 0) return { ...ok(lines), fatal: true };
   return ok(lines, state.currentRoom === to || passing.length > 0);
 }
 

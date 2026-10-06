@@ -151,12 +151,22 @@ describe('a refused exit, Infocom style (fast follow)', () => {
     const w = {
       ...world,
       style: 'infocom' as const,
-      rooms: { ...world.rooms, yard: { ...world.rooms.yard, onEnd: [{ if: 'in:yard', then: ['Tick.'] }] } },
+      rooms: { ...world.rooms, yard: { ...world.rooms.yard, exits: { ...world.rooms.yard.exits, west: { denial: 'A fence.' } }, onEnd: [{ if: 'in:yard', then: ['Tick.'] }] } },
     };
     const s = stateWith(w, { room: 'yard' });
     const moves = s.moveCount;
-    const r = execute({ action: 'go', target: 'north' }, { world: w, state: s });
-    expect(r.lines).not.toContain('Tick.');
+    const r = execute({ action: 'go', target: 'west' }, { world: w, state: s });
+    expect(r.lines).toEqual(['A fence.']);
     expect(s.moveCount).toBe(moves + 1);
+  });
+  it('a room that turns you away (GOTO’s refusal, not V-WALK’s) still runs the end routine (1.12.5 review)', () => {
+    const w = {
+      ...world,
+      style: 'infocom' as const,
+      rooms: { ...world.rooms, yard: { ...world.rooms.yard, onEnd: [{ if: 'in:yard', then: ['Tick.'] }] } },
+    };
+    const s = stateWith(w, { room: 'yard' });
+    const r = execute({ action: 'go', target: 'north' }, { world: w, state: s });
+    expect(r.lines).toEqual(['The shed is locked.', 'Tick.']);
   });
 });
