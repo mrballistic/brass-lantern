@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { containers } from '@/worlds/examples/containers';
 import { darkness } from '@/worlds/examples/darkness';
 import { endings } from '@/worlds/examples/endings';
+import { fortune } from '@/worlds/examples/fortune';
+import { guard } from '@/worlds/examples/guard';
 import { timers } from '@/worlds/examples/timers';
 import { play } from '../../helpers/play';
 
@@ -123,6 +125,60 @@ describe('recipes', () => {
       ✨ You leave lighter than you came.
       [Score: 10 of 50, in 1 move.]
       Type RESTART to try another ending."
+    `);
+  });
+  it('a guard and something heavy', () => {
+    const { state, text } = play(guard, ['take anvil', 'take sword', 'north', 'north', 'attack guard with sword', 'attack guard with sword', 'attack guard with sword', 'attack guard with sword', 'diagnose', 'north']);
+    expect(state.gameOver).toBe(true);
+    expect(text).toMatchInlineSnapshot(`
+      "📍 Armory
+      Racks of rusted weapons. An anvil squats in the corner. A gate is north.
+      You can see: sword, anvil.
+      Exits: north.
+      > take anvil
+      [That’s too heavy to carry with everything else.]
+      > take sword
+      Taken: sword.
+      > north
+      📍 Gatehouse
+      A stone arch. Beyond it, daylight. The armory is south.
+      Present: guard.
+      Exits: south, north.
+      > north
+      The guard steps in front of you.
+      The guard shoves you back.
+      > attack guard with sword
+      You’re still reeling from that last blow.
+      The guard’s club whistles past your head.
+      > attack guard with sword
+      You wound the guard.
+      The club catches your shoulder.
+      > attack guard with sword
+      The guard drops their weapon.
+      The guard gropes for his club.
+      > attack guard with sword
+      The guard can’t defend themselves.
+      The guard is dead.
+      > diagnose
+      [You have a light wound, which will be cured after 28 moves.]
+      [You can be killed by one more light wound.]
+      > north
+      📍 Courtyard
+      Sunlight, at last.
+      ✨ You walk out into the sun.
+      You’re free."
+    `);
+  });
+  it('a script', () => {
+    expect(play(fortune, ['consult madame', 'consult madame']).text).toMatchInlineSnapshot(`
+      "📍 Fortune Teller’s Tent
+      Velvet, incense, and a crystal ball.
+      Present: Madame Zora.
+      > consult madame
+      “You will find what you lost under the sofa.”
+      > consult madame
+      “I have told you already,” she sighs.
+      “You will find what you lost under the sofa.”"
     `);
   });
 });

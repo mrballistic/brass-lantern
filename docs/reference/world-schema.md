@@ -34,6 +34,9 @@ Every field a world can use. The source of truth is [`src/types/world.ts`](https
 | `smashRefusal?` | string | SMASH where nothing can be smashed. |
 | `title?` | string | The game's full title, for VERSION and Infocom-style transcripts (“ZORK I: The Great Underground Empire”). |
 | `credits?` | string[] | Lines VERSION prints after the title. |
+| `carry?` | `Carry` | Carrying weight. Without it there's no limit. See [Weight](#weight). |
+| `combat?` | `CombatRules` | The player's side of fights. See [Combat](#combat). |
+| `scripts?` | `Record<name, Script>` | The code hatch: functions that return steps. See [Scripts](#scripts). |
 | `statusLine?` | `'moves'` or `'score'` | The header in brass style: `MOVES: n` (the default) or `SCORE: n  MOVES: n`. Infocom style always shows the room, score and moves. |
 
 ## Room
@@ -49,7 +52,7 @@ Every field a world can use. The source of truth is [`src/types/world.ts`](https
 | `listExits?` | label[] | What the exit line shows, in order; each gets the compass direction that leads the same way. Omit to list every label. |
 | `items` | item ID[] | Items in the room at the start. |
 | `npcs` | NPC ID[] | |
-| `onEnter` | `{ if, then }[]` | Events fired on arrival when the condition holds. |
+| `onEnter` | `{ if, then, repeat? }[]` | Events fired on arrival when the condition holds: once per game, or every time with `repeat: true`. |
 | `requires?` | condition | Must hold to enter. |
 | `denial?` | string | Shown when `requires` fails. |
 | `scenery?` | item ID[] | Items present here without being in the room: a door shared by two rooms, a window, the sky. Examinable and usable, never listed or taken. |
@@ -64,6 +67,7 @@ Every field a world can use. The source of truth is [`src/types/world.ts`](https
 | `denial?` | string | Shown when `if` fails, or always if there's no `to`. Default: “You can’t go that way.” |
 | `door?` | item ID | An item with `door: true` that must be open. A closed door says “The *name* is closed.” |
 | `denials?` | `{ if, text }[]` | Refusals with their own reasons, checked first; the first whose `if` holds refuses with `text` (Zork's chimney). |
+| `then?` | event | Runs as the player goes through, before arriving (Zork's exit routines). |
 
 Message-only exits aren't listed unless `listExits` names them.
 
@@ -86,6 +90,8 @@ Message-only exits aren't listed unless `listExits` names them.
 | `surface?` | boolean | Things can be put on it; what's on it is always visible and reachable. |
 | `scenery?` | boolean | Present but never listed (the house, the forest). |
 | `door?` | boolean | A door between rooms; exits name it. Uses `container` for openable/open/locked/key. |
+| `size?` | number | Its weight, in worlds with `carry` (Zork's SIZE). Default 5. |
+| `weapon?` | boolean | Something to fight with. |
 | `text?` | string | What READ shows. Default: the description. |
 | `initialDescription?` | string | Its own sentence in a room until first taken. |
 | `roomDescription?` | string | Its own sentence in a room after that. Items with neither are gathered into “You can see: …”. |
@@ -106,6 +112,7 @@ Message-only exits aren't listed unless `listExits` names them.
 | `key?` | item ID | Locks and unlocks it. |
 | `transparent?` | boolean | You can see inside even when it's closed. |
 | `capacity?` | number | How many items fit directly inside. |
+| `weight?` | number | The total weight it holds (Zork's CAPACITY), in worlds with `carry`. |
 | `opened?`, `closed?` | string | Lines for opening and closing it, instead of the defaults. |
 
 You can see into a surface, an open container or a transparent one; you can reach into a surface or an open container. The parser only matches what you can see, and taking something you can see but can't reach says which container is closed.
@@ -235,6 +242,71 @@ The `die` effect uses it. Without a `death` block, dying prints the cause and en
 | `onGive?` | `Record<item id, event>` | GIVE hands the item over and fires the event. |
 | `refuse?` | `Record<item id, string>` | Declines that item; the player keeps it. |
 | `refuseGift?` | string | Declines anything else. |
+| `holds?` | item ID[] | What it carries at the start. Things a character holds can't be seen or taken. |
+| `descriptions?` | `{ if, text }[]` | Its line in the room and its EXAMINE reply, by state; the first whose condition holds wins. |
+| `instead?`, `after?` | `Record<verb, Rule[]>` | Rules for verbs aimed at it: THROW X AT it, GIVE, TAKE, a world verb. |
+| `combat?` | `Combatant` | Makes it someone you can fight. See [Combat](#combat). |
+
+Characters' places and states live in the game state (`npcs`), starting from the rooms that list them. In brass style the room shows “Present: …”; in Infocom style each character prints its own line.
+
+## Weight
+
+```ts
+carry: { limit: 100, self: 5, fumble: { over: 7, chance: 8 } },
+```
+
+| Field | Type | |
+|---|---|---|
+| `limit` | number | The total weight the player can carry when healthy. |
+| `self?` | number | The player's own weight, counted in (Zork's ADVENTURER is 5). |
+| `fumble?` | `{ over, chance }` | Carrying more than `over` things, each TAKE has `count × chance` percent to fumble. |
+| `tooHeavy?`, `tooHeavyHurt?`, `fumbled?` | string | The refusals. |
+
+An item weighs its `size` plus everything inside it. Wounds lower the limit and healing restores it.
+
+## Combat
+
+A character with `combat` can be fought: ATTACK *it* WITH *a weapon*. The engine owns the mechanics, ported from Zork I: strength against strength picks one of six blow tables, and a seeded roll picks the result (missed, staggered, wounded, knocked out, killed, disarmed). After every turn the engine acts on, characters in the room who are fighting swing back.
+
+| `Combatant` field | Type | |
+|---|---|---|
+| `strength` | number | The troll: 2. |
+| `weapon?` | item ID | What it fights with, while it holds it. |
+| `fears?` | `{ item, by }` | The player's weapon that weakens it (the troll fears the sword, by 1). |
+| `wake?` | number | Percent added each turn to its chance of waking while out cold. Default 25. |
+| `firstStrike?` | number | Percent chance each turn to start a fight while you're in the room. |
+| `messages?` | `Partial<Record<BlowResult, string[]>>` | Its blows at the player, one picked at random. `{weapon}` and `{defender}` are filled in. |
+| `onDeath?`, `onUnconscious?`, `onWake?` | event | When it dies, is knocked out, comes round. |
+| `onBusy?` | event | Instead of swinging when its weapon is on the floor (the troll recovers his axe). |
+
+| `CombatRules` field | Type | |
+|---|---|---|
+| `messages?` | same | The player's blows. |
+| `strength?` | `{ min, max }` | The player's strength, from `min` at no score to `max` at `maxScore` (Zork: 2 to 7). |
+| `cureWait?` | number | Turns for one wound to heal (Zork: 30). |
+| `texts?` | `Partial<Record<CombatText, string>>` | Fixed lines: refusals, the death line, the fog. Defaults: Zork's words in Infocom style, short ones in brass. |
+
+**In Infocom style** ATTACK works the way Zork's parser does: with one weapon in hand, `kill troll` picks it (“(with the sword)”); otherwise it asks what to attack with; a weapon you aren't holding is refused without taking a turn. DIAGNOSE reports your wounds. A [recipe](../guide/building-worlds/recipes#a-guard-to-fight) shows a whole fight.
+
+## Scripts
+
+The code hatch, for behavior data can't express (a thief's mind, a sword that glows near monsters):
+
+```ts
+scripts: {
+  fortune: (ctx) => [ctx.roll(3) === 1 ? '“Beware of geese.”' : '“Soup is coming.”'],
+},
+events: { reading: [{ script: 'fortune' }] },
+```
+
+A script gets a read-only view of the game and returns ordinary steps, which the engine runs. `ctx` has:
+- `state` (frozen in development and tests), `world`;
+- `random()` and `roll(n)`, from the game's seeded generator, so saves and UNDO replay exactly;
+- `here(id)`, `carried(id)`, `holder(id)`, `room()`, `npc(id)`;
+- `arg`, from `{ script, arg }`;
+- `command`, the command being run with its objects resolved to IDs, when a rule ran the script.
+
+Scripts run only where events run, so a command the engine didn't understand still changes nothing. The world audit fails on a `script` effect naming no script. See the [scripts recipe](../guide/building-worlds/recipes#scripts).
 
 ## Dialogue
 

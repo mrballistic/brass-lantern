@@ -128,3 +128,79 @@ Type RESTART to try another ending.
 ```
 
 Restart, go east and PRAY for the other ending.
+
+## A guard to fight
+
+An armory with a sword and an anvil too heavy to lift, and a guard who won't let you through.
+
+<<< ../../../src/worlds/examples/guard.ts#items{ts}
+
+<<< ../../../src/worlds/examples/guard.ts#guard{ts}
+
+<<< ../../../src/worlds/examples/guard.ts#gate{ts}
+
+- **`carry`** turns on weight. Each item weighs its `size` (5 if unset) plus what's inside it, and TAKE refuses what would go over `limit`.
+- **`combat`** on a character makes it someone you can fight with a `weapon`. The engine runs the fight: your strength against theirs, a seeded roll, and Zork's tables of results. The guard's `messages` are its blows at you; `world.combat` holds yours (short defaults here).
+- **`holds`** gives the guard his club. While he has it he fights back; knock it away and `onBusy` runs instead of a swing.
+- **`awake:guard`** in the exit's `denials` keeps the way shut until he's dead or out cold.
+- **`seed`** fixes the world's random generator, so this transcript plays the same way every time. Leave it out and every game differs.
+- **DIAGNOSE** says how hurt you are; wounds heal with time.
+
+```
+> take anvil
+[That’s too heavy to carry with everything else.]
+> take sword
+Taken: sword.
+> north
+📍 Gatehouse
+A stone arch. Beyond it, daylight. The armory is south.
+Present: guard.
+Exits: south, north.
+> north
+The guard steps in front of you.
+The guard shoves you back.
+> attack guard with sword
+You’re still reeling from that last blow.
+The guard’s club whistles past your head.
+> attack guard with sword
+You wound the guard.
+The club catches your shoulder.
+> attack guard with sword
+The guard drops their weapon.
+The guard gropes for his club.
+> attack guard with sword
+The guard can’t defend themselves.
+The guard is dead.
+> diagnose
+[You have a light wound, which will be cured after 28 moves.]
+[You can be killed by one more light wound.]
+> north
+📍 Courtyard
+Sunlight, at last.
+✨ You walk out into the sun.
+You’re free.
+```
+
+In Infocom style the same fight uses Zork's words, and `kill guard` picks the one weapon you're holding. Native Zork I's troll is this recipe with Zork's own numbers and messages.
+
+## Scripts
+
+A fortune teller who tells you one of three fortunes, then sticks to it.
+
+<<< ../../../src/worlds/examples/fortune.ts#script{ts}
+
+- **A script** is a function in `scripts` that returns ordinary steps: lines and effects. Events call it with `{ script: 'name' }`.
+- **It reads the game, it doesn't change it.** `ctx.state` is read-only; to change things, return effects (`setVar` here). That keeps the engine's guarantees: a command it didn't understand changes nothing, and saves replay exactly.
+- **`ctx.roll(3)`** is 1 to 3 from the game's seeded generator, never `Math.random()`.
+- **A rule on a character** (`instead.consult` on Madame Zora) answers a world verb aimed at her.
+
+```
+> consult madame
+“You will find what you lost under the sofa.”
+> consult madame
+“I have told you already,” she sighs.
+“You will find what you lost under the sofa.”
+```
+
+Reach for a script only when data can't say it. Most behavior is rules, conditions and effects.
+

@@ -18,6 +18,10 @@ Conditions are strings, used by `requires`, exits (`if`, `denials`), room `descr
 | `var:NAME<op>N` | a numeric variable compared with `=`, `<`, `>`, `<=` or `>=` (unset is 0) |
 | `carrying<op>N` | how many things the player holds directly |
 | `lit:here`, `lit:ROOM` | the room has light |
+| `alive:NPC` | the character isn't dead |
+| `awake:NPC` | alive and conscious |
+| `fighting:NPC` | in a fight with the player (and conscious) |
+| `with:NPC` | in the player's room |
 | `!…` | negates any of the above |
 | `a & b` | every part holds: `in:break_room & !flag:lunch_freed` |
 
@@ -31,7 +35,10 @@ An event is a named list of steps, run in order. A string is printed. An object 
 |---|---|
 | `{ say: 'text' }` | Prints, like a plain string. |
 | `{ set: 'flag' }`, `{ clear: 'flag' }` | Turns a flag on or off. |
-| `{ move: 'item', to: 'room' }` | Moves an item to a room, `'player'`, another item, or `null` (offstage). |
+| `{ move: 'item', to: 'room' }` | Moves an item to a room, `'player'`, `'here'` (the player's room), another item, a character, or `null` (offstage). |
+| `{ moveNpc: 'npc', to: 'room' }` | Moves a character, or `null` (gone). |
+| `{ npcState: 'npc', fighting?, staggered?, strength? }` | Sets a character's combat state. |
+| `{ script: 'name', arg? }` | Runs one of the world's [scripts](./world-schema#scripts) and the steps it returns. |
 | `{ open }`, `{ close }`, `{ lock }`, `{ unlock }` | Changes a container's or door's state. |
 | `{ switch: 'item', on: true }` | Switches a light (or anything switchable). |
 | `{ add: 'var', by: n }`, `{ setVar: 'var', to: n }` | Changes a numeric variable. |

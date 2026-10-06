@@ -6,7 +6,7 @@ This section is three worked examples, each a real world file that a test plays 
 
 - **[A two-room game](./two-rooms)** starts from nothing: two rooms, a hidden key, a locked door and a way to win. Start here.
 - **[The demo game: Snack Attack](../your-first-world)** walks through the three-room world the demo boots into, with people, dialogue, hints, a score and a finale.
-- **[Recipes](./recipes)** are small worlds for one idea each: containers and keys, darkness and death, timers, and endings with verbs of your own.
+- **[Recipes](./recipes)** are small worlds for one idea each: containers and keys, darkness and death, timers, endings with verbs of your own, a guard to fight, and scripts.
 
 ## Where a world lives
 

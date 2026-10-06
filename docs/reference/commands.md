@@ -23,7 +23,10 @@ The verbs are fixed; a world gives them things to act on. Anything the regex par
 | GIVE *item* TO *person* | `hand` `offer` `return` | With one person present, GIVE *item* is enough. |
 | TALK TO *person* | `speak/chat with`, `question`, `ask … about …` | With one person present, TALK is enough. |
 | WEAR *item* | `put on` | |
-| SMASH *thing* [WITH *item*] | `hit` `break` `destroy` `attack` `wreck` `whack` `kill` `beat` | |
+| SMASH *thing* [WITH *item*] | `break` `destroy` `wreck` `whack` `beat` | |
+| ATTACK *someone* WITH *weapon* | `kill` `hit` `fight` `stab` | At a character who fights, combat; at anything else, SMASH (in a world without combat). In Infocom style, `kill troll` picks the one weapon you hold, or asks. |
+| THROW *item* [AT *target*] | `toss` `hurl` | A rule on the target decides; otherwise it lands on the floor. |
+| DIAGNOSE | | Your wounds, and how much more you could take. |
 | WAIT / SIT | `z`, `sit down` `relax` | Takes a `wait` / `sit` exit if the room has one. |
 | INVENTORY | `i` `inv` | |
 | HINT | `hints` `clue` | |
