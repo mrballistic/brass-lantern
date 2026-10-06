@@ -180,7 +180,7 @@ verbs: {
 | `words` | string[] | Words and phrases that mean it. Phrases are matched before built-in verbs, single words after. |
 | `target` | `'none'`, `'optional'` or `'required'` | |
 | `indirect?` | string[] | Prepositions that introduce a second object (`with`, `on`). |
-| `reply?` | string | When no rule applies. Default: “Nothing happens.” |
+| `reply?` | string | When no rule applies. Default: “Nothing happens.” `{target}` is replaced by the object's name, `{a target}` by its name with an article. |
 | `held?` | boolean | The object must be something you hold, or can see inside something you hold (Zork's HELD): POUR WATER means the water in your bottle. |
 | `go?` | boolean | Treat it as GO: through the target exit, or the exit labeled with the verb's ID. |
 
