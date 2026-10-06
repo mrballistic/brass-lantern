@@ -352,3 +352,18 @@ describe('final review fixes (1.12.5): one sequence for things and characters', 
     expect(lines.indexOf('There is a note here.')).toBeLessThan(lines.findIndex((l) => l.startsWith('A guard')));
   });
 });
+
+describe('READ’s automatic take fires onTake once (backlog clear-out)', () => {
+  it('a second READ after a DROP doesn’t fire it again', () => {
+    const world: World = {
+      ...w,
+      events: { ...w.events, first_touch: ['A chill runs down your spine.'] },
+      items: { ...w.items, scroll: { name: 'scroll', description: '', text: 'Words.', portable: true, tags: [], onTake: 'first_touch' } },
+    };
+    const s = stateWith(world, { room: 'bedroom' });
+    s.locations.scroll = 'bedroom';
+    expect(run(s, { action: 'read', target: 'scroll' }, world)).toContain('A chill runs down your spine.');
+    run(s, { action: 'drop', target: 'scroll' }, world);
+    expect(run(s, { action: 'read', target: 'scroll' }, world)).not.toContain('A chill runs down your spine.');
+  });
+});

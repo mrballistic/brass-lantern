@@ -5,7 +5,7 @@ import { describeRoom } from './describe';
 import { AskSignal, initialLocations, inventoryOf, isLit, matchItem, pickItem, restoreState, setResolveById, snapshotState, takeActed, visibleItems } from './model';
 import { whatQuestion, whichQuestion } from './ask';
 import { darknessFalls, tooDark } from './light';
-import { beginTick, beginTurn, darkLineSaid, runEventKey, runSteps, setEffectHooks, turnFree, turnHalted } from './effects';
+import { beginTick, beginTurn, darkLineSaid, lineStop, runEventKey, runSteps, setEffectHooks, turnFree, turnHalted } from './effects';
 import { seedFor } from './rng';
 import { afterTurn, fuseFired } from './time';
 import { die } from './death';
@@ -123,7 +123,7 @@ function captureTurn(world: World, state: GameState, line: string): EngineResult
 
 /** What a turn can change, as one string: equal before and after means nothing changed. */
 function stateKey(state: GameState): string {
-  return JSON.stringify([state.vars, state.fuses, state.flags, state.locations, state.itemState, state.currentRoom, state.player, state.npcs, state.rng, state.aboard ?? null, state.visited, state.gameOver ?? false]);
+  return JSON.stringify([state.vars, state.fuses, state.flags, state.locations, state.itemState, state.currentRoom, state.player, state.npcs, state.rng, state.aboard ?? null, state.visited, state.gameOver ?? false, state.firedEvents, state.placed ?? null, state.verbosity ?? null]);
 }
 
 /** States inside a turn, so only the outermost call takes a snapshot. */
@@ -149,7 +149,10 @@ function guarded<T>(state: GameState, turn: () => T): T {
 }
 
 export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
-  return guarded(deps.state, () => executeTurn(action, deps));
+  const result = guarded(deps.state, () => executeTurn(action, deps));
+  // The rest of the line is dropped by a step, or (Infocom style) by a refused move.
+  const stop = lineStop(deps.state) ?? (result.fatal && deps.world.style === 'infocom' ? true : undefined);
+  return stop && result.understood !== false ? { ...result, stopLine: stop } : result;
 }
 
 function executeTurn(action: ParsedAction, deps: EngineDeps): EngineResult {
@@ -203,6 +206,8 @@ function executeTurn(action: ParsedAction, deps: EngineDeps): EngineResult {
   // end routine (M-END) then follows it. Anything else: end routine, then one tick.
   const waiting = action.action === 'wait' && Boolean(world.wait);
   const later: string[] = [];
+  // A mark left by a turn that threw doesn't count for this one.
+  fuseFired(state);
   // A refused move skips the room's end routine in Infocom style (V-WALK's RFATAL).
   if (!waiting && !turnHalted(state) && !(result.fatal && world.style === 'infocom')) later.push(...roomEnd(world, state));
   // A death this turn ends it: no timers or daemons after the resurrection.

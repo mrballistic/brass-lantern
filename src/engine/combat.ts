@@ -2,7 +2,7 @@ import type { GameState } from '@/types/game';
 import type { BlowMessages, BlowResult, CombatText, World } from '@/types/world';
 import { childrenOf, isAlive, isAwake, isCarried, isNpcHidden, isNpcIn, moveItem, npcStateOf } from './model';
 import { commandOf } from './scripts';
-import { runEventKey, runSteps, turnHalted } from './effects';
+import { runEventKey, runSteps, stopLine, turnHalted } from './effects';
 import { prob, roll } from './rng';
 import { currentScore } from './verbs/meta';
 
@@ -307,6 +307,8 @@ export function fightTurn(world: World, state: GameState): string[] {
         }
         else npcStateOf(state, id).wake = p + (combat.wake ?? 25);
       } else if (s?.fighting || (combat.firstStrike !== undefined && combat.firstStrike > 0 && prob(state, combat.firstStrike))) {
+        // A first strike (F-FIRST?) drops the rest of the line, as Zork's P-CONT <>.
+        if (!s?.fighting) stopLine(state);
         npcStateOf(state, id).fighting = true;
         fighters.push(id);
       }

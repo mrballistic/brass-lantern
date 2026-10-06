@@ -29,9 +29,22 @@ const darkSaid = new WeakSet<GameState>();
 // Fuses (re)scheduled this turn don't count down until the next one.
 const scheduled = new WeakMap<GameState, Set<string>>();
 
+const lineStops = new WeakMap<GameState, true | string>();
+
+/** Drops the rest of the command line after this turn (Zork's P-CONT <>). */
+export function stopLine(state: GameState, message: true | string = true): void {
+  if (!lineStops.has(state)) lineStops.set(state, message);
+}
+
+/** Did this turn drop the rest of the line, and with what message? */
+export function lineStop(state: GameState): true | string | undefined {
+  return lineStops.get(state);
+}
+
 /** Called at the start of each command. */
 export function beginTurn(state: GameState): void {
   halted.delete(state);
+  lineStops.delete(state);
   scheduled.delete(state);
   freeTurns.delete(state);
   darkSaid.delete(state);
@@ -151,6 +164,7 @@ function runEffect(e: Effect, world: World, state: GameState): { lines: string[]
   }
   if ('unvisit' in e) return void (state.visited = state.visited.filter((r) => r !== e.unvisit)), { lines: [] };
   if ('free' in e) return void freeTurns.add(state), { lines: [] };
+  if ('stopLine' in e) return void stopLine(state, e.stopLine), { lines: [] };
   if ('look' in e) return { lines: hooks.look ? hooks.look(world, state) : [] };
   if ('noDarkLine' in e) return void darkSaid.add(state), { lines: [] };
   if ('chance' in e) {

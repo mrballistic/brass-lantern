@@ -51,12 +51,13 @@ export function die(cause: string, world: World, state: GameState, goTo: GoTo): 
   // Zork's RANDOMIZE-OBJECTS: each treasure walks on from the last room tried to an unlit land room, at even odds.
   const roomIds = Object.keys(world.rooms);
   const unlit = (r: string) => Boolean(world.rooms[r].dark) && !isWater(world, state, r);
-  let at = -1;
+  // R stays where the last treasure landed, and is tested again first (two can share a room).
+  let at = 0;
   const darkRoom = (): string | null => {
     if (!roomIds.some(unlit)) return null;
     for (;;) {
-      at = (at + 1) % roomIds.length;
       if (unlit(roomIds[at]) && nextRandom(state) < 0.5) return roomIds[at];
+      at = (at + 1) % roomIds.length;
     }
   };
   for (const id of inventoryOf(world, state)) {

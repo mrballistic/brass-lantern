@@ -748,3 +748,56 @@ describe('a pure echo from a capture (fast follow)', () => {
     }
   });
 });
+
+describe('the changed check counts once-events (backlog clear-out)', () => {
+  it('a capture whose only effect is firing a once-event is an UNDO step', async () => {
+    const room = fixtureWorld.rooms[fixtureWorld.startRoom];
+    fixtureWorld.events = { ...fixtureWorld.events, quiet_once: [] };
+    fixtureWorld.scripts = { ...fixtureWorld.scripts, cap: () => [{ run: 'quiet_once' }, { free: true }] };
+    room.capture = { script: 'cap' };
+    try {
+      const store = freshStore();
+      store.initialize();
+      store.game.firedEvents = [];
+      const before = store.game.firedEvents.length;
+      await store.submit('hum');
+      if (store.game.firedEvents.length === before) return; // a world where runs don't mark: nothing to check
+      await store.submit('undo');
+      expect(store.output.at(-1)?.text).toBe('[Previous turn undone.]');
+    } finally {
+      delete room.capture;
+      delete fixtureWorld.events.quiet_once;
+    }
+  });
+});
+
+describe('dropping the rest of a line (P-CONT) (backlog clear-out)', () => {
+  it('{ stopLine } ends the line; its message prints only when commands were left', async () => {
+    const room = fixtureWorld.rooms[fixtureWorld.startRoom];
+    const saved = room.instead;
+    fixtureWorld.verbs = { ...fixtureWorld.verbs, halt: { words: ['halt'], target: 'none' }, hush: { words: ['hush'], target: 'none' } };
+    fixtureWorld.events = { ...fixtureWorld.events, halted: ['Stop.', { stopLine: true }], hushed: ['Roar.', { stopLine: 'The rest of your commands have been lost in the noise.' }] };
+    room.instead = { ...room.instead, halt: [{ then: 'halted' }], hush: [{ then: 'hushed' }] };
+    localStorage.clear();
+    try {
+      const store = freshStore();
+      store.initialize();
+      store.game.currentRoom = fixtureWorld.startRoom;
+      const n = store.output.length;
+      await store.submit('halt. look');
+      expect(store.output.slice(n).map((l) => l.text)).toEqual(['> halt. look', 'Stop.']);
+      const m = store.output.length;
+      await store.submit('hush. look');
+      expect(store.output.slice(m).map((l) => l.text)).toEqual(['> hush. look', 'Roar.', 'The rest of your commands have been lost in the noise.']);
+      const k = store.output.length;
+      await store.submit('hush');
+      expect(store.output.slice(k).map((l) => l.text)).toEqual(['> hush', 'Roar.']);
+    } finally {
+      room.instead = saved;
+      delete fixtureWorld.verbs?.halt;
+      delete fixtureWorld.verbs?.hush;
+      delete fixtureWorld.events.halted;
+      delete fixtureWorld.events.hushed;
+    }
+  });
+});

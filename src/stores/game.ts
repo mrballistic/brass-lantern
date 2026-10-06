@@ -245,7 +245,8 @@ export const useGameStore = defineStore('game', {
 
       // "get key and wallet", "take wallet then go outside": each piece runs
       // on its own, so each gets the LLM fallback if it misses.
-      for (const [i, command] of splitCommands(input, world.verbs).entries()) {
+      const pieces = splitCommands(input, world.verbs);
+      for (const [i, command] of pieces.entries()) {
         // Store commands (RESTART above all) work even after the game has ended.
         if (this.storeCommand(command)) {
           if (conversation.prompt) break;
@@ -262,6 +263,13 @@ export const useGameStore = defineStore('game', {
             break;
           }
           await this.runCommand(command);
+          // The turn dropped the rest of the line (Zork's P-CONT): its message only if something was left.
+          const stop = conversation.stopLine;
+          conversation.stopLine = undefined;
+          if (stop) {
+            if (typeof stop === 'string' && i < pieces.length - 1) this.applyResult({ lines: [stop], mutated: false });
+            break;
+          }
         } catch (error) {
           // The engine rolled the turn back; say so, and drop the rest of the line.
           console.error('Command failed:', error);
@@ -405,6 +413,7 @@ export const useGameStore = defineStore('game', {
 
     execute(action: ParsedAction): EngineResult {
       const result = execute(action, { world, state: this.game });
+      if (result.stopLine) conversation.stopLine = result.stopLine;
       // The line's snapshot is kept for UNDO if any piece changes something.
       if (result.mutated) line.changed = true;
       remember(conversation, action, result);

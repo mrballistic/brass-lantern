@@ -96,3 +96,22 @@ describe('WAIT’s extra turns (fast follow)', () => {
     expect(execute({ action: 'wait' }, { world: w, state: s }).lines).toContain('Ring!');
   });
 });
+
+describe('a stale fired mark (backlog clear-out)', () => {
+  it('a turn that throws after a timer fired doesn’t cut the next WAIT short', () => {
+    const w: World = {
+      ...fixtureWorld,
+      wait: { turns: 3 },
+      events: { ...fixtureWorld.events, pop: [], ring: ['Ring!'] },
+      scripts: { ...fixtureWorld.scripts, boom: () => { throw new Error('boom'); } },
+      daemons: [{ if: 'flag:explode', then: [{ script: 'boom' }] }],
+    };
+    const s = stateWith(w, { room: 'bedroom' });
+    s.fuses = { pop: 1 };
+    s.flags.explode = true;
+    expect(() => execute({ action: 'look' }, { world: w, state: s })).toThrow('boom');
+    s.flags.explode = false;
+    s.fuses = { ring: 3 };
+    expect(execute({ action: 'wait' }, { world: w, state: s }).lines).toContain('Ring!');
+  });
+});

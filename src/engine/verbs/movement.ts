@@ -166,7 +166,13 @@ export function handleClimb(target: string | undefined, world: World, state: Gam
     const exit = room.exits[direction] ?? (direction === 'up' ? room.exits.climb : undefined);
     if (world.style !== 'infocom') return exit ? followExit(exit, world, state) : miss('You can’t climb that way.');
     // Zork's V-CLIMB-UP: UP just walks; DOWN walks only if the thing belongs where it leads.
-    if (!exit) return ok([direction === 'up' ? 'You can’t go that way.' : 'You can’t do that!']);
+    if (!exit) {
+      const item = world.items[thing];
+      // ZIL tests WALL among the thing's synonyms, then the tree; then the plain refusals.
+      if ([item.name, ...(item.aliases ?? [])].some((n) => /^walls?$/i.test(n) || /\bwalls?$/i.test(n))) return ok(['Climbing the walls is to no avail.']);
+      if (item.climbRefusal && (!item.climbRefusal.if || evaluateCondition(item.climbRefusal.if, state, world))) return ok([item.climbRefusal.text]);
+      return ok([direction === 'up' ? 'You can’t go that way.' : 'You can’t do that!']);
+    }
     if (direction === 'down') {
       const to = typeof exit === 'string' ? exit : exit.to;
       if (!to || !(world.rooms[to]?.scenery ?? []).includes(thing)) return ok([`The ${world.items[thing]?.name ?? thing} doesn’t lead downward.`]);

@@ -160,6 +160,8 @@ export interface Item {
   initialDescription?: string;
   /** Its own sentence in a room after that (Zork's LDESC). */
   roomDescription?: string;
+  /** Climbing it up or down where there's no way that way says this, if `if` holds (Zork's “There are no climbable trees here.”). */
+  climbRefusal?: { if?: string; text: string };
   /** TURN ON / TURN OFF work on it. */
   switchable?: boolean;
   /** Gives light while on: dark rooms are lit by it; listings say “providing light”. */
@@ -333,6 +335,8 @@ export type Effect =
   | { unvisit: string }
   /** This turn takes no time: no move counted, no fuses or daemons (Zork's raw-input loops). */
   | { free: true }
+  /** Drops the rest of the command line (Zork's P-CONT); a message is said only if commands were left. */
+  | { stopLine: true | string }
   /** A line already said the light went out, so the engine doesn't add its own. */
   | { noDarkLine: true }
   /** Describes the player's room in full, as LOOK does. */

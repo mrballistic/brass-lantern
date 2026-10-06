@@ -822,5 +822,9 @@ describe('Zork I, natively: fast follow (C)', () => {
     runSteps([{ die: 'Oops.' }], zork1, state);
     expect(state.locations.coffin).toBe('egypt_room');
   });
+  it('CLIMB DOWN TREE: “There are no climbable trees here.”, but not on the Forest Path', () => {
+    expect(say(at('forest_1'), 'climb down tree')).toEqual(['There are no climbable trees here.']);
+    expect(say(at('path'), 'climb down tree')).toEqual(['You can’t do that!']);
+  });
 });
 

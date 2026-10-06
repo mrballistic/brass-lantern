@@ -106,6 +106,7 @@ Message-only exits aren't listed unless `listExits` names them.
 | `text?` | string | What READ shows. Default: the description. |
 | `initialDescription?` | string | Its own sentence in a room until first taken. |
 | `roomDescription?` | string | Its own sentence in a room after that. Items with neither are gathered into “You can see: …”. |
+| `climbRefusal?` | `{ if?, text }` | Infocom style: climbing it up or down where there's no way that way says `text` (Zork's tree: “There are no climbable trees here.”). |
 | `switchable?` | boolean | TURN ON and TURN OFF work on it. |
 | `light?` | boolean | Gives light while on: it lights a dark room it's in, carried there, or inside something open or transparent there. |
 | `home?` | room ID | Where it goes if the player dies carrying it. |

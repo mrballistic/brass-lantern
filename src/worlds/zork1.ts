@@ -2681,6 +2681,8 @@ export const zork1: World = {
       aliases: ['branch', 'large tree'],
       description: 'There’s nothing special about the tree.',
       portable: false,
+      // V-CLIMB-UP: no way up or down here, and it's no use (except on the Forest Path, below the tree).
+      climbRefusal: { if: '!in:path', text: 'There are no climbable trees here.' },
       tags: [],
     },
 

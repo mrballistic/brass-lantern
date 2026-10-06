@@ -216,7 +216,9 @@ export function handleRead(target: string | undefined, world: World, state: Game
     if (!took.mutated) return ok([text]);
     // A take is a take: its after rules run (Zork's points for taking it).
     const after = findRule(world, state, 'after', 'take', { target: id, indirect: null, room: state.currentRoom }, reachableItems(world, state));
-    const extra = after ? applyRule(after, world, state).lines : [];
+    // onTake (folded into after.take) fires only once, as through withRules.
+    const once = after?.then && typeof after.then === 'string' && state.firedEvents.includes(after.then);
+    const extra = after && !once ? applyRule(after, world, state).lines : [];
     return ok(['(Taken)', ...extra, text], true);
   }
   return ok([text]);
