@@ -25,6 +25,8 @@ export function die(cause: string, world: World, state: GameState, goTo: GoTo): 
     state.gameOver = true;
     return [...instead.lines];
   }
+  // Death takes you out of any vehicle; it stays where you died.
+  state.aboard = undefined;
   const lines = [cause, ...(d.message ?? []).flatMap((m) => (typeof m === 'string' ? [m] : holds(m.if) ? [m.text] : []))];
   // Decided at the moment of death, before anything moves.
   const variant = d.variants?.find((v) => holds(v.if));

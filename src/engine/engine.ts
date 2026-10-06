@@ -68,7 +68,9 @@ setEffectHooks({
 /** The player's room's end routines (Zork's M-END): after the action, before the clock. */
 function roomEnd(world: World, state: GameState): string[] {
   const out: string[] = [];
-  for (const e of world.rooms[state.currentRoom]?.onEnd ?? []) {
+  // Aboard, the vehicle's end routine runs instead of the room's (Zork's M-END goes to the vehicle).
+  const owner = state.aboard ? world.items[state.aboard] : world.rooms[state.currentRoom];
+  for (const e of owner?.onEnd ?? []) {
     if (!evaluateCondition(e.if, state, world)) continue;
     out.push(...(typeof e.then === 'string' ? runEventKey(e.then, world, state) : runSteps(e.then, world, state)));
     if (state.gameOver || turnHalted(state)) break;
@@ -192,7 +194,7 @@ export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
 function dispatch(action: ParsedAction, world: World, state: GameState): EngineResult {
   switch (action.action) {
     case 'go':
-      return handleGo(action.target, world, state);
+      return withRules('go', action, world, state, () => handleGo(action.target, world, state));
     case 'read':
       return withRules('read', action, world, state, () => handleRead(action.target, world, state));
     case 'turn_on':

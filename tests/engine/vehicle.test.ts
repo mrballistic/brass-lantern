@@ -122,3 +122,75 @@ describe('the audit knows vehicles', () => {
     expect(p).not.toMatch(/unknown effect/);
   });
 });
+
+describe('moving with a vehicle', () => {
+  it('water needs a vehicle; the vehicle needs water; landing keeps you aboard', () => {
+    const s = stateWith(boatWorld, { room: 'shed', carrying: ['key', 'lamp'] });
+    s.itemState.lamp = { on: true };
+    expect(run(s, { action: 'go', target: 'down' }).lines).toEqual(['You can’t go there without a vehicle.']);
+    expect(s.currentRoom).toBe('shed');
+    s.locations.raft = 'shed';
+    s.aboard = 'raft';
+    expect(run(s, { action: 'go', target: 'south' }).lines).toEqual(['You can’t go there in a raft.']);
+    run(s, { action: 'go', target: 'down' });
+    expect(s.currentRoom).toBe('cellar');
+    expect(s.locations.raft).toBe('cellar');
+    const up = run(s, { action: 'go', target: 'up' }).lines;
+    expect(up[0]).toBe('The raft comes to a rest on the shore.');
+    expect(s.currentRoom).toBe('shed');
+    expect(s.aboard).toBe('raft');
+    expect(s.locations.raft).toBe('shed');
+  });
+  it('a scripted move takes the vehicle along', () => {
+    const s = stateWith(boatWorld, { room: 'yard' });
+    s.aboard = 'raft';
+    runSteps([{ go: 'living' }], boatWorld, s);
+    expect(s.locations.raft).toBe('living');
+    expect(s.aboard).toBe('raft');
+  });
+  it('the vehicle’s rules come before the room’s, and its onEnd replaces the room’s', () => {
+    const w: World = {
+      ...boatWorld,
+      items: { ...boatWorld.items, raft: { ...boatWorld.items.raft, instead: { go: [{ say: ['Read the label.'] }] }, onEnd: [{ if: 'aboard:raft', then: ['The raft bobs.'] }] } },
+      rooms: { ...boatWorld.rooms, living: { ...boatWorld.rooms.living, onEnd: [{ if: 'in:living', then: ['Floorboards creak.'] }], instead: { go: [{ say: ['The room says no.'] }] } } },
+    };
+    const s = stateWith(w, { room: 'living' });
+    s.locations.raft = 'living';
+    s.aboard = 'raft';
+    expect(run(s, { action: 'go', target: 'outside' }, w).lines).toEqual(['Read the label.', 'The raft bobs.']);
+    const t = stateWith(w, { room: 'living' });
+    expect(run(t, { action: 'go', target: 'outside' }, w).lines).toEqual(['The room says no.', 'Floorboards creak.']);
+  });
+  it('the header names the vehicle; its contents are listed, it isn’t', () => {
+    const s = stateWith(boatWorld, { room: 'living' });
+    s.locations.raft = 'living';
+    s.aboard = 'raft';
+    s.locations.shirt = 'raft';
+    const look = run(s, { action: 'look' }).lines;
+    expect(look[0]).toBe('📍 Living Room, in the raft');
+    expect(look.join(' ')).not.toMatch(/There is a raft here/);
+    expect(look.join(' ')).toMatch(/The raft contains:/);
+  });
+  it('brass worlds without vehicles keep their header', () => {
+    const s = stateWith(fixtureWorld, { room: 'living' });
+    expect(execute({ action: 'look' }, { world: fixtureWorld, state: s }).lines[0]).toBe('📍 Living Room');
+  });
+  it('dying clears aboard and leaves the vehicle where you died', () => {
+    const s = stateWith(boatWorld, { room: 'living' });
+    s.locations.raft = 'living';
+    s.aboard = 'raft';
+    runSteps([{ die: 'Splash.' }], boatWorld, s);
+    expect(s.aboard).toBeUndefined();
+    expect(s.locations.raft).toBe('living');
+  });
+});
+
+describe('the audit checks a vehicle’s onEnd', () => {
+  it('flags bad conditions and events', async () => {
+    const { auditWorld } = await import('../helpers/audit');
+    const w: World = { ...boatWorld, items: { ...boatWorld.items, raft: { ...boatWorld.items.raft, onEnd: [{ if: 'in:nowhere9', then: 'nothing10' }] } } };
+    const p = auditWorld(w).join('\n');
+    expect(p).toContain('nowhere9');
+    expect(p).toContain('nothing10');
+  });
+});

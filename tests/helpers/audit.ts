@@ -140,6 +140,12 @@ export function auditWorld(world: World): string[] {
     }
   }
   for (const [id, item] of Object.entries(world.items)) {
+    for (const e of item.onEnd ?? []) {
+      checkCondition(e.if, `item ${id} onEnd`);
+      if (typeof e.then === 'string') {
+        if (!isEvent(e.then)) problems.push(`item ${id} onEnd names no event “${e.then}”`);
+      } else checkSteps(e.then, `item ${id} onEnd`);
+    }
     checkTable(item.instead, 'instead', `item ${id}`);
     checkTable(item.after, 'after', `item ${id}`);
     checkRules(item.onUse, `item ${id} onUse`);

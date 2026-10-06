@@ -134,6 +134,8 @@ export interface Item {
   weapon?: boolean;
   /** Something the player can get into and travel in (Zork's VEHBIT; `travels` is VTYPE). */
   vehicle?: { travels: 'water' };
+  /** A vehicle's end routines: while the player is aboard, they run instead of the room's (Zork's M-END). */
+  onEnd?: Array<{ if: string; then: string | EventStep[] }>;
   /** BURN can set it alight (Zork's BURNBIT). */
   burnable?: boolean;
   /** It can set things alight: always, or while switched on if it switches (Zork's FLAMEBIT). */

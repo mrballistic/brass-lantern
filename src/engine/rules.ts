@@ -60,6 +60,8 @@ export function findRule(
   const owners: Array<[Item | Room | NPC | undefined, string | null | undefined, Role]> = [
     ...(world.style === 'infocom' ? [indirect, target] : [target, indirect]),
     ...(ids.npcs ?? []).map((id): [NPC | undefined, string | null | undefined, Role] => [world.npcs[id], ids.target ?? ids.indirect, undefined]),
+    // Aboard, the vehicle answers before the room (Zork's M-BEG goes to the vehicle).
+    ...(state.aboard ? [[world.items[state.aboard], ids.indirect ?? ids.target, undefined] as [Item | undefined, string | null | undefined, Role]] : []),
     [world.rooms[ids.room], ids.indirect ?? ids.target, undefined],
   ];
   for (const [owner, other, role] of owners) {
@@ -81,6 +83,9 @@ export function applyRule(rule: Rule, world: World, state: GameState): EngineRes
 function targetScope(verb: string, world: World, state: GameState): string[] {
   if (world.verbs?.[verb]?.held) return heldItems(world, state);
   switch (verb) {
+    // A direction isn't a thing: GO's rules never resolve it as an item.
+    case 'go':
+      return [];
     case 'drop':
     case 'put':
     case 'give':

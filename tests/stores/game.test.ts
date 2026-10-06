@@ -684,4 +684,23 @@ describe('useGameStore', () => {
       }
     });
   });
+
+  describe('vehicles and UNDO', () => {
+    it('UNDO after BOARD puts you back on your feet', async () => {
+      fixtureWorld.items.raft = { name: 'raft', description: 'A raft.', portable: true, tags: [], vehicle: { travels: 'water' }, container: { open: true } };
+      try {
+        const store = freshStore();
+        store.initialize();
+        store.game.currentRoom = 'yard';
+        store.game.locations.raft = 'yard';
+        await store.submit('board raft');
+        expect(store.game.aboard).toBe('raft');
+        await store.submit('undo');
+        expect(store.game.aboard).toBeUndefined();
+        expect(store.game.locations.raft).toBe('yard');
+      } finally {
+        delete fixtureWorld.items.raft;
+      }
+    });
+  });
 });

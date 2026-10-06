@@ -119,7 +119,9 @@ export function describeRoom(
     return infocom ? [darknessLook(world)] : ['📍 Darkness', darknessLook(world)];
   }
   const lines: string[] = [];
-  lines.push(`📍 ${room.name}`);
+  const vehicle = state.aboard ? world.items[state.aboard] : undefined;
+  // DESCRIBE-ROOM: “Frigid River, in the magic boat”.
+  lines.push(`📍 ${room.name}${vehicle ? (infocom ? `, in the ${vehicle.name}` : ` (in the ${vehicle.name})`) : ''}`);
   // SUPERBRIEF: the name and nothing else, as Zork skips DESCRIBE-OBJECTS.
   if (opts.namesOnly) return lines;
   // BRIEF (Infocom's default) and SUPERBRIEF: just the name and contents.
@@ -128,7 +130,8 @@ export function describeRoom(
     lines.push(opts.first && room.firstDescription ? room.firstDescription : (varied ?? room.description));
   }
 
-  const visibleItems = visibleItemsIn(roomId, world, state);
+  // The vehicle you're in isn't listed; what's in it is, after the room's things.
+  const visibleItems = visibleItemsIn(roomId, world, state).filter((id) => id !== state.aboard);
   const plain: string[] = [];
   for (const id of visibleItems) {
     const sentence = itemSentence(world, state, id);
@@ -140,6 +143,7 @@ export function describeRoom(
   }
   if (plain.length > 0) lines.push(`You can see: ${plain.join(', ')}.`);
   if (!infocom) for (const id of visibleItems) lines.push(...contentsLines(world, state, id));
+  if (state.aboard) lines.push(...contentsLines(world, state, state.aboard));
   // Scenery isn't listed, but what's on or in it is (the kitchen table's sack).
   for (const id of childrenOf(world, state, roomId).filter((k) => world.items[k]?.scenery)) {
     lines.push(...contentsLines(world, state, id));
