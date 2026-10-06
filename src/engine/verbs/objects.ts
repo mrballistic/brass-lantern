@@ -196,6 +196,12 @@ export function runFinale(world: World, state: GameState): EngineResult {
   return ok(finishEnding(lines, true, world.events[finale.footer] ?? [], world, state), true);
 }
 
+/** Carried, directly or inside something carried. */
+function heldSomehow(state: GameState, id: string): boolean {
+  for (let p: string | null | undefined = id; p; p = state.locations[p]) if (state.locations[p] === PLAYER) return true;
+  return false;
+}
+
 export function handleRead(target: string | undefined, world: World, state: GameState): EngineResult {
   if (!target) needObject();
   const id = pickItem(target, visibleItems(world, state), world, 'target', state);
@@ -203,11 +209,15 @@ export function handleRead(target: string | undefined, world: World, state: Game
   const item = world.items[id];
   const text = item.text ?? (item.description || `There’s nothing special about the ${item.name}.`);
   // Zork's READ takes the thing first (its syntax's TAKE flag).
-  if (world.style === 'infocom' && item.portable && !isCarried(state, id)) {
+  // Something inside a container you carry counts as held (HELD?): no take.
+  if (world.style === 'infocom' && item.portable && !heldSomehow(state, id)) {
     const took = takeItem(id, world, state);
     // A take that fails is silent: READ reads anyway (ITAKE-CHECK; READ's syntax has TAKE, not HAVE).
     if (!took.mutated) return ok([text]);
-    return ok(['(Taken)', text], true);
+    // A take is a take: its after rules run (Zork's points for taking it).
+    const after = findRule(world, state, 'after', 'take', { target: id, indirect: null, room: state.currentRoom }, reachableItems(world, state));
+    const extra = after ? applyRule(after, world, state).lines : [];
+    return ok(['(Taken)', ...extra, text], true);
   }
   return ok([text]);
 }

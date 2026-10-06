@@ -100,3 +100,17 @@ describe('a continue rule before a default that misses (fast follow)', () => {
     expect(s.flags.marked).toBeUndefined();
   });
 });
+
+describe('a second object that names nothing here (fast follow)', () => {
+  it('is a miss before any rule runs (no rule fires as if no tool had been named)', () => {
+    const w: World = {
+      ...fixtureWorld,
+      events: { ...fixtureWorld.events, wrenched: [{ set: 'wrenched' }, 'Wrenched.'] },
+      items: { ...fixtureWorld.items, bed: { ...fixtureWorld.items.bed, instead: { ...fixtureWorld.items.bed?.instead, turn: [{ then: 'wrenched' }] } } },
+    };
+    const s = stateWith(w, { room: 'bedroom' });
+    const r = execute({ action: 'turn', target: 'bed', indirect: 'xyzzy' }, { world: w, state: s });
+    expect(r.understood).toBe(false);
+    expect(s.flags.wrenched).toBeUndefined();
+  });
+});

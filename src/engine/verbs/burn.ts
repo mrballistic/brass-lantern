@@ -4,6 +4,7 @@ import { withArticle } from '../describe';
 import { runSteps } from '../effects';
 import { isCarried, isOn, matchNpc, moveItem, needObject, pickItem, reachableItems, visibleItems } from '../model';
 import { miss, ok, type EngineResult } from '../result';
+import { notHeld } from './objects';
 
 /** Is it burning: a flaming thing, switched on if it switches. */
 function isFlaming(world: World, state: GameState, id: string): boolean {
@@ -23,17 +24,26 @@ export function handleNoEffect(action: ParsedAction, world: World, state: GameSt
 /** BURN X WITH Y (and LIGHT X WITH Y): Zork's PRE-BURN and V-BURN. */
 export function handleBurn(action: ParsedAction, world: World, state: GameState): EngineResult {
   if (!action.target) needObject();
+  const infocom = world.style === 'infocom';
   const id = pickItem(action.target, visibleItems(world, state), world, 'target', state);
-  if (!id) return miss(`You don’t see a “${action.target}” here.`);
+  // A character isn't a thing, but in Zork's order it still gets V-BURN's refusal.
+  const person = !id && infocom ? matchNpc(action.target, world, state) : null;
+  if (!id && !person) return miss(`You don’t see a “${action.target}” here.`);
   if (!action.indirect) needObject('indirect');
+  // Zork's syntax wants the flame held: in sight but not held is “You don't have the torch.”
+  if (infocom) {
+    const refused = notHeld(action.indirect, world, state);
+    if (refused) return refused;
+  }
   const tool = pickItem(action.indirect, reachableItems(world, state), world, 'indirect', state);
   if (!tool) return miss(`You don’t have a “${action.indirect}”.`);
-  const name = world.items[id].name;
   // Zork's fixed “a”; elsewhere the right article.
-  if (!isFlaming(world, state, tool)) return ok([`With ${world.style === 'infocom' ? `a ${world.items[tool].name}` : withArticle(world, tool)}??!?`]);
-  if (!world.items[id].burnable) return ok([`You can’t burn a ${name}.`]);
-  const held = isCarried(state, id);
-  moveItem(state, id, null);
+  if (!isFlaming(world, state, tool)) return ok([`With ${infocom ? `a ${world.items[tool].name}` : withArticle(world, tool)}??!?`]);
+  if (person) return ok([`You can’t burn a ${world.npcs[person].name}.`]);
+  const name = world.items[id!].name;
+  if (!world.items[id!].burnable) return ok([`You can’t burn a ${name}.`]);
+  const held = isCarried(state, id!);
+  moveItem(state, id!, null);
   if (held) return ok(runSteps([{ die: `The ${name} catches fire. Unfortunately, you were holding it at the time.` }], world, state), true);
   return ok([`The ${name} catches fire and is consumed.`], true);
 }

@@ -79,3 +79,17 @@ describe('BURN’s refusal in brass (fast follow)', () => {
     expect(execute({ action: 'burn', target: 'bed', indirect: 'apple' }, { world: w, state: s }).lines.join(' ')).toContain('an apple');
   });
 });
+
+describe('BURN’s scopes, Infocom style (fast follow)', () => {
+  it('the flame must be held; a character can’t be burned', async () => {
+    const { fixtureWorld } = await import('../fixtures/world');
+    const { stateWith } = await import('../helpers/state');
+    const { execute } = await import('@/engine/engine');
+    const w = { ...fixtureWorld, style: 'infocom' as const, items: { ...fixtureWorld.items, brand: { name: 'torch', description: '', portable: true, tags: [], flaming: true } } };
+    const s = stateWith(w, { room: 'shed' });
+    s.locations.brand = 'shed';
+    expect(execute({ action: 'burn', target: 'guard', indirect: 'torch' }, { world: w, state: s }).lines).toEqual(['You don’t have the torch.']);
+    s.locations.brand = 'player';
+    expect(execute({ action: 'burn', target: 'guard', indirect: 'torch' }, { world: w, state: s }).lines).toEqual(['You can’t burn a guard.']);
+  });
+});

@@ -773,3 +773,30 @@ describe('Zork I, natively: the full game’s fixes (5d)', () => {
     expect(currentScore(zork1, state) - before).toBe(6);
   });
 });
+
+describe('Zork I, natively: fast follow (C)', () => {
+  const at = (room: string, carrying: string[] = []) => {
+    const state = initialState(zork1);
+    state.currentRoom = room;
+    state.npcs = { thief: { room: null } };
+    for (const id of carrying) state.locations[id] = 'player';
+    return state;
+  };
+  const say = (state: ReturnType<typeof initialState>, line: string) => execute(fallbackParse(line, zork1.verbs)!, { world: zork1, state }).lines;
+  it('CLIMB DOWN a thing walks only if it leads there; CLIMB UP just walks (V-CLIMB-UP)', () => {
+    const tree = at('up_a_tree', ['leaflet']);
+    expect(say(tree, 'climb down leaflet')).toEqual(['The leaflet doesn’t lead downward.']);
+    expect(tree.currentRoom).toBe('up_a_tree');
+    const house = at('west_of_house', ['leaflet']);
+    expect(say(house, 'climb down leaflet')).toEqual(['You can’t do that!']);
+    expect(say(house, 'climb up leaflet')).toEqual(['You can’t go that way.']);
+    const path = at('path', ['leaflet']);
+    say(path, 'climb up leaflet');
+    expect(path.currentRoom).toBe('up_a_tree');
+    const ladder = at('ladder_top', ['lamp']);
+    ladder.itemState.lamp = { ...ladder.itemState.lamp, on: true };
+    say(ladder, 'climb down ladder');
+    expect(ladder.currentRoom).toBe('ladder_bottom');
+  });
+});
+

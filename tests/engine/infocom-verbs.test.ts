@@ -282,3 +282,25 @@ describe('final review fixes (5d, brass)', () => {
     expect(execute({ action: 'turn_off', target: 'bat' }, { world: fixtureWorld, state: s }).understood).toBe(false);
   });
 });
+
+describe('READ’s automatic take (fast follow)', () => {
+  it('runs the thing’s after-take rules, and leaves alone what’s in a container you carry', () => {
+    const world: World = {
+      ...w,
+      events: { ...w.events, scored: [{ set: 'took_scroll' }] },
+      items: {
+        ...w.items,
+        scroll: { name: 'scroll', description: '', text: 'Words.', portable: true, tags: [], after: { take: [{ then: 'scored' }] } },
+        pouch: { name: 'pouch', description: '', portable: true, tags: [], container: { open: true } },
+      },
+    };
+    const s = stateWith(world, { room: 'bedroom' });
+    s.locations.scroll = 'bedroom';
+    expect(run(s, { action: 'read', target: 'scroll' }, world)).toEqual(['(Taken)', 'Words.']);
+    expect(s.flags.took_scroll).toBe(true);
+    s.locations.pouch = 'player';
+    s.locations.scroll = 'pouch';
+    expect(run(s, { action: 'read', target: 'scroll' }, world)).toEqual(['Words.']);
+    expect(s.locations.scroll).toBe('pouch');
+  });
+});

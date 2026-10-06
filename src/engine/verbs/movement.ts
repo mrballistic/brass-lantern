@@ -145,10 +145,18 @@ export function handleClimb(target: string | undefined, world: World, state: Gam
   const room = world.rooms[state.currentRoom];
   if (!room) return ok(['You are nowhere.']);
   // CLIMB DOWN LADDER: a thing here, climbed in a direction (Zork's V-CLIMB-DOWN walks that way).
-  if (direction && target && matchItem(target, visibleItems(world, state), world)) {
+  const thing = direction && target ? matchItem(target, visibleItems(world, state), world) : null;
+  if (direction && thing) {
     // Climbing up something takes the room's climbing exit when there's no up exit.
     const exit = room.exits[direction] ?? (direction === 'up' ? room.exits.climb : undefined);
-    return exit ? followExit(exit, world, state) : miss('You can’t climb that way.');
+    if (world.style !== 'infocom') return exit ? followExit(exit, world, state) : miss('You can’t climb that way.');
+    // Zork's V-CLIMB-UP: UP just walks; DOWN walks only if the thing belongs where it leads.
+    if (!exit) return ok([direction === 'up' ? 'You can’t go that way.' : 'You can’t do that!']);
+    if (direction === 'down') {
+      const to = typeof exit === 'string' ? exit : exit.to;
+      if (!to || !(world.rooms[to]?.scenery ?? []).includes(thing)) return ok([`The ${world.items[thing]?.name ?? thing} doesn’t lead downward.`]);
+    }
+    return followExit(exit, world, state);
   }
   if (target === 'up' || target === 'down') {
     return room.exits[target] ? followExit(room.exits[target], world, state) : miss('You can’t climb that way.');

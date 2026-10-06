@@ -4,7 +4,7 @@ import { evaluateCondition } from './conditions';
 import { heldItems, inventoryOf, matchNpc, pickItem, reachableItems, restoreState, snapshotState, visibleItems } from './model';
 import { setCommand } from './scripts';
 import { runEventKey, turnHalted } from './effects';
-import { ok, type EngineResult } from './result';
+import { miss, ok, type EngineResult } from './result';
 
 /* Events and rules */
 
@@ -127,6 +127,10 @@ export function withRules(
   const targetNpc = !target && action.target ? matchNpc(action.target, world, state) : null;
   const indirectNpc = !indirect && action.indirect ? matchNpc(action.indirect, world, state) : null;
   const npcs = [targetNpc, indirectNpc].filter((id): id is string => Boolean(id));
+  // A second object that names nothing here (no thing, no character): a miss, before any rule
+  // could fire as though no tool had been named (UNLOCK DOOR WITH XYZZY).
+  // Bare hands are no thing, but the verbs that take them (ATTACK) understand them.
+  if (action.indirect && !indirect && !indirectNpc && !/^(?:my\s+|bare\s+)?hands?$/i.test(action.indirect)) return miss(`You don’t see a “${action.indirect}” here.`);
   const ids = { target, indirect, room: state.currentRoom, npcs, prep: action.prep };
   setCommand(state, {
     verb,
