@@ -5,6 +5,7 @@ import { appName } from '@/app.config';
 import { analyticsConfigured } from '@/services/analytics';
 import { useSession } from '@/stores/session';
 import { useTypewriter } from '@/composables/useTypewriter';
+import type { OutputLine } from '@/types/game';
 
 const session = useSession();
 const { output, isParsing, restored, status, title, mode } = session;
@@ -42,18 +43,22 @@ const historyIndex = ref<number | null>(null);
 let draft = '';
 const HISTORY_LIMIT = 100;
 
-// How many lines from `output` have already been enqueued to the typewriter.
-let enqueuedCount = 0;
+// The lines from `output` already enqueued to the typewriter.
+let enqueued: OutputLine[] = [];
 
 function enqueueNew(instant: boolean): void {
-  if (output.value.length < enqueuedCount) {
-    // The output was replaced (RESTART): clear the screen and start over.
-    typer.reset();
-    enqueuedCount = 0;
+  if (output.value.length < enqueued.length) {
+    // The output shrank or was replaced. UNDO keeps the start of the screen:
+    // show what's still there at once, and type only what's new. After
+    // RESTART nothing is shared, so the screen starts over.
+    let kept = 0;
+    while (kept < output.value.length && output.value[kept].id === enqueued[kept]?.id) kept++;
+    enqueued = output.value.slice(0, kept);
+    typer.show(enqueued);
   }
-  const slice = output.value.slice(enqueuedCount);
+  const slice = output.value.slice(enqueued.length);
   if (slice.length === 0) return;
-  enqueuedCount = output.value.length;
+  enqueued = [...enqueued, ...slice];
   typer.enqueue(slice, { instant });
 }
 
@@ -71,7 +76,7 @@ onUnmounted(() => document.removeEventListener('selectionchange', syncCaret));
 // Inserting or ejecting a cartridge clears the screen.
 watch(mode, () => {
   typer.reset();
-  enqueuedCount = 0;
+  enqueued = [];
   enqueueNew(restored.value);
 });
 

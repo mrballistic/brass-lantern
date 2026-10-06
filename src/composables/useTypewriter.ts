@@ -21,6 +21,8 @@ export interface UseTypewriter {
   flush: () => void;
   /** Clear all rendered lines and any queue (used on RESTART). */
   reset: () => void;
+  /** Clears the screen and shows these lines at once, with nothing queued (the screen kept after UNDO). */
+  show: (lines: OutputLine[]) => void;
 }
 
 export interface RenderedLine {
@@ -147,11 +149,17 @@ export function useTypewriter(): UseTypewriter {
     activeCharIndex = 0;
   }
 
+  function show(lines: OutputLine[]): void {
+    reset();
+    for (const l of lines) commitLine(l, true);
+  }
+
   return {
     renderedLines,
     isTyping,
     enqueue,
     flush,
     reset,
+    show,
   };
 }

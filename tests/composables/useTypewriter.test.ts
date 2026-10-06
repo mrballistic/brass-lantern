@@ -252,4 +252,15 @@ describe('useTypewriter', () => {
     await vi.advanceTimersByTimeAsync(INTER_LINE_PAUSE_MS);
     expect(tw.isTyping.value).toBe(false);
   });
+
+  it('show() replaces the screen with finished lines at once, cancelling anything queued', () => {
+    const tw = useTypewriter();
+    tw.enqueue([buildLine('Typing away.', 'prose'), buildLine('More to come.', 'prose')]);
+    tw.show([buildLine('Kept one.', 'prose'), buildLine('Kept two.', 'prose')]);
+    expect(tw.renderedLines.value.map((l) => [l.text, l.done])).toEqual([
+      ['Kept one.', true],
+      ['Kept two.', true],
+    ]);
+    expect(tw.isTyping.value).toBe(false);
+  });
 });
