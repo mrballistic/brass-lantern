@@ -29,4 +29,29 @@ describe('hidden characters', () => {
     execute({ action: 'wait' }, { world: w, state: s });
     expect(s.npcs.guard.fighting).toBeFalsy();
   });
+
+  it('a character can start hidden, and answer to aliases', () => {
+    const w = { ...world, npcs: { ...world.npcs, guard: { ...world.npcs.guard, hidden: true, aliases: ['sentry'] } } };
+    const s = stateWith(w, { room: 'shed' });
+    expect(npcsSeen(w, s, 'shed')).toEqual([]);
+    runSteps([{ npcState: 'guard', hidden: false }], w, s);
+    expect(execute({ action: 'examine', target: 'sentry' }, { world: w, state: s }).lines).toEqual(['A guard watches you.']);
+  });
+
+  it('items can be hidden and revealed: unseen, unlisted, untakeable', () => {
+    const s = stateWith(world, { room: 'living' });
+    runSteps([{ hide: 'wallet' }], world, s);
+    expect(execute({ action: 'look' }, { world, state: s }).lines.join(' ')).not.toContain('wallet');
+    expect(execute({ action: 'take', target: 'wallet' }, { world, state: s }).understood).toBe(false);
+    runSteps([{ reveal: 'wallet' }], world, s);
+    expect(execute({ action: 'take', target: 'wallet' }, { world, state: s }).lines[0]).toBe('Taken: wallet.');
+  });
+
+  it('scripts can read the player’s fight strength', () => {
+    const w = { ...world, maxScore: 350, combat: {}, scripts: { str: (ctx: { playerStrength(): number }) => [`${ctx.playerStrength()}`] } };
+    const s = stateWith(w);
+    s.player = { wounds: 1 };
+    expect(runSteps([{ script: 'str' }], w, s)).toEqual(['1']);
+  });
 });
+

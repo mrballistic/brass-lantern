@@ -1,6 +1,7 @@
 import type { GameState, NpcState, Place } from '@/types/game';
 import type { EventStep, World } from '@/types/world';
-import { childrenOf, isCarried, isLit, isNpcIn, isReachable, parentOf } from './model';
+import { fightStrength } from './combat';
+import { childrenOf, isCarried, isLit, isNpcHidden, isNpcIn, isReachable, parentOf } from './model';
 import { nextRandom, roll } from './rng';
 
 // The code hatch: a world's own functions for behavior its data can't express.
@@ -38,6 +39,10 @@ export interface ScriptContext {
   lit(room?: string): boolean;
   /** What's directly in a room, item or character, in listing order. */
   children(place: string): string[];
+  /** The player's fight strength now (Zork's FIGHT-STRENGTH). */
+  playerStrength(): number;
+  /** Is the character hidden? */
+  hidden(id: string): boolean;
   /** The command being run, with its objects resolved to IDs, when a rule ran this script. */
   command?: Command;
 }
@@ -101,6 +106,8 @@ export function scriptSteps(name: string, arg: string | undefined, world: World,
     tags: (room) => world.rooms[room]?.tags ?? [],
     lit: (room) => isLit(world, state, room ?? state.currentRoom),
     children: (place) => childrenOf(world, state, place),
+    playerStrength: () => fightStrength(world, state),
+    hidden: (id) => isNpcHidden(world, state, id),
   });
   return steps ?? [];
 }

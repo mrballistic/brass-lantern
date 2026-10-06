@@ -10,6 +10,8 @@ export interface ItemState {
   on?: boolean;
   /** The player has picked it up at least once. */
   moved?: boolean;
+  /** Present but unseen (Zork's INVISIBLE): not listed, matched or reached. */
+  hidden?: boolean;
 }
 
 /** A character's state. Absent fields mean the defaults: where its room lists it, conscious, not fighting. */

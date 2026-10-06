@@ -189,6 +189,10 @@ export interface NPC {
   refuseOrder?: string;
   /** Present but not listed in the room: the room's own description mentions it (Zork's NDESCBIT). */
   scenery?: boolean;
+  /** Starts hidden (in its room, unseen). Its state's `hidden` overrides this. */
+  hidden?: boolean;
+  /** Other words for it (“robber”, “man”). */
+  aliases?: string[];
 }
 
 /** What a blow did (Zork's blow results). */
@@ -271,6 +275,9 @@ export type Effect =
   | { moveNpc: string; to: string | null }
   /** Sets a character's combat state. */
   | { npcState: string; fighting?: boolean; staggered?: boolean; strength?: number; hidden?: boolean }
+  /** Hides an item where it is, or reveals it again (Zork's INVISIBLE). */
+  | { hide: string }
+  | { reveal: string }
   /** Runs one of the world's scripts and the steps it returns. */
   | { script: string; arg?: string }
   | { open: string }

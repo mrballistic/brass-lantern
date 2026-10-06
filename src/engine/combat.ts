@@ -1,6 +1,6 @@
 import type { GameState } from '@/types/game';
 import type { BlowMessages, BlowResult, CombatText, World } from '@/types/world';
-import { childrenOf, isAlive, isAwake, isCarried, isNpcIn, moveItem, npcStateOf } from './model';
+import { childrenOf, isAlive, isAwake, isCarried, isNpcHidden, isNpcIn, moveItem, npcStateOf } from './model';
 import { commandOf } from './scripts';
 import { runEventKey, runSteps, turnHalted } from './effects';
 import { prob, roll } from './rng';
@@ -298,7 +298,7 @@ export function fightTurn(world: World, state: GameState): string[] {
     const combat = npc.combat;
     if (!combat || !isAlive(world, state, id)) continue;
     const s = state.npcs?.[id];
-    if (isNpcIn(world, state, id, state.currentRoom) && !s?.hidden) {
+    if (isNpcIn(world, state, id, state.currentRoom) && !isNpcHidden(world, state, id)) {
       if ((s?.strength ?? 0) < 0) {
         const p = s?.wake ?? 0;
         if (p > 0 && prob(state, p)) {

@@ -8,7 +8,7 @@ import type { Effect, EventStep, Rule, RuleTable, World } from '@/types/world';
 
 const EFFECT_KINDS = new Set([
   'say', 'set', 'clear', 'move', 'open', 'close', 'lock', 'unlock', 'switch', 'add', 'setVar', 'score',
-  'go', 'schedule', 'cancel', 'chance', 'run', 'die', 'end', 'moveNpc', 'npcState', 'script',
+  'go', 'schedule', 'cancel', 'chance', 'run', 'die', 'end', 'moveNpc', 'npcState', 'script', 'hide', 'reveal',
 ]);
 
 export function auditWorld(world: World): string[] {
