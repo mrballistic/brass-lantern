@@ -43,7 +43,7 @@ export function useSession() {
     mode.value === 'world' ? game.restored : mode.value === 'zcode' ? zgame.restored : false,
   );
   const status = computed(() =>
-    mode.value === 'world' ? `MOVES: ${game.moveCount}` : mode.value === 'zcode' ? zgame.headerStatus : '',
+    mode.value === 'world' ? game.headerStatus : mode.value === 'zcode' ? zgame.headerStatus : '',
   );
   const title = computed(() => (carts.hasMenu ? (carts.active?.title ?? '') : ''));
 

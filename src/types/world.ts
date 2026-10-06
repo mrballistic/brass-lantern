@@ -228,6 +228,12 @@ export interface World {
   scoring?: ScoreEntry[];
   /** The total SCORE reports. Defaults to the sum of `scoring`. */
   maxScore?: number;
+  /** Brass style's header: MOVES (the default), or SCORE and MOVES. Infocom style always shows the room, score and moves. */
+  statusLine?: 'moves' | 'score';
+  /** The game's full title, for VERSION and transcripts. */
+  title?: string;
+  /** Lines VERSION prints after the title (copyright, authors). */
+  credits?: string[];
   /** Highest `min` the score reaches wins. */
   ranks?: Rank[];
   /** Reply to QUIT. */

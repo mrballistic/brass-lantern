@@ -38,6 +38,9 @@ const RE = {
   unlock: /^unlock\s+(?:the\s+)?(.+?)(?:\s+with\s+(?:the\s+)?(.+))?$/i,
   putIn: /^(?:put|insert|place|slide|stick|feed|plug)\s+(?:the\s+|a\s+)?(.+?)\s+(?:in|into|inside)\s+(?:the\s+|my\s+)?(.+)$/i,
   putOn: /^(?:put|place|set)\s+(?:the\s+|a\s+)?(.+?)\s+(?:on|onto)\s+(?:the\s+)?(.+)$/i,
+  takeAll: /^(?:take|get|grab|pick\s+up)\s+(?:all|everything)(?:\s+(?:but|except)\s+(.+))?$/i,
+  dropAll: /^(?:drop|put\s+down)\s+(?:all|everything)(?:\s+(?:but|except)\s+(.+))?$/i,
+  putAll: /^(?:put|place)\s+(?:all|everything)(?:\s+(?:but|except)\s+(.+?))?\s+(in|into|inside|on|onto)\s+(?:the\s+)?(.+)$/i,
   takeFrom: /^(?:take|get|remove)\s+(?:the\s+)?(.+?)\s+(?:from|out\s+of|off)\s+(?:the\s+)?(.+)$/i,
   search: /^(?:search|look\s+in|look\s+inside)\s+(?:the\s+)?(.+)$/i,
   // "attach X to Y", "insert disk": USE. Runs after wear/drop/putIn/putOn so those win.
@@ -51,9 +54,17 @@ const RE = {
   wait: /^(?:wait|z)$/i,
 };
 
+/** Verbs that need an object, typed alone. */
+const BARE_VERBS: Record<string, string> = {
+  take: 'take', get: 'take', grab: 'take', drop: 'drop', examine: 'examine', x: 'examine', inspect: 'examine',
+  read: 'read', open: 'open', close: 'close', shut: 'close', lock: 'lock', unlock: 'unlock', put: 'put',
+  give: 'give', wear: 'wear', use: 'use', search: 'search', smash: 'smash', break: 'smash', attack: 'smash',
+};
+
 const SINGLE_WORD: Record<string, ParsedAction> = {
   look: { action: 'look' },
   l: { action: 'look' },
+  talk: { action: 'talk' },
   inventory: { action: 'inventory' },
   inv: { action: 'inventory' },
   i: { action: 'inventory' },
@@ -70,6 +81,9 @@ const SINGLE_WORD: Record<string, ParsedAction> = {
   quit: { action: 'quit' },
   save: { action: 'save' },
   load: { action: 'load' },
+  script: { action: 'script' },
+  unscript: { action: 'unscript' },
+  version: { action: 'version' },
 };
 
 // Each entry maps a verb-pattern regex to the canonical action. The first capture
@@ -173,7 +187,7 @@ export function fallbackParse(rawInput: string, verbs?: World['verbs']): ParsedA
 }
 
 /** Like fallbackParse, but without the bare-word-means-go guess. */
-function strictParse(rawInput: string, verbs?: World['verbs']): ParsedAction | null {
+export function strictParse(rawInput: string, verbs?: World['verbs']): ParsedAction | null {
   return parse(rawInput, false, verbs);
 }
 
@@ -210,7 +224,28 @@ export function splitCommands(rawInput: string, verbs?: World['verbs']): string[
     .flatMap((clause) => splitClause(clause, verbs));
 }
 
+/** “take all but the wallet and shirt” → { action: 'take', target: 'all', except: ['wallet', 'shirt'] }. */
+function parseAll(input: string): ParsedAction | null {
+  const exceptList = (s?: string) =>
+    s ? s.split(/\s*(?:,|\band\b)\s*/).map((w) => w.replace(/^(?:the|a|an)\s+/, '').trim()).filter(Boolean) : undefined;
+  const withExcept = (a: ParsedAction, list?: string[]) => (list?.length ? { ...a, except: list } : a);
+  let m = input.match(RE.takeAll);
+  if (m) return withExcept({ action: 'take', target: 'all' }, exceptList(m[1]));
+  m = input.match(RE.dropAll);
+  if (m) return withExcept({ action: 'drop', target: 'all' }, exceptList(m[1]));
+  m = input.match(RE.putAll);
+  if (m) {
+    const prep = /^on/.test(m[2]) ? 'on' : 'in';
+    const base: ParsedAction = { action: 'put', target: 'all' };
+    const a = withExcept(base, exceptList(m[1]));
+    return { ...a, indirect: m[3].trim(), prep };
+  }
+  return null;
+}
+
 function splitClause(clause: string, verbs?: World['verbs']): string[] {
+  // “take all but the wallet and shirt” is one command.
+  if (/\b(?:all|everything)\b.*\b(?:but|except)\b/i.test(clause)) return [clause];
   const pieces = clause.split(LIST_BREAK).filter(Boolean);
   if (pieces.length === 1) return [clause];
   const out: string[] = [];
@@ -234,6 +269,8 @@ function parse(rawInput: string, allowBareWord: boolean, verbs?: World['verbs'])
   if (!input) return null;
 
   if (input in SINGLE_WORD) return SINGLE_WORD[input];
+  // A verb on its own (“take”): the engine asks what for.
+  if (input in BARE_VERBS) return { action: BARE_VERBS[input] };
   if (input in DIRECTIONS) return { action: 'go', target: DIRECTIONS[input] };
   if (input === 'enter') return { action: 'enter' };
   {
@@ -246,6 +283,9 @@ function parse(rawInput: string, allowBareWord: boolean, verbs?: World['verbs'])
   const patterns = worldPatterns(verbs);
   const phrase = matchWorld(input, patterns.filter((p) => p.phrase));
   if (phrase) return phrase;
+
+  const all = parseAll(input);
+  if (all) return all;
 
   for (const [re, action, prep] of VERB_PATTERNS) {
     const m = input.match(re);

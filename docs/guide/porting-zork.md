@@ -2,7 +2,7 @@
 
 Brass Lantern ships Zork I twice: the original story file, run by the Z-machine interpreter, and **ZORK I · NATIVE**, a rebuild as an ordinary Brass Lantern world (`src/worlds/zork1.ts`). The native version is how the engine proves it can carry an Infocom-class game. A test plays both side by side and fails if they disagree.
 
-It covers the house, the forest, and the first rooms underground: the cellar, the chasm, the gallery and the studio, with darkness, the lamp burning down, the grue, and death. The rest arrives as the engine gains a fuller parser, actors and combat.
+It covers the house, the forest, and the first rooms underground: the cellar, the chasm, the gallery and the studio, with darkness, the lamp burning down, the grue, and death. The rest arrives as the engine gains actors, combat and carrying weight.
 
 ## How ZIL maps to a world
 
@@ -34,13 +34,17 @@ Zork was written in ZIL, Infocom's language. Its source is MIT licensed ([histor
 | `PROB` | the `chance` effect |
 | a room's `M-ENTER` | `onEnter`, which Infocom style runs before the description |
 | a `PER` exit routine with several refusals (the chimney) | an exit's `denials` |
+| the parser's ORPHAN and WHICH-PRINT (“Which door do you mean, the wooden door or the trap door?”) | built in: a question, answered by the next line |
+| the parser's OOPS and AGAIN | built in |
+| an object with no `TEXT` (EXAMINE lists a container's contents) | `description: ''` |
 | `TVALUE` (points while a treasure is in the case) | a score entry with a condition: `{ if: 'inside:painting:trophy_case', points: 6 }` |
 
 `style: 'infocom'` makes the engine follow Zork's conventions:
 - “There is a sword here.”;
 - brief descriptions of rooms you've seen;
 - newest-first listings;
-- Zork's SCORE line.
+- Zork's SCORE line and status line (“West of House  Score: 0  Moves: 0”);
+- Zork's questions (“What do you want to take?”) and TAKE ALL (“lamp: Taken.”, including what can't be taken, and why).
 
 ## The differential test
 
@@ -52,11 +56,11 @@ Zork was written in ZIL, Infocom's language. Its source is MIT licensed ([histor
   original: Opening the brown sack reveals a clove of garlic, and a lunch.
 ```
 
-- **Expected differences** go in `tests/worlds/zork1-allowlist.ts`, each with a reason, and the test fails if one stops being different. The list is empty today.
+- **The walkthrough** covers the stage slices: the house and forest, the cellar and the gallery with the lamp lit, and the parser (a bare TAKE and its answer, “Which door do you mean?”, AGAIN, OOPS, TAKE ALL and DROP ALL).
+- **Expected differences** go in `tests/worlds/zork1-allowlist.ts`, each with a reason, and the test fails if one stops being different. There's one: a misspelled word, where Zork says “I don't know the word” and the native engine says it sees no such thing (and, in the app, asks the intent server). The OOPS that follows it matches.
 - **Random lines** the original prints (the distant songbird) are filtered out: the engine's generator is seeded and reproducible, but it can't replay Zork's own. Random outcomes (the grue, where things scatter when you die) are pinned by seeded unit tests instead, and the death texts are checked against a real death in the original.
 
 ## What's next
 
-- **Parser parity:** “Which lamp do you mean?”, AGAIN, OOPS, UNDO.
 - **Actors:** the troll, the thief, the cyclops, combat, carrying weight.
 - **The rest of the map**, vehicles included.

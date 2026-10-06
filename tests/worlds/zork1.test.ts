@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { execute, initialState, openingLines } from '@/engine/engine';
 import { fallbackParse, splitCommands, verbClashes } from '@/engine/parser';
+import { statusText } from '@/engine/verbs/meta';
 import { zork1 } from '@/worlds/zork1';
 
 function play(commands: string[]) {
@@ -16,6 +17,12 @@ function play(commands: string[]) {
 }
 
 describe('Zork I, natively: house and forest', () => {
+  it('shows Zork’s status line, and has its title and credits for VERSION', () => {
+    expect(statusText(zork1, initialState(zork1))).toBe('West of House  Score: 0  Moves: 0');
+    expect(zork1.title).toBe('ZORK I: The Great Underground Empire');
+    expect(zork1.credits?.[0]).toMatch(/^Copyright \(c\) 1981/);
+  });
+
   it('opens west of the house', () => {
     const { text } = play([]);
     expect(text).toContain('West of House');

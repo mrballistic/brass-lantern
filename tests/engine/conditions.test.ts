@@ -1,4 +1,4 @@
-import { evaluateCondition } from '@/engine/conditions';
+import { conditionProblems, evaluateCondition } from '@/engine/conditions';
 import type { GameState } from '@/types/game';
 import { stateWith } from '../helpers/state';
 import { fixtureWorld } from '../fixtures/world';
@@ -17,6 +17,16 @@ function makeState(overrides: Partial<GameState> & { inventory?: string[] } = {}
     ...rest,
   };
 }
+
+describe('conditionProblems', () => {
+  it('accepts every kind with things that exist, and reports the rest', () => {
+    expect(conditionProblems('flag:any & !has:wallet & in:living & var:x>=2 & carrying<3 & lit:here & inside:wallet:player', fixtureWorld)).toEqual([]);
+    expect(conditionProblems('has:unicorn', fixtureWorld)).toEqual(['“has:unicorn” names no item “unicorn”']);
+    expect(conditionProblems('visited:mars', fixtureWorld)).toEqual(['“visited:mars” names no room “mars”']);
+    expect(conditionProblems('inside:wallet:mars', fixtureWorld)).toEqual(['“inside:wallet:mars” names no place “mars”']);
+    expect(conditionProblems('wibble:x', fixtureWorld)).toEqual(['unknown condition “wibble:x”']);
+  });
+});
 
 describe('evaluateCondition', () => {
   describe('flag:NAME', () => {

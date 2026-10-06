@@ -62,6 +62,10 @@ export interface ParsedAction {
   indirect?: string;
   /** For PUT: in or on. */
   prep?: 'in' | 'on';
+  /** TAKE ALL BUT …: the words after BUT/EXCEPT. */
+  except?: string[];
+  /** The targets are IDs (the intent server's answer), so they resolve by ID first. */
+  byId?: boolean;
 }
 
 export interface SavedState {

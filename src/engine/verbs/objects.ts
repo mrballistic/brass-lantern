@@ -3,10 +3,10 @@ import type { Item, World } from '@/types/world';
 import { evaluateCondition } from '../conditions';
 import { contentsLines, describeRoom, lightNote, withArticle } from '../describe';
 import {
-  closedAround, inventoryOf, isCarried, matchItem, matchNpc, moveItem, PLAYER, reachableItems, visibleItems, visibleItemsIn,
+  closedAround, inventoryOf, isCarried, matchItem, matchNpc, moveItem, needObject, pickItem, PLAYER, reachableItems, visibleItems,
 } from '../model';
 import { miss, ok, type EngineResult } from '../result';
-import { applyRule, findRule, runEvent, withRules } from '../rules';
+import { applyRule, findRule, runEvent } from '../rules';
 import { finishEnding } from '../endings';
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -30,19 +30,9 @@ export function handleInventory(world: World, state: GameState): EngineResult {
 export const ALL = /^(?:all|everything|it all)$/i;
 
 export function handleTake(target: string | undefined, world: World, state: GameState): EngineResult {
-  if (!target) return ok(['Take what?']);
-  const visibleIds = visibleItemsIn(state.currentRoom, world, state);
-  if (ALL.test(target)) {
-    const portable = visibleIds.filter((id) => world.items[id]?.portable);
-    if (portable.length === 0) return ok(['There is nothing here worth taking.']);
-    const lines: string[] = [];
-    for (const id of portable) {
-      lines.push(...withRules('take', { action: 'take', target: id }, world, state, () => handleTake(id, world, state)).lines);
-    }
-    return ok(lines, true);
-  }
+  if (!target) needObject();
   const carried = inventoryOf(world, state);
-  const itemId = matchItem(target, visibleItems(world, state).filter((id) => !carried.includes(id)), world);
+  const itemId = pickItem(target, visibleItems(world, state).filter((id) => !carried.includes(id)), world, 'target', state);
   if (!itemId) {
     if (matchItem(target, carried, world)) return ok(['You already have that.']);
     return miss(`You don’t see a “${target}” here.`);
@@ -63,8 +53,8 @@ export function takeItem(itemId: string, world: World, state: GameState): Engine
 }
 
 export function handleDrop(target: string | undefined, world: World, state: GameState): EngineResult {
-  if (!target) return ok(['Drop what?']);
-  const itemId = matchItem(target, inventoryOf(world, state), world);
+  if (!target) needObject();
+  const itemId = pickItem(target, inventoryOf(world, state), world, 'target', state);
   if (!itemId) return miss(`You aren’t carrying a “${target}”.`);
 
   moveItem(state, itemId, state.currentRoom);
@@ -73,10 +63,17 @@ export function handleDrop(target: string | undefined, world: World, state: Game
 }
 
 export function handleExamine(target: string | undefined, world: World, state: GameState): EngineResult {
-  if (!target) return ok(['Examine what?']);
-  const matchedItem = matchItem(target, visibleItems(world, state), world);
+  if (!target) needObject();
+  const matchedItem = pickItem(target, visibleItems(world, state), world, 'target', state);
   if (matchedItem) {
-    return ok([world.items[matchedItem]?.description ?? 'It’s nondescript.', ...contentsLines(world, state, matchedItem)]);
+    const item = world.items[matchedItem];
+    const contents = contentsLines(world, state, matchedItem);
+    // No description of its own: a container shows what's in it, as Zork's EXAMINE does.
+    if (item && !item.description) {
+      if (contents.length > 0) return ok(contents);
+      return ok([item.container ? `The ${item.name} is empty.` : `There’s nothing special about the ${item.name}.`]);
+    }
+    return ok([item?.description ?? 'It’s nondescript.', ...contents]);
   }
 
   const matchedNpc = matchNpc(target, world, state);
@@ -91,11 +88,11 @@ export function handleUse(
   world: World,
   state: GameState,
 ): EngineResult {
-  if (!target) return ok(['Use what?']);
+  if (!target) needObject();
   const reach = reachableItems(world, state);
-  const itemId = matchItem(target, reach, world);
+  const itemId = pickItem(target, reach, world, 'target', state);
   if (!itemId) return miss(`There is no “${target}” here to use.`);
-  const otherId = indirect ? matchItem(indirect, reach, world) : null;
+  const otherId = indirect ? pickItem(indirect, reach, world, 'indirect', state) : null;
   if (indirect && !otherId) return miss(`There is no “${indirect}” here.`);
 
   // "put the disk in the terminal" and "use the terminal with the disk" mean
@@ -111,8 +108,8 @@ export function handleUse(
 }
 
 export function handleWear(target: string | undefined, world: World, state: GameState): EngineResult {
-  if (!target) return ok(['Wear what?']);
-  const itemId = matchItem(target, inventoryOf(world, state), world);
+  if (!target) needObject();
+  const itemId = pickItem(target, inventoryOf(world, state), world, 'target', state);
   if (!itemId) return miss(`You aren’t carrying a “${target}”.`);
   const item: Item = world.items[itemId];
   if (!item.onWear) return ok(['That is not really wearable.']);
@@ -129,7 +126,7 @@ export function handleSmash(
 ): EngineResult {
   const finale = world.finale;
   const reach = reachableItems(world, state);
-  const itemId = target ? matchItem(target, reach, world) : null;
+  const itemId = target ? pickItem(target, reach, world, 'target', state) : null;
   const item = itemId ? world.items[itemId] : null;
 
   if (finale && itemId === finale.item) {
@@ -185,17 +182,17 @@ export function runFinale(world: World, state: GameState): EngineResult {
 }
 
 export function handleRead(target: string | undefined, world: World, state: GameState): EngineResult {
-  if (!target) return ok(['Read what?']);
-  const id = matchItem(target, visibleItems(world, state), world);
+  if (!target) needObject();
+  const id = pickItem(target, visibleItems(world, state), world, 'target', state);
   if (!id) return miss(`You don’t see a “${target}” here.`);
   const item = world.items[id];
-  return ok([item.text ?? item.description]);
+  return ok([item.text ?? (item.description || `There’s nothing special about the ${item.name}.`)]);
 }
 
 export function handleSwitch(target: string | undefined, on: boolean, world: World, state: GameState): EngineResult {
   const word = on ? 'on' : 'off';
-  if (!target) return ok([`Turn ${word} what?`]);
-  const id = matchItem(target, reachableItems(world, state), world);
+  if (!target) needObject();
+  const id = pickItem(target, reachableItems(world, state), world, 'target', state);
   if (!id) return miss(`You don’t see a “${target}” here.`);
   const item = world.items[id];
   if (!item.switchable) return ok([`You can’t turn that ${word}.`]);

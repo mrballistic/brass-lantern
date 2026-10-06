@@ -29,6 +29,11 @@ const inForest = ['tree', 'forest', 'white_house'];
 
 export const zork1: World = {
   style: 'infocom',
+  title: 'ZORK I: The Great Underground Empire',
+  credits: [
+    'Copyright (c) 1981, 1982, 1983 Infocom, Inc. All rights reserved.',
+    'ZORK is a registered trademark of Infocom, Inc.',
+  ],
   startRoom: 'west_of_house',
   emptyInventory: 'You are empty-handed.',
 
@@ -235,10 +240,10 @@ export const zork1: World = {
         west: { denial: 'The door is nailed shut.' },
         down: { to: 'cellar', if: 'flag:rug_moved', door: 'trap_door' },
       },
-      items: ['trophy_case', 'lamp', 'sword', 'rug', 'wooden_door'],
+      items: ['trophy_case', 'lamp', 'sword', 'rug'],
       npcs: [],
       onEnter: [],
-      scenery: ['trap_door'],
+      scenery: ['wooden_door', 'trap_door'],
     },
     cellar: {
       name: 'Cellar',
@@ -480,7 +485,8 @@ export const zork1: World = {
     trophy_case: {
       name: 'trophy case',
       aliases: ['case'],
-      description: 'The trophy case is empty.',
+      // Empty, so EXAMINE lists the treasures inside, or says the case is empty.
+      description: '',
       portable: false,
       refusal: 'The trophy case is securely fastened to the wall.',
       tags: [],
@@ -499,7 +505,10 @@ export const zork1: World = {
       light: true,
       home: 'living_room',
       tags: [],
-      instead: { turn_on: [{ if: 'flag:lamp_dead', say: ['A burned-out lamp won’t light.'] }] },
+      instead: {
+        turn_on: [{ if: 'flag:lamp_dead', say: ['A burned-out lamp won’t light.'] }],
+        examine: [{ if: 'on:lamp', say: ['The lamp is on.'] }],
+      },
     },
     sword: {
       name: 'sword',

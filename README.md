@@ -50,7 +50,7 @@ npm install
 npm run dev            # http://localhost:5173
 ```
 
-You'll get the cartridge menu: **Snack Attack**, a three-room tutorial world, and **Zork I, II and III**. What it offers is set in `src/app.config.ts`:
+You'll get the cartridge menu: **Snack Attack**, a three-room tutorial world, **Zork I, II and III**, and **Zork I rebuilt natively** on the engine. What it offers is set in `src/app.config.ts`:
 
 ```ts
 export const cartridges: Cartridge[] = [
@@ -62,7 +62,7 @@ export const cartridges: Cartridge[] = [
 ];
 ```
 
-- **To make your own game**, write a world in `src/worlds/` and add it as a cartridge. [Your first world](https://mrballistic.github.io/brass-lantern/guide/your-first-world) walks through it.
+- **To make your own game**, write a world in `src/worlds/` and add it as a cartridge. [Building worlds](https://mrballistic.github.io/brass-lantern/guide/building-worlds/) walks through it, from a two-room game up, with recipes for containers, darkness, timers and endings.
 - **To add a story file**, drop it in `public/stories/` and add a `zcode` entry. See [Playing story files](https://mrballistic.github.io/brass-lantern/guide/z-machine).
 
 For loose phrasing in native worlds, run the intent server too ([guide](https://mrballistic.github.io/brass-lantern/guide/intent-server)):
@@ -75,7 +75,7 @@ npm install && npm run dev
 ## Docs
 
 - [Getting started](https://mrballistic.github.io/brass-lantern/guide/getting-started)
-- [Your first world](https://mrballistic.github.io/brass-lantern/guide/your-first-world)
+- [Building worlds](https://mrballistic.github.io/brass-lantern/guide/building-worlds/)
 - [Playing story files](https://mrballistic.github.io/brass-lantern/guide/z-machine)
 - [Porting Zork](https://mrballistic.github.io/brass-lantern/guide/porting-zork)
 - [How it works](https://mrballistic.github.io/brass-lantern/guide/how-it-works)

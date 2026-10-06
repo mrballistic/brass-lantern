@@ -1,6 +1,6 @@
 import type { GameState, Place } from '@/types/game';
 import type { World } from '@/types/world';
-import { fuzzyMatch } from './fuzzy';
+import { fuzzyCandidates, fuzzyMatch } from './fuzzy';
 
 /** The place that means “carried by the player”. Reserved: no room or item may use it. */
 export const PLAYER = 'player';
@@ -91,10 +91,33 @@ export function matchItem(target: string, ids: string[], world: World): string |
 
 export function matchNpc(target: string, world: World, state: GameState): string | null {
   const present = world.rooms[state.currentRoom]?.npcs ?? [];
-  return fuzzyMatch(
+  const id = fuzzyMatch(
     target,
     present.map((id) => ({ id, name: world.npcs[id]?.name ?? id })),
   );
+  if (id) noteActed(state, 'npc', id);
+  return id;
+}
+
+/** What this turn's command resolved to, for pronouns (“it”, “her”). */
+export interface Acted {
+  target?: string;
+  indirect?: string;
+  npc?: string;
+}
+
+const actedThisTurn = new WeakMap<GameState, Acted>();
+
+export function noteActed(state: GameState, slot: keyof Acted, id: string): void {
+  const acted = actedThisTurn.get(state) ?? {};
+  acted[slot] = id;
+  actedThisTurn.set(state, acted);
+}
+
+export function takeActed(state: GameState): Acted {
+  const acted = actedThisTurn.get(state) ?? {};
+  actedThisTurn.delete(state);
+  return acted;
 }
 
 export function isOpen(world: World, state: GameState, id: string): boolean {
@@ -220,4 +243,43 @@ export function closedAround(world: World, state: GameState, id: string): string
     if (!canReachInside(world, state, p)) return p;
   }
   return null;
+}
+
+/** Raised while resolving an object, before anything changes; execute turns it into a question. */
+export class AskSignal extends Error {
+  constructor(
+    readonly ask: { kind: 'which'; slot: 'target' | 'indirect'; word: string; candidates: string[] } | { kind: 'what'; slot: 'target' | 'indirect' },
+  ) {
+    super('ask');
+  }
+}
+
+// Commands the intent server produced name things by ID; those resolve by ID first.
+const byIdTurns = new WeakSet<GameState>();
+
+export function setResolveById(state: GameState, on: boolean): void {
+  if (on) byIdTurns.add(state);
+  else byIdTurns.delete(state);
+}
+
+/**
+ * Resolves what the player named among `ids`: the item, or null if nothing
+ * matches. Several equally good matches raise a question (AskSignal), which
+ * is safe because handlers resolve before they change anything.
+ */
+export function pickItem(target: string, ids: string[], world: World, slot: 'target' | 'indirect' = 'target', state?: GameState): string | null {
+  const candidates = ids.map((id) => ({ id, name: world.items[id]?.name ?? id, aliases: world.items[id]?.aliases }));
+  const found = [...new Set(fuzzyCandidates(target, candidates, { byId: state ? byIdTurns.has(state) : false }))];
+  if (found.length === 0) return null;
+  if (found.length === 1) {
+    if (state) noteActed(state, slot, found[0]);
+    return found[0];
+  }
+  const word = target.trim().split(/\s+/).at(-1) ?? target;
+  throw new AskSignal({ kind: 'which', slot, word, candidates: found });
+}
+
+/** A verb is missing an object: ask for it. */
+export function needObject(slot: 'target' | 'indirect' = 'target'): never {
+  throw new AskSignal({ kind: 'what', slot });
 }

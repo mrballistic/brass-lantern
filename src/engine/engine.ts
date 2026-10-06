@@ -1,7 +1,8 @@
 import type { GameState, ParsedAction } from '@/types/game';
 import type { World } from '@/types/world';
 import { describeRoom } from './describe';
-import { initialLocations, isLit } from './model';
+import { AskSignal, initialLocations, isLit, matchItem, setResolveById, takeActed, visibleItems } from './model';
+import { whatQuestion, whichQuestion } from './ask';
 import { darknessFalls, tooDark } from './light';
 import { beginTurn, runSteps, setEffectHooks, turnHalted } from './effects';
 import { seedFor } from './rng';
@@ -15,6 +16,7 @@ import {
 } from './verbs/objects';
 import { withRules } from './rules';
 import { handleWorldVerb } from './verbs/world-verbs';
+import { handleAll } from './verbs/all';
 import { handleClose, handleLock, handleOpen, handlePut, handleSearch, handleTakeFrom, handleUnlock } from './verbs/containers';
 import { handleRead, handleSwitch } from './verbs/objects';
 import { handleGive, handleTalk } from './verbs/people';
@@ -66,7 +68,18 @@ export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
   const pendingFuses = new Set(Object.keys(state.fuses ?? {}));
   const roomBefore = state.currentRoom;
   const litBefore = isLit(world, state);
-  let result = dispatch(action, world, state);
+  let result: EngineResult;
+  takeActed(state);
+  setResolveById(state, Boolean(action.byId));
+  try {
+    result = dispatch(action, world, state);
+  } catch (e) {
+    if (!(e instanceof AskSignal)) throw e;
+    result = askResult(e.ask, action, world, state);
+  } finally {
+    setResolveById(state, false);
+  }
+  result = { ...result, acted: takeActed(state) };
   // You can't find things in the dark: an understood refusal, so the LLM isn't asked to re-guess.
   if (result.understood === false && action.target && action.action !== 'go' && !isLit(world, state)) {
     // Like a parser failure in Zork: no time passes.
@@ -76,6 +89,7 @@ export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
 
   // Misses don't count as turns: they must not mutate state (see EngineResult).
   state.turns = (state.turns ?? 0) + 1;
+  state.moveCount += 1;
   const before = JSON.stringify([state.vars, state.fuses, state.flags, state.locations, state.itemState, state.currentRoom]);
   // A death this turn ends it: no timers or daemons after the resurrection.
   const later = turnHalted(state) ? [] : afterTurn(world, state, pendingFuses);
@@ -115,14 +129,15 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
     case 'look':
       return handleLook(world, state);
     case 'take':
-      // TAKE ALL applies the rules item by item.
-      if (action.target && ALL.test(action.target)) return handleTake(action.target, world, state);
+      // ALL applies the rules item by item.
+      if (action.target && ALL.test(action.target)) return handleAll(action, world, state);
       if (action.target && action.indirect) {
         const { target, indirect } = action;
         return withRules('take', action, world, state, () => handleTakeFrom(target, indirect, world, state));
       }
       return withRules('take', action, world, state, () => handleTake(action.target, world, state));
     case 'drop':
+      if (action.target && ALL.test(action.target)) return handleAll(action, world, state);
       return withRules('drop', action, world, state, () => handleDrop(action.target, world, state));
     case 'examine':
       return withRules('examine', action, world, state, () => handleExamine(action.target, world, state));
@@ -137,6 +152,7 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
     case 'unlock':
       return withRules('unlock', action, world, state, () => handleUnlock(action.target, action.indirect, world, state));
     case 'put':
+      if (action.target && ALL.test(action.target)) return handleAll(action, world, state);
       return withRules('put', action, world, state, () => handlePut(action.target, action.indirect, world, state));
     case 'search':
       return withRules('search', action, world, state, () => handleSearch(action.target, world, state));
@@ -154,6 +170,11 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
       return handleHint(world, state);
     case 'score':
       return handleScore(world, state);
+    case 'script':
+    case 'unscript':
+      return { lines: [], mutated: false, free: true, script: action.action === 'script' ? 'start' : 'stop' };
+    case 'version':
+      return { lines: [], mutated: false, free: true, version: true };
     case 'help':
       return handleHelp(world);
     case 'sit':
@@ -181,6 +202,16 @@ const VERBOSITY_REPLY = {
 function setVerbosity(mode: 'verbose' | 'brief' | 'superbrief', world: World, state: GameState): EngineResult {
   state.verbosity = mode;
   return { ...ok([VERBOSITY_REPLY[world.style === 'infocom' ? 'infocom' : 'brass'][mode]], true), free: true };
+}
+
+/** A question back to the player: understood, changes nothing, takes no time. */
+function askResult(ask: AskSignal['ask'], action: ParsedAction, world: World, state: GameState): EngineResult {
+  if (ask.kind === 'which') {
+    return { lines: [whichQuestion(world, ask.word, ask.candidates)], mutated: false, free: true, ask: { ...ask, action } };
+  }
+  const named = action.target ? matchItem(action.target, visibleItems(world, state), world) : null;
+  const targetName = named ? world.items[named]?.name : action.target;
+  return { lines: [whatQuestion(action, ask.slot, targetName)], mutated: false, free: true, ask: { ...ask, action } };
 }
 
 /** Compose the opening: intro lines + first room description. */

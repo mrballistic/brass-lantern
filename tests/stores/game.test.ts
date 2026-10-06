@@ -1,6 +1,6 @@
 import { setActivePinia, createPinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useGameStore } from '@/stores/game';
+import { setDownload, useGameStore } from '@/stores/game';
 import { SAVE_KEY } from '@/types/game';
 import { inventoryOf } from '@/engine/model';
 import { carry } from '../helpers/state';
@@ -110,16 +110,13 @@ describe('useGameStore', () => {
       expect(store.game.currentRoom).toBe('living');
     });
 
-    it('explicit SAVE writes to localStorage and prints a confirmation', async () => {
+    it('SAVE with a name writes beside the autosave and confirms', async () => {
       const store = freshStore();
       store.initialize();
-      localStorage.removeItem(SAVE_KEY);
 
-      await store.submit('save');
-      expect(localStorage.getItem(SAVE_KEY)).not.toBeNull();
-      expect(
-        store.output.some((l) => l.text.includes('saved to local terminal memory')),
-      ).toBe(true);
+      await store.submit('save Mine!');
+      expect(localStorage.getItem(`${SAVE_KEY}:named:mine`)).not.toBeNull();
+      expect(store.output.at(-1)!.text).toBe('Saved as mine.');
     });
 
     it('explicit LOAD restores the last save', async () => {
@@ -225,11 +222,271 @@ describe('useGameStore', () => {
       expect(store.game.flags.paid).toBe(true);
     });
 
+    it('OOPS fixes a line nobody understood', async () => {
+      const store = freshStore();
+      store.initialize();
+      store.game.currentRoom = 'living';
+      mockIntent({ action: 'unknown' });
+      await store.submit('take wollet');
+      expect(store.game.locations.wallet).toBe('living');
+      await store.submit('oops wallet');
+      expect(store.game.locations.wallet).toBe('player');
+    });
+
+    it('undo steps back through changing turns, restoring state and screen', async () => {
+      const store = freshStore();
+      store.initialize();
+      const start = store.output.length;
+      await store.submit('west');
+      await store.submit('take wallet');
+      await store.submit('look'); // changes nothing: not an undo step
+      await store.submit('undo');
+      expect(store.game.locations.wallet).toBe('living');
+      await store.submit('undo');
+      expect(store.game.currentRoom).toBe('bedroom');
+      expect(store.output.length).toBe(start + 1); // just the reply
+      expect(store.output.at(-1)!.text).toBe('[Previous turn undone.]');
+      await store.submit('undo');
+      expect(store.output.at(-1)!.text).toBe('[Nothing to undo.]');
+    });
+
+    it('keeps at most 50 undo steps, and RESTART clears them', async () => {
+      const store = freshStore();
+      store.initialize();
+      for (let i = 0; i < 60; i++) await store.submit(i % 2 ? 'east' : 'west');
+      for (let i = 0; i < 50; i++) await store.submit('undo');
+      expect(store.output.at(-1)!.text).toBe('[Previous turn undone.]');
+      await store.submit('undo');
+      expect(store.output.at(-1)!.text).toBe('[Nothing to undo.]');
+      await store.submit('west');
+      await store.submit('restart');
+      await store.submit('undo');
+      expect(store.output.at(-1)!.text).toBe('[Nothing to undo.]');
+    });
+
+    it('undo after a question undoes the last changing turn', async () => {
+      const store = freshStore();
+      store.initialize();
+      await store.submit('west');
+      await store.submit('take');
+      await store.submit('undo');
+      expect(store.game.currentRoom).toBe('bedroom');
+    });
+
+    it('the LLM can map a phrasing to UNDO', async () => {
+      const store = freshStore();
+      store.initialize();
+      await store.submit('west');
+      mockIntent({ action: 'undo' });
+      await store.submit('take that back please');
+      expect(store.game.currentRoom).toBe('bedroom');
+    });
+
+    it('the LLM can ask for a save or a restore', async () => {
+      const store = freshStore();
+      store.initialize();
+      mockIntent({ action: 'save', target: 'cellar' });
+      await store.submit('please remember this moment as cellar');
+      expect(store.output.at(-1)!.text).toBe('Saved as cellar.');
+      mockIntent({ action: 'restore' });
+      await store.submit('bring back an old game');
+      expect(store.output.at(-1)!.text).toBe('Restore which save? cellar. Or CANCEL.');
+    });
+
+    it('SCRIPT … UNSCRIPT downloads what happened in between', async () => {
+      const store = freshStore();
+      store.initialize();
+      const download = vi.fn();
+      setDownload(download);
+      await store.submit('script');
+      expect(store.output.at(-1)!.text).toBe('[Transcript started.]');
+      await store.submit('look');
+      await store.submit('unscript');
+      expect(store.output.at(-1)!.text).toBe('[Transcript saved.]');
+      expect(download).toHaveBeenCalledTimes(1);
+      const [filename, text] = download.mock.calls[0] as [string, string];
+      expect(filename).toMatch(/-transcript\.txt$/);
+      expect(text).toContain('> look');
+      expect(text.split('\n')[0]).toBe('[Transcript started.]');
+      expect(text.split('\n').at(-1)).toBe('[Transcript saved.]');
+    });
+
+    it('VERSION names the app and its version, then the world’s title and credits', async () => {
+      const store = freshStore();
+      store.initialize();
+      await store.submit('version');
+      expect(store.output.at(-1)!.text).toMatch(/^\[TEST TERMINAL v\d+\.\d+\.\d+\]$/);
+    });
+
+    it('VERSION and SCRIPT use the title and credits, in Zork’s words in an Infocom world', async () => {
+      const { fixtureWorld } = await import('../fixtures/world');
+      const world = { ...fixtureWorld, style: 'infocom' as const, title: 'TEST HOUSE: A Domestic Adventure', credits: ['Copyright (c) nobody.', 'All rights reversed.'] };
+      const store = freshStore();
+      store.initialize({ kind: 'world', id: 'house', title: 'TEST HOUSE', world, saveKey: 'test:house' });
+      setDownload(vi.fn());
+      await store.submit('version');
+      expect(store.output.slice(-3).map((l) => l.text)).toEqual(['TEST HOUSE: A Domestic Adventure', 'Copyright (c) nobody.', 'All rights reversed.']);
+      await store.submit('script');
+      expect(store.output.slice(-2).map((l) => l.text)).toEqual(['Here begins a transcript of interaction with', 'TEST HOUSE: A Domestic Adventure']);
+      expect(store.headerStatus).toBe(`${world.rooms[world.startRoom].name}  Score: 0  Moves: 0`);
+    });
+
+    it('named saves don’t see another cartridge’s saves, even when one save key is a prefix of another', async () => {
+      const { fixtureWorld } = await import('../fixtures/world');
+      const other = freshStore();
+      other.initialize({ kind: 'world', id: 'other', title: 'OTHER', world: fixtureWorld, saveKey: `${SAVE_KEY}:other` });
+      await other.submit('west');
+      await other.submit('save mine');
+      const store = freshStore();
+      store.initialize({ kind: 'world', id: 'test', title: 'TEST', world: fixtureWorld, saveKey: SAVE_KEY });
+      await store.submit('restore');
+      expect(store.output.at(-1)!.text).toBe('[There are no saved games yet.]');
+    });
+
+    it('a question partway through a compound line stops the line, and the answer still works', async () => {
+      const store = freshStore();
+      store.initialize();
+      store.game.currentRoom = 'living';
+      const fetchMock = mockIntent({ action: 'unknown' });
+      await store.submit('take wallet and take key and take shirt');
+      expect(store.output.at(-1)!.text).toMatch(/^Which do you mean/);
+      expect(inventoryOf(store.world, store.game)).not.toContain('shirt');
+      await store.submit('brass');
+      expect(inventoryOf(store.world, store.game)).toContain('key');
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('store commands work as pieces of a compound line', async () => {
+      const store = freshStore();
+      store.initialize();
+      store.game.currentRoom = 'living';
+      await store.submit('take wallet. save mine');
+      expect(store.output.some((l) => l.text === 'Saved as mine.')).toBe(true);
+      await store.submit('take shirt. undo');
+      expect(inventoryOf(store.world, store.game)).not.toContain('shirt');
+      expect(inventoryOf(store.world, store.game)).toContain('wallet');
+    });
+
+    it('LOAD starts a fresh conversation: no undo into the other timeline', async () => {
+      const store = freshStore();
+      store.initialize();
+      await store.submit('west');
+      await store.submit('load');
+      await store.submit('undo');
+      expect(store.output.at(-1)!.text).toBe('[Nothing to undo.]');
+    });
+
+    it('UNDO drops a waiting question', async () => {
+      const store = freshStore();
+      store.initialize();
+      await store.submit('west');
+      await store.submit('take key');
+      await store.submit('undo');
+      const fetchMock = mockIntent({ action: 'unknown' });
+      await store.submit('brass');
+      expect(fetchMock).toHaveBeenCalled();
+    });
+
+    it('UNDO takes back a whole compound line', async () => {
+      const store = freshStore();
+      store.initialize();
+      store.game.currentRoom = 'living';
+      await store.submit('take wallet and take shirt');
+      await store.submit('undo');
+      expect(inventoryOf(store.world, store.game)).toEqual([]);
+    });
+
+    it('the default transcript download keeps its URL alive until the click has started it', async () => {
+      vi.useFakeTimers();
+      const revoke = vi.fn();
+      vi.stubGlobal('URL', { ...URL, createObjectURL: () => 'blob:x', revokeObjectURL: revoke });
+      const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+      const { defaultDownload } = await import('@/stores/game');
+      defaultDownload('t.txt', 'hello');
+      expect(click).toHaveBeenCalled();
+      expect(revoke).not.toHaveBeenCalled();
+      vi.runAllTimers();
+      expect(revoke).toHaveBeenCalledWith('blob:x');
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    });
+
+    it('a transcript survives RESTART', async () => {
+      const store = freshStore();
+      store.initialize();
+      const download = vi.fn();
+      setDownload(download);
+      await store.submit('script');
+      await store.submit('restart');
+      await store.submit('unscript');
+      const [, text] = download.mock.calls[0] as [string, string];
+      expect(text.split('\n').length).toBeGreaterThan(2);
+    });
+
+    it('moves are saved even when nothing else changed', async () => {
+      const store = freshStore();
+      store.initialize();
+      await store.submit('look');
+      await store.submit('look');
+      const again = freshStore();
+      again.initialize();
+      expect(again.game.moveCount).toBe(2);
+    });
+
+    it('save names treat _ and spaces alike, so the LLM’s my_game is the typed my game', async () => {
+      const store = freshStore();
+      store.initialize();
+      await store.submit('save my_game');
+      await store.submit('restore my game');
+      expect(store.output.some((l) => l.text === 'Restored my game.')).toBe(true);
+    });
+
+    it('saves and restores by name, and lists saves', async () => {
+      const store = freshStore();
+      store.initialize();
+      await store.submit('west');
+      await store.submit('save before shed');
+      expect(store.output.at(-1)!.text).toBe('Saved as before shed.');
+      await store.submit('east');
+      await store.submit('restore');
+      expect(store.output.at(-1)!.text).toBe('Restore which save? before shed. Or CANCEL.');
+      await store.submit('before shed');
+      expect(store.game.currentRoom).toBe('living');
+      expect(store.output.some((l) => l.text === 'Restored before shed.')).toBe(true);
+    });
+
+    it('a name that sanitizes to nothing asks again; cancel backs out; unknown names say so', async () => {
+      const store = freshStore();
+      store.initialize();
+      await store.submit('save');
+      expect(store.output.at(-1)!.text).toBe('Save as? Type a name, or CANCEL.');
+      await store.submit('!!!');
+      expect(store.output.at(-1)!.text).toBe('Save as? Type a name, or CANCEL.');
+      await store.submit('cancel');
+      expect(store.output.at(-1)!.text).toBe('[Cancelled.]');
+      await store.submit('restore');
+      expect(store.output.at(-1)!.text).toBe('[There are no saved games yet.]');
+      await store.submit('restore nowhere');
+      expect(store.output.at(-1)!.text).toBe('[There’s no save called “nowhere”.]');
+    });
+
+    it('answers a question without asking the LLM', async () => {
+      const store = freshStore();
+      store.initialize();
+      store.game.currentRoom = 'living';
+      const fetchMock = mockIntent({ action: 'unknown' });
+      await store.submit('take');
+      expect(store.output.at(-1)!.text).toBe('What do you want to take?');
+      await store.submit('wallet');
+      expect(store.game.locations.wallet).toBe('player');
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
     it('runs every command in a compound line', async () => {
       const store = freshStore();
       store.initialize();
       await store.submit('west');
-      await store.submit('get key and wallet');
+      await store.submit('get brass key and wallet');
       expect(inventoryOf(store.world, store.game)).toEqual(expect.arrayContaining(['key', 'wallet']));
     });
 

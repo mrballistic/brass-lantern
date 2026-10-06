@@ -33,7 +33,7 @@ export const fixtureWorld: World = {
         south: { to: 'yard', if: 'flag:paid', denial: 'The door is stuck.' },
       },
       listExits: ['bedroom', 'outside'],
-      items: ['key', 'wallet', 'shirt'],
+      items: ['key', 'wallet', 'shirt', 'rusty_key'],
       npcs: [],
       onEnter: [{ if: '!flag:entered_living', then: 'enter_living' }],
     },
@@ -109,6 +109,7 @@ export const fixtureWorld: World = {
       onUse: [{ if: 'flag:rested', say: ['You are already rested.'] }, { then: 'rest' }],
     },
     key: { name: 'brass key', aliases: ['key'], description: 'A small brass key.', portable: true, tags: [], onTake: 'take_key' },
+    rusty_key: { name: 'rusty key', aliases: ['key'], description: 'An old rusty key.', portable: true, tags: [] },
     wallet: {
       name: 'wallet',
       description: 'A leather wallet.',

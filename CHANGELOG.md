@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.6.0 (2026-10-05)
+
+Engine parity, stage 3: the parser.
+
+- **Questions back to the player.** A noun that matches more than one thing asks which (“Which door do you mean, the wooden door or the trap door?”), and a verb missing its object asks what (“What do you want to take?”). Answer with just the missing words, or type a new command. Questions take no time and never go to the intent server.
+- **Pronouns** for things (`it`, `them`, `that`) and people (`him`, `her`), in either object.
+- **AGAIN** (`g`), **OOPS** *word*, and **UNDO**, up to 50 moves back.
+- **ALL and EXCEPT:** TAKE ALL, DROP ALL, PUT ALL IN *X*, each with BUT or EXCEPT.
+- **Named saves:** SAVE *name* and RESTORE *name*; without a name they ask, and RESTORE lists your saves. LOAD still restores the automatic save.
+- **The status line:** Zork's room, score and moves in Infocom style; brass worlds can show the score with `statusLine: 'score'`. **MOVES now counts every move the engine acts on**, not just room changes.
+- **SCRIPT / UNSCRIPT** download a transcript; **VERSION** shows the version and the world's new `title` and `credits`.
+- **Housekeeping:** SUPERBRIEF shows only room names on arrival; rescheduling a fuse restarts it; effects naming things that don't exist do nothing; the world audit also checks rule and trigger events and condition strings; a dark room's intent context names no room or people; a score kept only with the `score` effect shows; EXAMINE of an item with an empty description works like Zork's.
+- **Zork I · Native:** Zork's TAKE ALL (including what can't be taken, and why), EXAMINE of the trophy case and the lamp, and all 68 walkthrough replies matching the original but one allowlisted difference (the reply to a misspelled word).
+- **Docs:** a new [Building worlds](https://mrballistic.github.io/brass-lantern/guide/building-worlds/) section: a two-room game from scratch, the Snack Attack walkthrough, and recipes for containers and keys, darkness and death, timers, and endings with world verbs, each a real world file played by a test. The docs site shows the version.
+
 ## 1.5.0 (2026-10-05)
 
 Engine parity, stage 2: darkness and time.

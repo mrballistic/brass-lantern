@@ -121,6 +121,16 @@ describe('persistence service', () => {
 
 
 
+    it('named saves live beside the autosave, and list in order', () => {
+      const svc = createPersistenceService();
+      svc.saveNamed('zeta', makeGameState(), []);
+      svc.saveNamed('alpha', makeGameState({ currentRoom: 'lobby' }), []);
+      svc.save(makeGameState(), []);
+      expect(svc.listNamed()).toEqual(['alpha', 'zeta']);
+      expect((svc.loadNamed('alpha') as { gameState: { currentRoom: string } }).gameState.currentRoom).toBe('lobby');
+      expect(svc.loadNamed('missing')).toBeNull();
+    });
+
     it('clear() removes the save key', () => {
       const svc = createPersistenceService();
       svc.save(makeGameState(), []);

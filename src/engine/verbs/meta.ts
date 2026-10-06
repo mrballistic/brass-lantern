@@ -3,12 +3,36 @@ import type { ScoreEntry, World } from '@/types/world';
 import { evaluateCondition } from '../conditions';
 import { ok, type EngineResult } from '../result';
 
+/** The score so far: scoring entries earned, plus the `score` var. */
+export function currentScore(world: World, state: GameState): number {
+  const earned = (s: ScoreEntry) => (s.flag ? Boolean(state.flags[s.flag]) : s.if ? evaluateCondition(s.if, state, world) : false);
+  return (world.scoring ?? []).reduce((sum, s) => sum + (earned(s) ? s.points : 0), 0) + (state.vars?.score ?? 0);
+}
+
+/** The header's status: Zork's room, score and moves in Infocom style; MOVES (or SCORE and MOVES) in brass. */
+export function statusText(world: World, state: GameState): string {
+  if (world.style === 'infocom') {
+    const room = world.rooms[state.currentRoom]?.name ?? '';
+    return `${room}  Score: ${currentScore(world, state)}  Moves: ${state.moveCount}`;
+  }
+  if (world.statusLine === 'score') return `SCORE: ${currentScore(world, state)}  MOVES: ${state.moveCount}`;
+  return `MOVES: ${state.moveCount}`;
+}
+
+/** What SCRIPT and UNSCRIPT say: Zork's wording when the world has a title, brackets otherwise. */
+export function scriptLines(world: World, which: 'start' | 'stop'): string[] {
+  if (world.style === 'infocom' && world.title) {
+    return [`Here ${which === 'start' ? 'begins' : 'ends'} a transcript of interaction with`, world.title];
+  }
+  return [which === 'start' ? '[Transcript started.]' : '[Transcript saved.]'];
+}
+
 export function scoreLines(world: World, state: GameState): string[] {
   const scoring = world.scoring ?? [];
-  if (scoring.length === 0) return [];
+  // A world keeps score with `scoring`, or with the `score` effect and a `maxScore`.
+  if (scoring.length === 0 && world.maxScore === undefined) return [];
   const max = world.maxScore ?? scoring.reduce((sum, s) => sum + Math.max(0, s.points), 0);
-  const earned = (s: ScoreEntry) => (s.flag ? Boolean(state.flags[s.flag]) : s.if ? evaluateCondition(s.if, state, world) : false);
-  const score = scoring.reduce((sum, s) => sum + (earned(s) ? s.points : 0), 0) + (state.vars?.score ?? 0);
+  const score = currentScore(world, state);
   const rank = [...(world.ranks ?? [])].sort((a, b) => b.min - a.min).find((r) => score >= r.min);
   if (world.style === 'infocom') {
     // Zork reports the turns before this one.
@@ -17,7 +41,7 @@ export function scoreLines(world: World, state: GameState): string[] {
     if (rank) lines.push(`This gives you the rank of ${rank.title}.`);
     return lines;
   }
-  const lines = [`[Score: ${score} of ${max}, in ${state.moveCount} moves.]`];
+  const lines = [`[Score: ${score} of ${max}, in ${state.moveCount} move${state.moveCount === 1 ? '' : 's'}.]`];
   if (rank) lines.push(`[Rank: ${rank.title}]`);
   return lines;
 }
@@ -61,7 +85,14 @@ export function handleHelp(world: World): EngineResult {
     'HINT                     A nudge in the right direction',
     'SCORE                    Your score so far',
     'VERBOSE / BRIEF / SUPERBRIEF  How much rooms describe themselves',
-    'SAVE / LOAD              Local terminal memory',
+    'AGAIN / G                Do the last thing again',
+    'OOPS <word>              Fix a mistyped word in the last line',
+    'UNDO                     Take back the last move',
+    'SCRIPT / UNSCRIPT        Start, then download, a transcript',
+    'VERSION                  What you’re playing, and its credits',
+    'SAVE <name>              Save the game under a name',
+    'RESTORE <name>           Go back to a named save',
+    'LOAD                     Go back to the autosave',
     'RESTART                  Wipe save and start over',
     'COOKIES                  Analytics settings',
     'HELP / ?                 This screen',

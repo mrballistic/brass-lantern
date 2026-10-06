@@ -67,6 +67,40 @@ export function fuzzyMatch(
   return null;
 }
 
+/**
+ * Every candidate that ties for the best match, so the engine can ask which
+ * one was meant. Tiers, first that matches wins:
+ *  1) exact name or alias (and exact ID, which counts as one more name)
+ *  2) substring of the ID, name or an alias
+ *  3) the best token-prefix score
+ * With `byId` (the intent server answers in IDs) an exact ID wins alone.
+ */
+export function fuzzyCandidates(
+  input: string,
+  candidates: Array<{ id: string; name: string; aliases?: string[] }>,
+  opts: { byId?: boolean } = {},
+): string[] {
+  const needle = normalize(input);
+  if (!needle) return [];
+  const exactId = candidates.filter((c) => normalize(c.id) === needle);
+  if (exactId.length > 0 && (opts.byId || needle.includes('_'))) return [exactId[0].id];
+  const words = (c: { id: string; name: string; aliases?: string[] }) => [c.name, ...(c.aliases ?? [])].map(normalize);
+  const exact = candidates.filter((c) => normalize(c.id) === needle || words(c).includes(needle));
+  if (exact.length > 0) return exact.map((c) => c.id);
+  const sub = candidates.filter((c) => normalize(c.id).includes(needle) || words(c).some((w) => w.includes(needle)));
+  if (sub.length > 0) return sub.map((c) => c.id);
+  if (needle.length <= 2) return [];
+  const needleTokens = tokens(needle);
+  let best = 0;
+  let ids: string[] = [];
+  for (const c of candidates) {
+    const score = tokenPrefixScore(needleTokens, [...tokens(c.id), ...words(c).flatMap(tokens)]);
+    if (score > best) [best, ids] = [score, [c.id]];
+    else if (score === best && score > 0) ids.push(c.id);
+  }
+  return ids;
+}
+
 /** Direction words that should only match exits by EXACT label (no substring/fuzzy). */
 const STRICT_DIRECTIONS = new Set([
   'north', 'south', 'east', 'west', 'up', 'down', 'northeast', 'northwest', 'southeast', 'southwest',

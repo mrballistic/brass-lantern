@@ -9,6 +9,14 @@ export interface PersistenceService {
   loadRaw(): unknown;
   clear(): void;
   isAvailable(): boolean;
+  /**
+   * A named save, stored beside the autosave under `<key>:named:<name>`. Its own
+   * namespace: one cartridge's save key can be a prefix of another's.
+   */
+  saveNamed(name: string, state: GameState, outputHistory: OutputLine[]): void;
+  loadNamed(name: string): unknown;
+  /** The names of the named saves, sorted. */
+  listNamed(): string[];
 }
 
 function detectStorage(): Storage | null {
@@ -25,33 +33,52 @@ function detectStorage(): Storage | null {
 export function createPersistenceService(key: string = SAVE_KEY): PersistenceService {
   const storage = detectStorage();
 
+  function write(at: string, state: GameState, outputHistory: OutputLine[]): void {
+    if (!storage) return;
+    const capped = outputHistory.slice(-MAX_HISTORY_LINES);
+    const payload: SavedState = {
+      version: SAVE_VERSION,
+      savedAt: new Date().toISOString(),
+      gameState: state,
+      outputHistory: capped,
+    };
+    try {
+      storage.setItem(at, JSON.stringify(payload));
+    } catch {
+      // Silent — quota exceeded or other storage failure should not break gameplay.
+    }
+  }
+
+  function read(at: string): unknown {
+    if (!storage) return null;
+    try {
+      const raw = storage.getItem(at);
+      return raw ? (JSON.parse(raw) as unknown) : null;
+    } catch {
+      return null;
+    }
+  }
+
   return {
     isAvailable: () => storage !== null,
 
-    save(state, outputHistory) {
-      if (!storage) return;
-      const capped = outputHistory.slice(-MAX_HISTORY_LINES);
-      const payload: SavedState = {
-        version: SAVE_VERSION,
-        savedAt: new Date().toISOString(),
-        gameState: state,
-        outputHistory: capped,
-      };
-      try {
-        storage.setItem(key, JSON.stringify(payload));
-      } catch {
-        // Silent — quota exceeded or other storage failure should not break gameplay.
-      }
-    },
+    save: (state, outputHistory) => write(key, state, outputHistory),
 
-    loadRaw() {
-      if (!storage) return null;
-      try {
-        const raw = storage.getItem(key);
-        return raw ? (JSON.parse(raw) as unknown) : null;
-      } catch {
-        return null;
+    loadRaw: () => read(key),
+
+    saveNamed: (name, state, outputHistory) => write(`${key}:named:${name}`, state, outputHistory),
+
+    loadNamed: (name) => read(`${key}:named:${name}`),
+
+    listNamed() {
+      if (!storage) return [];
+      const prefix = `${key}:named:`;
+      const names: string[] = [];
+      for (let i = 0; i < storage.length; i++) {
+        const k = storage.key(i);
+        if (k?.startsWith(prefix)) names.push(k.slice(prefix.length));
       }
+      return names.sort();
     },
 
     clear() {

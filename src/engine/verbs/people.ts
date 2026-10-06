@@ -1,7 +1,7 @@
 import type { GameState } from '@/types/game';
 import type { World } from '@/types/world';
 import { evaluateCondition } from '../conditions';
-import { inventoryOf, matchItem, matchNpc, moveItem } from '../model';
+import { inventoryOf, matchNpc, moveItem, needObject, pickItem } from '../model';
 import { miss, ok, type EngineResult } from '../result';
 import { runEvent } from '../rules';
 
@@ -31,8 +31,8 @@ export function handleGive(
   world: World,
   state: GameState,
 ): EngineResult {
-  if (!target) return ok(['Give what?']);
-  const itemId = matchItem(target, inventoryOf(world, state), world);
+  if (!target) needObject();
+  const itemId = pickItem(target, inventoryOf(world, state), world, 'target', state);
   if (!itemId) return miss(`You aren’t carrying a “${target}”.`);
 
   const present = world.rooms[state.currentRoom]?.npcs ?? [];

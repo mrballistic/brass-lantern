@@ -35,6 +35,7 @@ Everything is in the player’s browser, under `storagePrefix`:
 | Key | What |
 |---|---|
 | `<prefix>:save:<id>` | A native world’s save, with up to 500 lines of history. Or the cartridge’s `saveKey`. |
+| `<save key>:named:<name>` | A native world’s named SAVE. |
 | `<prefix>:cartridge` | The last cartridge inserted. EJECT clears it, so a reload after EJECT shows the menu. |
 | `<prefix>:z:<id>:transcript` | A story’s screen, up to 500 lines, so a reload can redraw it. |
 | `<prefix>:z:auto:<signature>` | A story’s autosave, written every turn and cleared when it ends. |

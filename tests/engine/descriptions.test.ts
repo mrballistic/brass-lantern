@@ -54,7 +54,7 @@ describe('descriptions', () => {
     expect(run(s, 'turn_off', 'lamp').lines).toEqual(['It’s already off.']);
     const before = structuredClone(s);
     expect(run(s, 'turn_on', 'bat').lines).toEqual(['You can’t turn that on.']);
-    expect({ ...s, turns: 0 }).toEqual({ ...before, turns: 0 });
+    expect({ ...s, turns: 0, moveCount: 0 }).toEqual({ ...before, turns: 0, moveCount: 0 });
   });
 
   it('parses read and switch verbs', () => {

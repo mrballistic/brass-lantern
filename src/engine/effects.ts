@@ -21,10 +21,25 @@ export function setEffectHooks(h: typeof hooks): void {
 // later steps, a rule's `say`, more arrival events, daemons. Tracked per game
 // state so separate games (and tests) don't interfere.
 const halted = new WeakSet<GameState>();
+// Fuses (re)scheduled this turn don't count down until the next one.
+const scheduled = new WeakMap<GameState, Set<string>>();
 
 /** Called at the start of each command. */
 export function beginTurn(state: GameState): void {
   halted.delete(state);
+  scheduled.delete(state);
+}
+
+/** Was this fuse set (or reset) during the current turn? */
+export function scheduledThisTurn(state: GameState, key: string): boolean {
+  return scheduled.get(state)?.has(key) ?? false;
+}
+
+function schedule(state: GameState, key: string, turns: number): void {
+  (state.fuses ??= {})[key] = turns;
+  const keys = scheduled.get(state) ?? new Set<string>();
+  keys.add(key);
+  scheduled.set(state, keys);
 }
 
 /** Has a death or an ending stopped this turn? */
@@ -81,6 +96,9 @@ function runEffect(e: Effect, world: World, state: GameState): { lines: string[]
   if ('say' in e) return { lines: [e.say] };
   if ('set' in e) return void (state.flags[e.set] = true), { lines: [] };
   if ('clear' in e) return void (state.flags[e.clear] = false), { lines: [] };
+  // Naming a thing the world doesn't have does nothing (the audit reports it).
+  const thing = 'move' in e ? e.move : 'open' in e ? e.open : 'close' in e ? e.close : 'lock' in e ? e.lock : 'unlock' in e ? e.unlock : 'switch' in e ? e.switch : null;
+  if (thing !== null && !world.items[thing]) return { lines: [] };
   if ('move' in e) return void moveItem(state, e.move, e.to as Place), { lines: [] };
   if ('open' in e) return void (itemState(state, e.open).open = true), { lines: [] };
   if ('close' in e) return void (itemState(state, e.close).open = false), { lines: [] };
@@ -90,7 +108,7 @@ function runEffect(e: Effect, world: World, state: GameState): { lines: string[]
   if ('add' in e) return void addVar(state, e.add, e.by), { lines: [] };
   if ('setVar' in e) return void ((state.vars ??= {})[e.setVar] = e.to), { lines: [] };
   if ('score' in e) return void addVar(state, 'score', e.score), { lines: [] };
-  if ('schedule' in e) return void ((state.fuses ??= {})[e.schedule] = e.in), { lines: [] };
+  if ('schedule' in e) return void (world.events[e.schedule] && schedule(state, e.schedule, e.in)), { lines: [] };
   if ('cancel' in e) {
     if (state.fuses) delete state.fuses[e.cancel];
     return { lines: [] };
@@ -99,7 +117,7 @@ function runEffect(e: Effect, world: World, state: GameState): { lines: string[]
     const hit = nextRandom(state) * 100 < e.chance;
     return { lines: runSteps((hit ? e.then : e.else) ?? [], world, state), stop: state.gameOver };
   }
-  if ('run' in e) return { lines: runEventKey(e.run, world, state), stop: state.gameOver };
+  if ('run' in e) return { lines: world.events[e.run] ? runEventKey(e.run, world, state) : [], stop: state.gameOver };
   if ('go' in e) return { lines: hooks.go ? hooks.go(e.go, world, state) : [] };
   if ('die' in e) {
     // The death plays out in full, then halts the rest of the turn.

@@ -18,7 +18,7 @@ const run = (s: GameState, action: string, target?: string, indirect?: string, p
 function unchanged(s: GameState, f: () => void): void {
   const before = structuredClone(s);
   f();
-  expect({ ...s, turns: 0 }).toEqual({ ...before, turns: 0 });
+  expect({ ...s, turns: 0, moveCount: 0 }).toEqual({ ...before, turns: 0, moveCount: 0 });
 }
 
 describe('reach and sight', () => {
@@ -64,7 +64,7 @@ describe('open, close, lock, unlock', () => {
     const s = stateWith(world, { room: 'shed', carrying: ['key', 'book'] });
     unchanged(s, () => expect(run(s, 'open', 'chest').understood).not.toBe(false));
     unchanged(s, () => expect(run(s, 'unlock', 'chest', 'book').lines).toEqual(['The book doesn’t fit the lock.']));
-    unchanged(s, () => expect(run(s, 'unlock', 'chest').lines).toEqual(['Unlock it with what?']));
+    unchanged(s, () => expect(run(s, 'unlock', 'chest').lines).toEqual(['What do you want to unlock the wooden chest with?']));
     unchanged(s, () => expect(run(s, 'close', 'shelf').lines).toEqual(['You can’t close that.']));
     unchanged(s, () => expect(run(s, 'lock', 'bat').understood).toBe(false));
   });

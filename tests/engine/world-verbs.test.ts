@@ -19,7 +19,7 @@ describe('world verbs', () => {
     const r = execute({ action: 'snooze' }, { world, state: s });
     expect(r.lines).toEqual(['😴 You hit snooze.']);
     expect(r.understood).not.toBe(false);
-    expect(s).toEqual({ ...before, turns: 1 });
+    expect(s).toEqual({ ...before, turns: 1, moveCount: 1 });
   });
 
   it('a room rule wins when its condition holds', () => {
@@ -50,7 +50,7 @@ describe('world verbs', () => {
 
   it('a required target that’s missing asks for one', () => {
     const s = stateWith(world, { room: 'yard' });
-    expect(execute({ action: 'ring' }, { world, state: s }).lines).toEqual(['Ring what?']);
+    expect(execute({ action: 'ring' }, { world, state: s }).lines).toEqual(['What do you want to ring?']);
   });
 
   it('splitCommands treats world verbs as commands', () => {
