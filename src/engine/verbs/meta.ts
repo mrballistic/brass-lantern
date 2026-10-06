@@ -29,7 +29,8 @@ export function scriptLines(world: World, which: 'start' | 'stop'): string[] {
 
 export function scoreLines(world: World, state: GameState): string[] {
   const scoring = world.scoring ?? [];
-  if (scoring.length === 0) return [];
+  // A world keeps score with `scoring`, or with the `score` effect and a `maxScore`.
+  if (scoring.length === 0 && world.maxScore === undefined) return [];
   const max = world.maxScore ?? scoring.reduce((sum, s) => sum + Math.max(0, s.points), 0);
   const score = currentScore(world, state);
   const rank = [...(world.ranks ?? [])].sort((a, b) => b.min - a.min).find((r) => score >= r.min);
@@ -40,7 +41,7 @@ export function scoreLines(world: World, state: GameState): string[] {
     if (rank) lines.push(`This gives you the rank of ${rank.title}.`);
     return lines;
   }
-  const lines = [`[Score: ${score} of ${max}, in ${state.moveCount} moves.]`];
+  const lines = [`[Score: ${score} of ${max}, in ${state.moveCount} move${state.moveCount === 1 ? '' : 's'}.]`];
   if (rank) lines.push(`[Rank: ${rank.title}]`);
   return lines;
 }

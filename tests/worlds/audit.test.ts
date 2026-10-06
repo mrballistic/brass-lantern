@@ -3,6 +3,11 @@ import { cartridges } from '@/app.config';
 import { conditionProblems } from '@/engine/conditions';
 import { verbClashes } from '@/engine/parser';
 import type { Effect, EventStep, Rule, RuleTable, World } from '@/types/world';
+import { containers } from '@/worlds/examples/containers';
+import { darkness } from '@/worlds/examples/darkness';
+import { endings } from '@/worlds/examples/endings';
+import { timers } from '@/worlds/examples/timers';
+import { twoRooms } from '@/worlds/examples/two-rooms';
 import { fixtureWorld } from '../fixtures/world';
 
 // Checks the data of every native world this repo has: effects naming things
@@ -134,6 +139,11 @@ export function auditWorld(world: World): string[] {
 
 const worlds: Array<[string, World]> = [
   ['the fixture world', fixtureWorld],
+  ['the two-room example', twoRooms],
+  ['the containers recipe', containers],
+  ['the darkness recipe', darkness],
+  ['the timers recipe', timers],
+  ['the endings recipe', endings],
   ...cartridges.flatMap((c): Array<[string, World]> => (c.kind === 'world' ? [[c.title, c.world]] : [])),
 ];
 
