@@ -29,6 +29,11 @@ const inForest = ['tree', 'forest', 'white_house'];
 
 export const zork1: World = {
   style: 'infocom',
+  title: 'ZORK I: The Great Underground Empire',
+  credits: [
+    'Copyright (c) 1981, 1982, 1983 Infocom, Inc. All rights reserved.',
+    'ZORK is a registered trademark of Infocom, Inc.',
+  ],
   startRoom: 'west_of_house',
   emptyInventory: 'You are empty-handed.',
 

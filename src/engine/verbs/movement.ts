@@ -33,7 +33,6 @@ export function enterRoom(targetId: string, world: World, state: GameState): str
   }
   const first = !state.visited.includes(targetId);
   state.currentRoom = targetId;
-  state.moveCount += 1;
   // A dark room isn't visited until you've seen it (Zork's TOUCHBIT).
   if (first && isLit(world, state)) state.visited.push(targetId);
   const verbosity = state.verbosity ?? (world.style === 'infocom' ? 'brief' : 'verbose');

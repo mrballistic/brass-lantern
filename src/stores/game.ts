@@ -4,6 +4,7 @@ import type { GameState, OutputLine, ParsedAction } from '@/types/game';
 import type { World } from '@/types/world';
 import type { WorldCartridge } from '@/types/cartridge';
 import { defaultWorldCartridge, saveKeyFor } from '@/cartridges';
+import { appName } from '@/app.config';
 import { cookiesCommand } from '@/services/cookies';
 import {
   execute,
@@ -13,6 +14,7 @@ import {
   visibleItemsIn,
 } from '@/engine/engine';
 import { inventoryOf, isLit } from '@/engine/model';
+import { scriptLines, statusText } from '@/engine/verbs/meta';
 import { migrateSave } from '@/engine/migrate';
 import { fallbackParse, splitCommands } from '@/engine/parser';
 import { interpret, newConversation, remember, resolvePronouns } from '@/engine/conversation';
@@ -35,6 +37,23 @@ const EMPTY_WORLD: World = {
 
 const initialCartridge = defaultWorldCartridge();
 let world: World = initialCartridge?.world ?? EMPTY_WORLD;
+let cartridgeId = initialCartridge?.id ?? 'game';
+/** Where the transcript started in the output, while SCRIPT is on. */
+let scriptFrom: number | null = null;
+
+/** Saves a transcript as a file. Tests swap it out with setDownload. */
+let download = (filename: string, text: string): void => {
+  const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+export function setDownload(fn: (filename: string, text: string) => void): void {
+  download = fn;
+}
 /** Save names: lowercase letters, digits, spaces, _ and -, at most 32. */
 function saveName(raw: string): string {
   return raw
@@ -82,6 +101,8 @@ export const useGameStore = defineStore('game', {
 
   getters: {
     moveCount: (s) => s.game.moveCount,
+    /** The header's status text for this world's style. */
+    headerStatus: (s) => statusText(world, s.game),
     gameOver: (s) => s.game.gameOver,
     persistenceAvailable: () => persistence.isAvailable(),
     world: () => world,
@@ -94,6 +115,8 @@ export const useGameStore = defineStore('game', {
     initialize(cartridge: WorldCartridge | undefined = defaultWorldCartridge()): void {
       if (!cartridge) throw new Error('There is no world cartridge to play.');
       world = cartridge.world;
+      cartridgeId = cartridge.id;
+      scriptFrom = null;
       persistence = createPersistenceService(saveKeyFor(cartridge));
       conversation = newConversation();
       this.$patch({ game: freshGame(), output: [], isParsing: false, restored: false, gameOverTracked: false });
@@ -110,6 +133,22 @@ export const useGameStore = defineStore('game', {
         this.persist();
         track('game_start');
       }
+    },
+
+    /** SCRIPT starts a transcript; UNSCRIPT, or SCRIPT again, downloads it. */
+    transcript(which: 'start' | 'stop'): void {
+      if (which === 'start' && scriptFrom === null) {
+        scriptFrom = this.output.length;
+        this.appendLines(scriptLines(world, 'start'));
+        return;
+      }
+      if (scriptFrom === null) {
+        this.appendSystem('[There’s no transcript running. Type SCRIPT to start one.]');
+        return;
+      }
+      this.appendLines(scriptLines(world, 'stop'));
+      download(`${cartridgeId}-transcript.txt`, this.output.slice(scriptFrom).map((l) => l.text).join('\n'));
+      scriptFrom = null;
     },
 
     /** SAVE [name]. No usable name asks for one. */
@@ -337,6 +376,8 @@ export const useGameStore = defineStore('game', {
       // OOPS can fix the last line nobody understood.
       if (input !== undefined) conversation.lastUnknown = result.understood === false ? input : null;
       this.appendLines(result.lines);
+      if (result.script) this.transcript(result.script);
+      if (result.version) this.appendLines([`[${appName} v${__APP_VERSION__}]`, world.title ?? '', ...(world.credits ?? [])]);
       if (result.mutated) this.persist();
       // Fire game_completed exactly once per game, on the transition.
       if (!this.gameOverTracked && this.game.gameOver) {

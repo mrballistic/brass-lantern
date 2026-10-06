@@ -89,6 +89,7 @@ export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
 
   // Misses don't count as turns: they must not mutate state (see EngineResult).
   state.turns = (state.turns ?? 0) + 1;
+  state.moveCount += 1;
   const before = JSON.stringify([state.vars, state.fuses, state.flags, state.locations, state.itemState, state.currentRoom]);
   // A death this turn ends it: no timers or daemons after the resurrection.
   const later = turnHalted(state) ? [] : afterTurn(world, state, pendingFuses);
@@ -169,6 +170,11 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
       return handleHint(world, state);
     case 'score':
       return handleScore(world, state);
+    case 'script':
+    case 'unscript':
+      return { lines: [], mutated: false, free: true, script: action.action === 'script' ? 'start' : 'stop' };
+    case 'version':
+      return { lines: [], mutated: false, free: true, version: true };
     case 'help':
       return handleHelp(world);
     case 'sit':

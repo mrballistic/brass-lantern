@@ -1,6 +1,6 @@
 import { setActivePinia, createPinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useGameStore } from '@/stores/game';
+import { setDownload, useGameStore } from '@/stores/game';
 import { SAVE_KEY } from '@/types/game';
 import { inventoryOf } from '@/engine/model';
 import { carry } from '../helpers/state';
@@ -291,6 +291,47 @@ describe('useGameStore', () => {
       mockIntent({ action: 'restore' });
       await store.submit('bring back an old game');
       expect(store.output.at(-1)!.text).toBe('Restore which save? cellar. Or CANCEL.');
+    });
+
+    it('SCRIPT … UNSCRIPT downloads what happened in between', async () => {
+      const store = freshStore();
+      store.initialize();
+      const download = vi.fn();
+      setDownload(download);
+      await store.submit('script');
+      expect(store.output.at(-1)!.text).toBe('[Transcript started.]');
+      await store.submit('look');
+      await store.submit('unscript');
+      expect(store.output.at(-1)!.text).toBe('[Transcript saved.]');
+      expect(download).toHaveBeenCalledTimes(1);
+      const [filename, text] = download.mock.calls[0] as [string, string];
+      expect(filename).toMatch(/-transcript\.txt$/);
+      expect(text).toContain('> look');
+      expect(text.split('\n')[0]).toBe('[Transcript started.]');
+      expect(text.split('\n').at(-1)).toBe('[Transcript saved.]');
+    });
+
+    it('VERSION names the app and its version, then the world’s title and credits', async () => {
+      const store = freshStore();
+      store.initialize();
+      await store.submit('version');
+      expect(store.output.at(-1)!.text).toMatch(/^\[TEST TERMINAL v\d+\.\d+\.\d+\]$/);
+    });
+
+    it('VERSION and SCRIPT use Zork’s title and credits in an Infocom world', async () => {
+      const { zork1 } = await import('@/worlds/zork1');
+      const store = freshStore();
+      store.initialize({ kind: 'world', id: 'zork1', title: 'ZORK I', world: zork1, saveKey: 'test:zork1' });
+      setDownload(vi.fn());
+      await store.submit('version');
+      expect(store.output.slice(-3).map((l) => l.text)).toEqual([
+        'ZORK I: The Great Underground Empire',
+        'Copyright (c) 1981, 1982, 1983 Infocom, Inc. All rights reserved.',
+        'ZORK is a registered trademark of Infocom, Inc.',
+      ]);
+      await store.submit('script');
+      expect(store.output.slice(-2).map((l) => l.text)).toEqual(['Here begins a transcript of interaction with', 'ZORK I: The Great Underground Empire']);
+      expect(store.headerStatus).toBe('West of House  Score: 0  Moves: 0');
     });
 
     it('saves and restores by name, and lists saves', async () => {

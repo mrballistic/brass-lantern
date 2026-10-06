@@ -14,7 +14,7 @@ describe('exits', () => {
     const r = run(s, 'go', 'west');
     expect(r.lines).toEqual(['The fence is too high to climb.']);
     expect(r.understood).not.toBe(false);
-    expect(s).toEqual({ ...before, turns: 1 });
+    expect(s).toEqual({ ...before, turns: 1, moveCount: 1 });
   });
 
   it('a conditional exit is refused until its condition holds', () => {
@@ -92,7 +92,7 @@ describe('exits', () => {
     const s = stateWith(w);
     const before = structuredClone(s);
     expect(execute({ action: 'go', target: 'up' }, { world: w, state: s }).lines).toEqual(['Not empty-handed.']);
-    expect({ ...s, turns: 0 }).toEqual({ ...before, turns: 0 });
+    expect({ ...s, turns: 0, moveCount: 0 }).toEqual({ ...before, turns: 0, moveCount: 0 });
     s.locations.wallet = 'player';
     expect(execute({ action: 'go', target: 'up' }, { world: w, state: s }).lines).toEqual(['You need the key.']);
     s.locations.key = 'player';

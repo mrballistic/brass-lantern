@@ -3,12 +3,35 @@ import type { ScoreEntry, World } from '@/types/world';
 import { evaluateCondition } from '../conditions';
 import { ok, type EngineResult } from '../result';
 
+/** The score so far: scoring entries earned, plus the `score` var. */
+export function currentScore(world: World, state: GameState): number {
+  const earned = (s: ScoreEntry) => (s.flag ? Boolean(state.flags[s.flag]) : s.if ? evaluateCondition(s.if, state, world) : false);
+  return (world.scoring ?? []).reduce((sum, s) => sum + (earned(s) ? s.points : 0), 0) + (state.vars?.score ?? 0);
+}
+
+/** The header's status: Zork's room, score and moves in Infocom style; MOVES (or SCORE and MOVES) in brass. */
+export function statusText(world: World, state: GameState): string {
+  if (world.style === 'infocom') {
+    const room = world.rooms[state.currentRoom]?.name ?? '';
+    return `${room}  Score: ${currentScore(world, state)}  Moves: ${state.moveCount}`;
+  }
+  if (world.statusLine === 'score') return `SCORE: ${currentScore(world, state)}  MOVES: ${state.moveCount}`;
+  return `MOVES: ${state.moveCount}`;
+}
+
+/** What SCRIPT and UNSCRIPT say: Zork's wording when the world has a title, brackets otherwise. */
+export function scriptLines(world: World, which: 'start' | 'stop'): string[] {
+  if (world.style === 'infocom' && world.title) {
+    return [`Here ${which === 'start' ? 'begins' : 'ends'} a transcript of interaction with`, world.title];
+  }
+  return [which === 'start' ? '[Transcript started.]' : '[Transcript saved.]'];
+}
+
 export function scoreLines(world: World, state: GameState): string[] {
   const scoring = world.scoring ?? [];
   if (scoring.length === 0) return [];
   const max = world.maxScore ?? scoring.reduce((sum, s) => sum + Math.max(0, s.points), 0);
-  const earned = (s: ScoreEntry) => (s.flag ? Boolean(state.flags[s.flag]) : s.if ? evaluateCondition(s.if, state, world) : false);
-  const score = scoring.reduce((sum, s) => sum + (earned(s) ? s.points : 0), 0) + (state.vars?.score ?? 0);
+  const score = currentScore(world, state);
   const rank = [...(world.ranks ?? [])].sort((a, b) => b.min - a.min).find((r) => score >= r.min);
   if (world.style === 'infocom') {
     // Zork reports the turns before this one.
@@ -64,6 +87,8 @@ export function handleHelp(world: World): EngineResult {
     'AGAIN / G                Do the last thing again',
     'OOPS <word>              Fix a mistyped word in the last line',
     'UNDO                     Take back the last move',
+    'SCRIPT / UNSCRIPT        Start, then download, a transcript',
+    'VERSION                  What you’re playing, and its credits',
     'SAVE <name>              Save the game under a name',
     'RESTORE <name>           Go back to a named save',
     'LOAD                     Go back to the autosave',

@@ -20,6 +20,10 @@ export interface EngineResult {
   ask?: Ask;
   /** What the command acted on, for pronouns. */
   acted?: { target?: string; indirect?: string; npc?: string };
+  /** SCRIPT / UNSCRIPT: the store starts or saves a transcript. */
+  script?: 'start' | 'stop';
+  /** VERSION: the store prints the app's version, then the world's title and credits. */
+  version?: boolean;
 }
 
 /** A question: which of several things, or what object a verb needs. */

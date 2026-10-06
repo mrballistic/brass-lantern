@@ -18,7 +18,7 @@ const run = (s: GameState, action: string, target?: string, indirect?: string, p
 function unchanged(s: GameState, f: () => void): void {
   const before = structuredClone(s);
   f();
-  expect({ ...s, turns: 0 }).toEqual({ ...before, turns: 0 });
+  expect({ ...s, turns: 0, moveCount: 0 }).toEqual({ ...before, turns: 0, moveCount: 0 });
 }
 
 describe('reach and sight', () => {

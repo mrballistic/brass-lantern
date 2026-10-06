@@ -80,6 +80,9 @@ const SINGLE_WORD: Record<string, ParsedAction> = {
   quit: { action: 'quit' },
   save: { action: 'save' },
   load: { action: 'load' },
+  script: { action: 'script' },
+  unscript: { action: 'unscript' },
+  version: { action: 'version' },
 };
 
 // Each entry maps a verb-pattern regex to the canonical action. The first capture

@@ -19,7 +19,7 @@ describe('world verbs', () => {
     const r = execute({ action: 'snooze' }, { world, state: s });
     expect(r.lines).toEqual(['😴 You hit snooze.']);
     expect(r.understood).not.toBe(false);
-    expect(s).toEqual({ ...before, turns: 1 });
+    expect(s).toEqual({ ...before, turns: 1, moveCount: 1 });
   });
 
   it('a room rule wins when its condition holds', () => {
