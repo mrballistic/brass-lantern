@@ -150,4 +150,24 @@ describe('Zork I, natively: the thief', () => {
     for (const c of ['talk to cyclops', 'tell cyclops about food', 'cyclops, hello']) expect(asleep().run(c)[0]).toBe('No use talking to him. He’s fast asleep.');
     expect(at('troll_room', 2).run('troll, hello')[0]).toBe('The troll isn’t much of a conversationalist.');
   });
+
+  it('leaves sacred and hidden things alone: the platinum bar until the echo, the buried trunk', () => {
+    const robbed = (flags: string[], item: string, hidden = false) => {
+      for (let seed = 1; seed <= 200; seed++) {
+        const { state, run } = at('living_room', seed, (s) => {
+          s.npcs = { thief: { room: 'ns_passage', hidden: true } };
+          s.locations[item] = 'loud_room';
+          s.visited.push('loud_room');
+          for (const f of flags) s.flags[f] = true;
+          if (hidden) s.itemState[item] = { ...s.itemState[item], hidden: true };
+        });
+        for (let i = 0; i < 3; i++) run('look');
+        if (state.locations[item] !== 'loud_room') return true;
+      }
+      return false;
+    };
+    expect(robbed([], 'bar')).toBe(false);
+    expect(robbed(['loud_flag', 'unsacred_bar'], 'bar')).toBe(true);
+    expect(robbed([], 'trunk', true)).toBe(false);
+  });
 });

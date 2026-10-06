@@ -28,3 +28,11 @@ export const DAM_SESSIONS: Record<string, string[]> = {
   ],
 };
 
+
+const OPEN_GATES = [...TO_DAM, 'north', 'north', 'push yellow button', 'take wrench', 'south', 'south', 'turn bolt with wrench'];
+
+export const LOUD_SESSIONS: Record<string, string[]> = {
+  echo: ['east', 'hello there', 'bug', 'take bar', 'echo', 'look', 'take bar', 'east', 'look', 'west', 'west'],
+  thrown: [...OPEN_GATES, 'south', 'down', 'look'],
+  quiet: [...OPEN_GATES, 'drop sword', ...waits(4), 'turn bolt with wrench', 'south', 'down', 'look', 'take bar', ...waits(4), 'look'],
+};

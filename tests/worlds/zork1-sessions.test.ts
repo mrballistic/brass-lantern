@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it } from 'vitest';
 import { compare, nativeRun, originalRun, prefixed } from '../helpers/zsession';
-import { DAM_SESSIONS } from './zork1-sessions';
+import { DAM_SESSIONS, LOUD_SESSIONS } from './zork1-sessions';
 
 // Scripted sessions: each puzzle chain runs in native Zork I and in the real story
 // file, both seeded, and the replies are compared line by line.
@@ -48,4 +48,14 @@ const DAM_SEEDS: Record<string, { native: number; original: number }> = {
 
 describe('5a sessions: the dam and the reservoir', () => {
   for (const [name, commands] of Object.entries(DAM_SESSIONS)) it(name, () => session(name, commands, DAM_SEEDS[name]), 120_000);
+});
+
+const LOUD_SEEDS: Record<string, { native: number; original: number }> = {
+  echo: { native: 1, original: 1 },
+  thrown: { native: 10, original: 1 },
+  quiet: { native: 2, original: 1 },
+};
+
+describe('5a sessions: the Loud Room', () => {
+  for (const [name, commands] of Object.entries(LOUD_SESSIONS)) it(name, () => session(name, commands, LOUD_SEEDS[name]), 120_000);
 });

@@ -66,10 +66,14 @@ function thiefTurn(ctx: ScriptContext): EventStep[] {
   const recoverStiletto = () => {
     if (where('stiletto') === rm) move('stiletto', 'thief');
   };
+  /** INVISIBLE and SACREDBIT things are never taken (an echo can lift a SACREDBIT: `unsacred_<id>`). */
+  const untouchable = (id: string) =>
+    Boolean(ctx.state.itemState[id]?.hidden) || ((ctx.world.items[id]?.tags ?? []).includes('sacred') && !ctx.state.flags[`unsacred_${id}`]);
   /** Treasures in `from` go to the thief (each at `chance`%, or all). */
   const rob = (from: string, chance?: number) => {
     let robbed = false;
     for (const id of contents(from)) {
+      if (untouchable(id)) continue;
       if (ctx.treasure(id) > 0 && (chance === undefined || prob(ctx, chance))) {
         move(id, 'thief', true);
         robbed = true;
@@ -159,7 +163,7 @@ function thiefTurn(ctx: ScriptContext): EventStep[] {
         rob(rm, 75);
         if (ctx.tags(rm).includes('maze') && ctx.tags(here).includes('maze')) {
           for (const id of contents(rm)) {
-            if (!ctx.world.items[id]?.portable || !prob(ctx, 40)) continue;
+            if (!ctx.world.items[id]?.portable || ctx.state.itemState[id]?.hidden || !prob(ctx, 40)) continue;
             steps.push(`You hear, off in the distance, someone saying “My, I wonder what this fine ${ctx.world.items[id].name} is doing here.”`);
             if (prob(ctx, 60)) move(id, 'thief', true);
             break;
@@ -167,7 +171,7 @@ function thiefTurn(ctx: ScriptContext): EventStep[] {
         } else {
           for (const id of contents(rm)) {
             const item = ctx.world.items[id];
-            if (!item?.portable || item.scenery || ctx.treasure(id) > 0) continue;
+            if (!item?.portable || item.scenery || ctx.treasure(id) > 0 || untouchable(id)) continue;
             if (id !== 'stiletto' && !prob(ctx, 10)) continue;
             move(id, 'thief', true);
             if (rm === here) steps.push(`You suddenly notice that the ${item.name} vanished.`);
@@ -292,6 +296,33 @@ export const zork1: World = {
       npcs: [],
       onEnter: [],
     },
+    loud_room: {
+      name: 'Loud Room',
+      // LOUD-ROOM-FCN's M-LOOK.
+      description: 'This is a large room with a ceiling which cannot be detected from the ground. There is a narrow passage from east to west and a stone stairway leading upward. The room is deafeningly loud with an undetermined rushing sound. The sound seems to reverberate from all of the walls, making it difficult even to think.',
+      descriptions: [
+        { if: 'flag:loud_flag', text: 'This is a large room with a ceiling which cannot be detected from the ground. There is a narrow passage from east to west and a stone stairway leading upward. The room is eerie in its quietness.' },
+        { if: '!flag:gates_open & flag:low_tide', text: 'This is a large room with a ceiling which cannot be detected from the ground. There is a narrow passage from east to west and a stone stairway leading upward. The room is eerie in its quietness.' },
+      ],
+      dark: true,
+      exits: { east: 'damp_cave', west: 'round_room', up: 'deep_canyon' },
+      items: ['bar'],
+      npcs: [],
+      onEnter: [],
+      // M-ENTER's loop: while it's loud, every line is heard as noise.
+      capture: { if: '!flag:loud_flag', script: 'loud_room_capture' },
+      // M-END: the gates open at high tide drive you out.
+      onEnd: [{ if: 'flag:gates_open & !flag:low_tide', then: 'loud_room_ejects' }],
+    },
+    damp_cave: {
+      name: 'Damp Cave',
+      description: 'This cave has exits to the west and east, and narrows to a crack toward the south. The earth is particularly damp here.',
+      dark: true,
+      exits: { west: 'loud_room', east: { denial: 'That part of the Great Underground Empire isn’t built yet.' }, south: { denial: 'It is too narrow for most insects.' } },
+      items: [],
+      npcs: [],
+      onEnter: [],
+    },
     deep_canyon: {
       name: 'Deep Canyon',
       // DEEP-CANYON-F: the water below.
@@ -301,7 +332,7 @@ export const zork1: World = {
         { if: '!flag:gates_open & flag:low_tide', text: 'You are on the south edge of a deep canyon. Passages lead off to the east, northwest and southwest. A stairway leads down.' },
       ],
       dark: true,
-      exits: { northwest: 'reservoir_south', east: 'dam_room', southwest: 'ns_passage', down: { denial: 'That part of the Great Underground Empire isn’t built yet.' } },
+      exits: { northwest: 'reservoir_south', east: 'dam_room', southwest: 'ns_passage', down: 'loud_room' },
       items: [],
       npcs: [],
       onEnter: [],
@@ -312,7 +343,7 @@ export const zork1: World = {
       dark: true,
       exits: {
         west: 'ew_passage',
-        east: { denial: 'That part of the Great Underground Empire isn’t built yet.' },
+        east: 'loud_room',
         north: 'ns_passage',
         south: { denial: 'That part of the Great Underground Empire isn’t built yet.' },
         southeast: { denial: 'That part of the Great Underground Empire isn’t built yet.' },
@@ -962,6 +993,18 @@ export const zork1: World = {
 
   items: {
     // Stage 5a: the dam and the reservoir.
+    bar: {
+      name: 'platinum bar',
+      aliases: ['bar', 'platinum', 'treasure', 'large bar', 'platinum bar'],
+      description: 'There’s nothing special about the platinum bar.',
+      roomDescription: 'On the ground is a large platinum bar.',
+      portable: true,
+      size: 20,
+      treasure: 5,
+      // SACREDBIT until the echo clears it.
+      tags: ['sacred'],
+      after: { take: [{ if: '!flag:took_bar', then: 'took_bar' }] },
+    },
     global_water: {
       name: 'water',
       aliases: ['quantity', 'lake', 'reservoir', 'stream', 'river'],
@@ -1884,6 +1927,42 @@ export const zork1: World = {
   carry: { limit: 100, self: 5, fumble: { over: 7, chance: 8 } },
 
   scripts: {
+    // LOUD-ROOM-FCN's loop: the first word (after GO or SAY) decides; anything else echoes.
+    loud_room_capture: (ctx) => {
+      const flags = ctx.state.flags;
+      // Only while it's loud: gates and tide both one way or both the other.
+      if (Boolean(flags.gates_open) !== Boolean(flags.low_tide)) return;
+      const words = (ctx.line ?? '').toLowerCase().trim().split(/\s+/).filter(Boolean);
+      if (words.length === 0) return ['I beg your pardon?', { free: true }];
+      let word = words[0];
+      if (['go', 'walk', 'run'].includes(word)) word = words[1] ?? '';
+      else if (word === 'say') word = words[2] ?? '';
+      if (['save', 'restore', 'q', 'quit'].includes(word)) return;
+      const exits: Record<string, string> = { w: 'round_room', west: 'round_room', e: 'damp_cave', east: 'damp_cave', u: 'deep_canyon', up: 'deep_canyon' };
+      if (exits[word]) return [{ go: exits[word] }, { free: true }];
+      if (word === 'bug') return ['That’s only your opinion.', { free: true }];
+      // The loop ends, and the arrival it interrupted describes the room.
+      if (word === 'echo') return [{ set: 'loud_flag' }, { set: 'unsacred_bar' }, 'The acoustics of the room change subtly.', { go: 'loud_room' }, { free: true }];
+      const last = words[words.length - 1];
+      return [`${last} ${last} ...`, { free: true }];
+    },
+    // PICK-ONE over LOUD-RUNS: a random room not yet used, until all three have been.
+    loud_run: (ctx) => {
+      const v = ctx.state.vars ?? {};
+      const order = [v.loud_run_1 ?? 0, v.loud_run_2 ?? 1, v.loud_run_3 ?? 2];
+      const count = v.loud_runs ?? 0;
+      const pick = count + ctx.roll(3 - count) - 1;
+      const room = order[pick];
+      [order[pick], order[count]] = [order[count], room];
+      const next = count + 1 === 3 ? 0 : count + 1;
+      return [
+        { setVar: 'loud_run_1', to: order[0] },
+        { setVar: 'loud_run_2', to: order[1] },
+        { setVar: 'loud_run_3', to: order[2] },
+        { setVar: 'loud_runs', to: next },
+        { go: ['damp_cave', 'round_room', 'deep_canyon'][room] },
+      ];
+    },
     // BOLT-F: TURN BOLT WITH WRENCH, while the yellow button's gate flag is set.
     bolt_turn: (ctx) => {
       const tool = ctx.command?.indirect;
@@ -2206,6 +2285,8 @@ export const zork1: World = {
     { if: 'inside:canary:trophy_case', points: 4 },
     { flag: 'took_painting', points: 4 },
     { flag: 'took_trunk', points: 15 },
+    { flag: 'took_bar', points: 10 },
+    { if: 'inside:bar:trophy_case', points: 5 },
     { if: 'inside:trunk:trophy_case', points: 5 },
     // Treasures count while they're in the trophy case.
     { if: 'inside:painting:trophy_case', points: 6 },
@@ -2291,6 +2372,7 @@ export const zork1: World = {
     // I-REMPTY.
     reservoir_empties: [
       { unvisit: 'deep_canyon' },
+      { unvisit: 'loud_room' },
       { reveal: 'trunk' },
       { set: 'low_tide' },
       { if: 'in:deep_canyon', then: ['The roar of rushing water is quieter now.'] },
@@ -2300,6 +2382,7 @@ export const zork1: World = {
     // I-RFILL.
     reservoir_fills: [
       { unvisit: 'deep_canyon' },
+      { unvisit: 'loud_room' },
       { if: 'inside:trunk:reservoir', then: [{ hide: 'trunk' }] },
       { clear: 'low_tide' },
       {
@@ -2307,10 +2390,17 @@ export const zork1: World = {
         then: [{ die: 'You are lifted up by the rising river! You try to swim, but the currents are too strong. You come closer, closer to the awesome structure of Flood Control Dam #3. The dam beckons to you. The roar of the water nearly deafens you, but you remain conscious as you tumble over the dam toward your certain doom among the rocks at its base.' }],
       },
       { if: 'in:deep_canyon', then: ['A sound, like that of flowing water, starts to come from below.'] },
+      { if: 'in:loud_room', then: ['All of a sudden, an alarmingly loud roaring sound fills the room. Filled with fear, you scramble away.', { script: 'loud_run' }] },
       { if: 'in:reservoir_north', then: ['You notice that the water level has risen to the point that it is impossible to cross.'] },
       { if: 'in:reservoir_south', then: ['You notice that the water level has risen to the point that it is impossible to cross.'] },
     ],
     took_trunk: [{ set: 'took_trunk' }],
+    took_bar: [{ set: 'took_bar' }],
+    loud_room_ejects: [
+      'It is unbearably loud here, with an ear-splitting roar seeming to come from all around you. There is a pounding in your head which won’t stop. With a tremendous effort, you scramble out of the room.',
+      '',
+      { script: 'loud_run' },
+    ],
     fill_bottle: [{ script: 'fill_bottle' }],
     bolt_turn: [{ script: 'bolt_turn' }],
     dam_plug: [{ script: 'dam_plug' }],
