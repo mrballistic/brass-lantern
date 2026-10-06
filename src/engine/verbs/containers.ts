@@ -60,6 +60,8 @@ export function handleOpen(target: string | undefined, world: World, state: Game
   if (isOpen(world, state, id)) return ok(['It’s already open.']);
   if (isLocked(world, state, id)) return ok([`The ${item.name} is locked.`]);
   (state.itemState[id] ??= {}).open = true;
+  // Zork's V-OPEN touches a container (not a door): its first-seen sentence is over.
+  if (world.style === 'infocom' && !item.door) state.itemState[id].moved = true;
   const inside = childrenOf(world, state, id).filter((k) => !world.items[k]?.scenery && shown(state)(k));
   if (item.container.opened) return ok([item.container.opened], true);
   if (item.door || inside.length === 0 || item.container.transparent) return ok(['Opened.'], true);

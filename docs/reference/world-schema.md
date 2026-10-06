@@ -238,6 +238,7 @@ A **move** is one of these turns: MOVES in the header and SCORE count them. Comm
 | `look?` | string | LOOK and arriving in an unlit dark room. Default: “It is pitch black.” |
 | `tooDark?` | string | Acting on something you can't see. Default: “It’s too dark to see.” |
 | `fall?` | string | When the room goes dark around you. Default: “It is now pitch black.” |
+| `arrive?` | string | Said on arriving in an unlit room, before its darkness line (Zork's “You have moved into a dark place.”). |
 | `stumble?` | `{ chance, then, aboard? }` | Walking from an unlit dark room into another: `chance`% of `then` instead (Zork's grue, 80), or `aboard` in a vehicle. |
 | `litIf?` | condition | While it holds, every room is lit (Zork's ALWAYS-LIT, for a spirit). Mustn't use `lit:`. |
 | `blunder?` | `EventStep[]` | Run when the player tries a direction with no exit in the dark. Zork's grue: `[{ chance: 80, then: [{ die: '…' }], else: ['You can’t go that way.'] }]`. |

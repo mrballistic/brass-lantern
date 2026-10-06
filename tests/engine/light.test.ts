@@ -136,3 +136,19 @@ describe('dark moves (5b)', () => {
     expect(execute({ action: 'go', target: 'north' }, { world, state: fromLit }).lines[0]).not.toBe('Grue.');
   });
 });
+
+describe('arriving in the dark (5d)', () => {
+  it('darkness.arrive is said on entering an unlit room, before the darkness line; not with a light', async () => {
+    const { fixtureWorld } = await import('../fixtures/world');
+    const { stateWith } = await import('../helpers/state');
+    const { execute } = await import('@/engine/engine');
+    const world = { ...fixtureWorld, darkness: { ...fixtureWorld.darkness, arrive: 'You have moved into a dark place.' } };
+    const s = stateWith(world, { room: 'shed' });
+    const lines = execute({ action: 'go', target: 'down' }, { world, state: s }).lines;
+    expect(lines[0]).toBe('You have moved into a dark place.');
+    expect(lines).toContain('It is pitch black.');
+    const lit = stateWith(world, { room: 'shed', carrying: ['lamp'] });
+    lit.itemState.lamp = { on: true };
+    expect(execute({ action: 'go', target: 'down' }, { world, state: lit }).lines).not.toContain('You have moved into a dark place.');
+  });
+});

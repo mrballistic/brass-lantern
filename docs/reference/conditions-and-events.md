@@ -18,6 +18,7 @@ Conditions are strings, used by `requires`, exits (`if`, `denials`), room `descr
 | `var:NAME<op>N` | a numeric variable compared with `=`, `<`, `>`, `<=` or `>=` (unset is 0) |
 | `carrying<op>N` | how many things the player holds directly |
 | `heaviest<op>N` | the weight of the heaviest thing the player holds directly, counting what's inside it (Zork's narrow passage: `heaviest<=4`) |
+| `score<op>N` | the score, as SCORE reports it (Zork wins at `score>=350`); a `scoring` entry can't test it |
 | `lit:here`, `lit:ROOM` | the room has light |
 | `alive:NPC` | the character isn't dead |
 | `awake:NPC` | alive and conscious |
@@ -45,6 +46,7 @@ An event is a named list of steps, run in order. A string is printed. An object 
 | `{ script: 'name', arg? }` | Runs one of the world's [scripts](./world-schema#scripts) and the steps it returns. |
 | `{ hide: 'item' }`, `{ reveal: 'item' }` | Hides an item where it is (not seen, listed or taken), or shows it again. |
 | `{ board: 'item' }`, `{ disembark: true }` | Puts the player in a vehicle that's in the room, or takes them out. |
+| `{ touch: 'item' }` | Marks an item handled (Zork's TOUCHBIT): its first-seen sentence is over. |
 | `{ unlist: 'item' }`, `{ relist: 'item' }` | Keeps an item where it is, seen and usable but out of the room's list, or lists it again (the tied rope). |
 | `{ open }`, `{ close }`, `{ lock }`, `{ unlock }` | Changes a container's or door's state. |
 | `{ switch: 'item', on: true }` | Switches a light (or anything switchable). |

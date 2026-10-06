@@ -118,7 +118,7 @@ function runEffect(e: Effect, world: World, state: GameState): { lines: string[]
   if (thing !== null && !world.items[thing]) return { lines: [] };
   if ('move' in e) return void moveItem(state, e.move, (e.to === 'here' ? state.currentRoom : e.to) as Place), { lines: [] };
   if ('moveNpc' in e) {
-    if (world.npcs[e.moveNpc]) npcStateOf(state, e.moveNpc).room = e.to;
+    if (world.npcs[e.moveNpc]) Object.assign(npcStateOf(state, e.moveNpc), { room: e.to, arrived: state.turns });
     return { lines: [] };
   }
   if ('npcState' in e) {
@@ -157,6 +157,8 @@ function runEffect(e: Effect, world: World, state: GameState): { lines: string[]
     return { lines: [] };
   }
   if ('disembark' in e) return void (state.aboard = undefined), { lines: [] };
+  // Zork's TOUCHBIT: handled, so its first-seen sentence is over.
+  if ('touch' in e) return void (world.items[e.touch] && (itemState(state, e.touch).moved = true)), { lines: [] };
   if ('unlist' in e) return void (world.items[e.unlist] && (itemState(state, e.unlist).unlisted = true)), { lines: [] };
   if ('relist' in e) return void (world.items[e.relist] && (itemState(state, e.relist).unlisted = false)), { lines: [] };
   if ('reveal' in e) return void (world.items[e.reveal] && (itemState(state, e.reveal).hidden = false)), { lines: [] };

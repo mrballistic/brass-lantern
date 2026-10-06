@@ -650,3 +650,126 @@ describe('Zork I, natively: 5c’s scoring', () => {
     expect(score() - before).toBe(13);
   });
 });
+
+describe('Zork I, natively: the end (5d)', () => {
+  const WHISPER = 'An almost inaudible voice whispers in your ear, “Look to your treasures for the final secret.”';
+  const fresh = (room: string) => {
+    const state = initialState(zork1);
+    state.currentRoom = room;
+    state.npcs = { thief: { room: null } };
+    return state;
+  };
+  const say = (state: ReturnType<typeof initialState>, line: string) =>
+    execute(fallbackParse(line, zork1.verbs) ?? { action: 'unknown' }, { world: zork1, state }).lines;
+  it('the Mountains are impassable', () => {
+    const s = fresh('forest_2');
+    say(s, 'east');
+    expect(s.currentRoom).toBe('mountains');
+    expect(say(s, 'up')).toEqual(['The mountains are impassable.']);
+    expect(say(s, 'east')).toEqual(['The mountains are impassable.']);
+    expect(say(s, 'climb mountains')).toEqual(['Don’t you believe me? The mountains are impassable!']);
+    say(s, 'west');
+    expect(s.currentRoom).toBe('forest_2');
+  });
+  it('before winning, there is no way southwest', () => {
+    const s = fresh('west_of_house');
+    expect(say(s, 'southwest')).toEqual(['You can’t go that way.']);
+    expect(say(s, 'in')[0]).toBe('You can’t go that way.');
+    expect(s.currentRoom).toBe('west_of_house');
+  });
+  it('350 points: the whisper once, the map, the secret path; dying keeps it', () => {
+    const s = fresh('living_room');
+    s.locations.jade = 'living_room';
+    s.itemState.trophy_case = { ...s.itemState.trophy_case, open: true };
+    s.vars = { ...s.vars, score: 0 };
+    s.vars.score = 340 - currentScore(zork1, s);
+    say(s, 'take jade');
+    const won = say(s, 'put jade in case');
+    expect(won.at(-1)).toBe(WHISPER);
+    expect(s.flags.won).toBe(true);
+    expect(say(s, 'take jade')).not.toContain(WHISPER);
+    expect(say(s, 'put jade in case')).not.toContain(WHISPER);
+    expect(say(s, 'read map').join(' ')).toContain('To Stone Barrow');
+    s.currentRoom = 'north_of_house';
+    expect(say(s, 'west').join(' ')).toContain('A secret path leads southwest into the forest.');
+    runSteps([{ die: 'Oops.' }], zork1, s);
+    expect(s.flags.won).toBe(true);
+  });
+  it('the barrow ends the game', () => {
+    const s = fresh('west_of_house');
+    s.flags.won = true;
+    say(s, 'southwest');
+    expect(s.currentRoom).toBe('stone_barrow');
+    expect(say(s, 'open door')).toEqual(['The door is too heavy.']);
+    const end = say(s, 'west');
+    expect(end[0]).toBe('Inside the Barrow');
+    expect(end.join(' ')).toContain('Your score is');
+    expect(s.gameOver).toBe(true);
+  });
+});
+
+describe('Zork I, natively: the full game’s fixes (5d)', () => {
+  it('INFLATE with no tool guesses the one tool held (GWIM)', () => {
+    const state = initialState(zork1);
+    state.currentRoom = 'dam_base';
+    state.npcs = { thief: { room: null } };
+    state.locations.pump = 'player';
+    const lines = execute(fallbackParse('inflate pile', zork1.verbs)!, { world: zork1, state }).lines;
+    expect(lines.slice(0, 2)).toEqual(['(with the hand-held air pump)', 'The boat inflates and appears seaworthy.']);
+  });
+  it('after the cyclops flees, the Living Room’s west door has a cyclops-shaped opening (MAGIC-FLAG)', () => {
+    const state = initialState(zork1);
+    state.currentRoom = 'living_room';
+    state.npcs = { thief: { room: null } };
+    state.flags.magic_word = true;
+    const look = execute({ action: 'look' }, { world: zork1, state }).lines.join(' ');
+    expect(look).toContain('To the west is a cyclops-shaped opening in an old wooden door, above which is some strange gothic lettering, a trophy case');
+    execute({ action: 'go', target: 'west' }, { world: zork1, state });
+    expect(state.currentRoom).toBe('strange_passage');
+  });
+  it('DIG with no tool guesses the one tool held (GWIM)', () => {
+    const state = initialState(zork1);
+    state.currentRoom = 'sandy_cave';
+    state.npcs = { thief: { room: null } };
+    state.locations.shovel = 'player';
+    state.locations.lamp = 'player';
+    state.itemState.lamp = { ...state.itemState.lamp, on: true };
+    expect(execute(fallbackParse('dig sand', zork1.verbs)!, { world: zork1, state }).lines).toEqual(['(with the shovel)', 'You seem to be digging a hole here.']);
+  });
+  it('WIND CANARY in the forest brings the songbird and the bauble, once (CANARY-OBJECT)', () => {
+    const state = initialState(zork1);
+    state.currentRoom = 'forest_3';
+    state.npcs = { thief: { room: null } };
+    state.locations.canary = 'player';
+    state.locations.sword = 'player';
+    const say = (l: string) => execute(fallbackParse(l, zork1.verbs)!, { world: zork1, state }).lines;
+    expect(say('wind canary')[0]).toMatch(/^The canary chirps, slightly off-key, an aria from a forgotten opera\./);
+    expect(state.locations.bauble).toBe('forest_3');
+    expect(say('wind canary')).toEqual(['The canary chirps blithely, if somewhat tinnily, for a short time.']);
+    expect(say('wind sword')).toEqual(['You cannot wind up a sword.']);
+    const before = currentScore(zork1, state);
+    say('take bauble');
+    expect(currentScore(zork1, state) - before).toBe(1);
+  });
+  it('the thief wears his LDESC until he has been knocked out and come round (ROBBER-C-DESC)', () => {
+    const state = initialState(zork1);
+    state.currentRoom = 'treasure_room';
+    state.npcs = { thief: { room: 'treasure_room', hidden: false } };
+    state.locations.lamp = 'player';
+    state.itemState.lamp = { ...state.itemState.lamp, on: true };
+    const look = () => execute({ action: 'look' }, { world: zork1, state }).lines.join(' ');
+    expect(look()).toContain('holding a large bag, leaning against one wall. He is armed with a deadly stiletto.');
+    state.flags.thief_revived = true;
+    expect(look()).toContain('holding a bag, leaning against one wall. He is armed with a vicious-looking stiletto.');
+  });
+  it('the scoring table totals 350, the canary’s 6 for taking it included', () => {
+    expect((zork1.scoring ?? []).reduce((t, e) => t + e.points, 0)).toBe(350);
+    const state = initialState(zork1);
+    state.currentRoom = 'living_room';
+    state.npcs = { thief: { room: null } };
+    state.locations.canary = 'living_room';
+    const before = currentScore(zork1, state);
+    execute({ action: 'take', target: 'canary', byId: true }, { world: zork1, state });
+    expect(currentScore(zork1, state) - before).toBe(6);
+  });
+});

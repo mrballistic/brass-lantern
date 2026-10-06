@@ -236,3 +236,11 @@ describe('DISEMBARK in a brass world (5b)', () => {
     expect(execute({ action: 'board', target: 'bed' }, { world: fixtureWorld, state: s }).understood).toBe(false);
   });
 });
+
+describe('ENTER a vehicle boards it (V-THROUGH) (5d)', () => {
+  it('“enter raft” is BOARD', () => {
+    const s = stateWith(boatWorld, { room: 'yard' });
+    expect(run(s, { action: 'enter', target: 'raft' }).lines[0]).toBe('You are now in the raft.');
+    expect(s.aboard).toBe('raft');
+  });
+});

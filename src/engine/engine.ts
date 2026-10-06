@@ -10,7 +10,7 @@ import { seedFor } from './rng';
 import { afterTurn } from './time';
 import { die } from './death';
 import { runEnding } from './endings';
-import { ok, type EngineResult } from './result';
+import { miss, ok, type EngineResult } from './result';
 import { enterRoom, handleClimb, handleEnter, handleGo, handleIdle } from './verbs/movement';
 import {
   ALL, handleDrop, handleExamine, handleInventory, handleLook, handleSmash, handleTake, handleUse, handleWear,
@@ -270,6 +270,10 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
     case 'attack':
       return handleAttack(action, world, state, () => dispatch({ ...action, action: 'smash' }, world, state));
     case 'throw':
+      // Zork's THROW X IN Y is PUT X IN Y.
+      if (action.prep === 'in' && world.style === 'infocom') return dispatch({ ...action, action: 'put' }, world, state);
+      // Elsewhere THROW X IN Y with no rule is a miss, so the intent server can read it (as PUT, likely).
+      if (action.prep === 'in') return withRules('throw', action, world, state, () => miss(`You can’t throw that in there.`));
       return handleThrow(action, world, state);
     case 'ask':
       return handleAsk(action, world, state);

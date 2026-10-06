@@ -370,3 +370,9 @@ describe('with-objects for built-in verbs (5a)', () => {
     expect(fallbackParse('plug cord into socket')).toEqual({ action: 'put', target: 'cord', indirect: 'socket', prep: 'in' });
   });
 });
+
+describe('turning lights off, Zork’s words (5d)', () => {
+  it('EXTINGUISH, DOUSE, BLOW OUT and PUT OUT are TURN OFF', () => {
+    for (const w of ['extinguish lamp', 'douse lamp', 'blow out lamp', 'put out lamp']) expect(fallbackParse(w)).toEqual({ action: 'turn_off', target: 'lamp' });
+  });
+});

@@ -223,3 +223,11 @@ export const SHAFT_SESSIONS: Record<string, string[]> = {
     'close lid', 'turn switch with screwdriver', 'open lid', 'take gunk', 'look', 'north', 'east',
   ],
 };
+
+export const END_SESSIONS: Record<string, string[]> = {
+  // Out of the kitchen window to West of House: no way southwest before winning; then the Mountains.
+  'barrow-closed': [
+    '@prefix:surface', 'east', 'east', 'north', 'west', 'look', 'southwest', 'in', 'north', 'north', 'east', 'east', 'look', 'up', 'east',
+    'climb mountains', 'west',
+  ],
+};

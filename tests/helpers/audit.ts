@@ -9,7 +9,7 @@ import type { Effect, EventStep, Rule, RuleTable, World } from '@/types/world';
 const EFFECT_KINDS = new Set([
   'say', 'set', 'clear', 'move', 'open', 'close', 'lock', 'unlock', 'switch', 'add', 'setVar', 'score',
   'go', 'schedule', 'cancel', 'chance', 'run', 'die', 'end', 'moveNpc', 'npcState', 'script', 'hide', 'reveal',
-  'if', 'unvisit', 'free', 'noDarkLine', 'unlist', 'relist', 'look', 'board', 'disembark',
+  'if', 'unvisit', 'free', 'noDarkLine', 'unlist', 'relist', 'touch', 'look', 'board', 'disembark',
 ]);
 
 export function auditWorld(world: World): string[] {
@@ -28,7 +28,7 @@ export function auditWorld(world: World): string[] {
       }
       const e = step as Effect & Record<string, unknown>;
       const target = e[kind] as unknown;
-      if (['open', 'close', 'lock', 'unlock', 'switch', 'unlist', 'relist', 'board'].includes(kind) && !isItem(target as string)) problems.push(`${where}: ${kind} names no item “${target}”`);
+      if (['open', 'close', 'lock', 'unlock', 'switch', 'unlist', 'relist', 'touch', 'board'].includes(kind) && !isItem(target as string)) problems.push(`${where}: ${kind} names no item “${target}”`);
       if (kind === 'move') {
         if (!isItem(e.move as string)) problems.push(`${where}: move names no item “${e.move}”`);
         const to = e.to as string | null;
@@ -173,7 +173,11 @@ export function auditWorld(world: World): string[] {
   }
   for (const [i, d] of (world.daemons ?? []).entries()) checkCondition(d.if, `daemon ${i}`);
   for (const h of world.hints ?? []) checkCondition(h.if, 'hint');
-  for (const s of world.scoring ?? []) checkCondition(s.if, 'scoring');
+  for (const s of world.scoring ?? []) {
+    checkCondition(s.if, 'scoring');
+    // The score is the sum of these entries: one that tests it would recurse.
+    if (s.if && /(^|[!&\s])score\s*[<>=]/.test(s.if)) problems.push(`scoring: “${s.if}”: a scoring condition can’t use the score`);
+  }
   if (world.finale) {
     checkEvent(world.finale.event, 'finale');
     checkEvent(world.finale.bareHanded, 'finale');

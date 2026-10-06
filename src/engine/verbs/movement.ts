@@ -3,7 +3,8 @@ import type { Exit, World } from '@/types/world';
 import { evaluateCondition } from '../conditions';
 import { COMPASS, describeRoom, exitList } from '../describe';
 import { fuzzyMatchExit } from '../fuzzy';
-import { isLit, isOpen, isWater, matchItem, visibleItems } from '../model';
+import { isLit, isOpen, isWater, matchItem, pickItem, visibleItems } from '../model';
+import { handleBoard } from './vehicle';
 import { runSteps, turnHalted } from '../effects';
 import { nextRandom } from '../rng';
 import { miss, ok, type EngineResult } from '../result';
@@ -47,6 +48,8 @@ export function enterRoom(targetId: string, world: World, state: GameState, opts
   if (stumble && !wasLit && !isLit(world, state) && nextRandom(state) * 100 < stumble.chance) {
     return [...landing, ...runSteps(state.aboard && stumble.aboard ? stumble.aboard : stumble.then, world, state)];
   }
+  // Zork's GOTO, surviving that: “You have moved into a dark place.”
+  if (world.darkness?.arrive && !isLit(world, state)) landing.push(world.darkness.arrive);
   // A dark room isn't visited until you've seen it (Zork's TOUCHBIT).
   if (first && isLit(world, state)) state.visited.push(targetId);
   // A quiet move (Zork's GOTO without a description) still runs the room's arrival events.
@@ -132,6 +135,9 @@ export function handleEnter(target: string | undefined, world: World, state: Gam
   if (label) return followExit(room.exits[label], world, state);
   const door = exitThroughDoor(target, world, state);
   if (door) return followExit(door, world, state);
+  // ENTER BOAT: a vehicle is boarded (Zork's V-THROUGH).
+  const vehicle = pickItem(target, visibleItems(world, state), world, 'target', state);
+  if (vehicle && world.items[vehicle].vehicle) return handleBoard({ action: 'board', target: vehicle }, world, state);
   return miss('You can’t enter that.');
 }
 

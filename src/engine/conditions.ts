@@ -1,5 +1,6 @@
 import type { GameState } from '@/types/game';
 import type { World } from '@/types/world';
+import { currentScore } from './score';
 import { weightOf } from './weight';
 import { isAlive, isAwake, isLit, isLocked, isNpcIn, isOn, isOpen, isReachable, isWater, npcsSeen } from './model';
 
@@ -17,6 +18,7 @@ import { isAlive, isAwake, isLit, isLocked, isNpcIn, isOn, isOpen, isReachable, 
  *   var:NAME<=N     a numeric variable compared (=, <, >, <=, >=); unset is 0
  *   carrying<=N     how many things the player holds directly
  *   heaviest<=N     the heaviest thing the player holds, contents included
+ *   score<=N        the score, as SCORE reports it
  *   lit:here, lit:ROOM  the room has light (needs `world`)
  * Unrecognized strings evaluate to false.
  */
@@ -51,11 +53,12 @@ export function evaluateCondition(condition: string, state: GameState, world?: W
   const negated = trimmed.startsWith('!');
   const body = negated ? trimmed.slice(1) : trimmed;
 
-  // var:NAME<=N, carrying<=N and heaviest<=N (with =, <, >, <=, >=)
-  const compare = body.match(/^(?:var:(\w+)|(carrying|heaviest))\s*(<=|>=|=|<|>)\s*(-?\d+)$/);
+  // var:NAME<=N, carrying<=N, heaviest<=N and score<=N (with =, <, >, <=, >=)
+  const compare = body.match(/^(?:var:(\w+)|(carrying|heaviest|score))\s*(<=|>=|=|<|>)\s*(-?\d+)$/);
   if (compare) {
     const [, name, count, op, n] = compare;
-    const value = count === 'heaviest' ? heaviest(state, world) : count ? carrying(state) : (state.vars?.[name] ?? 0);
+    const value =
+      count === 'heaviest' ? heaviest(state, world) : count === 'score' ? (world ? currentScore(world, state) : 0) : count ? carrying(state) : (state.vars?.[name] ?? 0);
     const result = COMPARE[op](value, Number(n));
     return negated ? !result : result;
   }
@@ -128,7 +131,7 @@ export function conditionProblems(condition: string, world: World): string[] {
   const problems: string[] = [];
   for (const part of condition.split('&')) {
     const body = part.trim().replace(/^!/, '');
-    if (/^(?:var:\w+|carrying|heaviest)\s*(<=|>=|=|<|>)\s*-?\d+$/.test(body)) continue;
+    if (/^(?:var:\w+|carrying|heaviest|score)\s*(<=|>=|=|<|>)\s*-?\d+$/.test(body)) continue;
     const [kind, value = '', extra] = body.split(':');
     const item = (id: string) => id in world.items || id in world.npcs;
     const room = (id: string) => id in world.rooms;

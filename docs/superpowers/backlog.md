@@ -2,6 +2,14 @@
 
 Known gaps the reviews found and deferred. Each stage's spec picks up the ones it touches; strike an item through (or delete it) when it ships. Newest first.
 
+## From stage 5d (1.12.0)
+
+- **A character who arrived** is listed before the room's things only on the turn he arrives; Zork keeps him first until something else moves in.
+- **ENTER of an ambiguous non-vehicle** asks “which do you mean” and then misses; the vehicle check should look only at vehicles.
+- **The 350 whisper** is a daemon, so it would follow a room description if the last points came from entering a room (SCORE-UPD prints it inside the action).
+- **The floor-like surface listing** (the kitchen table) doesn't count as listed for later indentation, nor add “(outside the boat)”.
+- **Older Zork replies** found in review: “enter trap door” goes down (Zork: “You hit your head against the trap door…”); “enter sack/house” use the generic miss; a failed conditional exit costs a turn.
+
 ## From stage 5c (1.11.0)
 
 - **CLIMB UP/DOWN** *a thing* walks for any visible thing (“climb down lamp” goes down; Zork: “The brass lantern doesn't lead downward.”), and with no exit says “You can't climb that way.” where Zork says “You can't go that way.”

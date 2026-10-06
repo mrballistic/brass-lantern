@@ -57,11 +57,12 @@ const world: World = {
 const run = (s: GameState, action: string, target?: string) => execute(target ? { action, target } : { action }, { world, state: s });
 
 describe('Infocom style', () => {
-  it('a scenery surface shows what’s on it; untouched things with a first-seen sentence use it', () => {
+  it('a scenery surface shows what’s on it as if on the floor; untouched things with a first-seen sentence use it', () => {
     const lines = describeCurrentRoom(world, stateWith(world, { room: 'kitchen' }));
     expect(lines).toContain('On the table is a brown sack.');
-    expect(lines).toContain('Sitting on the kitchen table is:');
-    expect(lines).toContain('  A cup');
+    // Release 119 describes what's on the kitchen table as if it were on the floor (5d).
+    expect(lines).toContain('There is a cup here.');
+    expect(lines.join('\n')).not.toContain('Sitting on the kitchen table is:');
     expect(lines.join('\n')).not.toContain('There is a kitchen table here.');
   });
 

@@ -169,3 +169,116 @@ describe('EXAMINE a closed container (5b)', () => {
     expect(run(s, { action: 'examine', target: 'box' }, world)).toEqual(['The box is closed.']);
   });
 });
+
+describe('opening a container touches it (V-OPEN’s TOUCHBIT) (5d)', () => {
+  it('its first-seen sentence gives way to the plain listing', () => {
+    const world: World = {
+      ...w,
+      items: { ...w.items, sack: { name: 'brown sack', description: '', portable: true, tags: [], initialDescription: 'On the table is a sack.', container: { openable: true, open: false } } },
+    };
+    const s = stateWith(world, { room: 'bedroom' });
+    s.locations.sack = 'bedroom';
+    expect(run(s, { action: 'look' }, world)).toContain('On the table is a sack.');
+    run(s, { action: 'open', target: 'sack' }, world);
+    const after = run(s, { action: 'look' }, world);
+    expect(after).not.toContain('On the table is a sack.');
+    expect(after).toContain('There is a brown sack here.');
+  });
+});
+
+describe('touched things on a scenery surface read as if on the floor (Release 119) (5d)', () => {
+  it('“There is a brown sack here.”, not “Sitting on the kitchen table is:”', () => {
+    const world: World = {
+      ...w,
+      items: {
+        ...w.items,
+        table: { name: 'kitchen table', description: '', portable: false, tags: [], scenery: true, surface: true },
+        sack: { name: 'brown sack', description: '', portable: true, tags: [], initialDescription: 'On the table is a sack.', container: { openable: true, open: true } },
+      },
+    };
+    const s = stateWith(world, { room: 'bedroom' });
+    s.locations.table = 'bedroom';
+    s.locations.sack = 'table';
+    s.itemState.sack = { moved: true, open: true };
+    const lines = run(s, { action: 'look' }, world);
+    expect(lines).toContain('There is a brown sack here.');
+    expect(lines.join(' ')).not.toContain('Sitting on the kitchen table is:');
+  });
+});
+
+describe('THROW X IN Y is PUT (Zork’s syntax) (5d)', () => {
+  it('parses the preposition, and in Infocom style puts it in', () => {
+    expect(fallbackParse('throw sceptre in boat')).toEqual({ action: 'throw', target: 'sceptre', indirect: 'boat', prep: 'in' });
+    expect(fallbackParse('throw axe at troll')).toEqual({ action: 'throw', target: 'axe', indirect: 'troll' });
+    const world: World = { ...w, items: { ...w.items, box: { name: 'box', description: '', portable: false, tags: [], container: { open: true } } } };
+    const s = stateWith(world, { room: 'bedroom', carrying: ['note'] });
+    s.locations.box = 'bedroom';
+    expect(run(s, { action: 'throw', target: 'note', indirect: 'box', prep: 'in' }, world)).toEqual(['Done.']);
+    expect(s.locations.note).toBe('box');
+  });
+});
+
+describe('a lit light on the floor says so (5d)', () => {
+  it('“There is a pair of candles here (providing light).”', () => {
+    const world: World = { ...w, items: { ...w.items, candles: { name: 'pair of candles', article: 'a', description: '', portable: true, tags: [], light: true, switchable: true } } };
+    const s = stateWith(world, { room: 'bedroom' });
+    s.locations.candles = 'bedroom';
+    s.itemState.candles = { on: true, moved: true };
+    expect(run(s, { action: 'look' }, world)).toContain('There is a pair of candles here (providing light).');
+  });
+});
+
+describe('a scenery container’s contents go a level deeper after floor items (PRINT-CONT’s LEVEL) (5d)', () => {
+  it('the trophy case’s list is indented further once something else was listed', () => {
+    const world: World = {
+      ...w,
+      items: {
+        ...w.items,
+        case: { name: 'trophy case', description: '', portable: false, tags: [], scenery: true, container: { open: true, transparent: true }, contentsHeading: 'Your collection of treasures consists of:' },
+        gem: { name: 'gem', description: '', portable: true, tags: [] },
+        sock: { name: 'sock', description: '', portable: true, tags: [] },
+      },
+    };
+    const s = stateWith(world, { room: 'bedroom' });
+    for (const id of Object.keys(s.locations)) if (s.locations[id] === 'bedroom') s.locations[id] = null;
+    s.locations.case = 'bedroom';
+    s.locations.gem = 'case';
+    expect(run(s, { action: 'look' }, world)).toEqual(expect.arrayContaining(['Your collection of treasures consists of:', '  A gem']));
+    s.locations.sock = 'bedroom';
+    s.itemState.sock = { moved: true };
+    const lines = run(s, { action: 'look' }, world);
+    expect(lines).toContain('There is a sock here.');
+    expect(lines).toEqual(expect.arrayContaining(['Your collection of treasures consists of:', '    A gem']));
+  });
+});
+
+describe('a character who just arrived is listed before the room’s things (object order) (5d)', () => {
+  it('moved in this turn: first', async () => {
+    const { runSteps } = await import('@/engine/effects');
+    const s = stateWith(w, { room: 'shed' });
+    s.locations.note = 'shed';
+    s.itemState.note = { moved: true };
+    s.npcs = { guard: { room: null } };
+    const { describeCurrentRoom } = await import('@/engine/engine');
+    runSteps([{ moveNpc: 'guard', to: 'shed' }], w, s);
+    // Described in the same turn he arrived (the thief rushing into his lair as you climb up).
+    const lines = describeCurrentRoom(w, s);
+    const guard = lines.findIndex((l) => l.startsWith('A guard'));
+    const note = lines.indexOf('There is a note here.');
+    expect(guard).toBeGreaterThan(-1);
+    expect(guard).toBeLessThan(note);
+  });
+});
+
+describe('final review fixes (5d, brass)', () => {
+  it('THROW X IN Y with no rule is a miss in brass (the intent server can read it as PUT)', () => {
+    const s = stateWith(fixtureWorld, { room: 'bedroom', carrying: ['bat'] });
+    const r = execute({ action: 'throw', target: 'bat', indirect: 'bed', prep: 'in' }, { world: fixtureWorld, state: s });
+    expect(r.understood).toBe(false);
+    expect(s.locations.bat).toBe('player');
+  });
+  it('turning off something that can’t be switched is a miss in brass', () => {
+    const s = stateWith(fixtureWorld, { room: 'bedroom', carrying: ['bat'] });
+    expect(execute({ action: 'turn_off', target: 'bat' }, { world: fixtureWorld, state: s }).understood).toBe(false);
+  });
+});

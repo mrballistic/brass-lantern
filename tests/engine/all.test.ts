@@ -119,3 +119,47 @@ describe('ALL and EXCEPT', () => {
     expect(lines.some((l) => l.startsWith('glass jar:'))).toBe(false);
   });
 });
+
+describe('TAKE ALL FROM a container (5d)', () => {
+  it('takes what’s in it, not the container', async () => {
+    const { fixtureWorld } = await import('../fixtures/world');
+    const { stateWith } = await import('../helpers/state');
+    const { execute } = await import('@/engine/engine');
+    const world = {
+      ...fixtureWorld,
+      style: 'infocom' as const,
+      items: {
+        ...fixtureWorld.items,
+        bin: { name: 'basket', description: '', portable: false, tags: [], container: { open: true } },
+        coal: { name: 'small pile of coal', description: '', portable: true, tags: [] },
+        rag: { name: 'rag', description: '', portable: true, tags: [] },
+      },
+    };
+    const s = stateWith(world, { room: 'bedroom' });
+    s.locations.bin = 'bedroom';
+    s.locations.coal = 'bin';
+    s.locations.rag = 'bin';
+    expect(execute({ action: 'take', target: 'all', indirect: 'basket' }, { world, state: s }).lines).toEqual(['rag: Taken.', 'small pile of coal: Taken.']);
+    expect(s.locations.coal).toBe('player');
+    expect(s.locations.bin).toBe('bedroom');
+  });
+});
+
+describe('final review fixes (5d)', () => {
+  it('TAKE ALL FROM a closed container takes nothing and names nothing inside; from an unknown thing it’s a miss', async () => {
+    const { fixtureWorld } = await import('../fixtures/world');
+    const { stateWith } = await import('../helpers/state');
+    const { execute } = await import('@/engine/engine');
+    const world = {
+      ...fixtureWorld,
+      items: { ...fixtureWorld.items, bin: { name: 'bin', description: '', portable: false, tags: [], container: { openable: true, open: false } }, rag: { name: 'rag', description: '', portable: true, tags: [] } },
+    };
+    const s = stateWith(world, { room: 'bedroom' });
+    s.locations.bin = 'bedroom';
+    s.locations.rag = 'bin';
+    const r = execute({ action: 'take', target: 'all', indirect: 'bin' }, { world, state: s });
+    expect(r.lines.join(' ')).not.toContain('rag');
+    expect(s.locations.rag).toBe('bin');
+    expect(execute({ action: 'take', target: 'all', indirect: 'xyzzy' }, { world, state: s }).understood).toBe(false);
+  });
+});
