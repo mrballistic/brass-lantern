@@ -354,3 +354,14 @@ export function pickItem(target: string, ids: string[], world: World, slot: 'tar
 export function needObject(slot: 'target' | 'indirect' = 'target'): never {
   throw new AskSignal({ kind: 'what', slot });
 }
+
+/** A copy of the state to go back to: plain data (JSON, as saves are), safe for a reactive proxy. */
+export function snapshotState(state: GameState): GameState {
+  return JSON.parse(JSON.stringify(state)) as GameState;
+}
+
+/** Puts the state back as `snapshot` had it, in place (the same object, keys and all). */
+export function restoreState(state: GameState, snapshot: GameState): void {
+  for (const key of Object.keys(state)) delete (state as unknown as Record<string, unknown>)[key];
+  Object.assign(state, snapshot);
+}

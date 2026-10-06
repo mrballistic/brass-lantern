@@ -10,6 +10,15 @@ import { runEventKey, runSteps, scheduledThisTurn, turnHalted } from './effects'
  * changes nothing. `existing` holds the fuses pending before this turn, so a
  * fuse set during the turn starts counting next turn.
  */
+const fired = new WeakSet<GameState>();
+
+/** Did a timer go off in the last afterTurn (a cancelled one doesn't count)? Clears the mark. */
+export function fuseFired(state: GameState): boolean {
+  const did = fired.has(state);
+  fired.delete(state);
+  return did;
+}
+
 export function afterTurn(world: World, state: GameState, existing: Set<string>): string[] {
   // Zork's CLOCKER runs the newest interrupts first: healing (queued in
   // fights), then the timers and daemons, and the fight (queued first) last.
@@ -19,6 +28,7 @@ export function afterTurn(world: World, state: GameState, existing: Set<string>)
     if (!existing.has(key) || scheduledThisTurn(state, key) || state.fuses?.[key] === undefined) continue;
     if (left <= 1) {
       delete state.fuses![key];
+      fired.add(state);
       out.push(...runEventKey(key, world, state));
     } else {
       state.fuses![key] = left - 1;

@@ -253,14 +253,21 @@ export const useGameStore = defineStore('game', {
         }
         // Once the game is over, one command hears that it has ended; the rest of the line is dropped.
         if (this.game.gameOver && i > 0) break;
-        // A room or the world can take input before it's parsed; taking it ends the line.
-        const captured = conversation.pending ? null : captureLine(world, this.game, command);
-        if (captured) {
-          if (captured.mutated) line.changed = true;
-          this.applyResult(captured);
+        try {
+          // A room or the world can take input before it's parsed; taking it ends the line.
+          const captured = conversation.pending ? null : captureLine(world, this.game, command);
+          if (captured) {
+            if (captured.mutated) line.changed = true;
+            this.applyResult(captured);
+            break;
+          }
+          await this.runCommand(command);
+        } catch (error) {
+          // The engine rolled the turn back; say so, and drop the rest of the line.
+          console.error('Command failed:', error);
+          this.appendSystem('[Something went wrong with that command. Nothing changed.]');
           break;
         }
-        await this.runCommand(command);
         // A question stops the line, as in Zork: the next line answers it.
         if (conversation.pending) break;
       }

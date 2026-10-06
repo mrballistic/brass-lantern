@@ -1,7 +1,7 @@
 import type { GameState, ParsedAction } from '@/types/game';
 import type { Item, NPC, Room, Rule, World } from '@/types/world';
 import { evaluateCondition } from './conditions';
-import { heldItems, inventoryOf, matchNpc, pickItem, reachableItems, visibleItems } from './model';
+import { heldItems, inventoryOf, matchNpc, pickItem, reachableItems, restoreState, snapshotState, visibleItems } from './model';
 import { setCommand } from './scripts';
 import { runEventKey, turnHalted } from './effects';
 import { ok, type EngineResult } from './result';
@@ -136,8 +136,21 @@ export function withRules(
   });
   const instead = findRule(world, state, 'instead', verb, ids, reach);
   if (instead && !instead.continue) return applyRule(instead, world, state);
+  // A `continue` rule runs first; if the default then misses or asks, the rule is undone too,
+  // so a miss never changes state (the intent server retries from where things stood).
+  const saved = instead ? snapshotState(state) : null;
   const before = instead ? applyRule(instead, world, state) : null;
-  const ran = run();
+  let ran: EngineResult;
+  try {
+    ran = run();
+  } catch (e) {
+    if (saved) restoreState(state, saved);
+    throw e;
+  }
+  if (saved && ran.understood === false) {
+    restoreState(state, saved);
+    return ran;
+  }
   const result = before ? { ...ran, lines: [...before.lines, ...ran.lines], mutated: ran.mutated || before.mutated } : ran;
   if (result.understood === false || !result.mutated) return result;
   const after = findRule(world, state, 'after', verb, ids, reachableItems(world, state));

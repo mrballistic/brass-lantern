@@ -244,3 +244,15 @@ describe('ENTER a vehicle boards it (V-THROUGH) (5d)', () => {
     expect(s.aboard).toBe('raft');
   });
 });
+
+describe('a silent disembark counts as a change (fast follow)', () => {
+  it('a daemon that only takes you out of the vehicle marks the turn changed, so it’s saved', () => {
+    // A daemon, so nothing but `aboard` changes.
+    const w: World = { ...boatWorld, daemons: [{ if: 'aboard', then: [{ disembark: true }] }] };
+    const s = stateWith(w, { room: 'yard' });
+    s.aboard = 'raft';
+    const r = execute({ action: 'wait' }, { world: w, state: s });
+    expect(s.aboard).toBeUndefined();
+    expect(r.mutated).toBe(true);
+  });
+});

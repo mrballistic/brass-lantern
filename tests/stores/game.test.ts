@@ -704,3 +704,47 @@ describe('useGameStore', () => {
     });
   });
 });
+
+describe('a command whose script throws (fast follow)', () => {
+  it('says nothing changed, keeps the game as it was, and logs the error', async () => {
+    const room = fixtureWorld.rooms.bedroom;
+    const savedInstead = room.instead;
+    fixtureWorld.scripts = { ...fixtureWorld.scripts, boom: () => { throw new Error('boom'); } };
+    fixtureWorld.verbs = { ...fixtureWorld.verbs, explode: { words: ['explode'], target: 'none' } };
+    fixtureWorld.events = { ...fixtureWorld.events, half: [{ set: 'half_done' }, { script: 'boom' }] };
+    room.instead = { ...room.instead, explode: [{ then: 'half' }] };
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const store = freshStore();
+      store.initialize();
+      store.game.currentRoom = 'bedroom';
+      await store.submit('explode');
+      expect(store.output.at(-1)?.text).toBe('[Something went wrong with that command. Nothing changed.]');
+      expect(store.game.flags.half_done).toBeUndefined();
+      expect(errors).toHaveBeenCalled();
+    } finally {
+      room.instead = savedInstead;
+      delete fixtureWorld.verbs?.explode;
+      delete fixtureWorld.scripts?.boom;
+      delete fixtureWorld.events.half;
+      errors.mockRestore();
+    }
+  });
+});
+
+describe('a pure echo from a capture (fast follow)', () => {
+  it('isn’t an UNDO step', async () => {
+    const room = fixtureWorld.rooms[fixtureWorld.startRoom];
+    fixtureWorld.scripts = { ...fixtureWorld.scripts, cap: (ctx) => [`${ctx.line} ${ctx.line}...`, { free: true }] };
+    room.capture = { script: 'cap' };
+    try {
+      const store = freshStore();
+      store.initialize();
+      await store.submit('hello');
+      await store.submit('undo');
+      expect(store.output.at(-1)?.text).toBe('[Nothing to undo.]');
+    } finally {
+      delete room.capture;
+    }
+  });
+});

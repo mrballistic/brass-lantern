@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { execute } from '@/engine/engine';
 import { stateWith } from '../helpers/state';
-import { fixtureWorld as world } from '../fixtures/world';
+import { fixtureWorld as world, fixtureWorld } from '../fixtures/world';
+import type { World } from '@/types/world';
 
 const run = (state: ReturnType<typeof stateWith>, action: string, target?: string, indirect?: string) =>
   execute({ action, target, indirect }, { world, state });
@@ -83,5 +84,19 @@ describe('rules by role and preposition (5a)', () => {
     s.itemState.chest = { open: true, locked: false };
     expect(execute({ action: 'put', target: 'wallet', indirect: 'chest', prep: 'in' }, { world: w, state: s }).lines).toEqual(['Not in there.']);
     expect(execute({ action: 'put', target: 'wallet', indirect: 'shelf', prep: 'on' }, { world: w, state: s }).lines).not.toEqual(['Not in there.']);
+  });
+});
+
+describe('a continue rule before a default that misses (fast follow)', () => {
+  it('is undone with the miss, so the retry starts clean', () => {
+    const w: World = {
+      ...fixtureWorld,
+      events: { ...fixtureWorld.events, mark: [{ set: 'marked' }] },
+      rooms: { ...fixtureWorld.rooms, bedroom: { ...fixtureWorld.rooms.bedroom, instead: { ...fixtureWorld.rooms.bedroom.instead, go: [{ continue: true, then: 'mark' }] } } },
+    };
+    const s = stateWith(w, { room: 'bedroom' });
+    const r = execute({ action: 'go', target: 'northwest' }, { world: w, state: s });
+    expect(r.understood).toBe(false);
+    expect(s.flags.marked).toBeUndefined();
   });
 });

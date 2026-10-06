@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { runSteps } from '@/engine/effects';
+import { execute } from '@/engine/engine';
 import { roll } from '@/engine/rng';
 import type { World } from '@/types/world';
 import { stateWith } from '../helpers/state';
@@ -82,5 +83,21 @@ describe('scripts', () => {
       scripts: { look: (ctx) => [`${ctx.npcIn('guard', 'shed')} ${ctx.rooms()[0]} ${ctx.visited('bedroom')} ${ctx.treasure('coin')} ${ctx.tags('cellar').join()} ${ctx.lit('bedroom')} ${ctx.children('chest').join()}`] },
     };
     expect(runSteps([{ script: 'look' }], w, stateWith(w))).toEqual(['true bedroom true 2 deep true coin']);
+  });
+});
+
+describe('a script that throws (fast follow)', () => {
+  it('leaves the turn as it found it, seed included, and still surfaces the error', () => {
+    const w: World = {
+      ...fixtureWorld,
+      scripts: { ...fixtureWorld.scripts, boom: (ctx) => { void ctx.roll(6); throw new Error('boom'); } },
+      events: { ...fixtureWorld.events, half: [{ set: 'half_done' }, 'Half.', { script: 'boom' }] },
+      verbs: { ...fixtureWorld.verbs, explode: { words: ['explode'], target: 'none' } },
+      rooms: { ...fixtureWorld.rooms, bedroom: { ...fixtureWorld.rooms.bedroom, instead: { ...fixtureWorld.rooms.bedroom.instead, explode: [{ then: 'half' }] } } },
+    };
+    const s = stateWith(w, { room: 'bedroom' });
+    const before = structuredClone(s);
+    expect(() => execute({ action: 'explode' }, { world: w, state: s })).toThrow('boom');
+    expect(s).toEqual(before);
   });
 });

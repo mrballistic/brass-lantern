@@ -2,12 +2,12 @@ import type { GameState, ParsedAction } from '@/types/game';
 import type { EventStep, World } from '@/types/world';
 import { evaluateCondition } from './conditions';
 import { describeRoom } from './describe';
-import { AskSignal, initialLocations, isLit, matchItem, setResolveById, takeActed, visibleItems } from './model';
+import { AskSignal, initialLocations, isLit, matchItem, restoreState, setResolveById, snapshotState, takeActed, visibleItems } from './model';
 import { whatQuestion, whichQuestion } from './ask';
 import { darknessFalls, tooDark } from './light';
-import { beginTurn, darkLineSaid, runEventKey, runSteps, setEffectHooks, turnFree, turnHalted } from './effects';
+import { beginTick, beginTurn, darkLineSaid, runEventKey, runSteps, setEffectHooks, turnFree, turnHalted } from './effects';
 import { seedFor } from './rng';
-import { afterTurn } from './time';
+import { afterTurn, fuseFired } from './time';
 import { die } from './death';
 import { runEnding } from './endings';
 import { miss, ok, type EngineResult } from './result';
@@ -98,6 +98,10 @@ function parsedCapture(world: World, state: GameState, action: ParsedAction): Ev
 }
 
 export function captureLine(world: World, state: GameState, line: string): EngineResult | null {
+  return guarded(state, () => captureTurn(world, state, line));
+}
+
+function captureTurn(world: World, state: GameState, line: string): EngineResult | null {
   if (state.gameOver) return null;
   for (const capture of [world.rooms[state.currentRoom]?.capture, world.capture]) {
     if (!capture || (capture.if && !evaluateCondition(capture.if, state, world))) continue;
@@ -113,7 +117,38 @@ export function captureLine(world: World, state: GameState, line: string): Engin
   return null;
 }
 
+/** What a turn can change, as one string: equal before and after means nothing changed. */
+function stateKey(state: GameState): string {
+  return JSON.stringify([state.vars, state.fuses, state.flags, state.locations, state.itemState, state.currentRoom, state.player, state.npcs, state.rng, state.aboard ?? null, state.visited, state.gameOver ?? false]);
+}
+
+/** States inside a turn, so only the outermost call takes a snapshot. */
+const inTurn = new WeakSet<GameState>();
+
+/**
+ * Runs a turn so that a script that throws leaves the state as it found it (the seed too):
+ * the error still surfaces, but never a half-applied turn.
+ */
+function guarded<T>(state: GameState, turn: () => T): T {
+  if (inTurn.has(state)) return turn();
+  const before = snapshotState(state);
+  inTurn.add(state);
+  try {
+    return turn();
+  } catch (e) {
+    restoreState(state, before);
+    pendingCapture.delete(state);
+    throw e;
+  } finally {
+    inTurn.delete(state);
+  }
+}
+
 export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
+  return guarded(deps.state, () => executeTurn(action, deps));
+}
+
+function executeTurn(action: ParsedAction, deps: EngineDeps): EngineResult {
   const { world, state } = deps;
 
   if (state.gameOver && action.action !== 'restart' && action.action !== 'help') {
@@ -159,7 +194,7 @@ export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
   // Misses don't count as turns: they must not mutate state (see EngineResult).
   state.turns = (state.turns ?? 0) + 1;
   state.moveCount += 1;
-  const before = JSON.stringify([state.vars, state.fuses, state.flags, state.locations, state.itemState, state.currentRoom, state.player, state.npcs, state.rng]);
+  const before = stateKey(state);
   // Zork's WAIT runs the clock inside the action, up to `wait.turns` times; the room's
   // end routine (M-END) then follows it. Anything else: end routine, then one tick.
   const waiting = action.action === 'wait' && Boolean(world.wait);
@@ -170,12 +205,13 @@ export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
     if (tick > 0) {
       state.turns = (state.turns ?? 0) + 1;
       state.moveCount += 1;
+      beginTick(state);
     }
     const fuses = Object.keys(state.fuses ?? {});
     const out = afterTurn(world, state, tick === 0 ? pendingFuses : new Set(fuses));
     later.push(...out);
-    // A tick that did something (Zork: an interrupt returned true) ends the wait.
-    if (out.length > 0 || fuses.some((k) => state.fuses?.[k] === undefined)) break;
+    // A tick that did something (Zork: an interrupt returned true) ends the wait; a cancelled timer doesn't.
+    if (fuseFired(state) || out.length > 0) break;
   }
   if (waiting && !turnHalted(state) && !state.gameOver) later.push(...roomEnd(world, state));
   // Light arriving or leaving while the player stays put.
@@ -187,7 +223,7 @@ export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
     }
     if (!litNow && litBefore && !darkLineSaid(state)) later.push(darknessFalls(world));
   }
-  const changed = before !== JSON.stringify([state.vars, state.fuses, state.flags, state.locations, state.itemState, state.currentRoom, state.player, state.npcs, state.rng]);
+  const changed = before !== stateKey(state);
   if (later.length === 0 && !changed) return result;
   return { ...result, lines: [...result.lines, ...later], mutated: true };
 }
@@ -283,7 +319,10 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
     case 'capture': {
       const steps = pendingCapture.get(state) ?? [];
       pendingCapture.delete(state);
-      return ok(runSteps(steps, world, state), true);
+      // A pure echo changes nothing, so it's no UNDO step or save.
+      const before = stateKey(state);
+      const lines = runSteps(steps, world, state);
+      return ok(lines, stateKey(state) !== before);
     }
     case 'diagnose':
       return ok(diagnoseLines(world, state));

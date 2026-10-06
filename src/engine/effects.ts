@@ -37,6 +37,11 @@ export function beginTurn(state: GameState): void {
   darkSaid.delete(state);
 }
 
+/** A new tick of a WAIT: fuses scheduled on the last one count down from now on. */
+export function beginTick(state: GameState): void {
+  scheduled.delete(state);
+}
+
 /** Was this fuse set (or reset) during the current turn? */
 export function scheduledThisTurn(state: GameState, key: string): boolean {
   return scheduled.get(state)?.has(key) ?? false;
