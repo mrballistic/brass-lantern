@@ -1,5 +1,6 @@
 import { conditionProblems, evaluateCondition } from '@/engine/conditions';
 import type { GameState } from '@/types/game';
+import type { World } from '@/types/world';
 import { stateWith } from '../helpers/state';
 import { fixtureWorld } from '../fixtures/world';
 
@@ -149,5 +150,32 @@ describe('conditionProblems and characters', () => {
     expect(conditionProblems('has:neighbor', fixtureWorld)).toEqual(['“has:neighbor” names no item “neighbor”']);
     expect(conditionProblems('on:neighbor', fixtureWorld)).toEqual(['“on:neighbor” names no item “neighbor”']);
     expect(conditionProblems('here:neighbor', fixtureWorld)).toEqual([]);
+  });
+});
+
+describe('heaviest<=N (5c)', () => {
+  it('is the heaviest thing held, a container counted with its contents', () => {
+    const w: World = {
+      ...fixtureWorld,
+      items: {
+        ...fixtureWorld.items,
+        feather: { name: 'feather', description: '', portable: true, tags: [], size: 1 },
+        pouch: { name: 'pouch', description: '', portable: true, tags: [], size: 2, container: { open: true } },
+        rock: { name: 'rock', description: '', portable: true, tags: [], size: 3 },
+      },
+    };
+    const s = stateWith(w, { room: 'bedroom' });
+    expect(evaluateCondition('heaviest<=4', s, w)).toBe(true); // empty hands: 0
+    s.locations.feather = 'player';
+    s.locations.pouch = 'player';
+    expect(evaluateCondition('heaviest<=4', s, w)).toBe(true); // 1 and 2
+    s.locations.rock = 'pouch';
+    expect(evaluateCondition('heaviest<=4', s, w)).toBe(false); // pouch 2 + rock 3
+    expect(evaluateCondition('heaviest=5', s, w)).toBe(true);
+    expect(evaluateCondition('!heaviest>4', s, w)).toBe(false);
+  });
+  it('the audit knows the form and catches a malformed one', () => {
+    expect(conditionProblems('heaviest<=4', fixtureWorld)).toEqual([]);
+    expect(conditionProblems('heaviest<4x', fixtureWorld)).not.toEqual([]);
   });
 });
