@@ -140,8 +140,9 @@ const VERB_PATTERNS: ReadonlyArray<readonly [RegExp, string, ('in' | 'on')?]> = 
   [RE.throwIn, 'throw', 'in'],
   [RE.throw, 'throw'],
   [RE.give, 'give'],
-  [RE.askAbout, 'ask'],
+  // An order first: “tell bob to ask about x” is an order, not ASK.
   [RE.orderTo, 'order'],
+  [RE.askAbout, 'ask'],
   [RE.tellAlone, 'order'],
   [RE.talk, 'talk'],
   [RE.ask, 'talk'],

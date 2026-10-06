@@ -1,5 +1,6 @@
 import type { GameState, ParsedAction } from '@/types/game';
 import type { World } from '@/types/world';
+import { withArticle } from '../describe';
 import { runSteps } from '../effects';
 import { isCarried, isOn, matchNpc, moveItem, needObject, pickItem, reachableItems, visibleItems } from '../model';
 import { miss, ok, type EngineResult } from '../result';
@@ -28,7 +29,8 @@ export function handleBurn(action: ParsedAction, world: World, state: GameState)
   const tool = pickItem(action.indirect, reachableItems(world, state), world, 'indirect', state);
   if (!tool) return miss(`You don’t have a “${action.indirect}”.`);
   const name = world.items[id].name;
-  if (!isFlaming(world, state, tool)) return ok([`With a ${world.items[tool].name}??!?`]);
+  // Zork's fixed “a”; elsewhere the right article.
+  if (!isFlaming(world, state, tool)) return ok([`With ${world.style === 'infocom' ? `a ${world.items[tool].name}` : withArticle(world, tool)}??!?`]);
   if (!world.items[id].burnable) return ok([`You can’t burn a ${name}.`]);
   const held = isCarried(state, id);
   moveItem(state, id, null);

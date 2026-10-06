@@ -256,3 +256,15 @@ describe('a silent disembark counts as a change (fast follow)', () => {
     expect(r.mutated).toBe(true);
   });
 });
+
+describe('fast follow (B)', () => {
+  it('in the dark, aboard, “get out of raft” still finds the raft you’re in', () => {
+    const s = stateWith(boatWorld, { room: 'cellar' });
+    s.locations.raft = 'cellar';
+    s.aboard = 'raft';
+    s.currentRoom = 'yard';
+    s.locations.raft = 'yard';
+    const dark: World = { ...boatWorld, rooms: { ...boatWorld.rooms, yard: { ...boatWorld.rooms.yard, dark: true } } };
+    expect(run(s, { action: 'disembark', target: 'raft' }, dark).lines[0]).toBe('You are on your own feet again.');
+  });
+});

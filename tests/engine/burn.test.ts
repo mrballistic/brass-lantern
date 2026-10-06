@@ -68,3 +68,14 @@ describe('TURN and PLUG with a tool', () => {
     expect(s.itemState.lamp?.on).toBe(true);
   });
 });
+
+describe('BURN’s refusal in brass (fast follow)', () => {
+  it('uses the right article', async () => {
+    const { fixtureWorld } = await import('../fixtures/world');
+    const { stateWith } = await import('../helpers/state');
+    const { execute } = await import('@/engine/engine');
+    const w = { ...fixtureWorld, items: { ...fixtureWorld.items, apple: { name: 'apple', description: '', portable: true, tags: [] }, torch2: { name: 'torch', description: '', portable: true, tags: [], flaming: true, light: true, switchable: true } } };
+    const s = stateWith(w, { room: 'bedroom', carrying: ['apple'] });
+    expect(execute({ action: 'burn', target: 'bed', indirect: 'apple' }, { world: w, state: s }).lines.join(' ')).toContain('an apple');
+  });
+});
