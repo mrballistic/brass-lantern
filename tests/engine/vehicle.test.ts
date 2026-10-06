@@ -40,14 +40,14 @@ describe('boarding and leaving', () => {
   });
   it('DISEMBARK gets out, but not on water', () => {
     const s = stateWith(boatWorld, { room: 'yard' });
-    expect(run(s, { action: 'disembark' }).lines[0]).toBe('You’re not in that!');
+    expect(run(s, { action: 'disembark' }).lines).toContain('You’re not in that!');
     s.aboard = 'raft';
-    expect(run(s, { action: 'disembark' }).lines[0]).toBe('You are on your own feet again.');
+    expect(run(s, { action: 'disembark' }).lines).toContain('You are on your own feet again.');
     expect(s.aboard).toBeUndefined();
     const w = stateWith(boatWorld, { room: 'cellar' });
     w.locations.raft = 'cellar';
     w.aboard = 'raft';
-    expect(run(w, { action: 'disembark' }).lines).toEqual(['You realize that getting out here would be fatal.']);
+    expect(run(w, { action: 'disembark' }).lines).toContain('You realize that getting out here would be fatal.');
   });
   it('aboard: DROP puts things in the vehicle, TAKE vehicle refuses, room things stay in reach', () => {
     const s = stateWith(boatWorld, { room: 'yard', carrying: ['key'] });
@@ -192,5 +192,16 @@ describe('the audit checks a vehicle’s onEnd', () => {
     const p = auditWorld(w).join('\n');
     expect(p).toContain('nowhere9');
     expect(p).toContain('nothing10');
+  });
+});
+
+describe('Zork’s parser guesses the vehicle (5b)', () => {
+  it('DISEMBARK with no object names the one vehicle in sight', () => {
+    const s = stateWith(boatWorld, { room: 'yard' });
+    expect(run(s, { action: 'disembark' }).lines.slice(0, 2)).toEqual(['(raft)', 'You’re not in that!']);
+    s.aboard = 'raft';
+    expect(run(s, { action: 'disembark' }).lines.slice(0, 2)).toEqual(['(raft)', 'You are on your own feet again.']);
+    const none = stateWith(boatWorld, { room: 'living' });
+    expect(run(none, { action: 'disembark' }).lines[0]).toBe('You’re not in that!');
   });
 });

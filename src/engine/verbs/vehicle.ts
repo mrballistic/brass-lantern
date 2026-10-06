@@ -21,9 +21,13 @@ export function handleBoard(action: ParsedAction, world: World, state: GameState
 /** DISEMBARK: Zork's V-DISEMBARK. */
 export function handleDisembark(action: ParsedAction, world: World, state: GameState): EngineResult {
   const id = state.aboard;
+  // With no object, Infocom's parser picks the one vehicle in sight and says so: “(magic boat)”.
+  const vehicles = visibleItems(world, state).filter((v) => world.items[v]?.vehicle);
+  const guessed = !action.target && world.style === 'infocom' ? (id ?? (vehicles.length === 1 ? vehicles[0] : undefined)) : undefined;
+  const note = guessed ? [`(${world.items[guessed].name})`] : [];
   const named = action.target ? pickItem(action.target, visibleItems(world, state), world, 'target', state) : id;
-  if (!id || named !== id) return ok(['You’re not in that!']);
-  if (isWater(world, state)) return ok(['You realize that getting out here would be fatal.']);
+  if (!id || named !== id) return ok([...note, 'You’re not in that!']);
+  if (isWater(world, state)) return ok([...note, 'You realize that getting out here would be fatal.']);
   state.aboard = undefined;
-  return ok(['You are on your own feet again.'], true);
+  return ok([...note, 'You are on your own feet again.'], true);
 }

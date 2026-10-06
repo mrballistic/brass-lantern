@@ -38,6 +38,98 @@ function lightWith(ctx: ScriptContext, tool: string): EventStep[] {
   if (tool === 'torch') return lit ? ['You realize, just in time, that the candles are already lighted.'] : [{ move: 'candles', to: null }, 'The heat from the torch is so intense that the candles are vaporized.'];
   return ['You have to light them with something that’s burning, you know.'];
 }
+/** DEAD-FUNCTION: a spirit's limits, before the parser's own verbs. */
+function deadFunction(ctx: ScriptContext): EventStep[] | undefined {
+  // The line as typed, or a command already parsed (AGAIN, the intent server's reading).
+  const a = ctx.action ?? ctx.parse(ctx.line ?? '');
+  if (!a) return;
+  const verb = a.action;
+  if (['go', 'verbose', 'brief', 'superbrief', 'version', 'save', 'restore', 'load', 'quit', 'restart', 'undo', 'again', 'oops', 'unknown', 'capture'].includes(verb)) return;
+  if (['attack', 'smash'].includes(verb)) return ['All such attacks are vain in your condition.'];
+  if (['open', 'close', 'eat', 'drink', 'inflate', 'deflate', 'turn', 'burn', 'tie', 'untie', 'rub'].includes(verb)) return ['Even such an action is beyond your capabilities.'];
+  if (verb === 'wait') return ['Might as well. You’ve got an eternity.'];
+  if (verb === 'turn_on') return ['You need no light to guide you.'];
+  if (verb === 'score') return ['You’re dead! How can you think of your score?'];
+  if (verb === 'take') return ['Your hand passes through its object.'];
+  if (['drop', 'throw', 'inventory'].includes(verb)) return ['You have no possessions.'];
+  if (verb === 'diagnose') return ['You are dead.'];
+  if (verb === 'look') {
+    const lit = !ctx.world.rooms[ctx.room()]?.dark;
+    return ['The room looks strange and unearthly and objects appear indistinct.', ...(lit ? [] : ['Although there is no light, the room seems dimly illuminated.']), '', { look: true }];
+  }
+  if (verb === 'pray') {
+    if (ctx.room() !== 'south_temple') return ['Your prayers are not heard.'];
+    return [
+      { clear: 'dead' },
+      'From the distance the sound of a lone trumpet is heard. The room becomes very bright and you feel disembodied. In a moment, the brightness fades and you find yourself rising as if from a long sleep, deep in the woods. In the distance you can faintly hear a songbird and the sounds of the forest.',
+      '',
+      { go: 'forest_1' },
+    ];
+  }
+  return ['You can’t even do that.'];
+}
+
+const WEAPONS = ['sceptre', 'knife', 'sword', 'rusty_knife', 'axe', 'stiletto'];
+/** Rooms the boat floats in, and what LAUNCH calls them (RBOAT-FUNCTION). */
+const WATERS: Record<string, string> = { river_1: 'river', river_2: 'river', river_3: 'river', river_4: 'river', reservoir: 'reservoir', in_stream: 'stream' };
+const DIRS: Record<string, string> = { n: 'north', s: 'south', e: 'east', w: 'west', u: 'up', d: 'down', ne: 'northeast', nw: 'northwest', se: 'southeast', sw: 'southwest' };
+
+/** IBOAT-FUNCTION: the pile becomes the magic boat. */
+function inflateBoat(ctx: ScriptContext): EventStep[] {
+  return [
+    'The boat inflates and appears seaworthy.',
+    ...(ctx.state.itemState.boat_label?.moved ? [] : ['A tan label is lying inside the boat.']),
+    { clear: 'deflate' },
+    { move: 'inflatable_boat', to: null },
+    { move: 'inflated_boat', to: 'here' },
+  ];
+}
+
+/** RBOAT-FUNCTION's M-BEG: steering, LAUNCH, and sharp things aboard. */
+function boatBeg(ctx: ScriptContext): EventStep[] | undefined {
+  const a = ctx.action ?? ctx.parse(ctx.line ?? '');
+  if (!a) return;
+  const here = ctx.room();
+  if (a.action === 'go') {
+    const dir = DIRS[a.target ?? ''] ?? a.target ?? '';
+    if (['land', 'east', 'west'].includes(dir)) return;
+    if (here === 'reservoir' && ['north', 'south'].includes(dir)) return;
+    if (here === 'in_stream' && dir === 'south') return;
+    return ['Read the label for the boat’s instructions.'];
+  }
+  if (a.action === 'launch') {
+    if (WATERS[here]) return [`You are on the ${WATERS[here]}, or have you forgotten?`];
+    return launchFrom(ctx, here);
+  }
+  const word = (w?: string) => (w ?? '').toLowerCase().replace(/^the\s+/, '');
+  const named = (w?: string) => WEAPONS.find((id) => ctx.carried(id) && (ctx.world.items[id].name === word(w) || (ctx.world.items[id].aliases ?? []).includes(word(w)) || id === w));
+  const sharp =
+    (a.action === 'drop' && named(a.target)) ||
+    (a.action === 'put' && /boat|raft/.test(word(a.indirect)) && named(a.target)) ||
+    (['attack', 'smash'].includes(a.action) && named(a.indirect));
+  if (!sharp) return;
+  const loot = ctx.children('inflated_boat').filter((id) => ctx.treasure(id) > 0);
+  const steps: EventStep[] = [
+    { disembark: true },
+    { move: 'inflated_boat', to: null },
+    { move: 'punctured_boat', to: 'here' },
+    ...loot.map((id): EventStep => ({ move: id, to: 'here' })),
+    `It seems that the ${ctx.world.items[sharp].name} didn’t agree with the boat, as evidenced by the loud hissing noise issuing therefrom. With a pathetic sputter, the boat deflates, leaving you without.`,
+  ];
+  if (ctx.water()) {
+    steps.push('');
+    steps.push({ die: here === 'reservoir' || here === 'in_stream' ? 'Another pathetic sputter, this time from you, heralds your drowning.' : 'In other words, fighting the fierce currents of the Frigid River. You manage to hold your own for a bit, but then you are carried over a waterfall and into some nasty rocks. Ouch!' });
+  }
+  return steps;
+}
+
+/** RIVER-LAUNCH: where LAUNCH takes the boat from each bank (the river's current starts in stage 5b's river task). */
+function launchFrom(ctx: ScriptContext, here: string): EventStep[] {
+  void ctx;
+  void here;
+  return ['You can’t launch it here.'];
+}
+
 const NO_TREE = 'There is no tree here suitable for climbing.';
 const BOARDED = 'The windows are all boarded.';
 
@@ -1657,7 +1749,7 @@ export const zork1: World = {
       portable: true,
       tags: [],
     },
-    // The boat, folded: it inflates in stage 5b.
+    // The boat (IBOAT-FUNCTION): a pile of plastic until it's inflated.
     inflatable_boat: {
       name: 'pile of plastic',
       aliases: ['boat', 'pile', 'plastic', 'valve', 'plastic pile'],
@@ -1667,6 +1759,67 @@ export const zork1: World = {
       size: 20,
       burnable: true,
       tags: [],
+      instead: {
+        inflate: [{ as: 'target', then: 'boat_inflate' }],
+        pump: [{ as: 'target', then: 'boat_pump' }],
+        breathe: [{ as: 'target', say: ['You don’t have enough lung power to inflate it.'] }],
+      },
+    },
+    // RBOAT-FUNCTION: the magic boat, a vehicle for water.
+    inflated_boat: {
+      name: 'magic boat',
+      aliases: ['boat', 'raft', 'plastic boat', 'seaworthy boat'],
+      description: '',
+      portable: true,
+      size: 20,
+      burnable: true,
+      tags: [],
+      vehicle: { travels: 'water' },
+      container: { open: true, weight: 100 },
+      contains: ['boat_label'],
+      instead: {
+        board: [
+          { if: 'has:sceptre & !aboard', then: 'boat_punctured_boarding' },
+          { if: 'has:knife & !aboard', then: 'boat_punctured_boarding' },
+          { if: 'has:sword & !aboard', then: 'boat_punctured_boarding' },
+          { if: 'has:rusty_knife & !aboard', then: 'boat_punctured_boarding' },
+          { if: 'has:axe & !aboard', then: 'boat_punctured_boarding' },
+          { if: 'has:stiletto & !aboard', then: 'boat_punctured_boarding' },
+        ],
+        inflate: [{ as: 'target', say: ['Inflating it further would probably burst it.'] }],
+        pump: [{ as: 'target', if: 'has:pump', say: ['Inflating it further would probably burst it.'] }],
+        breathe: [{ as: 'target', say: ['Inflating it further would probably burst it.'] }],
+        deflate: [
+          { if: 'aboard:inflated_boat', say: ['You can’t deflate the boat while you’re in it.'] },
+          { then: 'boat_deflate' },
+        ],
+      },
+    },
+    // DBOAT-FUNCTION.
+    punctured_boat: {
+      name: 'punctured boat',
+      aliases: ['boat', 'pile', 'plastic', 'punctured pile'],
+      description: 'There’s nothing special about the punctured boat.',
+      portable: true,
+      size: 20,
+      burnable: true,
+      tags: [],
+      instead: {
+        put: [{ as: 'indirect', with: 'putty', then: 'boat_repaired' }],
+        plug: [{ as: 'target', with: 'putty', then: 'boat_repaired' }, { as: 'target', then: 'with_tell' }],
+        inflate: [{ as: 'target', say: ['No chance. Some moron punctured it.'] }],
+        pump: [{ as: 'target', say: ['No chance. Some moron punctured it.'] }],
+      },
+    },
+    boat_label: {
+      name: 'tan label',
+      aliases: ['label', 'fineprint', 'print', 'fine print'],
+      description: '',
+      portable: true,
+      size: 2,
+      burnable: true,
+      tags: [],
+      text: '  !!!!FROBOZZ MAGIC BOAT COMPANY!!!!\n\nHello, Sailor!\n\nInstructions for use:\n\n   To get into a body of water, say “Launch”.\n   To get to shore, say “Land” or the direction in which you want to maneuver the boat.\n\nWarranty:\n\n  This boat is guaranteed against all defects for a period of 76 milliseconds from date of purchase or until first used, whichever comes first.\n\nWarning:\n   This boat is made of thin plastic.\n   Good Luck!',
     },
     // West of House
     mailbox: {
@@ -2390,6 +2543,41 @@ export const zork1: World = {
   carry: { limit: 100, self: 5, fumble: { over: 7, chance: 8 } },
 
   scripts: {
+    // IBOAT-FUNCTION's INFLATE.
+    boat_inflate: (ctx) => {
+      if (ctx.holder('inflatable_boat') !== ctx.room()) return ['The boat must be on the ground to be inflated.'];
+      const tool = ctx.command?.indirect;
+      if (tool === 'pump') return inflateBoat(ctx);
+      if (!tool) return ['You don’t have enough lung power to inflate it.'];
+      return [`With a ${ctx.world.items[tool]?.name ?? tool}? Surely you jest!`];
+    },
+    // V-PUMP: PUMP UP the boat with the pump in hand.
+    boat_pump: (ctx) => {
+      const tool = ctx.command?.indirect;
+      if (tool && tool !== 'pump') return [`Pump it up with a ${ctx.world.items[tool]?.name ?? tool}?`];
+      if (!ctx.carried('pump')) return ['It’s really not clear how.'];
+      if (ctx.holder('inflatable_boat') !== ctx.room()) return ['The boat must be on the ground to be inflated.'];
+      return inflateBoat(ctx);
+    },
+    // FIX-BOAT: the pile comes back where the punctured boat was.
+    boat_repaired: (ctx) => [{ move: 'inflatable_boat', to: ctx.holder('punctured_boat') as string }, { move: 'punctured_boat', to: null }],
+    // The world's M-BEG: a spirit's limits (DEAD-FUNCTION), and the boat's (RBOAT-FUNCTION) while aboard.
+    world_beg: (ctx) => {
+      if (ctx.state.flags.dead) return deadFunction(ctx);
+      if (ctx.aboard() === 'inflated_boat') return boatBeg(ctx);
+      const a = ctx.action ?? ctx.parse(ctx.line ?? '');
+      // LUNGS, one of Zork's global objects: INFLATE … WITH LUNGS is V-BREATHE.
+      if (a?.action === 'inflate' && /^(?:the\s+)?(?:lungs|air|mouth|breath)$/i.test(a.indirect ?? '')) {
+        const boat = ['inflatable_boat', 'inflated_boat', 'punctured_boat'].find((id) => ctx.here(id) && (ctx.world.items[id].aliases ?? []).concat(ctx.world.items[id].name).some((w) => w === (a.target ?? '').toLowerCase().replace(/^the\s+/, '')));
+        if (boat === 'inflatable_boat') return ['You don’t have enough lung power to inflate it.'];
+        if (boat === 'inflated_boat') return ['Inflating it further would probably burst it.'];
+        if (boat === 'punctured_boat') return ['No chance. Some moron punctured it.'];
+        return ['How can you inflate that?'];
+      }
+      // V-LAUNCH, the parser having guessed the boat.
+      if (a?.action === 'launch' && !a.target && ctx.here('inflated_boat')) return ['(magic boat)', 'You can’t launch that by saying “launch”!'];
+      return;
+    },
     // CANDLES-FCN's LAMP-ON and BURN.
     light_candles: (ctx) => {
       if (ctx.state.flags.candles_burnt) return ['Alas, there’s not much left of the candles. Certainly not enough to burn.'];
@@ -2421,36 +2609,6 @@ export const zork1: World = {
       const item = ctx.world.items[tool];
       if (item?.burnable) return [`The ${item.name} burns and is consumed.`, { move: tool, to: null }];
       return ['The heat from the bell is too intense.'];
-    },
-    // DEAD-FUNCTION: a spirit's limits, before the parser's own verbs.
-    dead_function: (ctx) => {
-      // The line as typed, or a command already parsed (AGAIN, the intent server's reading).
-      const a = ctx.action ?? ctx.parse(ctx.line ?? '');
-      if (!a) return;
-      const verb = a.action;
-      if (['go', 'verbose', 'brief', 'superbrief', 'version', 'save', 'restore', 'load', 'quit', 'restart', 'undo', 'again', 'oops', 'unknown', 'capture'].includes(verb)) return;
-      if (['attack', 'smash'].includes(verb)) return ['All such attacks are vain in your condition.'];
-      if (['open', 'close', 'eat', 'drink', 'inflate', 'deflate', 'turn', 'burn', 'tie', 'untie', 'rub'].includes(verb)) return ['Even such an action is beyond your capabilities.'];
-      if (verb === 'wait') return ['Might as well. You’ve got an eternity.'];
-      if (verb === 'turn_on') return ['You need no light to guide you.'];
-      if (verb === 'score') return ['You’re dead! How can you think of your score?'];
-      if (verb === 'take') return ['Your hand passes through its object.'];
-      if (['drop', 'throw', 'inventory'].includes(verb)) return ['You have no possessions.'];
-      if (verb === 'diagnose') return ['You are dead.'];
-      if (verb === 'look') {
-        const lit = !ctx.world.rooms[ctx.room()]?.dark;
-        return ['The room looks strange and unearthly and objects appear indistinct.', ...(lit ? [] : ['Although there is no light, the room seems dimly illuminated.']), '', { look: true }];
-      }
-      if (verb === 'pray') {
-        if (ctx.room() !== 'south_temple') return ['Your prayers are not heard.'];
-        return [
-          { clear: 'dead' },
-          'From the distance the sound of a lone trumpet is heard. The room becomes very bright and you feel disembodied. In a moment, the brightness fades and you find yourself rising as if from a long sleep, deep in the woods. In the distance you can faintly hear a songbird and the sounds of the forest.',
-          '',
-          { go: 'forest_1' },
-        ];
-      }
-      return ['You can’t even do that.'];
     },
     // LOUD-ROOM-FCN's loop: the first word (after GO or SAY) decides; anything else echoes.
     loud_room_capture: (ctx) => {
@@ -2800,6 +2958,12 @@ export const zork1: World = {
     tie: { words: ['tie', 'fasten', 'secure'], target: 'required', indirect: ['to'], reply: 'You can’t tie that to that.' },
     untie: { words: ['untie', 'unfasten', 'unhook'], target: 'required', indirect: ['from'], reply: 'This cannot be tied, so it cannot be untied!' },
     jump: { words: ['jump', 'leap', 'dive'], target: 'none', reply: 'Wheeeeeeeeee!!!!!' },
+    inflate: { words: ['inflate', 'blow up'], target: 'required', indirect: ['with'], reply: 'How can you inflate that?' },
+    deflate: { words: ['deflate'], target: 'required', reply: 'Come on, now!' },
+    pump: { words: ['pump up', 'pump'], target: 'required', indirect: ['with'], reply: 'It’s really not clear how.' },
+    breathe: { words: ['blow in', 'blow into', 'breathe in', 'breathe into'], target: 'required', reply: 'You don’t have enough lung power to inflate it.' },
+    launch: { words: ['launch'], target: 'optional', reply: 'You can’t launch that by saying “launch”!' },
+    land: { words: ['land'], target: 'none', go: true },
     ring: { words: ['ring', 'peal'], target: 'required', indirect: ['with'], reply: 'How, exactly, can you ring that?' },
     pour: { words: ['pour', 'spill'], target: 'required', indirect: ['on', 'in', 'from'], held: true },
   },
@@ -2843,7 +3007,7 @@ export const zork1: World = {
   ],
   maxScore: 350,
   // DEAD-FUNCTION: what a spirit can and can't do.
-  capture: { if: 'flag:dead', script: 'dead_function' },
+  capture: { script: 'world_beg' },
   // V-WAIT: three turns of the clock, or fewer if something happens.
   wait: { turns: 3 },
   ranks: [
@@ -2977,6 +3141,21 @@ export const zork1: World = {
       { if: 'in:reservoir_south', then: ['You notice that the water level has risen to the point that it is impossible to cross.'] },
     ],
     took_trunk: [{ set: 'took_trunk' }],
+    boat_inflate: [{ script: 'boat_inflate' }],
+    boat_pump: [{ script: 'boat_pump' }],
+    // RBOAT-FUNCTION's DEFLATE.
+    boat_deflate: [
+      { if: '!here:inflated_boat', then: ['The boat must be on the ground to be deflated.'] },
+      { if: 'here:inflated_boat', then: ['The boat deflates.', { set: 'deflate' }, { move: 'inflated_boat', to: null }, { move: 'inflatable_boat', to: 'here' }] },
+    ],
+    // RBOAT-FUNCTION's BOARD: something sharp in hand.
+    boat_punctured_boarding: [
+      'Oops! Something sharp seems to have slipped and punctured the boat. The boat deflates to the sounds of hissing, sputtering, and cursing.',
+      { move: 'inflated_boat', to: null },
+      { move: 'punctured_boat', to: 'here' },
+    ],
+    // FIX-BOAT.
+    boat_repaired: ['Well done. The boat is repaired.', { script: 'boat_repaired' }],
     took_bar: [{ set: 'took_bar' }],
     took_trident: [{ set: 'took_trident' }],
     took_coffin: [{ set: 'took_coffin' }],

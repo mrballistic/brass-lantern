@@ -89,3 +89,31 @@ export const TEMPLE_SESSIONS: Record<string, string[]> = {
     'east', 'south', 'take bell', 'open bell', 'pray', 'south', 'turn on candles', 'pray', 'look',
   ],
 };
+
+/**
+ * From the Round Room to Dam Base with the pump and the putty: the reservoir drained for the pump at
+ * Reservoir North. The rope and bottle stay behind (the original's player is still wounded from its
+ * troll fight, so carries less).
+ */
+const BOAT_ROUTE = [
+  'drop rope', 'drop bottle', 'north', 'northeast', 'east', 'north', 'north', 'take wrench', 'take tube', 'push yellow button',
+  'south', 'south', 'turn bolt with wrench', 'drop wrench', ...waits(4), 'west', 'north', 'north', 'take pump', 'south', 'south',
+  'east', 'down',
+];
+
+export const BOAT_SESSIONS: Record<string, string[]> = {
+  inflate: [
+    'drop sword', ...BOAT_ROUTE, 'look', 'inflate plastic with lungs', 'blow in plastic', 'inflate plastic with tube',
+    'inflate plastic with pump', 'look', 'inflate boat with pump', 'read label', 'deflate boat', 'pump up plastic', 'deflate boat',
+    'inflate plastic with pump',
+  ],
+  board: [
+    'drop sword', ...BOAT_ROUTE, 'inflate plastic with pump', 'board boat', 'board boat', 'look', 'north', 'take boat', 'drop pump',
+    'look', 'disembark', 'disembark', 'launch',
+  ],
+  puncture: [
+    ...BOAT_ROUTE, 'open tube', 'squeeze tube', 'inflate plastic with pump', 'board boat', 'look', 'inflate boat with pump',
+    'put gunk on boat', 'inflate plastic with pump', 'put sword in boat', 'board boat', 'take sword', 'drop sword', 'look',
+    'board boat', 'drop sword', 'look',
+  ],
+};
