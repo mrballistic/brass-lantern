@@ -140,7 +140,9 @@ export function handleClimb(target: string | undefined, world: World, state: Gam
   if (!room) return ok(['You are nowhere.']);
   // CLIMB DOWN LADDER: a thing here, climbed in a direction (Zork's V-CLIMB-DOWN walks that way).
   if (direction && target && matchItem(target, visibleItems(world, state), world)) {
-    return room.exits[direction] ? followExit(room.exits[direction], world, state) : miss('You can’t climb that way.');
+    // Climbing up something takes the room's climbing exit when there's no up exit.
+    const exit = room.exits[direction] ?? (direction === 'up' ? room.exits.climb : undefined);
+    return exit ? followExit(exit, world, state) : miss('You can’t climb that way.');
   }
   if (target === 'up' || target === 'down') {
     return room.exits[target] ? followExit(room.exits[target], world, state) : miss('You can’t climb that way.');

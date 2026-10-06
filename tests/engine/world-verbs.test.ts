@@ -100,3 +100,11 @@ describe('a world verb’s reply can name its object (5c)', () => {
     expect(execute({ action: 'sniff', target: 'sock' }, { world: v, state: s }).lines).toEqual(['It smells like an sock.']);
   });
 });
+
+describe('final review fixes (5c)', () => {
+  it('a templated reply aimed at a character names the character', () => {
+    const w = { ...world, verbs: { ...world.verbs, sniff: { words: ['sniff'], target: 'required' as const, reply: 'It smells like a {target}.' } } };
+    const s = stateWith(w, { room: 'shed' });
+    expect(execute({ action: 'sniff', target: 'guard' }, { world: w, state: s }).lines).toEqual(['It smells like a guard.']);
+  });
+});

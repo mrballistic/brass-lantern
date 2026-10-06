@@ -138,3 +138,10 @@ describe('climbing a thing up or down (5c)', () => {
     expect(s.currentRoom).toBe('cellar');
   });
 });
+
+describe('final review fixes (5c)', () => {
+  it('CLIMB UP a thing takes the room’s climb exit when there’s no up exit', () => {
+    const s = stateWith(world, { room: 'yard' });
+    expect(execute(fallbackParse('climb up fence')!, { world, state: s }).lines).toEqual(['The fence is too high to climb.']);
+  });
+});
