@@ -304,3 +304,23 @@ describe('a scripted move while aboard (fast follow)', () => {
     expect(s.currentRoom).toBe('yard');
   });
 });
+
+describe('things on a floor-like surface while aboard (fast follow)', () => {
+  it('are “(outside the raft)”, like things on the floor', () => {
+    const w: World = {
+      ...boatWorld,
+      items: {
+        ...boatWorld.items,
+        table: { name: 'kitchen table', description: '', portable: false, tags: [], scenery: true, surface: true },
+        cup: { name: 'cup', description: '', portable: true, tags: [] },
+      },
+    };
+    const s = stateWith(w, { room: 'yard' });
+    s.locations.raft = 'yard';
+    s.locations.table = 'yard';
+    s.locations.cup = 'table';
+    s.itemState.cup = { moved: true };
+    s.aboard = 'raft';
+    expect(run(s, { action: 'look' }, w).lines).toContain('There is a cup here. (outside the raft)');
+  });
+});

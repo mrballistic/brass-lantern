@@ -2239,6 +2239,8 @@ export const zork1: World = {
       portable: true,
       size: 55,
       treasure: 15,
+      // RANDOMIZE-OBJECTS: carried at a death, it goes back.
+      home: 'egypt_room',
       tags: ['sacred'],
       container: { openable: true, weight: 35 },
       contains: ['sceptre'],
@@ -2658,6 +2660,14 @@ export const zork1: World = {
         'The house is a beautiful colonial house which is painted white. It is clear that the owners must have been extremely wealthy.',
       portable: false,
       tags: [],
+      // WHITE-HOUSE-F's THROUGH.
+      instead: {
+        enter: [
+          { if: 'in:east_of_house & open:kitchen_window', then: 'into_kitchen' },
+          { if: 'in:east_of_house', say: ['The window is closed.'] },
+          { say: ['I can’t see how to get in from here.'] },
+        ],
+      },
     },
     forest: {
       name: 'forest',
@@ -2980,6 +2990,8 @@ export const zork1: World = {
         closed: 'The door swings shut and closes.',
       },
       instead: {
+        // V-THROUGH: its exit is a routine, not a door, so Zork doesn't walk through it.
+        enter: [{ if: 'flag:rug_moved', say: ['You hit your head against the trap door as you attempt this feat.'] }],
         open: [
           { if: '!flag:rug_moved', say: ['You can’t see any trap door here!'] },
           { if: 'in:cellar & !open:trap_door', say: ['The door is locked from above.'] },
@@ -4073,6 +4085,8 @@ export const zork1: World = {
     resurrection: [
       'Now, let’s take a look here... Well, you probably deserve another chance. I can’t quite fix you up completely, but you can’t have everything.',
     ],
+    // RANDOMIZE-OBJECTS: treasures into the dark, the rest above ground.
+    treasures: 'dark',
     scatter: ['canyon_view', 'west_of_house', 'north_of_house', 'south_of_house', 'east_of_house', 'forest_1', 'forest_2', 'forest_3', 'path', 'clearing', 'grating_clearing'],
     // JIGS-UP: once you've seen the Altar, you wake as a spirit before the gates of Hell.
     variants: [
@@ -4168,6 +4182,7 @@ export const zork1: World = {
       'An almost inaudible voice whispers in your ear, “Look to your treasures for the final secret.”',
     ],
     barrow_end: [{ end: 'barrow' }],
+    into_kitchen: [{ go: 'kitchen' }],
     took_canary: [{ set: 'took_canary' }],
     took_bauble: [{ set: 'took_bauble' }],
     canary_wind: [{ script: 'canary_wind' }],

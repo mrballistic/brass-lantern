@@ -28,7 +28,7 @@ export interface NpcState {
   wake?: number;
   /** In the room but unseen: not listed, matched, reached or fought (Zork's INVISIBLE). */
   hidden?: boolean;
-  /** The turn it last moved rooms: one who arrived this turn is listed first (Zork's object order). */
+  /** When it last moved rooms, on the sequence of things' placings: listed before anything placed earlier (Zork's object order). */
   arrived?: number;
 }
 

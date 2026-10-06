@@ -450,6 +450,8 @@ export interface World {
     resurrection?: string[];
     /** Rooms carried things are spread over, at random. Things with a `home` go there instead. */
     scatter?: string[];
+    /** `dark`: treasures go to an unlit land room instead, walking the rooms in order at even odds each (Zork's RANDOMIZE-OBJECTS). */
+    treasures?: 'dark';
     /** Printed on the last death, which ends the game. */
     final?: string[];
     /** An event run after a resurrection (Zork's JIGS-UP resets things). */

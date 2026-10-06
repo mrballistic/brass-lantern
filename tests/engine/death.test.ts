@@ -162,3 +162,21 @@ describe('death variants: before (5a)', () => {
     expect(runSteps([{ die: 'Splat.' }], w, s)).toContain('A ghostly bedroom.');
   });
 });
+
+describe('treasures scattered into the dark (RANDOMIZE-OBJECTS) (fast follow)', () => {
+  it('with death.treasures: “dark”, a treasure lands in an unlit land room; other things scatter as before', async () => {
+    const { fixtureWorld } = await import('../fixtures/world');
+    const { stateWith } = await import('../helpers/state');
+    const { runSteps } = await import('@/engine/effects');
+    const w = {
+      ...fixtureWorld,
+      death: { ...fixtureWorld.death!, lives: 5, treasures: 'dark' as const, scatter: ['yard'] },
+      items: { ...fixtureWorld.items, gem: { name: 'gem', description: '', portable: true, tags: [], treasure: 5 }, pebble: { name: 'pebble', description: '', portable: true, tags: [] } },
+    };
+    const s = stateWith(w, { room: 'bedroom', carrying: ['gem', 'pebble'] });
+    runSteps([{ die: 'Oops.' }], w, s);
+    const gemRoom = s.locations.gem as string;
+    expect(w.rooms[gemRoom]?.dark).toBe(true);
+    expect(s.locations.pebble).toBe('yard');
+  });
+});

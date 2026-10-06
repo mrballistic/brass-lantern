@@ -805,5 +805,22 @@ describe('Zork I, natively: fast follow (C)', () => {
     // The baskets start raised: here, at the bottom, is the far one.
     expect(say(state, 'take garlic from basket')).toEqual(['You already have that!']);
   });
+  it('ENTER HOUSE and ENTER TRAP DOOR (WHITE-HOUSE-F, V-THROUGH)', () => {
+    expect(say(at('west_of_house'), 'enter house')).toEqual(['I can’t see how to get in from here.']);
+    const behind = at('east_of_house');
+    expect(say(behind, 'enter house')).toEqual(['The window is closed.']);
+    behind.itemState.kitchen_window = { ...behind.itemState.kitchen_window, open: true };
+    say(behind, 'enter house');
+    expect(behind.currentRoom).toBe('kitchen');
+    const living = at('living_room');
+    living.flags.rug_moved = true;
+    expect(say(living, 'enter trap door')).toEqual(['You hit your head against the trap door as you attempt this feat.']);
+    expect(living.currentRoom).toBe('living_room');
+  });
+  it('dying with the coffin sends it back to the Egyptian Room (RANDOMIZE-OBJECTS)', () => {
+    const state = at('round_room', ['coffin']);
+    runSteps([{ die: 'Oops.' }], zork1, state);
+    expect(state.locations.coffin).toBe('egypt_room');
+  });
 });
 

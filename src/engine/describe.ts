@@ -98,16 +98,21 @@ function floorLike(world: World, id: string): boolean {
   return Boolean(item?.surface && !item.contentsHeading);
 }
 
-/** What's on a floor-like surface: first-seen sentences, then “There is a … here.” with each thing's contents. */
-function surfaceAsFloor(world: World, state: GameState, id: string): string[] {
+/** What's on a floor-like surface: first-seen sentences, then “There is a … here.” (and “(outside the boat)”) with each thing's contents; `listed` if any was the latter. */
+function surfaceAsFloor(world: World, state: GameState, id: string, outside: string): { lines: string[]; listed: boolean } {
   const kids = childrenOf(world, state, id).filter((k) => !world.items[k]?.scenery && !state.itemState[k]?.unlisted && shown(state)(k));
   const firstSeen = (k: string) => !state.itemState[k]?.moved && Boolean(world.items[k]?.initialDescription);
   const lines: string[] = [];
+  let listed = false;
   for (const k of [...kids.filter(firstSeen), ...kids.filter((k) => !firstSeen(k))]) {
-    const sentence = firstSeen(k) ? world.items[k].initialDescription! : (world.items[k].roomDescription ?? `There is ${withArticle(world, k)} here${lightNote(world, state, k)}.`);
-    lines.push(sentence, ...contentsLines(world, state, k));
+    if (firstSeen(k)) lines.push(world.items[k].initialDescription!);
+    else {
+      listed = true;
+      lines.push((world.items[k].roomDescription ?? `There is ${withArticle(world, k)} here${lightNote(world, state, k)}.`) + outside);
+    }
+    lines.push(...contentsLines(world, state, k));
   }
-  return lines;
+  return { lines, listed };
 }
 
 /** “ (providing light)” after a lit light source, as Zork lists it. */
@@ -157,7 +162,8 @@ export function describeRoom(
   const plain: string[] = [];
   // Zork lists a room's contents newest first: a character who moved in this turn comes before its things.
   const people = npcsSeen(world, state, roomId).filter((id) => !world.npcs[id]?.scenery);
-  const justArrived = infocom ? people.filter((id) => state.npcs?.[id]?.arrived === state.turns) : [];
+  const newestThing = Math.max(0, ...inRoom.map((id) => state.placed?.[id] ?? 0));
+  const justArrived = infocom ? people.filter((id) => (state.npcs?.[id]?.arrived ?? -1) > newestThing) : [];
   for (const id of justArrived) lines.push(npcDescription(world, state, id));
   // Aboard, Zork marks the room's things “(outside the boat)”, all but first-seen sentences (PRINT-CONT).
   const outside = infocom && vehicle ? ` (outside the ${vehicle.name})` : '';
@@ -174,13 +180,19 @@ export function describeRoom(
   }
   if (plain.length > 0) lines.push(`You can see: ${plain.join(', ')}.`);
   if (!infocom) for (const id of visibleItems) lines.push(...contentsLines(world, state, id));
-  // The vehicle's contents, a level deeper when anything else was listed.
-  if (state.aboard) lines.push(...contentsLines(world, state, state.aboard, infocom && listed ? 1 : 0));
   // Scenery isn't listed, but what's on or in it is (the kitchen table's sack).
   for (const id of childrenOf(world, state, roomId).filter((k) => world.items[k]?.scenery)) {
+    if (infocom && floorLike(world, id)) {
+      const floor = surfaceAsFloor(world, state, id, outside);
+      if (floor.listed) listed = true;
+      lines.push(...floor.lines);
+      continue;
+    }
     // Zork's PRINT-CONT: once something on the floor was listed, the rest go a level deeper.
-    lines.push(...(infocom && floorLike(world, id) ? surfaceAsFloor(world, state, id) : contentsLines(world, state, id, infocom && listed ? 1 : 0)));
+    lines.push(...contentsLines(world, state, id, infocom && listed ? 1 : 0));
   }
+  // The vehicle's contents come last (PRINT-CONT), a level deeper when anything else was listed.
+  if (state.aboard) lines.push(...contentsLines(world, state, state.aboard, infocom && listed ? 1 : 0));
 
   // Infocom style: each character's own line, as Zork's LDESC; brass: a list.
   if (infocom) for (const id of people.filter((p) => !justArrived.includes(p))) lines.push(npcDescription(world, state, id));

@@ -25,6 +25,9 @@ export function runOnEnter(roomId: string, world: World, state: GameState): stri
 
 const DIRECTION_WORDS = new Set([...COMPASS, 'in', 'out', 'inside', 'outside']);
 
+/** Zork's YUKS: replies to an attempt that can't be taken seriously. */
+const YUKS = ['A valiant attempt.', 'You can’t be serious.', 'An interesting idea...', 'What a concept!'];
+
 export const GENERIC_DENIAL = 'Something stops you. The story isn’t ready for you to go there yet.';
 
 export function enterRoom(targetId: string, world: World, state: GameState, opts: { quiet?: boolean } = {}): string[] {
@@ -143,8 +146,14 @@ export function handleEnter(target: string | undefined, world: World, state: Gam
   const door = exitThroughDoor(target, world, state);
   if (door) return followExit(door, world, state);
   // ENTER BOAT: a vehicle is boarded (Zork's V-THROUGH).
-  const vehicle = pickItem(target, visibleItems(world, state), world, 'target', state);
-  if (vehicle && world.items[vehicle].vehicle) return handleBoard({ action: 'board', target: vehicle }, world, state);
+  const thing = pickItem(target, visibleItems(world, state), world, 'target', state);
+  if (thing && world.items[thing].vehicle) return handleBoard({ action: 'board', target: thing }, world, state);
+  // Zork's V-THROUGH for anything else in sight.
+  if (thing && world.style === 'infocom') {
+    if (!world.items[thing].portable) return ok([`You hit your head against the ${world.items[thing].name} as you attempt this feat.`]);
+    if (state.locations[thing] === 'player') return ok(['That would involve quite a contortion!']);
+    return ok([YUKS[Math.floor(nextRandom(state) * YUKS.length)]]);
+  }
   return miss('You can’t enter that.');
 }
 

@@ -304,3 +304,38 @@ describe('READ’s automatic take (fast follow)', () => {
     expect(s.locations.scroll).toBe('pouch');
   });
 });
+
+describe('ENTER a thing, Infocom style (V-THROUGH) (fast follow)', () => {
+  it('a fixed thing: hit your head; a carried one: a contortion; anything else: a joke', () => {
+    const s = stateWith(w, { room: 'bedroom', carrying: ['note'] });
+    s.locations.tub = 'bedroom';
+    expect(run(s, { action: 'enter', target: 'tub' })).toEqual(['You hit your head against the tub as you attempt this feat.']);
+    expect(run(s, { action: 'enter', target: 'note' })).toEqual(['That would involve quite a contortion!']);
+    s.locations.note = 'bedroom';
+    expect(['A valiant attempt.', 'You can’t be serious.', 'An interesting idea...', 'What a concept!']).toContain(run(s, { action: 'enter', target: 'note' })[0]);
+  });
+});
+
+describe('a character stays listed first until something else moves in (fast follow)', () => {
+  it('first on the turn he arrives and after; a thing dropped later comes before him', async () => {
+    const { runSteps } = await import('@/engine/effects');
+    const { describeCurrentRoom } = await import('@/engine/engine');
+    const s = stateWith(w, { room: 'shed', carrying: ['note'] });
+    s.npcs = { guard: { room: null } };
+    runSteps([{ moveNpc: 'guard', to: 'shed' }], w, s);
+    run(s, { action: 'wait' });
+    let lines = describeCurrentRoom(w, s);
+    expect(lines.findIndex((l) => l.startsWith('A guard'))).toBeGreaterThan(-1);
+    run(s, { action: 'drop', target: 'note' });
+    lines = describeCurrentRoom(w, s);
+    expect(lines.indexOf('There is a note here.')).toBeLessThan(lines.findIndex((l) => l.startsWith('A guard')));
+    const s2 = stateWith(w, { room: 'shed' });
+    s2.locations.note = 'shed';
+    s2.itemState.note = { moved: true };
+    s2.npcs = { guard: { room: null } };
+    runSteps([{ moveNpc: 'guard', to: 'shed' }], w, s2);
+    run(s2, { action: 'wait' });
+    lines = describeCurrentRoom(w, s2);
+    expect(lines.findIndex((l) => l.startsWith('A guard'))).toBeLessThan(lines.indexOf('There is a note here.'));
+  });
+});
