@@ -369,6 +369,81 @@ export const zork1: World = {
   emptyInventory: 'You are empty-handed.',
 
   rooms: {
+    // Stage 5b: the canyon and the rainbow. CANYON-VIEW through ARAGAIN-FALLS, in story order.
+    canyon_view: {
+      name: 'Canyon View',
+      description: 'You are at the top of the Great Canyon on its west wall. From here there is a marvelous view of the canyon and parts of the Frigid River upstream. Across the canyon, the walls of the White Cliffs join the mighty ramparts of the Flathead Mountains to the east. Following the Canyon upstream to the north, Aragain Falls may be seen, complete with rainbow. The mighty Frigid River flows out from a great dark cavern. To the west and south can be seen an immense forest, stretching for miles around. A path leads northwest. It is possible to climb down into the canyon from here.',
+      exits: { east: 'cliff_middle', down: 'cliff_middle', northwest: 'clearing', west: 'forest_3', south: { denial: 'Storm-tossed trees block your way.' } },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      scenery: ['climbable_cliff', 'rainbow'],
+      tags: ['sacred'],
+      // CANYON-VIEW-F.
+      instead: { jump: [{ then: 'canyon_jump' }] },
+    },
+    cliff_middle: {
+      name: 'Rocky Ledge',
+      description: 'You are on a ledge about halfway up the wall of the river canyon. You can see from here that the main flow from Aragain Falls twists along a passage which it is impossible for you to enter. Below you is the canyon bottom. Above you is more cliff, which appears climbable.',
+      exits: { up: 'canyon_view', down: 'canyon_bottom' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      scenery: ['climbable_cliff'],
+      tags: ['sacred'],
+    },
+    canyon_bottom: {
+      name: 'Canyon Bottom',
+      description: 'You are beneath the walls of the river canyon which may be climbable here. The lesser part of the runoff of Aragain Falls flows by below. To the north is a narrow path.',
+      exits: { up: 'cliff_middle', north: 'end_of_rainbow' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      scenery: ['global_water', 'climbable_cliff'],
+      tags: ['sacred'],
+    },
+    end_of_rainbow: {
+      name: 'End of Rainbow',
+      description: 'You are on a small, rocky beach on the continuation of the Frigid River past the Falls. The beach is narrow due to the presence of the White Cliffs. The river canyon opens here and sunlight shines in from above. A rainbow crosses over the falls to the east and a narrow path continues to the southwest.',
+      exits: {
+        up: { to: 'on_rainbow', if: 'flag:rainbow_flag' },
+        northeast: { to: 'on_rainbow', if: 'flag:rainbow_flag' },
+        east: { to: 'on_rainbow', if: 'flag:rainbow_flag' },
+        southwest: 'canyon_bottom',
+      },
+      items: ['pot_of_gold'],
+      npcs: [],
+      onEnter: [],
+      scenery: ['global_water', 'rainbow'],
+    },
+    on_rainbow: {
+      name: 'On the Rainbow',
+      description: 'You are on top of a rainbow (I bet you never thought you would walk on a rainbow), with a magnificent view of the Falls. The rainbow travels east-west here.',
+      exits: { west: 'end_of_rainbow', east: 'aragain_falls' },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      scenery: ['rainbow'],
+      tags: ['sacred'],
+    },
+    aragain_falls: {
+      name: 'Aragain Falls',
+      // FALLS-ROOM's M-LOOK.
+      description: 'You are at the top of Aragain Falls, an enormous waterfall with a drop of about 450 feet. The only path here is on the north end.\nA beautiful rainbow can be seen over the falls and to the west.',
+      descriptions: [{ if: 'flag:rainbow_flag', text: 'You are at the top of Aragain Falls, an enormous waterfall with a drop of about 450 feet. The only path here is on the north end.\nA solid rainbow spans the falls.' }],
+      exits: {
+        west: { to: 'on_rainbow', if: 'flag:rainbow_flag' },
+        up: { to: 'on_rainbow', if: 'flag:rainbow_flag' },
+        down: { denial: 'It’s a long way...' },
+        north: 'shore',
+      },
+      items: [],
+      npcs: [],
+      onEnter: [],
+      scenery: ['global_water', 'rainbow'],
+      tags: ['sacred'],
+      instead: { jump: [{ then: 'jump_death' }] },
+    },
     // Stage 5b: the east bank. SANDY-CAVE, SANDY-BEACH and SHORE, in story order.
     sandy_cave: {
       name: 'Sandy Cave',
@@ -394,7 +469,7 @@ export const zork1: World = {
     shore: {
       name: 'Shore',
       description: 'You are on the east shore of the river. The water here seems somewhat treacherous. A path travels from north to south here, the south end quickly turning around a sharp corner.',
-      exits: { north: 'sandy_beach', south: { denial: 'That part of the Great Underground Empire isn’t built yet.' } },
+      exits: { north: 'sandy_beach', south: 'aragain_falls' },
       items: [],
       npcs: [],
       onEnter: [],
@@ -1285,7 +1360,7 @@ export const zork1: World = {
       description: 'You are in a small clearing in a well marked forest path that extends to the east and west.',
       exits: {
         up: { denial: NO_TREE },
-        east: { denial: OFF_MAP },
+        east: 'canyon_view',
         north: 'forest_2',
         south: 'forest_3',
         west: 'east_of_house',
@@ -1554,6 +1629,37 @@ export const zork1: World = {
       instead: { turn_off: [{ say: ['You nearly burn your hand trying to extinguish the flame.'] }] },
       after: { take: [{ if: '!flag:took_torch', then: 'took_torch' }] },
     },
+    // Stage 5b: the rainbow and the canyon.
+    pot_of_gold: {
+      name: 'pot of gold',
+      aliases: ['pot', 'gold', 'treasure', 'gold pot'],
+      description: 'There’s nothing special about the pot of gold.',
+      initialDescription: 'At the end of the rainbow is a pot of gold.',
+      portable: true,
+      size: 15,
+      treasure: 10,
+      tags: [],
+      after: { take: [{ if: '!flag:took_pot', then: 'took_pot' }] },
+    },
+    // RAINBOW-FCN.
+    rainbow: {
+      name: 'rainbow',
+      description: 'There’s nothing special about the rainbow.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      instead: { cross: [{ then: 'cross_rainbow' }], look_under: [{ say: ['The Frigid River flows under the rainbow.'] }] },
+    },
+    // CLIFF-OBJECT.
+    climbable_cliff: {
+      name: 'cliff',
+      aliases: ['wall', 'walls', 'ledge', 'rocky cliff', 'sheer cliff'],
+      description: 'There’s nothing special about the cliff.',
+      portable: false,
+      tags: [],
+      scenery: true,
+      instead: { throw: [{ as: 'indirect', then: 'over_the_cliff' }], put: [{ as: 'indirect', then: 'over_the_cliff' }] },
+    },
     // Stage 5b: the banks.
     shovel: {
       name: 'shovel',
@@ -1700,6 +1806,8 @@ export const zork1: World = {
       treasure: 6,
       weapon: true,
       tags: [],
+      // SCEPTRE-FUNCTION.
+      instead: { wave: [{ as: 'target', then: 'sceptre_waved' }] },
       after: { take: [{ if: '!flag:took_sceptre', then: 'took_sceptre' }] },
     },
     skull: {
@@ -2806,6 +2914,41 @@ export const zork1: World = {
       if (a?.action === 'launch' && !a.target && ctx.here('inflated_boat')) return ['(magic boat)', 'You can’t launch that by saying “launch”!'];
       return;
     },
+    // SCEPTRE-FUNCTION: the rainbow made solid, or not; anywhere else, colours.
+    sceptre_waved: (ctx) => {
+      const here = ctx.room();
+      if (here === 'aragain_falls' || here === 'end_of_rainbow') {
+        if (!ctx.state.flags.rainbow_flag) {
+          const pot = here === 'end_of_rainbow' && ctx.holder('pot_of_gold') === 'end_of_rainbow';
+          return [
+            { reveal: 'pot_of_gold' },
+            'Suddenly, the rainbow appears to become solid and, I venture, walkable (I think the giveaway was the stairs and bannister).',
+            ...(pot ? ['A shimmering pot of gold appears at the end of the rainbow.'] : []),
+            { set: 'rainbow_flag' },
+          ];
+        }
+        // ROB ON-RAINBOW WALL: treasures left on the rainbow are gone.
+        const lost = ctx.children('on_rainbow').filter((id) => ctx.treasure(id) > 0 && !(ctx.world.items[id].tags ?? []).includes('sacred'));
+        return [...lost.map((id): EventStep => ({ move: id, to: null })), 'The rainbow seems to have become somewhat run-of-the-mill.', { clear: 'rainbow_flag' }];
+      }
+      if (here === 'on_rainbow') return [{ clear: 'rainbow_flag' }, { die: 'The structural integrity of the rainbow is severely compromised, leaving you hanging in midair, supported only by water vapor. Bye.' }];
+      return ['A dazzling display of color briefly emanates from the sceptre.'];
+    },
+    // RAINBOW-FCN's CROSS.
+    cross_rainbow: (ctx) => {
+      const here = ctx.room();
+      if (here === 'canyon_view') return ['From here?!?'];
+      if (!ctx.state.flags.rainbow_flag) return ['Can you walk on water vapor?'];
+      if (here === 'aragain_falls') return [{ go: 'end_of_rainbow' }];
+      if (here === 'end_of_rainbow') return [{ go: 'aragain_falls' }];
+      return ['You’ll have to say which way...'];
+    },
+    // CLIFF-OBJECT: thrown off the cliff, it's gone.
+    over_the_cliff: (ctx) => {
+      const it = ctx.command?.target;
+      if (!it || !ctx.world.items[it]) return [];
+      return [{ move: it, to: null }, `The ${ctx.world.items[it].name} tumbles into the river and is seen no more.`];
+    },
     // SAND-FUNCTION and V-DIG: four digs with the shovel find the scarab, a fifth buries you.
     dig_sand: (ctx) => {
       const tool = ctx.command?.indirect;
@@ -3215,6 +3358,9 @@ export const zork1: World = {
     breathe: { words: ['blow in', 'blow into', 'breathe in', 'breathe into'], target: 'required', reply: 'You don’t have enough lung power to inflate it.' },
     launch: { words: ['launch'], target: 'optional', reply: 'You can’t launch that by saying “launch”!' },
     land: { words: ['land'], target: 'none', go: true },
+    wave: { words: ['wave', 'raise', 'brandish'], target: 'required', reply: 'Waving that has no effect.' },
+    cross: { words: ['cross', 'ford'], target: 'required', reply: 'You can’t cross that!' },
+    look_under: { words: ['look under'], target: 'required', reply: 'There is nothing but dust there.' },
     dig: { words: ['dig in', 'dig'], target: 'required', indirect: ['with'], reply: 'Digging with the pair of hands is slow and tedious.' },
     ring: { words: ['ring', 'peal'], target: 'required', indirect: ['with'], reply: 'How, exactly, can you ring that?' },
     pour: { words: ['pour', 'spill'], target: 'required', indirect: ['on', 'in', 'from'], held: true },
@@ -3243,6 +3389,8 @@ export const zork1: World = {
     { flag: 'took_trunk', points: 15 },
     { flag: 'took_emerald', points: 5 },
     { flag: 'took_scarab', points: 5 },
+    { flag: 'took_pot', points: 10 },
+    { if: 'inside:pot_of_gold:trophy_case', points: 10 },
     { if: 'inside:scarab:trophy_case', points: 5 },
     { if: 'inside:emerald:trophy_case', points: 10 },
     { flag: 'took_bar', points: 10 },
@@ -3327,7 +3475,7 @@ export const zork1: World = {
     resurrection: [
       'Now, let’s take a look here... Well, you probably deserve another chance. I can’t quite fix you up completely, but you can’t have everything.',
     ],
-    scatter: ['west_of_house', 'north_of_house', 'south_of_house', 'east_of_house', 'forest_1', 'forest_2', 'forest_3', 'path', 'clearing', 'grating_clearing'],
+    scatter: ['canyon_view', 'west_of_house', 'north_of_house', 'south_of_house', 'east_of_house', 'forest_1', 'forest_2', 'forest_3', 'path', 'clearing', 'grating_clearing'],
     // JIGS-UP: once you've seen the Altar, you wake as a spirit before the gates of Hell.
     variants: [
       {
@@ -3397,6 +3545,11 @@ export const zork1: World = {
       { if: 'in:reservoir_south', then: ['You notice that the water level has risen to the point that it is impossible to cross.'] },
     ],
     took_trunk: [{ set: 'took_trunk' }],
+    took_pot: [{ set: 'took_pot' }],
+    sceptre_waved: [{ script: 'sceptre_waved' }],
+    cross_rainbow: [{ script: 'cross_rainbow' }],
+    over_the_cliff: [{ script: 'over_the_cliff' }],
+    canyon_jump: [{ if: '!aboard', then: [{ die: 'Nice view, lousy place to jump.' }] }],
     took_scarab: [{ set: 'took_scarab' }],
     dig_sand: [{ script: 'dig_sand' }],
     took_emerald: [{ set: 'took_emerald' }],
@@ -3503,6 +3656,7 @@ export const zork1: World = {
       { hide: 'leak' },
       { hide: 'trunk' },
       { hide: 'scarab' },
+      { hide: 'pot_of_gold' },
       // The torch and the candles are lit from the start (ONBIT); the hot bell waits offstage.
       { switch: 'torch', on: true },
       { switch: 'candles', on: true },

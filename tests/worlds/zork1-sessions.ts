@@ -146,3 +146,20 @@ export const BANK_SESSIONS: Record<string, string[]> = {
   buoy: [...TO_RIVER_4, 'take buoy', 'east', 'examine buoy', 'open buoy', 'take emerald', 'score'],
   shore: [...TO_RIVER_4, 'wait', 'land', 'disembark', 'look', 'north', 'look', 'south'],
 };
+
+/** The sceptre from the Egyptian Room, back up through the altar's hole, then the boat down the river to the Shore. */
+const TO_FALLS = [
+  'drop sword', 'southeast', 'east', 'tie rope to railing', 'down', 'south', 'east', 'open coffin', 'take sceptre', 'west', 'south',
+  'down', 'north', 'north', 'north', ...BOAT_ROUTE.slice(1), 'drop tube', 'inflate plastic with pump', 'put sceptre in boat',
+  'board boat', 'launch', 'wait', 'wait', 'look', 'wait', 'wait', 'land', 'take sceptre', 'disembark', 'south',
+];
+
+export const RAINBOW_SESSIONS: Record<string, string[]> = {
+  rainbow: [
+    ...TO_FALLS, 'look', 'west', 'cross rainbow', 'look under rainbow', 'wave sceptre', 'look', 'west', 'look', 'west', 'look', 'take pot',
+    'cross rainbow', 'cross rainbow', 'east', 'drop pot', 'west', 'wave sceptre', 'look', 'east', 'southwest', 'look', 'up', 'look',
+    'up', 'look', 'cross rainbow', 'northwest', 'look', 'score',
+  ],
+  'jump-falls': [...TO_FALLS, 'drop sceptre', 'drop pump', 'jump'],
+  'rainbow-death': [...TO_FALLS, 'wave sceptre', 'west', 'drop pump', 'wave sceptre'],
+};
