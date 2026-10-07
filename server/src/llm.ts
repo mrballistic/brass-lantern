@@ -29,8 +29,8 @@ const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 // The model only ever names an action and a target the client already knows
 // about. A target is an identifier, never prose; anything that doesn't look
-// like one is dropped rather than passed through.
-const TARGET_RE = /^[a-z0-9_]{1,48}$/;
+// like one is dropped rather than passed through. World verbs are identifiers too.
+export const IDENTIFIER_RE = /^[a-z0-9_]{1,48}$/;
 
 const UNKNOWN: ParsedAction = { action: 'unknown' };
 
@@ -144,7 +144,7 @@ function short(s: string): string {
 function identifier(raw: unknown): string | null {
   if (typeof raw !== 'string') return null;
   const id = raw.trim().toLowerCase().replace(/[\s-]+/g, '_');
-  return TARGET_RE.test(id) ? id : null;
+  return IDENTIFIER_RE.test(id) ? id : null;
 }
 
 /** Narrow a model reply to something the engine can execute. */
@@ -152,7 +152,7 @@ export function sanitize(raw: unknown, ctx?: Pick<IntentContext, 'verbs'>): Pars
   if (typeof raw !== 'object' || raw === null) return UNKNOWN;
   const r = raw as Record<string, unknown>;
   if (typeof r.action !== 'string') return UNKNOWN;
-  const worldVerb = TARGET_RE.test(r.action) && (ctx?.verbs ?? []).includes(r.action);
+  const worldVerb = IDENTIFIER_RE.test(r.action) && (ctx?.verbs ?? []).includes(r.action);
   if (!ACTIONS.has(r.action) && !worldVerb) return UNKNOWN;
   const out: ParsedAction = { action: r.action };
   const target = identifier(r.target);
