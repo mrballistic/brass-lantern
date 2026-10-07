@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, expect, it } from 'vitest';
 import { buildCarousel, buildLowRoom, buildStoppedCarousel, robotWorld } from './zork2-slices/robot';
+import { buildRiddle, buildTinyRoom, riddleWorld } from './zork2-slices/riddle';
 import { sliceRun } from './slices';
 import { normalize } from './zsession';
 
@@ -11,6 +12,10 @@ const SEED = 1;
 
 /** From the start to the Carousel Room: the lamp, the teapot filled at the ford. */
 const TO_CAROUSEL = ['get lamp', 's', 's', 's', 'sw', 'light lamp', 's', 'se', 'in', 'get teapot', 'out', 'n', 'ne', 'fill teapot with water', 's', 'sw', 'sw'];
+/** The same, picking up the Gazebo's place mat and letter opener, to the Riddle Room. */
+const TO_RIDDLE = ['get lamp', 's', 's', 's', 'sw', 'light lamp', 's', 'se', 'in', 'get teapot', 'get mat', 'get opener', 'out', 'n', 'ne', 'fill teapot with water', 's', 'sw', 'sw', 'se'];
+/** On, the riddle answered, round the spinning carousel (the seed's passages) to the Marble Hall, and up the ravine to the Tiny Room. */
+const TO_TINY_ROOM = [...TO_RIDDLE, 'answer "a well"', 'd', 'n', 'd', 'n', 'n', 'n', 'n', 'n', 'ne', 'n', 'n', 'n', 'u'];
 /** On to the Low Room and the robot: the riddle, the bucket up the well (the teapot's water lifts it), the Tea Room. */
 const TO_ROBOT = [...TO_CAROUSEL, 'se', 'answer "a well"', 'e', 'e', 'get in bucket', 'pour water', 'get out of bucket', 'e', 'nw'];
 
@@ -79,6 +84,64 @@ describe('Zork II slices against the story file', () => {
     const prefix = [...TO_ROBOT, 'robot, go east', 'e', 'robot, push triangular button', 'w', 'se', 'w', 'get in bucket', 'fill teapot', 'get out of bucket', 'w', 'w', 'nw'];
     const commands = ['look', 'se', 'nw', 'down', 'up', 'n', 's'];
     const { native, original } = await sliceRun({ name: 'stopped carousel', story: 'zork2', prefix, seed: SEED, world: robotWorld, build: buildStoppedCarousel, commands, expect: 'dented steel box' });
+    expect(mismatches(commands, native, original)).toEqual([]);
+  }, 60_000);
+
+  it('the riddle: wrong answers, the right one, and the stone door', async () => {
+    const commands = [
+      'examine door',
+      'open door',
+      'e',
+      'close door',
+      'answer',
+      'answer "a hole"',
+      'say "the deep well"',
+      'examine riddle',
+      'answer "a well" then look',
+      'look',
+      'answer "a well"',
+      'answer "a hole"',
+      'open door',
+      'close door',
+      'examine door',
+      'e',
+      'w',
+    ];
+    const { native, original } = await sliceRun({ name: 'riddle', story: 'zork2', prefix: TO_RIDDLE, seed: SEED, world: riddleWorld, build: buildRiddle, commands, expect: 'Riddle Room' });
+    expect(mismatches(commands, native, original)).toEqual([]);
+  }, 60_000);
+
+  it('the oak door: the mat slid under it, the key pushed out onto it, the mat pulled back', async () => {
+    const commands = [
+      'look',
+      'examine door',
+      'look under door',
+      'look in keyhole',
+      'put opener in keyhole',
+      'open lid',
+      'look',
+      'n',
+      'put mat under door',
+      'look',
+      'look under door',
+      'put opener in keyhole',
+      'look',
+      'close lid',
+      'pull mat',
+      'look',
+      'take key',
+      'unlock door with key',
+      'take opener',
+      'unlock door with key',
+      'open door',
+      'n',
+      'take sphere',
+      's',
+      'take mat',
+      'close door',
+      'n',
+    ];
+    const { native, original } = await sliceRun({ name: 'oak door', story: 'zork2', prefix: TO_TINY_ROOM, seed: SEED, world: riddleWorld, build: buildTinyRoom, commands, expect: 'Tiny Room' });
     expect(mismatches(commands, native, original)).toEqual([]);
   }, 60_000);
 });
