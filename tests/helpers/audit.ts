@@ -151,18 +151,20 @@ export function auditWorld(world: World): string[] {
       for (const d of exit.denials ?? []) checkCondition(d.if, `room ${id} exit ${label}`);
     }
   }
-  const checkDescriptionScript = (name: string | undefined, where: string) => {
-    if (name !== undefined && !world.scripts?.[name]) problems.push(`${where}: descriptionScript names no script “${name}”`);
+  const checkDescriptionScript = (name: string | undefined, where: string, field = 'descriptionScript') => {
+    if (name !== undefined && !world.scripts?.[name]) problems.push(`${where}: ${field} names no script “${name}”`);
     else if (name !== undefined) {
       // Run once on a fresh game: a description says things and does nothing else.
       for (const step of descriptionSteps(name, world, initialState(world))) {
-        if (typeof step !== 'string' && !('say' in step)) problems.push(`${where}: descriptionScript “${name}” returns a step that isn’t a say: ${JSON.stringify(step)}`);
+        if (typeof step !== 'string' && !('say' in step)) problems.push(`${where}: ${field} “${name}” returns a step that isn’t a say: ${JSON.stringify(step)}`);
       }
     }
   };
   for (const [id, room] of Object.entries(world.rooms)) checkDescriptionScript(room.descriptionScript, `room ${id}`);
   for (const [id, item] of Object.entries(world.items)) {
     checkDescriptionScript(item.descriptionScript, `item ${id}`);
+    checkDescriptionScript(item.roomDescriptionScript, `item ${id}`, 'roomDescriptionScript');
+    checkDescriptionScript(item.vehicle?.descriptionScript, `item ${id} vehicle`);
     for (const e of item.onEnd ?? []) {
       checkCondition(e.if, `item ${id} onEnd`);
       if (typeof e.then === 'string') {

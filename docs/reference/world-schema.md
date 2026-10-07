@@ -106,6 +106,7 @@ Message-only exits aren't listed unless `listExits` names them.
 | `text?` | string | What READ shows. Default: the description. |
 | `initialDescription?` | string | Its own sentence in a room until first taken. |
 | `roomDescription?` | string | Its own sentence in a room after that. Items with neither are gathered into “You can see: …”. |
+| `roomDescriptionScript?` | script name | A world script whose `say` lines are its room sentence, ahead of both (Zork's DESCFCN). It says everything itself: no “(outside the raft)” follows. One that says nothing falls back to the others. |
 | `climbRefusal?` | `{ if?, text }` | Infocom style: climbing it up or down where there's no way that way says `text` (Zork's tree: “There are no climbable trees here.”). |
 | `switchable?` | boolean | TURN ON and TURN OFF work on it. |
 | `light?` | boolean | Gives light while on: it lights a dark room it's in, carried there, or inside something open or transparent there. |
@@ -368,10 +369,10 @@ raft: { name: 'raft', vehicle: { travels: 'water' }, container: { open: true }, 
 pond: { name: 'Pond', water: true, … },
 ```
 
-- **BOARD** (GET IN, CLIMB IN) gets in a vehicle that's on the ground here; **DISEMBARK** (GET OUT, GET OFF, STAND) gets out, except on water: “You realize that getting out here would be fatal.” While aboard, EXIT on its own is DISEMBARK too (Zork's V-EXIT); otherwise it's the direction out. In Infocom style, DISEMBARK with no object names the one vehicle in sight: “(raft)”.
+- **BOARD** (GET IN, CLIMB IN) gets in a vehicle that's on the ground here; **DISEMBARK** (GET OUT, GET OFF, STAND) gets out, except on water or in the air: “You realize that getting out here would be fatal.” While aboard, EXIT on its own is DISEMBARK too (Zork's V-EXIT); otherwise it's the direction out. In Infocom style, DISEMBARK with no object names the one vehicle in sight: “(raft)”.
 - **Moving:** without a vehicle, water is out of reach (“You can’t go there without a vehicle.”); aboard, the vehicle won't go overland (“You can’t go there in a raft.”); coming from water onto land it rests on the shore (“The raft comes to a rest on the shore.”), and you stay aboard. The vehicle goes wherever you go, scripted moves included.
 - **Aboard:** DROP puts things in the vehicle, TAKE *vehicle* says “You’re inside of it!”, and the room's things stay in reach. The vehicle's rules are asked before the room's (Zork's M-BEG): an `instead.go` on it can refuse directions. Its `onEnd` runs in place of the room's. GO goes through rules too, so a room can have `instead.go` rules.
-- **Looking:** the header names the vehicle (“Pond, in the raft”); the vehicle isn't listed, its contents are; in Infocom style the room's things are “(outside the raft)”, as Zork's PRINT-CONT does.
+- **Looking:** the header names the vehicle (“Pond, in the raft”); the vehicle isn't listed, its contents are; in Infocom style the room's things are “(outside the raft)”, as Zork's PRINT-CONT does. A vehicle's `descriptionScript` (`vehicle: { travels: 'air', descriptionScript: 'basketLook' }`) describes it from inside: its `say` lines follow the room's description, and the name on a brief arrival, but not a room whose own `descriptionScript` described it in full (Zork's vehicle M-LOOK, which a room's M-LOOK cuts off).
 - Dying takes you out of the vehicle, which stays where you died. Conditions `aboard`, `aboard:ITEM` and `water:here|ROOM`; effects `{ board }` and `{ disembark }`; script helpers `ctx.aboard()` and `ctx.water(room?)`.
 
 See the [raft recipe](../guide/building-worlds/recipes#a-raft-on-a-pond).

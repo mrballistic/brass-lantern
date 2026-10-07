@@ -129,11 +129,17 @@ export function lightNote(world: World, state: GameState, id: string): string {
   return world.items[id]?.light && state.itemState[id]?.on ? ' (providing light)' : '';
 }
 
-/** An item's own sentence in a room listing: its first-seen one until it's moved, then its room one. */
+/** An item's own sentence in a room listing: its script's, else its first-seen one until it's moved, then its room one. */
 function itemSentence(world: World, state: GameState, id: string): string | undefined {
   const item = world.items[id];
   if (!item) return undefined;
   return firstSeen(world, state, id) ? item.initialDescription : item.roomDescription;
+}
+
+/** What an item's room-sentence script says now (Zork's DESCFCN), if it has one that says anything. */
+function scriptedSentence(world: World, state: GameState, id: string): string | undefined {
+  const text = scriptDescription(world.items[id]?.roomDescriptionScript, world, state);
+  return text === undefined ? undefined : expandTemplate(text, world, state);
 }
 
 /** Lines emitted when entering a room (description, items, NPCs, exits). */
@@ -157,11 +163,16 @@ export function describeRoom(
   // SUPERBRIEF: the name and nothing else, as Zork skips DESCRIBE-OBJECTS.
   if (opts.namesOnly) return lines;
   // BRIEF (Infocom's default) and SUPERBRIEF: just the name and contents.
+  let roomScripted = false;
   if (!opts.brief) {
     const varied = room.descriptions?.find((d) => evaluateCondition(d.if, state, world))?.text;
     const scripted = scriptDescription(room.descriptionScript, world, state);
+    roomScripted = scripted !== undefined;
     lines.push(expandTemplate(scripted ?? (opts.first && room.firstDescription ? room.firstDescription : (varied ?? room.description)), world, state));
   }
+  // DESCRIBE-ROOM: aboard, the vehicle's own M-LOOK, unless the room's M-LOOK described it in full.
+  const inside = vehicle?.vehicle?.descriptionScript && !roomScripted ? scriptDescription(vehicle.vehicle.descriptionScript, world, state) : undefined;
+  if (inside !== undefined) lines.push(expandTemplate(inside, world, state));
 
   // The vehicle you're in isn't listed; what's in it is, after the room's things.
   const told = (id: string) => firstSeen(world, state, id);
@@ -178,10 +189,13 @@ export function describeRoom(
   const outside = infocom && vehicle ? ` (outside the ${vehicle.name})` : '';
   let listed = false;
   for (const id of visibleItems) {
-    const sentence = itemSentence(world, state, id);
+    // A DESCFCN says everything itself: no “(outside the boat)” after it.
+    const scripted = scriptedSentence(world, state, id);
+    const sentence = scripted ?? itemSentence(world, state, id);
     const isFirst = told(id);
     if (!isFirst && (sentence || infocom)) listed = true;
-    if (sentence) lines.push(isFirst ? sentence : sentence + outside);
+    if (scripted !== undefined) lines.push(scripted);
+    else if (sentence) lines.push(isFirst ? sentence : sentence + outside);
     else if (infocom) lines.push(`There is ${withArticle(world, id)} here${lightNote(world, state, id)}.${outside}`);
     else plain.push(world.items[id]?.name ?? id);
     // Zork describes what's in each thing right after it.

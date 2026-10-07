@@ -120,6 +120,8 @@ export interface Item {
   description: string;
   /** A world script whose `say` lines are EXAMINE's text, ahead of `description`. */
   descriptionScript?: string;
+  /** A world script whose `say` lines are its sentence in a room's listing, ahead of its other sentences; it says it all, so no “(outside the boat)” follows (Zork's DESCFCN). */
+  roomDescriptionScript?: string;
   portable: boolean;
   tags: string[];
   /** Shown when the player tries to take a non-portable item. */
@@ -146,6 +148,8 @@ export interface Item {
     /** A line printed as it leaves with you aboard (before the new room), and as it arrives (after). */
     leave?: string;
     arrive?: string;
+    /** A world script whose `say` lines describe it from inside: after the room's description as you look around aboard, and after the name on a brief arrival, but not after a room its own `descriptionScript` described in full (Zork's vehicle M-LOOK in DESCRIBE-ROOM). */
+    descriptionScript?: string;
   };
   /** A vehicle's end routines: while the player is aboard, they run instead of the room's (Zork's M-END). */
   onEnd?: Array<{ if: string; then: string | EventStep[] }>;

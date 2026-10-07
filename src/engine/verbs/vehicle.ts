@@ -1,6 +1,6 @@
 import type { GameState, ParsedAction } from '@/types/game';
 import type { World } from '@/types/world';
-import { isWater, needObject, pickItem, visibleItems } from '../model';
+import { isAir, isWater, needObject, pickItem, visibleItems } from '../model';
 import { miss, ok, type EngineResult } from '../result';
 
 // Vehicles (Zork's VEHBIT): getting into one and out again.
@@ -38,7 +38,8 @@ export function handleDisembark(action: ParsedAction, world: World, state: GameS
   if (!id && action.via === 'stand' && world.style === 'infocom') return ok(['You are already standing, I think.']);
   // Infocom answers as Zork does; elsewhere it's a miss, so “get out of bed” can go to the intent server.
   if (!id || named !== id) return world.style === 'infocom' ? ok([...note, 'You’re not in that!']) : miss('You’re not in that!');
-  if (isWater(world, state)) return ok([...note, 'You realize that getting out here would be fatal.']);
+  // V-DISEMBARK: anywhere that isn't land (water, or a balloon's air).
+  if (isWater(world, state) || isAir(world, state)) return ok([...note, 'You realize that getting out here would be fatal.']);
   state.aboard = undefined;
   return ok([...note, 'You are on your own feet again.'], true);
 }

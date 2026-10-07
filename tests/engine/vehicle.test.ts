@@ -415,3 +415,88 @@ describe('vehicle kinds beyond water', () => {
     expect(s.npcs?.neighbor?.room ?? 'yard').toBe('yard');
   });
 });
+
+describe('a vehicle of the air, described from inside (6a balloon)', () => {
+  // Zork II's balloon: a basket whose own M-LOOK follows the room's description, and whose
+  // room sentence (DESCFCN) is computed; getting out in mid-air is as fatal as on water.
+  const airWorld: World = {
+    ...boatWorld,
+    rooms: {
+      ...boatWorld.rooms,
+      yard: { ...boatWorld.rooms.yard, exits: { ...boatWorld.rooms.yard.exits, up: 'sky' }, items: [...boatWorld.rooms.yard.items, 'basket'] },
+      sky: { name: 'Sky', description: 'Open sky.', exits: { down: 'yard', east: 'perch' }, items: [], npcs: [], onEnter: [], air: true },
+      perch: { name: 'Perch', description: 'unused', descriptionScript: 'perchLook', exits: { west: 'sky' }, items: [], npcs: [], onEnter: [] },
+    },
+    items: {
+      ...boatWorld.items,
+      basket: {
+        name: 'basket', description: 'A basket.', portable: false, tags: [], container: { open: true },
+        vehicle: { travels: 'air', descriptionScript: 'basketLook' },
+        roomDescriptionScript: 'basketHere',
+      },
+    },
+    scripts: {
+      ...boatWorld.scripts,
+      basketLook: (ctx) => [{ say: ctx.test('flag:lit') ? 'The bag is full of hot air.' : 'The bag hangs limp.' }],
+      basketHere: (ctx) => (ctx.test('flag:quiet') ? [] : [{ say: ctx.test('flag:lit') ? 'A basket strains at its bag here.' : 'A wicker basket sits here.' }]),
+      perchLook: () => [{ say: 'A perch high on the cliff.' }],
+    },
+  };
+  const go = (s: ReturnType<typeof stateWith>, dir: string) => run(s, { action: 'go', target: dir }, airWorld);
+
+  it('getting out in mid-air would be fatal, as on water', () => {
+    const s = stateWith(airWorld, { room: 'sky' });
+    s.locations.basket = 'sky';
+    s.aboard = 'basket';
+    expect(run(s, { action: 'disembark', target: 'basket' }, airWorld).lines).toEqual(['You realize that getting out here would be fatal.']);
+    expect(s.aboard).toBe('basket');
+  });
+
+  it('aboard, the vehicle’s own description follows the room’s, on a brief arrival too', () => {
+    const s = stateWith(airWorld, { room: 'yard' });
+    s.aboard = 'basket';
+    expect(run(s, { action: 'look' }, airWorld).lines.slice(0, 3)).toEqual(['📍 Yard, in the basket', airWorld.rooms.yard.description, 'The bag hangs limp.']);
+    s.flags.lit = true;
+    expect(go(s, 'up').lines).toEqual(['📍 Sky, in the basket', 'Open sky.', 'The bag is full of hot air.']);
+    go(s, 'down');
+    // Back in a room already seen: Infocom's brief arrival is the name, then the vehicle's line.
+    expect(go(s, 'up').lines).toEqual(['📍 Sky, in the basket', 'The bag is full of hot air.']);
+  });
+
+  it('a room described by its own script in full stops the vehicle’s line (Zork’s M-LOOK); briefly, it doesn’t', () => {
+    const s = stateWith(airWorld, { room: 'sky' });
+    s.locations.basket = 'sky';
+    s.aboard = 'basket';
+    expect(go(s, 'east').lines).toEqual(['📍 Perch, in the basket', 'A perch high on the cliff.']);
+    expect(run(s, { action: 'look' }, airWorld).lines).toEqual(['📍 Perch, in the basket', 'A perch high on the cliff.']);
+    go(s, 'west');
+    expect(go(s, 'east').lines).toEqual(['📍 Perch, in the basket', 'The bag hangs limp.']);
+  });
+
+  it('not aboard, there’s no vehicle line; its room sentence is its script’s, with nothing after it', () => {
+    const s = stateWith(airWorld, { room: 'yard' });
+    const look = run(s, { action: 'look' }, airWorld).lines;
+    expect(look).toContain('A wicker basket sits here.');
+    expect(look).not.toContain('The bag hangs limp.');
+    s.flags.lit = true;
+    expect(run(s, { action: 'look' }, airWorld).lines).toContain('A basket strains at its bag here.');
+    // A script that says nothing falls back to the plain sentence.
+    s.flags.quiet = true;
+    expect(run(s, { action: 'look' }, airWorld).lines).toContain('There is a basket here.');
+  });
+
+  it('aboard another vehicle, a scripted room sentence takes no “(outside …)”', () => {
+    const s = stateWith(airWorld, { room: 'yard' });
+    s.aboard = 'raft';
+    expect(run(s, { action: 'look' }, airWorld).lines).toContain('A wicker basket sits here.');
+  });
+
+  it('the audit checks both scripts', async () => {
+    const { auditWorld } = await import('../helpers/audit');
+    expect(auditWorld(airWorld).filter((p) => p.includes('basket'))).toEqual([]);
+    const broken: World = { ...airWorld, items: { ...airWorld.items, basket: { ...airWorld.items.basket, roomDescriptionScript: 'nope', vehicle: { travels: 'air', descriptionScript: 'nada' } } } };
+    const problems = auditWorld(broken).join('\n');
+    expect(problems).toMatch(/roomDescriptionScript names no script “nope”/);
+    expect(problems).toMatch(/descriptionScript names no script “nada”/);
+  });
+});
