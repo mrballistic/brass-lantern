@@ -63,14 +63,13 @@ describe('TURN and PLUG with a tool', () => {
     expect(execute({ action: 'turn', target: 'bolt', indirect: 'match' }, { world: infocom, state: s }).lines).toEqual(['This has no effect.']);
     expect(run(s, { action: 'plug', target: 'bolt', indirect: 'match' }).lines).toEqual(['This has no effect.']);
   });
-  it('TURN with a second object and no rule is a miss in brass style, with no change', () => {
+  it('TURN X WITH Y with no rule has no effect in brass style too, as before 6a (only TURN X TO N misses)', () => {
     const s = stateWith(w, { room: 'shed', carrying: ['match'] });
     s.locations.bolt = 'shed';
-    const before = JSON.stringify(s);
     const r = run(s, { action: 'turn', target: 'bolt', indirect: 'match' });
-    expect(r.understood).toBe(false);
+    expect(r.understood).not.toBe(false);
     expect(r.lines).toEqual(['This has no effect.']);
-    expect(JSON.stringify(s)).toBe(before);
+    expect(s.moveCount).toBe(1);
   });
   it('TURN ON with a tool ignores the tool', () => {
     const s = stateWith(w, { room: 'living', carrying: ['lamp', 'match'] });

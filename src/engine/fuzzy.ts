@@ -24,6 +24,16 @@ function tokenPrefixScore(needleTokens: string[], haystackTokens: string[]): num
   return score;
 }
 
+const DIGITS = /^\d+$/;
+
+/**
+ * Digits name only a thing that has them as a whole word of its ID, name or an alias (“12” is
+ * locker 12, never locker 123 or the h2o): a word in Zork's vocabulary, not a fragment of one.
+ */
+function byWholeNumber(needle: string, candidates: Array<{ id: string; name: string; aliases?: string[] }>): string[] {
+  return candidates.filter((c) => [c.id, c.name, ...(c.aliases ?? [])].some((w) => tokens(w).includes(needle))).map((c) => c.id);
+}
+
 /**
  * Match an input string against a set of candidate IDs, using:
  *  1) exact ID match (after normalize)
@@ -42,6 +52,7 @@ export function fuzzyMatch(
   if (!needle) return null;
   const self = selfMatches(needle, candidates);
   if (self) return self[0] ?? null;
+  if (DIGITS.test(needle)) return byWholeNumber(needle, candidates)[0] ?? null;
 
   for (const c of candidates) {
     if (normalize(c.id) === needle) return c.id;
@@ -86,6 +97,7 @@ export function fuzzyCandidates(
   if (!needle) return [];
   const self = selfMatches(needle, candidates, opts.byId);
   if (self) return self;
+  if (DIGITS.test(needle)) return byWholeNumber(needle, candidates);
   const exactId = candidates.filter((c) => normalize(c.id) === needle);
   if (exactId.length > 0 && (opts.byId || needle.includes('_'))) return [exactId[0].id];
   const words = (c: { id: string; name: string; aliases?: string[] }) => [c.name, ...(c.aliases ?? [])].map(normalize);

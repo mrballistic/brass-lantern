@@ -361,3 +361,17 @@ describe('orders (6a)', () => {
     expectMiss(yard, 'robot, push button', 'There is no “robot” here.', heard);
   });
 });
+
+describe('orders: a thing named by digits (6a follow-up)', () => {
+  it('“robot, take 5” takes a golf club aliased “5”, not the number', () => {
+    const clubbed: World = {
+      ...w,
+      items: { ...w.items, club: { name: 'golf club', aliases: ['5'], description: 'A five iron.', portable: true, tags: [] } },
+      rooms: { ...w.rooms, bedroom: { ...w.rooms.bedroom, items: [...w.rooms.bedroom.items, 'club'] } },
+    };
+    const s = stateWith(clubbed, { room: 'bedroom' });
+    const r = run(s, 'robot, take 5', clubbed);
+    expect(r.understood).not.toBe(false);
+    expect(s.locations.club).not.toBe('bedroom');
+  });
+});

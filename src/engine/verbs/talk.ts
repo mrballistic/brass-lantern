@@ -121,8 +121,9 @@ function giveMe(inner: ParsedAction): ParsedAction {
 }
 
 /**
- * An inner object, in the character's reach: an item, a typed number, ME (the speaker), YOURSELF (the
- * character; SELF and YOURSELF only when nothing in its reach is called that), or someone in its room.
+ * An inner object, in the character's reach: an item, ME (the speaker), YOURSELF (the
+ * character; SELF and YOURSELF only when nothing in its reach is called that), someone in its room, or
+ * the typed number (digits only when nothing there is named by them).
  * Else a result to return.
  */
 function orderObject(
@@ -135,7 +136,6 @@ function orderObject(
   world: World,
   state: GameState,
 ): string | EngineResult {
-  if (readsNumber(inner, word)) return 'number';
   if (isSelfWord(word)) {
     if (isMeWord(word)) return PLAYER;
     const reach = scope.map((id) => ({ id, name: world.items[id]?.name ?? id, aliases: world.items[id]?.aliases }));
@@ -154,6 +154,8 @@ function orderObject(
   const others = npcsSeen(world, state, room).filter((id) => id !== npc);
   const [person] = fuzzyCandidates(word, others.map((id) => ({ id, name: world.npcs[id]?.name ?? id, aliases: world.npcs[id]?.aliases })));
   if (person) return person;
+  // Digits that name nothing in its reach are the command's number.
+  if (readsNumber(inner, word)) return 'number';
   // Zork's parser, for another actor: the default not-here printer.
   if (world.style === 'infocom') return miss(`The ${world.npcs[npc]?.name ?? npc} seems confused. “I don’t see any ${word} here!”`);
   return miss(`You don’t see a “${word}” here.`);

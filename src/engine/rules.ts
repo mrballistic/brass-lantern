@@ -2,7 +2,7 @@ import type { GameState, ParsedAction } from '@/types/game';
 import type { Item, NPC, Room, Rule, World } from '@/types/world';
 import { evaluateCondition } from './conditions';
 import { readsNumber } from './parser';
-import { heldItems, inventoryOf, matchNpc, namesPlayer, pickItem, pickSecond, PLAYER, reachableItems, restoreState, snapshotState, visibleItems } from './model';
+import { heldItems, inventoryOf, matchNpc, namesPlayer, namesThing, pickItem, pickSecond, PLAYER, reachableItems, restoreState, snapshotState, visibleItems } from './model';
 import { setCommand } from './scripts';
 import { runEventKey, turnHalted } from './effects';
 import { miss, ok, type EngineResult } from './result';
@@ -129,8 +129,9 @@ export function withRules(
   // ME names the player: an object that is always at hand.
   const me = (word?: string) => word !== undefined && namesPlayer(word, world, state);
   const reach = [...reachableItems(world, state), ...(action.number !== undefined ? ['number'] : []), ...(me(action.target) || me(action.indirect) ? [PLAYER] : [])];
-  // A number typed where an object goes (TURN DIAL TO 4) is no thing: the literal 'number' stands for it.
-  const typed = (word?: string) => readsNumber(action, word);
+  // A number typed where an object goes (TURN DIAL TO 4) is no thing: the literal 'number' stands for it,
+  // unless something here is named by those digits (locker 12, a club called 5), which the slot then is.
+  const typed = (word?: string) => readsNumber(action, word) && !namesThing(word!, world, state);
   // Resolve the target the way the verb's handler will, so the rules that fire
   // belong to the item the verb actually acts on.
   const target = typed(action.target) ? 'number' : me(action.target) ? PLAYER : action.target ? pickItem(action.target, targetScope(verb, world, state), world, 'target', state) : null;

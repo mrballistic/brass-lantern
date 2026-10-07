@@ -33,6 +33,8 @@ From the 6a final review:
 - **Legacy `travels: 'none'` is in the public API.** The string forms of `travels` (`'water'`, `'air'`, `'none'`) predate terrains; decide before the npm library whether to keep them or deprecate them in favour of lists.
 - **`moveVehicle` aboard into a room whose `requires` fails** prints the room's denial from a timer (a fuse or daemon), where no command was refused.
 - **The parser's word tables use `in`.** `input in SINGLE_WORD` (and `BARE_VERBS`, `DIRECTIONS`) finds Object's prototype keys, so a bare “constructor” or “tostring” parses to a function rather than null. Harmless today (the engine misses), but `Object.hasOwn` would be right.
+- **Brass why-lines assume a common noun.** An obeyed order that can't be done says “The ${name} can’t go that way.”, which reads wrong for a proper name (“The Milton can’t go that way.”). Consider an article or proper-name field on NPCs (Zork's NARTICLEBIT) or a world template for the why-lines.
+- **ME/MYSELF can't reach topics or dialogue choices keyed that way.** The guard that keeps ME from fuzzy-matching sits in the generic `fuzzyCandidates`, so ASK X ABOUT ME or a dialogue choice keyed “me” never matches. The guard belongs in thing and NPC resolution, not in every fuzzy lookup.
 
 ## From the 1.12.5 clear-out review
 

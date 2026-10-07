@@ -2,7 +2,7 @@ import type { GameState, ParsedAction } from '@/types/game';
 import type { World } from '@/types/world';
 import { withArticle } from '../describe';
 import { runSteps } from '../effects';
-import { isCarried, isOn, matchNpc, moveItem, needObject, pickItem, reachableItems, visibleItems } from '../model';
+import { isCarried, isOn, matchNpc, moveItem, namesThing, needObject, pickItem, reachableItems, visibleItems } from '../model';
 import { miss, ok, zorkDefault, type EngineResult } from '../result';
 import { notHeld } from './objects';
 import { readsNumber } from '../parser';
@@ -17,11 +17,13 @@ function isFlaming(world: World, state: GameState, id: string): boolean {
 export function handleNoEffect(action: ParsedAction, world: World, state: GameState): EngineResult {
   if (!action.target) needObject();
   const scope = visibleItems(world, state);
-  const typed = (word?: string) => readsNumber(action, word);
+  // The command's number, unless something here is named by those digits (then it is that thing).
+  const typed = (word?: string) => readsNumber(action, word) && !namesThing(word!, world, state);
   if (!typed(action.target) && !pickItem(action.target, scope, world, 'target', state) && !matchNpc(action.target, world, state)) return miss(`You don’t see a “${action.target}” here.`);
   if (action.indirect && !typed(action.indirect) && !pickItem(action.indirect, scope, world, 'indirect', state)) return miss(`You don’t see a “${action.indirect}” here.`);
-  // TURN X TO N and TURN X WITH Y: Zork's line in Infocom style, a miss elsewhere (the intent server reads it).
-  return action.action === 'turn' && action.indirect ? zorkDefault(world, 'This has no effect.') : ok(['This has no effect.']);
+  // TURN X TO N: Zork's line in Infocom style, a miss elsewhere (the intent server reads it). TURN X WITH Y
+  // and PLUG X WITH Y were understood before 6a and still are, in every style.
+  return action.action === 'turn' && typed(action.indirect) ? zorkDefault(world, 'This has no effect.') : ok(['This has no effect.']);
 }
 
 /** BURN X WITH Y (and LIGHT X WITH Y): Zork's PRE-BURN and V-BURN. */

@@ -113,7 +113,6 @@ describe('prepositions (6a)', () => {
       ['push box to painting', { carrying: [] }],
       ['turn painting to 4', {}],
       ['set painting to 776', {}],
-      ['turn painting with lens', {}],
     ])('%s', (input, opts) => {
       const state = stateWith(world, { room: 'living', carrying: (opts as { carrying?: string[] }).carrying ?? ['mat', 'key', 'book', 'lens'] });
       const before = JSON.stringify(state);
@@ -129,6 +128,19 @@ describe('prepositions (6a)', () => {
         expect(r.understood, input).toBe(false);
         expect(JSON.stringify(state), input).toBe(before);
       }
+    });
+    it('TURN X WITH Y is no new form: understood with “This has no effect.”, as before 6a; TURN X TO N misses', () => {
+      const state = stateWith(fixtureWorld, { room: 'bedroom' });
+      const r = execute(fallbackParse('turn alarm with bed', fixtureWorld.verbs)!, { world: fixtureWorld, state });
+      expect(r.understood).not.toBe(false);
+      expect(r.lines).toEqual(['This has no effect.']);
+      expect(state.moveCount).toBe(1);
+      const missed = stateWith(fixtureWorld, { room: 'bedroom' });
+      const before = JSON.stringify(missed);
+      const m = execute(fallbackParse('turn alarm to 7', fixtureWorld.verbs)!, { world: fixtureWorld, state: missed });
+      expect(m.understood).toBe(false);
+      expect(JSON.stringify(missed)).toBe(before);
+      expect(play('turn painting with lens').r.lines).toEqual(['This has no effect.']);
     });
     it('a target naming nothing is a miss with no change', () => {
       for (const input of ['push crate north', 'push box to nowhere', 'throw brass key off nowhere', 'put mat under nowhere']) {

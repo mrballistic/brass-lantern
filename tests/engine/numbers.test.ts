@@ -101,3 +101,77 @@ describe('numbers (Zork’s INTNUM) (6a)', () => {
     expect(s.vars?.cell).toBe(6);
   });
 });
+
+// A thing named or aliased by digits (a golf club called “5”, locker 12): digits typed where an object
+// goes name it first, as Zork's parser reads a word in its vocabulary before trying NUMBER?.
+// Only when nothing in scope is called that are they the number.
+const club = {
+  name: 'golf club',
+  aliases: ['5'],
+  description: 'A five iron.',
+  portable: true,
+  tags: [],
+  instead: { take: [{ say: ['The club is bolted to the rack.'] }], examine: [{ say: ['A five iron, engraved “5”.'] }] },
+};
+const clubbed: World = {
+  ...fixtureWorld,
+  items: { ...fixtureWorld.items, club },
+  rooms: { ...fixtureWorld.rooms, bedroom: { ...fixtureWorld.rooms.bedroom, items: [...fixtureWorld.rooms.bedroom.items, 'club'] } },
+};
+const lockers: World = {
+  ...dial,
+  items: { ...dial.items, locker: { name: 'locker 12', description: 'Locker 12.', portable: false, tags: [] } },
+  rooms: {
+    ...dial.rooms,
+    bedroom: {
+      ...dial.rooms.bedroom,
+      items: [...dial.rooms.bedroom.items, 'locker'],
+      instead: {
+        turn: [
+          { with: 'locker', if: 'number:12', say: ['You can’t set the dial to a locker.'] },
+          { with: 'number', if: 'number:5', say: ['Five, says the dial.'] },
+          ...(dial.rooms.bedroom.instead?.turn ?? []),
+        ],
+      },
+    },
+  },
+};
+
+describe('a thing named by digits (6a follow-up)', () => {
+  it('TAKE 5 with a golf club aliased “5”: the club’s own rule fires', () => {
+    const s = stateWith(clubbed, { room: 'bedroom' });
+    expect(execute(fallbackParse('take 5')!, { world: clubbed, state: s }).lines).toEqual(['The club is bolted to the rack.']);
+    expect(s.locations.club).toBe('bedroom');
+  });
+  it('EXAMINE 5 uses its examine rules', () => {
+    const s = stateWith(clubbed, { room: 'bedroom' });
+    expect(execute(fallbackParse('examine 5')!, { world: clubbed, state: s }).lines).toEqual(['A five iron, engraved “5”.']);
+  });
+  it('with nothing called that, TURN DIAL TO 5 still reaches `with: number` rules and number:5', () => {
+    const s = stateWith(lockers, { room: 'bedroom' });
+    expect(execute(fallbackParse('turn dial to 5')!, { world: lockers, state: s }).lines).toEqual(['Five, says the dial.']);
+  });
+  it('TURN DIAL TO 12 with locker 12 here: the locker wins (its rules, number:12 still true)', () => {
+    const s = stateWith(lockers, { room: 'bedroom' });
+    expect(execute(fallbackParse('turn dial to 12')!, { world: lockers, state: s }).lines).toEqual(['You can’t set the dial to a locker.']);
+    expect(s.vars?.cell).toBeUndefined();
+  });
+  it('digits name a thing only as a whole word: TURN DIAL TO 1 is the number, not locker 12', () => {
+    const s = stateWith(lockers, { room: 'bedroom' });
+    expect(execute(fallbackParse('turn dial to 1')!, { world: lockers, state: s }).lines).toEqual(['The dial clicks.']);
+    expect(s.vars?.cell).toBe(1);
+    // And TAKE 2 is no “locker 12”.
+    const t = stateWith(lockers, { room: 'bedroom' });
+    expect(execute(fallbackParse('take 2')!, { world: lockers, state: t }).lines).toEqual(['You don’t see a “2” here.']);
+  });
+  it('with no rule, TURN X TO a thing named by digits is TURN X WITH Y: understood, no effect', () => {
+    const plain: World = { ...lockers, rooms: { ...lockers.rooms, bedroom: { ...lockers.rooms.bedroom, instead: undefined } } };
+    const s = stateWith(plain, { room: 'bedroom' });
+    const r = execute(fallbackParse('turn dial to 12')!, { world: plain, state: s });
+    expect(r.understood).not.toBe(false);
+    expect(r.lines).toEqual(['This has no effect.']);
+    // The number, with no rule, is still a miss in brass style.
+    const m = stateWith(plain, { room: 'bedroom' });
+    expect(execute(fallbackParse('turn dial to 7')!, { world: plain, state: m }).understood).toBe(false);
+  });
+});

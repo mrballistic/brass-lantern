@@ -20,7 +20,7 @@ The verbs are fixed; a world gives them things to act on. Anything the regex par
 | LOOK IN *thing* | `search` | What's inside. |
 | TURN ON / OFF *thing* | `switch on`, `light`; `extinguish`, `douse`, `blow out`, `put out` | Switchable items. |
 | BURN *thing* WITH *item* | `light … with`, `burn down`, `ignite`, `incinerate` | Something burnable, with something burning. The thing's rules answer first (lighting candles with a match). |
-| TURN *thing* WITH *tool* | `to`, `for`; SET *thing* TO *x* | A rule on the thing decides; otherwise “This has no effect.” (in Infocom style; elsewhere the intent server gets a turn). TURN ON … WITH … is TURN ON. The second object can be a number: TURN DIAL TO 4, SET YEAR TO 776 (digits up to 1000, or H:MM). |
+| TURN *thing* WITH *tool* | `to`, `for`; SET *thing* TO *x* | A rule on the thing decides; otherwise “This has no effect.” TURN ON … WITH … is TURN ON. The second object can be a number: TURN DIAL TO 4, SET YEAR TO 776 (digits up to 1000, or H:MM); with no rule for it, that answers “This has no effect.” in Infocom style, and elsewhere the intent server gets a turn. Digits that name something here (locker 12) are that thing, not the number. |
 | PLUG *thing* WITH *item* | | The same: a rule, or “This has no effect.” |
 | BOARD *vehicle* | `get in`, `climb in`, `sit in` | Into a vehicle on the ground here. See [vehicles](./world-schema#vehicles). |
 | DISEMBARK [*vehicle*] | `get out`, `get off`, `stand` | Out again, if it's safe. EXIT on its own does this while you're aboard, and is a direction (out) otherwise. |

@@ -412,6 +412,16 @@ export function namesPlayer(word: string, world: World, state: GameState): boole
   return namesSelf(word, seen, { byId: byIdTurns.has(state) });
 }
 
+/**
+ * Do the digits typed where an object goes name something: a thing in sight or a character here?
+ * Then the slot is that thing (Zork's parser reads a word in its vocabulary before trying NUMBER?);
+ * only when nothing is called that are they the command's number.
+ */
+export function namesThing(word: string, world: World, state: GameState): boolean {
+  const seen = [...itemCandidates(visibleItems(world, state), world), ...npcCandidates(npcsSeen(world, state, state.currentRoom), world)];
+  return fuzzyCandidates(word, seen, { byId: byIdTurns.has(state) }).length > 0;
+}
+
 /** A second object: ME (see namesPlayer) is the player, else as pickItem. */
 export function pickSecond(target: string, ids: string[], world: World, state?: GameState): string | null {
   return state && namesPlayer(target, world, state) ? PLAYER : pickItem(target, ids, world, 'indirect', state);
