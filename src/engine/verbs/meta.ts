@@ -1,6 +1,7 @@
 import type { GameState } from '@/types/game';
-import type { World } from '@/types/world';
+import type { World, WorldVerb } from '@/types/world';
 import { evaluateCondition } from '../conditions';
+import { BUILT_IN_WORDS } from '../parser';
 import { ok, type EngineResult } from '../result';
 
 /** The score so far: scoring entries earned, plus the `score` var. */
@@ -63,9 +64,11 @@ export function handleScore(world: World, state: GameState): EngineResult {
 }
 
 export function handleHelp(world: World): EngineResult {
-  const own = Object.entries(world.verbs ?? {}).map(
-    ([id, v]) => `${id.toUpperCase().padEnd(25)}${v.words.filter((w) => w !== id).join(', ')}`.trimEnd(),
-  );
+  // An afterBuiltIns verb's built-in words are the built-in verb's to list; one with only those isn't listed.
+  const words = (v: WorldVerb) => (v.afterBuiltIns ? v.words.filter((w) => !BUILT_IN_WORDS.has(w.toLowerCase())) : v.words);
+  const own = Object.entries(world.verbs ?? {})
+    .filter(([, v]) => words(v).length > 0)
+    .map(([id, v]) => `${id.toUpperCase().padEnd(25)}${words(v).filter((w) => w !== id).join(', ')}`.trimEnd());
   return ok([
     '═══════ COMMANDS ═══════',
     'GO <direction|place>     N S E W NE NW SE SW U D also work',

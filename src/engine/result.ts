@@ -20,6 +20,8 @@ export interface EngineResult {
   fatal?: boolean;
   /** Takes no game time (VERBOSE): no turn, no daemons, no fuses. */
   free?: boolean;
+  /** Runs no clock (Zork's main loop skips CLOCKER for SCORE, VERBOSE…): no move, no daemons or fuses, but the room's end routine still runs. */
+  clockless?: boolean;
   /** A question back to the player; the conversation layer takes the answer. */
   ask?: Ask;
   /** What the command acted on, for pronouns. */

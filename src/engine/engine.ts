@@ -183,6 +183,12 @@ function executeTurn(action: ParsedAction, deps: EngineDeps): EngineResult {
     result = { ...ok([tooDark(world)]), free: true };
   }
   if (result.understood === false || state.gameOver || result.free) return result;
+  // No clock, but M-END still runs (Zork's main loop: the end routine for every verb, CLOCKER not for these).
+  if (result.clockless) {
+    const before = stateKey(state);
+    const end = turnHalted(state) ? [] : roomEnd(world, state);
+    return end.length === 0 && before === stateKey(state) ? result : { ...result, lines: [...result.lines, ...end], mutated: true };
+  }
 
   // Misses don't count as turns: they must not mutate state (see EngineResult).
   state.turns = (state.turns ?? 0) + 1;
@@ -337,9 +343,9 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
     case 'hint':
       return handleHint(world, state);
     case 'score': {
-      // Zork's main loop runs no clock for SCORE: no move, no timers.
+      // Zork's main loop runs no clock for SCORE: no move, no timers (the room's end routine still runs).
       const scored = handleScore(world, state);
-      return world.style === 'infocom' ? { ...scored, free: true } : scored;
+      return world.style === 'infocom' ? { ...scored, clockless: true } : scored;
     }
     case 'script':
     case 'unscript':
@@ -372,7 +378,9 @@ const VERBOSITY_REPLY = {
 
 function setVerbosity(mode: 'verbose' | 'brief' | 'superbrief', world: World, state: GameState): EngineResult {
   state.verbosity = mode;
-  return { ...ok([VERBOSITY_REPLY[world.style === 'infocom' ? 'infocom' : 'brass'][mode]], true), free: true };
+  const reply = ok([VERBOSITY_REPLY[world.style === 'infocom' ? 'infocom' : 'brass'][mode]], true);
+  // Infocom: no clock, but the room's end routine runs (Zork's main loop). Brass: no time at all.
+  return world.style === 'infocom' ? { ...reply, clockless: true } : { ...reply, free: true };
 }
 
 /** A question back to the player: understood, changes nothing, takes no time. */

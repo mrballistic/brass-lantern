@@ -233,7 +233,7 @@ export const fixtureWorld: World = {
     ring: { words: ['ring'], target: 'required' },
     wander: { words: ['wander', 'wander to'], target: 'optional', go: true },
     // A built-in word, for what the built-in TURN (… TO, … WITH, ON, OFF) doesn't read.
-    twist: { words: ['twist', 'turn'], target: 'required', fallback: true, reply: 'It won’t turn.' },
+    twist: { words: ['twist', 'turn'], target: 'required', afterBuiltIns: true, reply: 'It won’t turn.' },
   },
 
   darkness: { look: 'It is pitch black.', blunder: [{ chance: 100, then: ['You trip in the dark.'] }] },

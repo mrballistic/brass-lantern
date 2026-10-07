@@ -91,13 +91,27 @@ describe('Infocom style', () => {
     expect(s.turns).toBe(1);
   });
 
-  it('SCORE runs no daemons or fuses (Zork’s CLOCKER skips it)', () => {
-    const ticking: World = { ...world, daemons: [{ if: 'in:kitchen', then: ['Tick.'] }] };
+  it('SCORE, VERBOSE, BRIEF and SUPERBRIEF run no clock (Zork’s CLOCKER skips them) but the room’s end routine still runs', () => {
+    const kitchen = { ...world.rooms.kitchen, onEnd: [{ if: 'in:kitchen', then: ['The wind blows.'] }] };
+    const ticking: World = {
+      ...world,
+      rooms: { ...world.rooms, kitchen },
+      daemons: [{ if: 'in:kitchen', then: ['Tick.'] }],
+      events: { ...world.events, ding: ['Ding.'] },
+    };
+    for (const action of ['score', 'verbose', 'brief', 'superbrief']) {
+      const s = stateWith(ticking, { room: 'kitchen' });
+      s.fuses = { ding: 0 };
+      const r = execute({ action }, { world: ticking, state: s });
+      expect(r.lines).toContain('The wind blows.');
+      expect(r.lines).not.toContain('Tick.');
+      expect(r.lines).not.toContain('Ding.');
+      expect(s.turns ?? 0).toBe(0);
+      expect(s.moveCount).toBe(0);
+    }
     const s = stateWith(ticking, { room: 'kitchen' });
-    const r = execute({ action: 'score' }, { world: ticking, state: s });
-    expect(r.lines).not.toContain('Tick.');
-    expect(r.free).toBe(true);
-    expect(execute({ action: 'look' }, { world: ticking, state: s }).lines).toContain('Tick.');
+    s.fuses = { ding: 0 };
+    expect(execute({ action: 'look' }, { world: ticking, state: s }).lines).toEqual(expect.arrayContaining(['The wind blows.', 'Tick.', 'Ding.']));
   });
 
   it('a lit light source says so in the inventory', () => {

@@ -185,9 +185,9 @@ export const BUILT_IN_WORDS: ReadonlySet<string> = new Set([
   ...Object.keys(DIRECTIONS),
 ]);
 
-/** World verb words that a built-in verb already owns (a `fallback` verb may share them). */
+/** World verb words that a built-in verb already owns (an `afterBuiltIns` verb may share them). */
 export function verbClashes(verbs: World['verbs']): string[] {
-  return Object.values(verbs ?? {}).flatMap((v) => (v.fallback ? [] : v.words.filter((w) => BUILT_IN_WORDS.has(w.toLowerCase()))));
+  return Object.values(verbs ?? {}).flatMap((v) => (v.afterBuiltIns ? [] : v.words.filter((w) => BUILT_IN_WORDS.has(w.toLowerCase()))));
 }
 
 const escapeWord = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
@@ -204,13 +204,13 @@ function worldPatterns(verbs: World['verbs']): WorldPattern[] {
   const out: WorldPattern[] = [];
   for (const [id, verb] of Object.entries(verbs)) {
     for (const word of verb.words) {
-      if (BUILT_IN_WORDS.has(word.toLowerCase()) && !verb.fallback) continue;
+      if (BUILT_IN_WORDS.has(word.toLowerCase()) && !verb.afterBuiltIns) continue;
       const preps = (verb.indirect ?? []).map(escapeWord).join('|');
       const obj =
         verb.target === 'text' ? '(?:\\s+(.*))?' : verb.target === 'none' ? '' : `(?:\\s+(?:the\\s+)?(.+?))${verb.target === 'required' ? '' : '?'}`;
       const ind = preps && verb.target !== 'none' && verb.target !== 'text' ? `(?:\\s+(?:${preps})\\s+(?:the\\s+)?(.+))?` : '';
-      // A fallback verb's phrases wait for the built-ins too.
-      out.push({ re: new RegExp(`^${escapeWord(word)}${obj}${ind}$`, 'i'), id, verb, phrase: !verb.fallback && /\s/.test(word.trim()) });
+      // An afterBuiltIns verb's phrases wait for the built-ins too.
+      out.push({ re: new RegExp(`^${escapeWord(word)}${obj}${ind}$`, 'i'), id, verb, phrase: !verb.afterBuiltIns && /\s/.test(word.trim()) });
     }
   }
   out.sort((a, b) => b.re.source.length - a.re.source.length);

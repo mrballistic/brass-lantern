@@ -185,11 +185,11 @@ verbs: {
 | `reply?` | string | When no rule applies. Default: “Nothing happens.” `{target}` is replaced by the object's name, `{a target}` by its name with an article. |
 | `held?` | boolean | The object must be something you hold, or can see inside something you hold (Zork's HELD): POUR WATER means the water in your bottle. |
 | `go?` | boolean | Treat it as GO: through the target exit, or the exit labeled with the verb's ID. |
-| `fallback?` | boolean | Its words may be built-in words: it reads only lines no built-in verb reads, after them (Zork III's bare TURN DIAL, where the engine's TURN wants TO or WITH). |
+| `afterBuiltIns?` | boolean | Its words may be built-in words: it reads only lines no built-in verb reads, after them (Zork III's bare TURN DIAL, where the engine's TURN wants TO or WITH). |
 
 - A world verb does nothing by itself: give items or rooms `instead` rules for it.
 - With no target, it looks for a rule on the room, then on anything in reach (SNOOZE finds the alarm clock).
-- A word a built-in verb already uses (`take`, `open`, …) is ignored, unless the verb is a `fallback`; `verbClashes(world.verbs)` lists any.
+- A word a built-in verb already uses (`take`, `open`, …) is ignored, unless the verb is `afterBuiltIns`; `verbClashes(world.verbs)` lists any.
 
 ## Style
 
@@ -199,7 +199,7 @@ verbs: {
   - no exit line;
   - a room you've visited shows just its name and contents unless you LOOK (SUPERBRIEF shows only the name, in either style);
   - lists newest first;
-  - SCORE says “Your score is 15 (total of 350 points), in 40 moves.”, and takes no time (no move, no timers);
+  - SCORE says “Your score is 15 (total of 350 points), in 40 moves.”, and (like VERBOSE, BRIEF and SUPERBRIEF) runs no clock: no move, no timers, though the room’s end routine still runs;
   - the header shows the room, score and moves, like Zork's status line;
   - questions, TAKE ALL and transcripts use Zork's wording;
   - bookkeeping lines like `[Flag set: …]` act without being shown.
@@ -291,7 +291,7 @@ The `die` effect uses it. Without a `death` block, dying prints the cause and en
 | `topicAliases?` | `Record<topic, string[]>` | Other words for a topic. |
 | `noTopic?` | string | For a topic it has nothing on. Default: its TALK TO line. |
 | `refuseOrder?` | string | Its answer to an order. Default: “*Name* ignores you.” |
-| `heardFrom?` | room ID[] | Rooms from which the player can address it while it's elsewhere (Zork III's dungeon master on the parapet, ordered from the cell); its orders are carried out where it stands. |
+| `heardFrom?` | room ID[] | Rooms from which the player can give it orders while it's elsewhere (Zork III's dungeon master on the parapet, ordered from the cell); its orders are carried out where it stands. |
 
 Characters' places and states live in the game state (`npcs`), starting from the rooms that list them. In brass style the room shows “Present: …”; in Infocom style each character prints its own line.
 

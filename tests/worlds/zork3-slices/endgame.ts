@@ -39,7 +39,7 @@ export const endgameWorld: World = {
     follow: { words: ['follow', 'chase', 'pursue', 'come'], target: 'optional' },
     stay: { words: ['stay'], target: 'none' },
     // TURN X with no TO or WITH: PRE-TURN, no tool named (the engine's TURN wants one).
-    turn_bare: { words: ['turn', 'set'], target: 'required', fallback: true, reply: BARE_HANDS },
+    turn_bare: { words: ['turn', 'set'], target: 'required', afterBuiltIns: true, reply: BARE_HANDS },
   },
 
   rooms: {
