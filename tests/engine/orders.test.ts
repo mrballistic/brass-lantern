@@ -189,6 +189,17 @@ describe('orders (6a)', () => {
     expect(run(s, 'robot, push me', pushy).lines).toEqual(['The robot pushes you.']);
   });
 
+  it('the typed word’s order table wins when it has one, then the parsed verb’s', () => {
+    const both: World = { ...w, npcs: { ...w.npcs, robot: { ...w.npcs.robot, orders: { use: [{ say: ['use table'] }], push: [{ say: ['push table'] }] } } } };
+    const s = stateWith(both, { room: 'bedroom' });
+    s.npcs = { robot: { room: 'bedroom' } };
+    // PUSH X reads as USE, but `orders.push` answers it.
+    expect(run(s, 'robot, push button', both).lines).toEqual(['push table']);
+    expect(run(s, 'robot, use button', both).lines).toEqual(['use table']);
+    // No table for the typed word (PRESS): the parsed verb's.
+    expect(run(s, 'robot, press button', both).lines).toEqual(['use table']);
+  });
+
   it('order rules see the inner command: target, number, and the actor', () => {
     const s = stateWith(w, { room: 'bedroom' });
     s.npcs = { robot: { room: 'bedroom' } };

@@ -85,11 +85,12 @@ function order(npc: string, action: ParsedAction, world: World, state: GameState
     if (typeof found !== 'string') return found;
     ids[slot] = found;
   }
-  // Rules are keyed by the inner verb, or by the word typed (PUSH reads as USE, but `orders.push` answers it).
+  // Rules are keyed by the word typed when its table exists (PUSH reads as USE, but `orders.push`
+  // answers it), else by the inner verb.
   const typed = action.indirect!.trim().split(/\s+/)[0].toLowerCase();
   // Own keys only: “constructor” typed first must not find Object's.
   const has = (key: string) => Boolean(person.orders && Object.hasOwn(person.orders, key));
-  const verb = has(inner.action) || !has(typed) ? inner.action : typed;
+  const verb = has(typed) ? typed : inner.action;
   setCommand(state, {
     verb,
     actor: npc,

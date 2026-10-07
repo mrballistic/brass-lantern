@@ -318,7 +318,7 @@ Characters' places and states live in the game state (`npcs`), starting from the
 
 1. **`instead.order`** rules on the character answer first, as for any verb. In one, `ctx.command.words.indirect` is the order as typed. A character with only `instead.order` (no `orders`, no `obeys`) behaves as before: it answers, or says `refuseOrder`, and the rest of the line carries on.
 2. Otherwise the order is read as a command of its own, with its objects resolved among what the character can reach in **its** room (ME or MYSELF is the player; a number typed as an object counts). A word that names nothing there is a miss that changes nothing, so the intent server may still read it; one that matches several things asks which, taking no time. A character can't refer to what the player carries.
-3. **`orders`** rules are keyed by the inner command's verb: `orders: { push: [...], take: [...] }`. They are the same shape as other [rules](#rules), and their conditions see the inner command (`target:`, `indirect:`, `number:`, `said:`, `direction:`). If the parsed verb has no table, the first word typed is tried (PUSH reads as USE, so “robot, push the button” runs `orders.push`); if both exist, **the parsed verb's table wins**, so `orders.use` beats `orders.push`. A rule with `continue: true` runs and then lets step 4 go on.
+3. **`orders`** rules are keyed by the inner command's verb: `orders: { push: [...], take: [...] }`. They are the same shape as other [rules](#rules), and their conditions see the inner command (`target:`, `indirect:`, `number:`, `said:`, `direction:`). **The first word typed is tried first**, when it has a table (PUSH reads as USE, so “robot, push the button” runs `orders.push` even when `orders.use` exists); otherwise the parsed verb's table (“robot, press the button” runs `orders.use`). A rule with `continue: true` runs and then lets step 4 go on.
 4. If no rule answered and the verb is in `obeys`, the character performs it, saying `obeyReplies[verb]` (default “Okay.”):
    - **`go`**: it walks that exit of its room, with its usual leaving and arriving lines. A refused exit is a miss. In Infocom style it walks as the player does: no exit says “You can’t go that way.”, and an exit that refuses says its own refusal.
    - **`take`** and **`drop`**: the thing moves to or from the character (weight limits apply only to the player). In Infocom style a take it can't do says the player's own take line.
@@ -336,7 +336,7 @@ robot: {
   obeyReplies: { go: 'Whirr, buzz, click!' },
   orders: {
     push: [{ if: 'target:red_button', then: 'lift_cage' }],
-    use: [{ say: ['The robot ignores that.'] }], // “robot, push the button” stays with orders.push
+    use: [{ say: ['The robot ignores that.'] }], // “robot, press the button”; “robot, push the button” runs orders.push
   },
 },
 ```
