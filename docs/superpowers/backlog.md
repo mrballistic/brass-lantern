@@ -2,6 +2,12 @@
 
 Known gaps the reviews found and deferred. Each stage's spec picks up the ones it touches; strike an item through (or delete it) when it ships. Newest first.
 
+## From stage 6a
+
+- **An actor's holdings aren't listed under it.** Zork lists what an open actor holds after its line (“The robot is holding:” then its things; PRINT-CONT for CONTBIT/OPENBIT actors, gverbs.zil:1877), even while the actor itself is NDESCBIT. Native never lists a character's `holds`. A character flag that lists its holdings in Infocom style would do; the robot slice avoids the state for now.
+- **An ordered character can't refer to what the player carries.** Zork's parser searches the player's inventory for any WINNER (gparser.zil GET-OBJECT, `DO-SL ,PLAYER`), so “robot, drop lamp” finds the lamp and ROBOT-FCN answers “Click! I don't have that. Buzz! Whirr!”. `npcScope` excludes the player's things by design, so native misses. Decide whether Infocom style should widen the scope for orders.
+- **The robot's 2% “Buzz! Buzz! Buzz! My circuits are getting rusty. Try again.”** (ROBOT-FCN) isn't modelled: it also stops the action, and nothing in a `continue` order rule's event can stop the built-in that follows it (and conditions draw no randomness).
+
 ## From the 1.12.5 clear-out review
 
 - ~~**ROB-MAZE never fires in Release 119.**~~ (1.12.5) Solved: DESCRIBE-ROOM clears a maze room's TOUCHBIT on every look, and I-THIEF only robs rooms with TOUCHBIT, so he never robs the maze and the distant voice is dead code. Native now skips maze rooms too.

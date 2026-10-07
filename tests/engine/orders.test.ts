@@ -269,6 +269,37 @@ describe('orders (6a)', () => {
     expect(JSON.stringify(s)).toBe(before);
   });
 
+  it('Infocom style: a refused GO says the exit’s own refusal, a TAKE it can’t do says V-TAKE’s line, neither a miss nor a change', () => {
+    const infocom: World = { ...w, style: 'infocom' };
+    /** An understood answer that changes nothing but the clock (a refusal takes a turn, as the player's do). */
+    const things = (st: GameState) => JSON.stringify([st.locations, st.itemState, st.flags, st.vars, st.npcs, st.currentRoom, st.rng]);
+    const expectRefused = (s: GameState, input: string, line: string) => {
+      const before = things(s);
+      const r = run(s, input, infocom);
+      expect(r.lines).toEqual([line]);
+      expect(r.understood).not.toBe(false);
+      expect(things(s)).toBe(before);
+    };
+    const shed = stateWith(infocom, { room: 'shed' });
+    shed.npcs = { robot: { room: 'shed' } };
+    expectRefused(shed, 'robot, go up', 'The hatch is closed.');
+    const living = stateWith(infocom, { room: 'living' });
+    living.npcs = { robot: { room: 'living' } };
+    expectRefused(living, 'robot, go south', 'The door is stuck.');
+    const bedroom = stateWith(infocom, { room: 'bedroom' });
+    bedroom.npcs = { robot: { room: 'bedroom' } };
+    expectRefused(bedroom, 'robot, take alarm', 'It is screwed to the wall.');
+    bedroom.locations.sock = 'robot';
+    expectRefused(bedroom, 'robot, take sock', 'You already have that!');
+  });
+
+  it('Infocom style: an inner object that isn’t there is Zork’s confused actor, still a miss with no change', () => {
+    const infocom: World = { ...w, style: 'infocom' };
+    const s = stateWith(infocom, { room: 'bedroom' });
+    s.npcs = { robot: { room: 'bedroom' } };
+    expectMiss(s, 'robot, take xyzzy', 'The robot seems confused. “I don’t see any xyzzy here!”', infocom);
+  });
+
   it('npcScope: what is in its room, reachable there, plus what it holds; not what the player carries', () => {
     const s = stateWith(w, { room: 'bedroom', carrying: ['wallet'] });
     s.npcs = { robot: { room: 'bedroom' } };

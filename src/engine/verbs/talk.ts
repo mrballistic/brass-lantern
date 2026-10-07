@@ -135,7 +135,10 @@ function orderObject(
   }
   const others = npcsSeen(world, state, room).filter((id) => id !== npc);
   const [person] = fuzzyCandidates(word, others.map((id) => ({ id, name: world.npcs[id]?.name ?? id, aliases: world.npcs[id]?.aliases })));
-  return person ?? miss(`You don’t see a “${word}” here.`);
+  if (person) return person;
+  // Zork's parser, for another actor: the default not-here printer.
+  if (world.style === 'infocom') return miss(`The ${world.npcs[npc]?.name ?? npc} seems confused. “I don’t see any ${word} here!”`);
+  return miss(`You don’t see a “${word}” here.`);
 }
 
 /** A built-in order carried out, or a miss that changes nothing when it can't be. */
@@ -151,19 +154,26 @@ function obey(
   const person = world.npcs[npc];
   const refusal = person.refuseOrder ?? `${person.name} ignores you.`;
   const done = () => ok([person.obeyReplies?.[verb] ?? 'Okay.'], true);
+  const infocom = world.style === 'infocom';
   const item = ids.target && world.items[ids.target] ? ids.target : null;
   const holds = item !== null && isInside(state, item, npc);
   switch (verb) {
     case 'go': {
-      const to = npcExit(inner.target, room, world, state);
-      // No way at all that way: Infocom's actor walks as the player does (V-WALK), with the same line.
-      const noWay = world.style === 'infocom' && !(inner.target && fuzzyMatchExit(inner.target, world.rooms[room]?.exits ?? {}));
-      if (!to) return miss(noWay ? 'You can’t go that way.' : refusal);
+      const way = npcExit(inner.target, room, world, state);
+      // Infocom's actor walks as the player does (V-WALK): no exit is the player's miss line; an exit
+      // that refuses says its own refusal, understood and changing nothing.
+      if (infocom && !way) return miss('You can’t go that way.');
+      if (infocom && way && 'refused' in way) return ok([way.refused]);
+      if (!way || !('to' in way)) return miss(refusal);
+      const to = way.to;
       // Stamped on the sequence things' placings share, as the moveNpc effect does.
       Object.assign(npcStateOf(state, npc), { room: to, seq: nextPlacing(state) });
       return done();
     }
     case 'take':
+      // Infocom's actor takes as the player does: PRE-TAKE, then ITAKE's refusal (understood, no change).
+      if (infocom && item && holds) return ok(['You already have that!']);
+      if (infocom && item && !world.items[item].portable) return ok([world.items[item].refusal ?? `You can’t take the ${world.items[item].name}.`]);
       if (!item || holds || !world.items[item].portable) return miss(refusal);
       moveItem(state, item, npc);
       return done();
@@ -180,17 +190,21 @@ function obey(
   }
 }
 
-/** Where the character's exit for `dir` leads, judged as the player's exits are (denials, `if`, an open door); null if it won't go. */
-function npcExit(dir: string | undefined, room: string, world: World, state: GameState): string | null {
+/**
+ * The character's exit for `dir`, judged as the player's exits are: where it leads, or the
+ * refusal the player would hear (a denial, a failing `if`, a closed door); null if there's no exit.
+ */
+function npcExit(dir: string | undefined, room: string, world: World, state: GameState): { to: string } | { refused: string } | null {
   const exits = world.rooms[room]?.exits ?? {};
   const label = dir ? fuzzyMatchExit(dir, exits) : null;
   if (!label) return null;
   const exit = exits[label];
   if (typeof exit !== 'string') {
-    if (exit.denials?.some((d) => evaluateCondition(d.if, state, world))) return null;
-    if (exit.if && !evaluateCondition(exit.if, state, world)) return null;
-    if (exit.door && !isOpen(world, state, exit.door)) return null;
+    const denied = exit.denials?.find((d) => evaluateCondition(d.if, state, world));
+    if (denied) return { refused: denied.text };
+    if (exit.if && !evaluateCondition(exit.if, state, world)) return { refused: exit.denial ?? 'You can’t go that way.' };
+    if (exit.door && !isOpen(world, state, exit.door)) return { refused: `The ${world.items[exit.door]?.name ?? exit.door} is closed.` };
   }
   const to = exitTarget(exit);
-  return to && world.rooms[to] ? to : null;
+  return to && world.rooms[to] ? { to } : { refused: (typeof exit !== 'string' && exit.denial) || 'You can’t go that way.' };
 }
