@@ -36,11 +36,11 @@ The store (`src/stores/game.ts`) runs every line through the same steps:
 
    Anything else is a fresh command, and drops any waiting question.
 4. **Parse.** `fallbackParse` maps each command to an action, with synonyms, a second object ("give X to Y", "put X in Y"), ALL and EXCEPT, and a bare word meaning GO. Besides `target` and `indirect`, an action can carry:
-   - **`number`**: a number in an object slot (`turn dial to 4`, `set year to 776`) reads as the object `number` with the value alongside (`parseNumber`: digits to 1000, or H:MM as minutes);
-   - **`text`**: for a world verb with `target: 'text'`, the rest of the line, outer quotes dropped;
+   - **`number`**: a number in an object slot (`turn dial to 4`, `set year to 776`), the value alongside the digits typed (`parseNumber`: digits to 1000, or H:MM as minutes); rules see that slot as `number`;
+   - **`text`**: for a world verb with `target: 'text'`, the rest of the line, outer double quotes dropped;
    - **`prep`**: `in`, `on`, `under`, `behind`, `off`, `over` or `through`, for the forms that take one (PUT X UNDER Y, THROW X OFF Y, READ X THROUGH Y);
    - **`direction`**: for PUSH X NORTH (and CLIMB UP/DOWN a thing);
-   - **ME, MYSELF and SELF** in an object slot become the reserved ID `player`.
+   - **ME, MYSELF, SELF and YOURSELF** stay as typed: the engine decides they name the player (the reserved ID `player`, for rules), and never matches them, or `player` from the intent server, against things' names.
 5. **Pronouns.** `it`, `them` and `that` become the last thing the engine acted on; `him` and `her`, the last person.
 6. **Execute.** `execute(action, { world, state })` returns the lines to print, whether anything changed, and `understood: false` if it couldn't make sense of the command (no such exit, no such item, no rule that applies). When a noun matches more than one thing, or a verb is missing its object, it returns a **question** (`ask`) instead, before touching anything. Before running a command that changes the game, the store keeps a snapshot for UNDO (the last 50, for this session only).
 7. **Retry on a miss.** If the regex couldn't parse the command, or the engine didn't understand it, the store asks the intent server how to read it. If the LLM's reading is different and the engine can act on it, that result is shown instead; otherwise the literal reply stands.

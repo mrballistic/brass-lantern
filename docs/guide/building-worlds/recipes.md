@@ -333,7 +333,7 @@ A workshop with a robot that does as it's told, a dial you turn to a number, and
 <<< ../../../src/worlds/examples/workshop.ts#robot{ts}
 
 - **`obeys`** lists the built-in orders the robot carries out itself: GO, TAKE, DROP and GIVE (“robot, give me the wrench”). `obeyReplies` is what it says; the default is “Okay.”
-- **`orders`** is a table of rules per verb, for anything else (“robot, push the button”). Its rules read the order as the player wrote it: `target:button` is what it was told to push. “Push” is also the word the parser files under USE; if both `orders.use` and `orders.push` exist, the verb the parser chose (`use`) wins.
+- **`orders`** is a table of rules per verb, for anything else (“robot, push the button”). Its rules read the order as the player wrote it: `target:button` is what it was told to push. “Push” is also the word the parser files under USE; the word typed is tried first, so `orders.push` answers it even when `orders.use` exists.
 - **An order ends the rest of the line**, and the objects of an order are looked up in *its* room, not the player's.
 
 <<< ../../../src/worlds/examples/workshop.ts#dial{ts}
@@ -345,6 +345,8 @@ A workshop with a robot that does as it's told, a dial you turn to a number, and
 <<< ../../../src/worlds/examples/workshop.ts#buggy{ts}
 
 - **A terrain** is any name a room gives itself. On foot you can walk only where `onFoot` allows (default `['land']`), so the dunes need a vehicle that `travels` on `'sand'`. `leave` (and `arrive`, `landing`) are lines the vehicle says as it goes.
+
+An abridged transcript (room descriptions left out):
 
 ```
 > robot, push the button

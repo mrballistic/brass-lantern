@@ -15,12 +15,12 @@ The verbs are fixed; a world gives them things to act on. Anything the regex par
 | READ *thing* | | The item's text. |
 | OPEN / CLOSE *thing* | `shut` | Containers and doors. |
 | LOCK / UNLOCK *thing* WITH *key* | | |
-| PUT *item* IN / ON *thing* | `insert`, `place`, `set` | Into an open container with room, or onto a surface. UNDER and BEHIND are asked of the world's rules (“You can’t do that.” / “That hiding place is too obvious.”). |
+| PUT *item* IN / ON *thing* | `insert`, `place`, `set` | Into an open container with room, or onto a surface. UNDER and BEHIND are asked of the world's rules (in Infocom style, otherwise “You can’t do that.” / “That hiding place is too obvious.”). |
 | TAKE *item* FROM *thing* | `get … out of`, `remove … from` | |
 | LOOK IN *thing* | `search` | What's inside. |
 | TURN ON / OFF *thing* | `switch on`, `light`; `extinguish`, `douse`, `blow out`, `put out` | Switchable items. |
 | BURN *thing* WITH *item* | `light … with`, `burn down`, `ignite`, `incinerate` | Something burnable, with something burning. The thing's rules answer first (lighting candles with a match). |
-| TURN *thing* WITH *tool* | `to`, `for`; SET *thing* TO *x* | A rule on the thing decides; otherwise “This has no effect.” TURN ON … WITH … is TURN ON. The second object can be a number: TURN DIAL TO 4, SET YEAR TO 776 (digits up to 1000, or H:MM). |
+| TURN *thing* WITH *tool* | `to`, `for`; SET *thing* TO *x* | A rule on the thing decides; otherwise “This has no effect.” (in Infocom style; elsewhere the intent server gets a turn). TURN ON … WITH … is TURN ON. The second object can be a number: TURN DIAL TO 4, SET YEAR TO 776 (digits up to 1000, or H:MM). |
 | PLUG *thing* WITH *item* | | The same: a rule, or “This has no effect.” |
 | BOARD *vehicle* | `get in`, `climb in`, `sit in` | Into a vehicle on the ground here. See [vehicles](./world-schema#vehicles). |
 | DISEMBARK [*vehicle*] | `get out`, `get off`, `stand` | Out again, if it's safe. EXIT on its own does this while you're aboard, and is a direction (out) otherwise. |
@@ -32,8 +32,8 @@ The verbs are fixed; a world gives them things to act on. Anything the regex par
 | WEAR *item* | `put on` | |
 | SMASH *thing* [WITH *item*] | `break` `destroy` `wreck` `whack` `beat` | |
 | ATTACK *someone* WITH *weapon* | `kill` `hit` `fight` `stab` | At a character who fights, combat; at anything else, SMASH (in a world without combat). In Infocom style, `kill troll` picks the one weapon you hold, or asks. |
-| THROW *item* [AT *target*] | `toss` `hurl`; OFF, OVER | A rule on the target decides; otherwise it lands on the floor. |
-| PUSH *thing* *direction* | PUSH *thing* TO *x*; READ *thing* THROUGH *x* | Only a world's rules answer these (“You can’t push things to that.”); READ THROUGH reads it. |
+| THROW *item* [AT *target*] | `toss` `hurl`; OFF, OVER | A rule on the target decides; otherwise it lands on the floor. OFF and OVER, with no rule: Zork's refusal in Infocom style; elsewhere the intent server gets a turn. |
+| PUSH *thing* *direction* | PUSH *thing* TO *x*; READ *thing* THROUGH *x* | Only a world's rules answer these (otherwise “You can’t push things to that.” in Infocom style; elsewhere the intent server gets a turn); READ THROUGH reads it. |
 | DIAGNOSE | | Your wounds, and how much more you could take. |
 | WAIT / SIT | `z`, `sit down` `relax` | Takes a `wait` / `sit` exit if the room has one. |
 | INVENTORY | `i` `inv` | |
@@ -60,9 +60,9 @@ The verbs are fixed; a world gives them things to act on. Anything the regex par
 
 **World verbs:** a world can add its own (SNOOZE, PRAY, MOVE, Zork's ULYSSES …); they're listed in its HELP. See [World verbs](./world-schema#world-verbs).
 
-**Typed words:** a world's SAY, ANSWER or INCANT (see [World verbs](./world-schema#world-verbs)) takes the rest of the line, quoted or not: `answer “a well”`. A quoted phrase is never split at its full stops, commas or `and`.
+**Typed words:** a world's SAY, ANSWER or INCANT (see [World verbs](./world-schema#world-verbs)) takes the rest of the line, quoted or not: `answer “a well”`. A quoted phrase is never split at its full stops, commas or `and`, and the text verb ends the line: `say "well". west` says “well” and drops WEST, as in Zork.
 
-**ME:** `me`, `myself` and `self` mean you where a thing is expected (in an order, “robot, give me the key” hands it to you). A world decides what, if anything, happens.
+**ME:** `me` and `myself` mean you where a thing is expected, and so do `self` and `yourself` unless something here is called that. In an order, “robot, give me the key” hands it to you, and “robot, push yourself” means the robot. A world decides what, if anything, happens; with nothing to say, the reply is the usual one for a word that names nothing here (“You don’t see a “me” here.”).
 
 **Chaining:** `take key and wallet`, `north then look`, `west. take lamp.` Each piece runs separately (and gets its own intent-server retry if it misses).
 

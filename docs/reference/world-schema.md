@@ -317,11 +317,11 @@ Characters' places and states live in the game state (`npcs`), starting from the
 “*name*, *command*”, “tell *name* to *command*” and a bare “tell *name*” are orders. What happens, in order:
 
 1. **`instead.order`** rules on the character answer first, as for any verb. In one, `ctx.command.words.indirect` is the order as typed. A character with only `instead.order` (no `orders`, no `obeys`) behaves as before: it answers, or says `refuseOrder`, and the rest of the line carries on.
-2. Otherwise the order is read as a command of its own, with its objects resolved among what the character can reach in **its** room (ME or MYSELF is the player; a number typed as an object counts). A word that names nothing there is a miss that changes nothing, so the intent server may still read it; one that matches several things asks which, taking no time. A character can't refer to what the player carries.
+2. Otherwise the order is read as a command of its own, with its objects resolved among what the character can reach in **its** room (ME or MYSELF is the player, YOURSELF the character itself; a number typed as an object counts). A word that names nothing there is a miss that changes nothing, so the intent server may still read it; one that matches several things asks which, taking no time. A character can't refer to what the player carries.
 3. **`orders`** rules are keyed by the inner command's verb: `orders: { push: [...], take: [...] }`. They are the same shape as other [rules](#rules), and their conditions see the inner command (`target:`, `indirect:`, `number:`, `said:`, `direction:`). **The first word typed is tried first**, when it has a table (PUSH reads as USE, so “robot, push the button” runs `orders.push` even when `orders.use` exists); otherwise the parsed verb's table (“robot, press the button” runs `orders.use`). A rule with `continue: true` runs and then lets step 4 go on.
 4. If no rule answered and the verb is in `obeys`, the character performs it, saying `obeyReplies[verb]` (default “Okay.”):
-   - **`go`**: it walks that exit of its room, with its usual leaving and arriving lines. A refused exit is a miss. In Infocom style it walks as the player does: no exit says “You can’t go that way.”, and an exit that refuses says its own refusal.
-   - **`take`** and **`drop`**: the thing moves to or from the character (weight limits apply only to the player). In Infocom style a take it can't do says the player's own take line.
+   - **`go`**: it walks that exit of its room. Nothing is printed but its reply: no leaving or arriving lines. No exit, or one that refuses, is a miss that says why (“The robot can’t go that way.”). In Infocom style it walks as the player does: no exit says “You can’t go that way.”, and an exit that refuses says its own refusal.
+   - **`take`** and **`drop`**: the thing moves to or from the character (weight limits apply only to the player). One it can't take or drop is a miss that says why, by name: “The robot can’t take the dial.”, “The robot doesn’t have the sock.” In Infocom style a take it can't do says the player's own take line.
    - **`give`**: “give me the key” moves it from the character to the player (the second object is the player).
 5. Otherwise `refuseOrder`, or “*Name* ignores you.”
 
@@ -386,7 +386,7 @@ A character with `combat` can be fought: ATTACK *it* WITH *a weapon*. The engine
 
 ## Numbers, typed words and prepositions
 
-**Numbers.** A number in an object slot is the player's typed number (Zork's INTNUM): `turn dial to 4`, `set year to 776`. It's digits up to 1000, or H:MM as minutes (hours under 8 count as afternoon); a bigger number is just an unknown word. Both forms are built-in and go through rules as the verb `turn` with the second object `number`; with no rule the reply is “This has no effect.” A bare TURN X keeps its own meaning.
+**Numbers.** A number in an object slot is the player's typed number (Zork's INTNUM): `turn dial to 4`, `set year to 776`. It's digits up to 1000, or H:MM as minutes (hours under 8 count as afternoon); a bigger number is just an unknown word. Both forms are built-in and go through rules as the verb `turn` with the second object `number`. With no rule, Infocom style says Zork's “This has no effect.”; brass style misses, so the intent server may still read the input. A bare TURN X keeps its own meaning. The command keeps the digits as typed, so a number no rule wants misses with them (“take 5”: “You don’t see a “5” here.”); `number` is a reserved ID, like `player`.
 
 ```ts
 dial: {
@@ -401,9 +401,9 @@ dial: {
 - A rule with `with: 'number'` matches only a command whose second object is a number.
 - An order can carry one (“robot, turn the dial to 4” runs `orders.turn` with `number:4`).
 
-**Typed words.** A world verb with `target: 'text'` (SAY, INCANT, ANSWER) takes the rest of the line as typed words. They are never resolved to things, so naming nothing is no miss. Outer quotes are dropped and whitespace collapsed. **`said:WORDS`** matches them as lowercase whole words, with punctuation and quotes ignored (`said:a well` matches `answer “A well.”`), and `ctx.text` has them. The verb consumes the whole rest of the line, and a quoted phrase isn't split at its full stops or commas. This applies to every world: a quoted “. ” no longer ends a command. Unlike Zork, where only a quoted phrase is typed words, **unquoted text counts too**: `answer well` solves a riddle that wants “a well”.
+**Typed words.** A world verb with `target: 'text'` (SAY, INCANT, ANSWER) takes the rest of the line as typed words. They are never resolved to things, so naming nothing is no miss. Outer quotes are dropped and whitespace collapsed. **`said:WORDS`** matches them as lowercase whole words, with punctuation and quotes ignored (`said:a well` matches `answer “A well.”`), and `ctx.text` has them. The verb consumes the whole rest of the line, so it ends the line: `say "well". west` drops WEST, as in Zork. A quoted phrase isn't split at its full stops or commas. Only double quotes (straight or curly) quote; a single quote is an apostrophe (`answer 'don't know'` keeps every word). This applies to every world: a quoted “. ” no longer ends a command. Unlike Zork, where only a quoted phrase is typed words, **unquoted text counts too**: `answer well` solves a riddle that wants “a well”.
 
-**Prepositions.** These forms go through the ordinary rules, and the built-in reply is Zork's:
+**Prepositions.** These forms go through the ordinary rules. With no rule, Infocom style gives Zork's reply below; brass style misses with the same line (all but READ, which reads), so the intent server can still read the input, as it did before these forms parsed. A rule answers in both styles.
 
 | Form | Rule verb | Built-in reply |
 |---|---|---|
@@ -413,7 +413,7 @@ dial: {
 | READ X THROUGH/WITH Y | `read`, with the second object | reads X |
 | PUSH X *direction*, PUSH X TO Y | `push`, `direction:DIR` / the second object | “You can’t push things to that.” |
 
-**ME.** MYSELF, ME and SELF in an object slot name the player. Rules match them with `target:player` or `indirect:player` (and `with: 'player'`). The engine adds no replies of its own for ME: a built-in verb aimed at it with no rule is a miss, as before, so a world says what Zork says (“You can’t tie anything to yourself.”) in a rule. In an order, ME is the speaker: “robot, give me the key”.
+**ME.** ME and MYSELF in an object slot name the player; so do SELF and YOURSELF, unless something in sight (or someone here) is named or aliased that. Rules match them with `target:player` or `indirect:player` (and `with: 'player'`). The engine adds no replies of its own for ME: a verb aimed at it with no rule misses with the word typed (“You don’t see a “me” here.”), as before 6a, so a world says what Zork says (“You can’t tie anything to yourself.”) in a rule. The reserved ID `player` is never matched against a thing's or character's name (a “record player” is safe from TAKE ME); typed, “player” is an ordinary word. In an order, ME is the speaker (“robot, give me the key”) and YOURSELF the character (“robot, push yourself”).
 
 ## Descriptions from state
 
