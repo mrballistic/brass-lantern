@@ -4,7 +4,7 @@ import { childrenOf, isAlive, isAwake, isCarried, isNpcHidden, isNpcIn, moveItem
 import { commandOf } from './scripts';
 import { runEventKey, runSteps, stopLine, turnHalted } from './effects';
 import { prob, roll } from './rng';
-import { currentScore } from './verbs/meta';
+import { currentScore } from './score';
 
 // Fights, ported from Zork I's HERO-BLOW, VILLAIN-BLOW and I-FIGHT
 // (historicalsource/zork1, 1actions.zil). The engine owns the mechanics; the
@@ -361,18 +361,13 @@ export function diagnoseLines(world: World, state: GameState): string[] {
   const p = state.player;
   const wounds = p?.cureIn !== undefined ? (p.wounds ?? 0) : 0;
   const style = (lines: string[]) => (world.style === 'infocom' ? lines : lines.map((l) => `[${l}]`));
+  const moves = (world.combat?.cureWait ?? 30) * (wounds - 1) + (p?.cureIn ?? 0);
+  const lines = [wounds === 0 ? 'You are in perfect health.' : `You have ${WOUNDS[wounds] ?? 'serious wounds,'} which will be cured after ${moves} moves.`];
   // A world without fights has nothing more to say than how you are.
-  if (!world.combat) return style([wounds === 0 ? 'You are in perfect health.' : `You have ${WOUNDS[wounds] ?? 'serious wounds,'} which will be cured after ${(30 * (wounds - 1)) + (p?.cureIn ?? 0)} moves.`]);
+  if (!world.combat) return style(lines);
   const rs = fightStrength(world, state, false) - (p?.wounds ?? 0);
-  const lines: string[] = [];
-  if (wounds === 0) lines.push('You are in perfect health.');
-  else {
-    const kind = WOUNDS[wounds] ?? 'serious wounds,';
-    const moves = (world.combat?.cureWait ?? 30) * (wounds - 1) + (p?.cureIn ?? 0);
-    lines.push(`You have ${kind} which will be cured after ${moves} moves.`);
-  }
   lines.push(`You can ${OUTLOOK[rs] ?? (rs > 3 ? 'survive several wounds' : 'expect death soon')}.`);
   const deaths = state.vars?.deaths ?? 0;
   if (deaths > 0) lines.push(`You have been killed ${deaths === 1 ? 'once' : 'twice'}.`);
-  return world.style === 'infocom' ? lines : lines.map((l) => `[${l}]`);
+  return style(lines);
 }
