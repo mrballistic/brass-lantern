@@ -233,6 +233,15 @@ export interface NPC {
   obeys?: Array<'go' | 'take' | 'drop' | 'give'>;
   /** Its reply when it obeys a built-in order. Default: “Okay.” */
   obeyReplies?: Partial<Record<'go' | 'take' | 'drop' | 'give', string>>;
+  /**
+   * A condition under which it goes where the player goes (Zork II's dragon, Zork III's Dungeon Master).
+   * Checked after the move, so `in:ROOM` sees the new room. It must have been in the room the player left,
+   * be awake and unhidden. `{ follow: 'npc' }` / `{ unfollow: 'npc' }` set and clear the flag `following_<npc>`,
+   * which `following:NPC` reads; that follows too, with or without this.
+   */
+  follows?: string;
+  /** What it says on arriving after you. Brass style: “<Name> follows you.” if unset; Infocom prints nothing if unset. */
+  followLine?: string;
   /** Present but not listed in the room: the room's own description mentions it (Zork's NDESCBIT). */
   scenery?: boolean;
   /** Starts hidden (in its room, unseen). Its state's `hidden` overrides this. */
@@ -315,6 +324,10 @@ export type Effect =
   | { say: string }
   | { set: string }
   | { clear: string }
+  /** A character follows the player (sets the flag `following_<npc>`, which `following:NPC` reads). */
+  | { follow: string }
+  /** It stops following (clears that flag). */
+  | { unfollow: string }
   /** To a room, 'player', 'here' (the player's room), an item, a character, or null (offstage). */
   | { move: string; to: string | null }
   /** A character to a room, or null (gone). */

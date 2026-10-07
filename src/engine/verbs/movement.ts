@@ -3,7 +3,7 @@ import type { Exit, World } from '@/types/world';
 import { evaluateCondition } from '../conditions';
 import { COMPASS, describeRoom, exitList, exitTarget } from '../describe';
 import { fuzzyMatchExit } from '../fuzzy';
-import { isLit, isOpen, isWater, matchItem, pickItem, visibleItems } from '../model';
+import { isAwake, isLit, isNpcHidden, isOpen, isWater, matchItem, nextPlacing, npcStateOf, npcsIn, pickItem, visibleItems } from '../model';
 import { handleBoard } from './vehicle';
 import { runEventKey, runSteps, turnHalted } from '../effects';
 import { nextRandom } from '../rng';
@@ -26,6 +26,24 @@ const DIRECTION_WORDS = new Set([...COMPASS, 'in', 'out', 'inside', 'outside']);
 
 /** Zork's YUKS: replies to an attempt that can't be taken seriously. */
 const YUKS = ['A valiant attempt.', 'You can’t be serious.', 'An interesting idea...', 'What a concept!'];
+
+/**
+ * Characters that follow the player: each one that was in the room just left, is awake and unseen-not,
+ * and whose `follows` condition (or `following_<npc>` flag) holds now, arrives in the player's room,
+ * newest on the shared placing sequence. Only the player's own moves call this.
+ */
+export function moveFollowers(fromRoom: string, world: World, state: GameState): string[] {
+  const lines: string[] = [];
+  for (const id of npcsIn(world, state, fromRoom)) {
+    const npc = world.npcs[id];
+    if (!npc || !isAwake(world, state, id) || isNpcHidden(world, state, id)) continue;
+    if (!state.flags[`following_${id}`] && !(npc.follows && evaluateCondition(npc.follows, state, world))) continue;
+    Object.assign(npcStateOf(state, id), { room: state.currentRoom, seq: nextPlacing(state) });
+    const line = npc.followLine ?? (world.style === 'infocom' ? undefined : `${npc.name[0].toUpperCase()}${npc.name.slice(1)} follows you.`);
+    if (line) lines.push(line);
+  }
+  return lines;
+}
 
 const GENERIC_DENIAL = 'Something stops you. The story isn’t ready for you to go there yet.';
 
@@ -88,7 +106,10 @@ function followExit(exit: string | Exit, world: World, state: GameState): Engine
   if (refused) return ok([refused]);
   const passing = typeof exit !== 'string' && exit.then ? runEventKey(exit.then, world, state) : [];
   if (turnHalted(state) || state.gameOver) return ok(passing, true);
+  const from = state.currentRoom;
   const lines = [...passing, ...enterRoom(to, world, state)];
+  // A move the player made (not a scripted one) takes its followers along, after the description.
+  if (state.currentRoom !== from && !state.gameOver && !turnHalted(state)) lines.push(...moveFollowers(from, world, state));
   return ok(lines, state.currentRoom === to || passing.length > 0);
 }
 

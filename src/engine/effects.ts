@@ -141,6 +141,8 @@ function runEffect(e: Effect, world: World, state: GameState): { lines: string[]
   if ('say' in e) return { lines: [expandTemplate(e.say, world, state)] };
   if ('set' in e) return void (state.flags[e.set] = true), { lines: [] };
   if ('clear' in e) return void (state.flags[e.clear] = false), { lines: [] };
+  if ('follow' in e) return void (state.flags[`following_${e.follow}`] = true), { lines: [] };
+  if ('unfollow' in e) return void (state.flags[`following_${e.unfollow}`] = false), { lines: [] };
   // Naming a thing the world doesn't have does nothing (the audit reports it).
   const thing = itemOf(e);
   if (thing !== null && !world.items[thing]) return { lines: [] };

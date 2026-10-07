@@ -25,6 +25,7 @@ import { isAlive, isAwake, isCarried, isHeld, isLit, isLocked, isNpcIn, isOn, is
  *   number:N, number<=N  the number in the command being run (TURN DIAL TO 4); false when it has none
  *   target:ID, indirect:ID  that slot of the command being run resolved to ID (ME is `player`)
  *   direction:DIR   the direction typed (PUSH X NORTH)
+ *   following:NPC  the character follows the player (the `follow` effect set its flag)
  *   lit:here, lit:ROOM  the room has light (needs `world`)
  * Unrecognized strings evaluate to false.
  */
@@ -101,6 +102,9 @@ export function evaluateCondition(condition: string, state: GameState, world?: W
       break;
     case 'held':
       result = isHeld(state, value);
+      break;
+    case 'following':
+      result = state.flags[`following_${value}`] === true;
       break;
     case 'in':
       result = state.currentRoom === value;
@@ -197,6 +201,7 @@ export function conditionProblems(condition: string, world: World): string[] {
       case 'visited':
         if (!room(value)) noRoom();
         break;
+      case 'following':
       case 'alive':
       case 'awake':
       case 'fighting':

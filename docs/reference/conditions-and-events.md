@@ -24,6 +24,7 @@ Conditions are strings, used by `requires`, exits (`if`, `denials`), room `descr
 | `heaviest<op>N` | the weight of the heaviest thing the player holds directly, counting what's inside it (Zork's narrow passage: `heaviest<=4`) |
 | `score<op>N` | the score, as SCORE reports it (Zork wins at `score>=350`); a `scoring` entry can't test it |
 | `lit:here`, `lit:ROOM` | the room has light |
+| `following:NPC` | the character is following the player (`{ follow }` set it; a character's `follows` condition is separate) |
 | `alive:NPC` | the character isn't dead |
 | `awake:NPC` | alive and conscious |
 | `fighting:NPC` | in a fight with the player (and conscious) |
@@ -46,6 +47,7 @@ An event is a named list of steps, run in order. A string is printed. An object 
 | `{ set: 'flag' }`, `{ clear: 'flag' }` | Turns a flag on or off. |
 | `{ move: 'item', to: 'room' }` | Moves an item to a room, `'player'`, `'here'` (the player's room), another item, a character, or `null` (offstage). |
 | `{ moveNpc: 'npc', to: 'room' }` | Moves a character, or `null` (gone). |
+| `{ follow: 'npc' }`, `{ unfollow: 'npc' }` | Sets or clears the flag `following_<npc>`: the character then goes where the player goes (GO, doors, ENTER, CLIMB; not scripted moves), like a `follows` condition on the character. |
 | `{ npcState: 'npc', fighting?, staggered?, strength?, hidden? }` | Sets a character's combat state, or hides and reveals it. |
 | `{ script: 'name', arg? }` | Runs one of the world's [scripts](./world-schema#scripts) and the steps it returns. |
 | `{ hide: 'item' }`, `{ reveal: 'item' }` | Hides an item where it is (not seen, listed or taken), or shows it again. |

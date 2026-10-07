@@ -9,7 +9,7 @@ import type { Effect, EventStep, Rule, RuleTable, World } from '@/types/world';
 // silently in play, so they fail loudly in tests/worlds/audit.test.ts.
 
 const EFFECT_KINDS = new Set([
-  'say', 'set', 'clear', 'move', 'open', 'close', 'lock', 'unlock', 'switch', 'add', 'setVar', 'score',
+  'say', 'set', 'clear', 'follow', 'unfollow', 'move', 'open', 'close', 'lock', 'unlock', 'switch', 'add', 'setVar', 'score',
   'go', 'schedule', 'cancel', 'chance', 'run', 'die', 'end', 'moveNpc', 'npcState', 'script', 'hide', 'reveal',
   'if', 'unvisit', 'free', 'stopLine', 'noDarkLine', 'unlist', 'relist', 'touch', 'look', 'board', 'disembark',
 ]);
@@ -39,6 +39,7 @@ export function auditWorld(world: World): string[] {
       if (['run', 'schedule', 'cancel'].includes(kind) && !isEvent(target as string)) problems.push(`${where}: ${kind} names no event “${target}”`);
       if (kind === 'go' && !isRoom(target as string)) problems.push(`${where}: go names no room “${target}”`);
       if (kind === 'script' && !world.scripts?.[target as string]) problems.push(`${where}: script names no script “${target}”`);
+      if ((kind === 'follow' || kind === 'unfollow') && !((target as string) in world.npcs)) problems.push(`${where}: ${kind} names no character “${target}”`);
       if ((kind === 'moveNpc' || kind === 'npcState') && !((target as string) in world.npcs)) problems.push(`${where}: ${kind} names no character “${target}”`);
       if (kind === 'moveNpc' && e.to !== null && !isRoom(e.to as string)) problems.push(`${where}: moveNpc to nowhere “${e.to}”`);
       if (kind === 'end' && !world.endings?.[target as string]) problems.push(`${where}: end names no ending “${target}”`);
@@ -178,6 +179,7 @@ export function auditWorld(world: World): string[] {
       if (c.fears && !isItem(c.fears.item)) problems.push(`npc ${id} combat fears: names no item “${c.fears.item}”`);
     }
     checkDescriptionScript(npc.descriptionScript, `npc ${id}`);
+    checkCondition(npc.follows, `npc ${id} follows`);
     for (const held of npc.holds ?? []) if (!isItem(held)) problems.push(`npc ${id} holds: no item “${held}”`);
     for (const d of npc.descriptions ?? []) checkCondition(d.if, `npc ${id} descriptions`);
     checkTable(npc.instead, 'instead', `npc ${id}`);
