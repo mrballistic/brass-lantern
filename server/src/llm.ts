@@ -10,17 +10,22 @@ export interface IntentContext {
   verbs?: string[];
 }
 
+export const PREPS = ['in', 'on', 'under', 'behind', 'off', 'over', 'through'] as const;
+export type Prep = (typeof PREPS)[number];
+
 export interface ParsedAction {
   action: string;
   target?: string;
   indirect?: string;
+  prep?: Prep;
+  number?: number;
 }
 
 export const ACTION_VOCAB = [
   'go', 'take', 'drop', 'use', 'examine', 'look', 'talk', 'inventory',
   'smash', 'wear', 'give', 'sit', 'wait', 'hint', 'score', 'help',
   'open', 'close', 'lock', 'unlock', 'put', 'search', 'enter', 'climb', 'read', 'turn_on', 'turn_off', 'verbose', 'brief', 'superbrief', 'undo', 'again',
-  'restart', 'quit', 'save', 'restore', 'load', 'script', 'unscript', 'version', 'attack', 'throw', 'diagnose', 'ask', 'order', 'burn', 'turn', 'plug', 'board', 'disembark', 'unknown',
+  'restart', 'quit', 'save', 'restore', 'load', 'script', 'unscript', 'version', 'attack', 'throw', 'diagnose', 'ask', 'order', 'burn', 'turn', 'push', 'plug', 'board', 'disembark', 'unknown',
 ] as const;
 
 const ACTIONS: ReadonlySet<string> = new Set(ACTION_VOCAB);
@@ -56,6 +61,17 @@ const responseSchema = (ctx: IntentContext) => ({
         'Second identifier for two-object commands: the NPC in give, the other item in use. Omit otherwise.',
       nullable: true,
     },
+    prep: {
+      type: 'STRING',
+      description: 'The preposition of a put, throw or read command. Omit otherwise.',
+      enum: [...PREPS],
+      nullable: true,
+    },
+    number: {
+      type: 'INTEGER',
+      description: 'The number in a turn or set command (turn dial to 4). Omit otherwise.',
+      nullable: true,
+    },
   },
   required: ['action'],
 });
@@ -86,14 +102,18 @@ function buildSystemInstruction(ctx: IntentContext): string {
     '- Putting one item in or on another is put: target is the item, indirect is the container or surface. Opening and closing are open and close; lock and unlock take the key as indirect; looking inside something is search.',
     '- Hitting or breaking a thing with an item is smash, with the item as indirect.',
     '- Fighting a person or creature is attack: target is the person, indirect is the weapon (omit it if none was named).',
-    '- Throwing something is throw: target is the thing thrown, indirect is what it is thrown at.',
+    '- Throwing something is throw: target is the thing thrown, indirect is what it is thrown at. Throwing off or over something sets prep to off or over.',
+    '- Putting something under or behind another thing is put with prep under or behind; slide and push work the same way. In or on is put with prep in or on.',
+    '- Reading something through or with a thing is read: target is the text, indirect is the thing, prep is through.',
+    '- Pushing a thing in a direction is push: target is the thing, indirect is the direction (north, south, up, ...).',
+    "- A number in the input is the integer in number, 0 to 1000. Setting or turning something to a number is turn: target is the thing, indirect is the word 'number'.",
     '- Setting fire to something is burn: target is what burns, indirect is what lights it (light candles with match).',
     '- Turning something with a tool is turn: target is the thing, indirect is the tool (turn bolt with wrench).',
     '- Plugging something with something is plug: target is the hole or leak, indirect is what plugs it.',
     '- Getting into a vehicle (a boat, a cart) is board: target is the vehicle. Getting out is disembark.',
     '- Asking how hurt or healthy the player is is diagnose.',
     '- Asking or telling someone about something is ask: target is the person, indirect is the topic.',
-    '- Telling someone to do something is order: target is the person, indirect is what they were told to do.',
+    '- Telling someone to do something is order: target is the person, indirect is the command they were given, kept as plain lowercase words, not an identifier (for example: take lamp).',
     '- Asking for help with the puzzle, a clue, or what to do next is hint.',
     "- If the input is ambiguous or doesn't fit any verb, use action 'unknown' and omit target.",
     '- Some verbs (look, inventory, hint, score, help, restart, quit, load, script, unscript, version, diagnose, sit, wait, verbose, brief, superbrief, undo, again) take no target. Taking back the last move is undo; repeating it is again. Save and restore take an optional save name as the target, in snake_case.',
@@ -147,6 +167,12 @@ function identifier(raw: unknown): string | null {
   return IDENTIFIER_RE.test(id) ? id : null;
 }
 
+function commandWords(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const words = raw.trim().toLowerCase().replace(/[\s_-]+/g, ' ');
+  return /^[a-z0-9]{1,24}( [a-z0-9]{1,24}){0,5}$/.test(words) && words.length <= 48 ? words : null;
+}
+
 /** Narrow a model reply to something the engine can execute. */
 export function sanitize(raw: unknown, ctx?: Pick<IntentContext, 'verbs'>): ParsedAction {
   if (typeof raw !== 'object' || raw === null) return UNKNOWN;
@@ -157,8 +183,13 @@ export function sanitize(raw: unknown, ctx?: Pick<IntentContext, 'verbs'>): Pars
   const out: ParsedAction = { action: r.action };
   const target = identifier(r.target);
   if (target) out.target = target;
-  const indirect = identifier(r.indirect);
+  // An order's indirect is the inner command, kept as plain words (take lamp).
+  const indirect = r.action === 'order' ? commandWords(r.indirect) : identifier(r.indirect);
   if (indirect) out.indirect = indirect;
+  if (typeof r.prep === 'string' && (PREPS as readonly string[]).includes(r.prep)) out.prep = r.prep as Prep;
+  if (typeof r.number === 'number' && Number.isInteger(r.number) && r.number >= 0 && r.number <= 1000) {
+    out.number = r.number;
+  }
   return out;
 }
 
