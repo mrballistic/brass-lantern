@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { buildCarousel, buildLowRoom, buildStoppedCarousel, robotWorld } from './zork2-slices/robot';
 import { buildRiddle, buildTinyRoom, riddleWorld } from './zork2-slices/riddle';
+import { balloonWorld, buildVolcanoBottom } from './zork2-slices/balloon';
 import { sliceRun } from './slices';
 import { normalize } from './zsession';
 
@@ -18,6 +19,15 @@ const TO_RIDDLE = ['get lamp', 's', 's', 's', 'sw', 'light lamp', 's', 'se', 'in
 const TO_TINY_ROOM = [...TO_RIDDLE, 'answer "a well"', 'd', 'n', 'd', 'n', 'n', 'n', 'n', 'n', 'ne', 'n', 'n', 'n', 'u'];
 /** On to the Low Room and the robot: the riddle, the bucket up the well (the teapot's water lifts it), the Tea Room. */
 const TO_ROBOT = [...TO_CAROUSEL, 'se', 'answer "a well"', 'e', 'e', 'get in bucket', 'pour water', 'get out of bucket', 'e', 'nw'];
+/**
+ * To the Volcano Bottom: the sword, the Gazebo's matchbook and newspaper, the spinning carousel
+ * (the seed's passage) to the Cool Room, and the dragon, angered three times, following you into
+ * the Ice Room, where it melts the glacier and the way west opens.
+ */
+const TO_VOLCANO = [
+  'get lamp', 'get sword', 's', 's', 's', 'sw', 'light lamp', 's', 'se', 'in', 'get matchbook', 'get newspaper', 'out', 's', 's', 'w', 'nw',
+  'n', 'n', 'hit dragon with sword', 's', 'hit dragon with sword', 's', 'hit dragon with sword', 'w', 'w', 's',
+];
 
 /**
  * ROBOT-FCN acknowledges a walk, a take or a push with “Whirr, buzz, click!” or, one time in five,
@@ -142,6 +152,87 @@ describe('Zork II slices against the story file', () => {
       'n',
     ];
     const { native, original } = await sliceRun({ name: 'oak door', story: 'zork2', prefix: TO_TINY_ROOM, seed: SEED, world: riddleWorld, build: buildTinyRoom, commands, expect: 'Tiny Room' });
+    expect(mismatches(commands, native, original)).toEqual([]);
+  }, 60_000);
+
+  it('the balloon: boarding, burning the newspaper, rising and falling on its clock, landing, tying up, and away', async () => {
+    const commands = [
+      'look',
+      'examine basket',
+      'examine receptacle',
+      'get in basket',
+      'look',
+      'up',
+      'n',
+      'open receptacle',
+      'put newspaper in receptacle',
+      'look',
+      'take wire',
+      'examine bag',
+      'open bag',
+      'light match',
+      'burn newspaper with match',
+      'look',
+      'take newspaper',
+      'read label',
+      'get out of basket',
+      'wait',
+      'west',
+      'tie wire to hook',
+      'look',
+      'down',
+      'get out of basket',
+      'look',
+      'get in basket',
+      'untie wire',
+      'look',
+      'look',
+      'close receptacle',
+      'look',
+      'wait',
+      'open receptacle',
+      'wait',
+      'wait',
+      'land',
+      'wait',
+      'land',
+      'tie wire to hook',
+      'get out of basket',
+      'look',
+      'untie wire',
+      'look',
+      'look',
+      'wait',
+      'look',
+    ];
+    const { native, original } = await sliceRun({ name: 'balloon', story: 'zork2', prefix: TO_VOLCANO, seed: SEED, world: balloonWorld, build: buildVolcanoBottom, commands, expect: 'Volcano Bottom' });
+    expect(mismatches(commands, native, original)).toEqual([]);
+  }, 60_000);
+
+  it('the balloon burned out: tied to the Narrow Ledge, the newspaper burns away, and untied it falls and breaks', async () => {
+    // A seed whose Wizard stays away through the long wait (the carousel still sends you to the Cool Room).
+    const commands = [
+      'get in basket',
+      'open receptacle',
+      'put newspaper in receptacle',
+      'light match',
+      'burn newspaper with match',
+      'wait',
+      'wait',
+      'west',
+      'tie wire to hook',
+      ...Array<string>(34).fill('wait'),
+      'look',
+      'untie wire',
+      'look',
+      'wait',
+      'wait',
+      'wait',
+      'look',
+      'examine balloon',
+      'get in balloon',
+    ];
+    const { native, original } = await sliceRun({ name: 'balloon burned out', story: 'zork2', prefix: TO_VOLCANO, seed: 27, world: balloonWorld, build: buildVolcanoBottom, commands, expect: 'Volcano Bottom' });
     expect(mismatches(commands, native, original)).toEqual([]);
   }, 60_000);
 });
