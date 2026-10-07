@@ -2,7 +2,16 @@ import type { GameState } from '@/types/game';
 import { cureTick, fightTurn } from './combat';
 import type { World } from '@/types/world';
 import { evaluateCondition } from './conditions';
-import { runEventKey, runSteps, scheduledThisTurn, turnHalted } from './effects';
+import { runConditional, runEventKey, scheduledThisTurn, turnHalted } from './effects';
+
+const fired = new WeakSet<GameState>();
+
+/** Did a timer go off in the last afterTurn (a cancelled one doesn't count)? Clears the mark. */
+export function fuseFired(state: GameState): boolean {
+  const did = fired.has(state);
+  fired.delete(state);
+  return did;
+}
 
 /**
  * After every turn the engine acted on: fuses count down and fire, then
@@ -19,17 +28,15 @@ export function afterTurn(world: World, state: GameState, existing: Set<string>)
     if (!existing.has(key) || scheduledThisTurn(state, key) || state.fuses?.[key] === undefined) continue;
     if (left <= 1) {
       delete state.fuses![key];
+      fired.add(state);
       out.push(...runEventKey(key, world, state));
     } else {
       state.fuses![key] = left - 1;
     }
     if (state.gameOver || turnHalted(state)) return out;
   }
-  for (const d of world.daemons ?? []) {
-    if (!evaluateCondition(d.if, state, world)) continue;
-    out.push(...(typeof d.then === 'string' ? runEventKey(d.then, world, state) : runSteps(d.then, world, state)));
-    if (state.gameOver || turnHalted(state)) return out;
-  }
+  out.push(...runConditional(world.daemons ?? [], world, state));
+  if (state.gameOver || turnHalted(state)) return out;
   out.push(...fightTurn(world, state));
   if (state.gameOver || turnHalted(state)) return out;
   out.push(...ambientLines(world, state));

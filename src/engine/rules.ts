@@ -1,21 +1,15 @@
 import type { GameState, ParsedAction } from '@/types/game';
 import type { Item, NPC, Room, Rule, World } from '@/types/world';
 import { evaluateCondition } from './conditions';
-import { heldItems, inventoryOf, matchNpc, pickItem, reachableItems, visibleItems } from './model';
+import { heldItems, inventoryOf, matchNpc, pickItem, reachableItems, restoreState, snapshotState, visibleItems } from './model';
 import { setCommand } from './scripts';
 import { runEventKey, turnHalted } from './effects';
-import { ok, type EngineResult } from './result';
+import { miss, ok, type EngineResult } from './result';
 
 /* Events and rules */
 
-/** Emit an event's lines, apply its effects, and record that it fired. */
-export function runEvent(key: string, world: World, state: GameState): string[] {
-  return runEventKey(key, world, state);
-}
-
-/** First applicable use rule on `itemId`, given what else is in reach. */
 /** An owner's rules for a verb, with the older hooks folded in: onUse is instead.use, onTake is after.take. */
-export function rulesFor(owner: Item | Room | NPC | undefined, phase: 'instead' | 'after', verb: string): Rule[] {
+function rulesFor(owner: Item | Room | NPC | undefined, phase: 'instead' | 'after', verb: string): Rule[] {
   if (!owner) return [];
   const own = owner[phase]?.[verb] ?? [];
   const item = owner as Item;
@@ -75,10 +69,13 @@ export function findRule(
 
 export function applyRule(rule: Rule, world: World, state: GameState): EngineResult {
   const lines: string[] = [];
-  if (rule.then) lines.push(...runEvent(rule.then, world, state));
+  if (rule.then) lines.push(...runEventKey(rule.then, world, state));
   if (rule.say && !turnHalted(state)) lines.push(...rule.say);
   return ok(lines, Boolean(rule.then));
 }
+
+/** “With my hands”: no thing, but ATTACK understands it. */
+export const BARE_HANDS = /^(?:my\s+|bare\s+)?hands?$/i;
 
 /** The items each built-in verb picks its target from. */
 function targetScope(verb: string, world: World, state: GameState): string[] {
@@ -127,6 +124,10 @@ export function withRules(
   const targetNpc = !target && action.target ? matchNpc(action.target, world, state) : null;
   const indirectNpc = !indirect && action.indirect ? matchNpc(action.indirect, world, state) : null;
   const npcs = [targetNpc, indirectNpc].filter((id): id is string => Boolean(id));
+  // A second object that names nothing here (no thing, no character): a miss, before any rule
+  // could fire as though no tool had been named (UNLOCK DOOR WITH XYZZY).
+  // Bare hands are no thing, but the verbs that take them (ATTACK) understand them.
+  if (action.indirect && !indirect && !indirectNpc && !BARE_HANDS.test(action.indirect)) return miss(`You don’t see a “${action.indirect}” here.`);
   const ids = { target, indirect, room: state.currentRoom, npcs, prep: action.prep };
   setCommand(state, {
     verb,
@@ -136,13 +137,34 @@ export function withRules(
   });
   const instead = findRule(world, state, 'instead', verb, ids, reach);
   if (instead && !instead.continue) return applyRule(instead, world, state);
+  // A `continue` rule runs first; if the default then misses or asks, the rule is undone too,
+  // so a miss never changes state (the intent server retries from where things stood).
+  const saved = instead ? snapshotState(state) : null;
   const before = instead ? applyRule(instead, world, state) : null;
-  const ran = run();
+  let ran: EngineResult;
+  try {
+    ran = run();
+  } catch (e) {
+    if (saved) restoreState(state, saved);
+    throw e;
+  }
+  if (saved && ran.understood === false) {
+    restoreState(state, saved);
+    return ran;
+  }
   const result = before ? { ...ran, lines: [...before.lines, ...ran.lines], mutated: ran.mutated || before.mutated } : ran;
   if (result.understood === false || !result.mutated) return result;
+  const extra = afterRuleLines(verb, ids, world, state);
+  return extra.length > 0 ? { ...result, lines: [...result.lines, ...extra] } : result;
+}
+
+/**
+ * The lines of the `after` rule that follows a verb's success, run. onTake
+ * (folded into after.take) has always fired only once, however the take came
+ * about (TAKE, or READ's automatic take).
+ */
+export function afterRuleLines(verb: string, ids: RuleIds, world: World, state: GameState): string[] {
   const after = findRule(world, state, 'after', verb, ids, reachableItems(world, state));
-  // onTake (folded into after.take) has always fired only once.
-  if (!after || (verb === 'take' && after.then && state.firedEvents.includes(after.then))) return result;
-  const extra = applyRule(after, world, state);
-  return { ...result, lines: [...result.lines, ...extra.lines] };
+  if (!after || (verb === 'take' && after.then && state.firedEvents.includes(after.then))) return [];
+  return applyRule(after, world, state).lines;
 }

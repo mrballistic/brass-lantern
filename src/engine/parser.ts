@@ -57,7 +57,8 @@ const RE = {
   wear: /^(?:wear|put\s+on)\s+(?:the\s+)?(.+)$/i,
   talk: /^(?:talk|speak|chat)\s+(?:to|with)\s+(?:the\s+)?(.+)$/i,
   askAbout: /^(?:ask|question|tell)\s+(?:the\s+)?(.+?)\s+about\s+(.+)$/i,
-  orderTo: /^(?:tell|order|ask)\s+(?:the\s+)?(.+?)\s+to\s+(.+)$/i,
+  // The person can't run past an ABOUT: “ask bob about going to the store” is ASK.
+  orderTo: /^(?:tell|order|ask)\s+(?:the\s+)?((?:(?!\s+about\s).)+?)\s+to\s+(.+)$/i,
   tellAlone: /^tell\s+(?:the\s+)?(.+)$/i,
   ask: /^(?:ask|question)\s+(?:the\s+)?(.+)$/i,
   smash: /^(?:smash|destroy|break|wreck|whack|beat)\s+(?:up\s+)?(?:the\s+)?(.+?)(?:\s+with\s+(?:the\s+)?(.+))?$/i,
@@ -140,8 +141,9 @@ const VERB_PATTERNS: ReadonlyArray<readonly [RegExp, string, ('in' | 'on')?]> = 
   [RE.throwIn, 'throw', 'in'],
   [RE.throw, 'throw'],
   [RE.give, 'give'],
-  [RE.askAbout, 'ask'],
+  // An order first: “tell bob to ask about x” is an order, not ASK.
   [RE.orderTo, 'order'],
+  [RE.askAbout, 'ask'],
   [RE.tellAlone, 'order'],
   [RE.talk, 'talk'],
   [RE.ask, 'talk'],
@@ -314,6 +316,9 @@ function parse(rawInput: string, allowBareWord: boolean, verbs?: World['verbs'])
   // A verb on its own (“take”): the engine asks what for.
   if (input in BARE_VERBS) return { action: BARE_VERBS[input] };
   if (input === 'exit') return { action: 'go', target: 'out', exit: true };
+  // STAND and a bare GET OUT are DISEMBARK by another road (Zork's V-STAND, TAKE OUT): no vehicle guess.
+  if (/^stand(?:\s+up)?$/.test(input)) return { action: 'disembark', via: 'stand' };
+  if (/^get\s+(?:out|off)$/.test(input)) return { action: 'disembark', via: 'out' };
   if (input in DIRECTIONS) return { action: 'go', target: DIRECTIONS[input] };
   if (input === 'enter') return { action: 'enter' };
   {

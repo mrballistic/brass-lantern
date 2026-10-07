@@ -2,9 +2,9 @@ import type { GameState } from '@/types/game';
 import type { BlowMessages, BlowResult, CombatText, World } from '@/types/world';
 import { childrenOf, isAlive, isAwake, isCarried, isNpcHidden, isNpcIn, moveItem, npcStateOf } from './model';
 import { commandOf } from './scripts';
-import { runEventKey, runSteps, turnHalted } from './effects';
+import { runEventKey, runSteps, stopLine, turnHalted } from './effects';
 import { prob, roll } from './rng';
-import { currentScore } from './verbs/meta';
+import { currentScore } from './score';
 
 // Fights, ported from Zork I's HERO-BLOW, VILLAIN-BLOW and I-FIGHT
 // (historicalsource/zork1, 1actions.zil). The engine owns the mechanics; the
@@ -53,7 +53,7 @@ export function fightStrength(world: World, state: GameState, adjusted = true): 
 }
 
 /** A character's strength now: its state, less what the player's weapon takes off (Zork's VILLAIN-STRENGTH). */
-export function villainStrength(world: World, state: GameState, npc: string, weapon?: string): number {
+function villainStrength(world: World, state: GameState, npc: string, weapon?: string): number {
   const combat = world.npcs[npc]?.combat;
   let od = state.npcs?.[npc]?.strength ?? combat?.strength ?? 0;
   if (od >= 0 && combat?.fears && weapon === combat.fears.item) od = Math.max(1, od - combat.fears.by);
@@ -134,7 +134,7 @@ export function combatText(world: World, key: CombatText, fields: Record<string,
 }
 
 /** One message for a blow, picked from the seed (Zork's RANDOM-ELEMENT). */
-export function blowMessage(
+function blowMessage(
   state: GameState,
   options: string[] | undefined,
   fallback: string[],
@@ -145,7 +145,7 @@ export function blowMessage(
 }
 
 /** A character dies: the fog line, gone from the room, and its onDeath. */
-export function killNpc(world: World, state: GameState, npc: string): string[] {
+function killNpc(world: World, state: GameState, npc: string): string[] {
   const s = npcStateOf(state, npc);
   s.strength = 0;
   s.fighting = false;
@@ -208,7 +208,6 @@ export function heroBlow(world: World, state: GameState, npc: string, weapon: st
   }
   return lines;
 }
-
 
 /** Wakes a knocked-out character (Zork's AWAKEN): its strength back, and its onWake. */
 function awaken(world: World, state: GameState, npc: string): string[] {
@@ -307,6 +306,8 @@ export function fightTurn(world: World, state: GameState): string[] {
         }
         else npcStateOf(state, id).wake = p + (combat.wake ?? 25);
       } else if (s?.fighting || (combat.firstStrike !== undefined && combat.firstStrike > 0 && prob(state, combat.firstStrike))) {
+        // A first strike (F-FIRST?) drops the rest of the line, as Zork's P-CONT <>.
+        if (!s?.fighting) stopLine(state);
         npcStateOf(state, id).fighting = true;
         fighters.push(id);
       }
@@ -359,18 +360,13 @@ export function diagnoseLines(world: World, state: GameState): string[] {
   const p = state.player;
   const wounds = p?.cureIn !== undefined ? (p.wounds ?? 0) : 0;
   const style = (lines: string[]) => (world.style === 'infocom' ? lines : lines.map((l) => `[${l}]`));
+  const moves = (world.combat?.cureWait ?? 30) * (wounds - 1) + (p?.cureIn ?? 0);
+  const lines = [wounds === 0 ? 'You are in perfect health.' : `You have ${WOUNDS[wounds] ?? 'serious wounds,'} which will be cured after ${moves} moves.`];
   // A world without fights has nothing more to say than how you are.
-  if (!world.combat) return style([wounds === 0 ? 'You are in perfect health.' : `You have ${WOUNDS[wounds] ?? 'serious wounds,'} which will be cured after ${(30 * (wounds - 1)) + (p?.cureIn ?? 0)} moves.`]);
+  if (!world.combat) return style(lines);
   const rs = fightStrength(world, state, false) - (p?.wounds ?? 0);
-  const lines: string[] = [];
-  if (wounds === 0) lines.push('You are in perfect health.');
-  else {
-    const kind = WOUNDS[wounds] ?? 'serious wounds,';
-    const moves = (world.combat?.cureWait ?? 30) * (wounds - 1) + (p?.cureIn ?? 0);
-    lines.push(`You have ${kind} which will be cured after ${moves} moves.`);
-  }
   lines.push(`You can ${OUTLOOK[rs] ?? (rs > 3 ? 'survive several wounds' : 'expect death soon')}.`);
   const deaths = state.vars?.deaths ?? 0;
   if (deaths > 0) lines.push(`You have been killed ${deaths === 1 ? 'once' : 'twice'}.`);
-  return world.style === 'infocom' ? lines : lines.map((l) => `[${l}]`);
+  return style(lines);
 }

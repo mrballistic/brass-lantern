@@ -108,3 +108,27 @@ describe('final review fixes (5c)', () => {
     expect(execute({ action: 'sniff', target: 'guard' }, { world: w, state: s }).lines).toEqual(['It smells like a guard.']);
   });
 });
+
+describe('a world verb’s reply can be a list, one picked at random (backlog clear-out)', () => {
+  it('says one of them, with its object named', () => {
+    const w = {
+      ...world,
+      items: { ...world.items, sock: { name: 'sock', description: '', portable: true, tags: [] } },
+      verbs: { ...world.verbs, kick: { words: ['kick'], target: 'required' as const, reply: ['Kicking the {target} doesn’t seem to work.', 'Kicking the {target} has no effect.'] } },
+    };
+    const s = stateWith(w, { room: 'bedroom' });
+    s.locations.sock = 'bedroom';
+    expect(['Kicking the sock doesn’t seem to work.', 'Kicking the sock has no effect.']).toContain(execute({ action: 'kick', target: 'sock' }, { world: w, state: s }).lines[0]);
+  });
+});
+
+describe('a list reply aimed at a character (1.12.5 review)', () => {
+  it('is a miss that leaves the seed alone', () => {
+    const w = { ...world, verbs: { ...world.verbs, kick: { words: ['kick'], target: 'required' as const, reply: ['A.', 'B.'] } } };
+    const s = stateWith(w, { room: 'shed' });
+    const rng = s.rng;
+    const r = execute({ action: 'kick', target: 'guard' }, { world: w, state: s });
+    expect(r.understood).toBe(false);
+    expect(s.rng).toBe(rng);
+  });
+});

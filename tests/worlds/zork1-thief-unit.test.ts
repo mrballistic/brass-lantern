@@ -77,16 +77,17 @@ describe('Zork I, natively: the thief', () => {
     });
   });
 
-  it('can be heard in the maze when you’re in the maze too', () => {
-    seedWhere((seed) => {
-      const { run } = at('maze_14', seed, (s) => {
+  it('is never heard robbing the maze: Zork clears its TOUCHBIT, so he leaves it alone', () => {
+    for (let seed = 1; seed <= 200; seed++) {
+      const { state, run } = at('maze_14', seed, (s) => {
         s.npcs = { thief: { room: 'maze_15', hidden: true } };
         s.visited.push('maze_15');
         s.locations.knife = 'maze_15';
       });
       const lines = [...run('look'), ...run('look')];
-      return lines.some((l) => l.startsWith('You hear, off in the distance, someone saying “My, I wonder what this fine'));
-    }, 800);
+      expect(lines.some((l) => l.startsWith('You hear, off in the distance'))).toBe(false);
+      expect(state.locations.knife).toBe('maze_15');
+    }
   });
 
   it('defends his lair: the scream, the vanishing treasures, the chalice he guards', () => {

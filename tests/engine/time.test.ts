@@ -81,3 +81,37 @@ describe('daemons and fuses', () => {
     expect(run(s, 'look', undefined, fixtureWorld).lines).toContain('A dog barks.');
   });
 });
+
+describe('WAIT’s extra turns (fast follow)', () => {
+  const base = (daemon: World['daemons']): World => ({ ...fixtureWorld, wait: { turns: 3 }, daemons: daemon, events: { ...fixtureWorld.events, ring: ['Ring!'] } });
+  it('a fuse scheduled on the first turn counts down on the others', () => {
+    const w = base([{ if: '!flag:armed', then: [{ set: 'armed' }, { schedule: 'ring', in: 2 }] }]);
+    const s = stateWith(w, { room: 'bedroom' });
+    expect(execute({ action: 'wait' }, { world: w, state: s }).lines).toContain('Ring!');
+  });
+  it('a fuse cancelled silently doesn’t end the wait', () => {
+    const w = { ...base([{ if: '!flag:hushed', then: [{ set: 'hushed' }, { cancel: 'quiet' }] }]), events: { ...fixtureWorld.events, ring: ['Ring!'], quiet: ['Shh.'] } };
+    const s = stateWith(w, { room: 'bedroom' });
+    s.fuses = { ring: 2, quiet: 5 };
+    expect(execute({ action: 'wait' }, { world: w, state: s }).lines).toContain('Ring!');
+  });
+});
+
+describe('a stale fired mark (backlog clear-out)', () => {
+  it('a turn that throws after a timer fired doesn’t cut the next WAIT short', () => {
+    const w: World = {
+      ...fixtureWorld,
+      wait: { turns: 3 },
+      events: { ...fixtureWorld.events, pop: [], ring: ['Ring!'] },
+      scripts: { ...fixtureWorld.scripts, boom: () => { throw new Error('boom'); } },
+      daemons: [{ if: 'flag:explode', then: [{ script: 'boom' }] }],
+    };
+    const s = stateWith(w, { room: 'bedroom' });
+    s.fuses = { pop: 1 };
+    s.flags.explode = true;
+    expect(() => execute({ action: 'look' }, { world: w, state: s })).toThrow('boom');
+    s.flags.explode = false;
+    s.fuses = { ring: 3 };
+    expect(execute({ action: 'wait' }, { world: w, state: s }).lines).toContain('Ring!');
+  });
+});

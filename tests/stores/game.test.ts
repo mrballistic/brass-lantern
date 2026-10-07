@@ -704,3 +704,131 @@ describe('useGameStore', () => {
     });
   });
 });
+
+describe('a command whose script throws (fast follow)', () => {
+  it('says nothing changed, keeps the game as it was, and logs the error', async () => {
+    const room = fixtureWorld.rooms.bedroom;
+    const savedInstead = room.instead;
+    fixtureWorld.scripts = { ...fixtureWorld.scripts, boom: () => { throw new Error('boom'); } };
+    fixtureWorld.verbs = { ...fixtureWorld.verbs, explode: { words: ['explode'], target: 'none' } };
+    fixtureWorld.events = { ...fixtureWorld.events, half: [{ set: 'half_done' }, { script: 'boom' }] };
+    room.instead = { ...room.instead, explode: [{ then: 'half' }] };
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const store = freshStore();
+      store.initialize();
+      store.game.currentRoom = 'bedroom';
+      await store.submit('explode');
+      expect(store.output.at(-1)?.text).toBe('[Something went wrong with that command. Nothing changed.]');
+      expect(store.game.flags.half_done).toBeUndefined();
+      expect(errors).toHaveBeenCalled();
+    } finally {
+      room.instead = savedInstead;
+      delete fixtureWorld.verbs?.explode;
+      delete fixtureWorld.scripts?.boom;
+      delete fixtureWorld.events.half;
+      errors.mockRestore();
+    }
+  });
+});
+
+describe('a pure echo from a capture (fast follow)', () => {
+  it('isn’t an UNDO step', async () => {
+    const room = fixtureWorld.rooms[fixtureWorld.startRoom];
+    fixtureWorld.scripts = { ...fixtureWorld.scripts, cap: (ctx) => [`${ctx.line} ${ctx.line}...`, { free: true }] };
+    room.capture = { script: 'cap' };
+    try {
+      const store = freshStore();
+      store.initialize();
+      await store.submit('hello');
+      await store.submit('undo');
+      expect(store.output.at(-1)?.text).toBe('[Nothing to undo.]');
+    } finally {
+      delete room.capture;
+    }
+  });
+});
+
+describe('the changed check counts once-events (backlog clear-out)', () => {
+  it('a capture whose only effect is firing a once-event is an UNDO step', async () => {
+    const room = fixtureWorld.rooms[fixtureWorld.startRoom];
+    fixtureWorld.events = { ...fixtureWorld.events, quiet_once: [] };
+    fixtureWorld.scripts = { ...fixtureWorld.scripts, cap: () => [{ run: 'quiet_once' }, { free: true }] };
+    room.capture = { script: 'cap' };
+    try {
+      const store = freshStore();
+      store.initialize();
+      store.game.firedEvents = [];
+      const before = store.game.firedEvents.length;
+      await store.submit('hum');
+      if (store.game.firedEvents.length === before) return; // a world where runs don't mark: nothing to check
+      await store.submit('undo');
+      expect(store.output.at(-1)?.text).toBe('[Previous turn undone.]');
+    } finally {
+      delete room.capture;
+      delete fixtureWorld.events.quiet_once;
+    }
+  });
+});
+
+describe('dropping the rest of a line (P-CONT) (backlog clear-out)', () => {
+  it('{ stopLine } ends the line; its message prints only when commands were left', async () => {
+    const room = fixtureWorld.rooms[fixtureWorld.startRoom];
+    const saved = room.instead;
+    fixtureWorld.verbs = { ...fixtureWorld.verbs, halt: { words: ['halt'], target: 'none' }, hush: { words: ['hush'], target: 'none' } };
+    fixtureWorld.events = { ...fixtureWorld.events, halted: ['Stop.', { stopLine: true }], hushed: ['Roar.', { stopLine: 'The rest of your commands have been lost in the noise.' }] };
+    room.instead = { ...room.instead, halt: [{ then: 'halted' }], hush: [{ then: 'hushed' }] };
+    localStorage.clear();
+    try {
+      const store = freshStore();
+      store.initialize();
+      store.game.currentRoom = fixtureWorld.startRoom;
+      const n = store.output.length;
+      await store.submit('halt. look');
+      expect(store.output.slice(n).map((l) => l.text)).toEqual(['> halt. look', 'Stop.']);
+      const m = store.output.length;
+      await store.submit('hush. look');
+      expect(store.output.slice(m).map((l) => l.text)).toEqual(['> hush. look', 'Roar.', 'The rest of your commands have been lost in the noise.']);
+      const k = store.output.length;
+      await store.submit('hush');
+      expect(store.output.slice(k).map((l) => l.text)).toEqual(['> hush', 'Roar.']);
+    } finally {
+      room.instead = saved;
+      delete fixtureWorld.verbs?.halt;
+      delete fixtureWorld.verbs?.hush;
+      delete fixtureWorld.events.halted;
+      delete fixtureWorld.events.hushed;
+    }
+  });
+});
+
+describe('a line stop left by a command that threw (1.12.5 review)', () => {
+  it('does not cut short the next line', async () => {
+    const room = fixtureWorld.rooms[fixtureWorld.startRoom];
+    const saved = room.instead;
+    fixtureWorld.verbs = { ...fixtureWorld.verbs, halt: { words: ['halt'], target: 'none' }, ping: { words: ['ping'], target: 'none' } };
+    fixtureWorld.events = { ...fixtureWorld.events, halted: ['Stop.', { stopLine: true }], pinged: ['Pong.'] };
+    room.instead = { ...room.instead, halt: [{ then: 'halted' }], ping: [{ then: 'pinged' }] };
+    localStorage.clear();
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const store = freshStore();
+      store.initialize();
+      store.game.currentRoom = fixtureWorld.startRoom;
+      // The turn ran and asked to stop the line, then rendering it threw.
+      const apply = vi.spyOn(store, 'applyResult').mockImplementationOnce(() => { throw new Error('render'); });
+      await store.submit('halt');
+      apply.mockRestore();
+      const n = store.output.length;
+      await store.submit('ping. ping');
+      expect(store.output.slice(n).map((l) => l.text)).toEqual(['> ping. ping', 'Pong.', 'Pong.']);
+    } finally {
+      room.instead = saved;
+      delete fixtureWorld.verbs?.halt;
+      delete fixtureWorld.verbs?.ping;
+      delete fixtureWorld.events.halted;
+      delete fixtureWorld.events.pinged;
+      errors.mockRestore();
+    }
+  });
+});

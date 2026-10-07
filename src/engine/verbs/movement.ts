@@ -1,31 +1,33 @@
 import type { GameState } from '@/types/game';
 import type { Exit, World } from '@/types/world';
 import { evaluateCondition } from '../conditions';
-import { COMPASS, describeRoom, exitList } from '../describe';
+import { COMPASS, describeRoom, exitList, exitTarget } from '../describe';
 import { fuzzyMatchExit } from '../fuzzy';
 import { isLit, isOpen, isWater, matchItem, pickItem, visibleItems } from '../model';
 import { handleBoard } from './vehicle';
-import { runSteps, turnHalted } from '../effects';
+import { runEventKey, runSteps, turnHalted } from '../effects';
 import { nextRandom } from '../rng';
 import { miss, ok, type EngineResult } from '../result';
-import { runEvent } from '../rules';
 
 /** Evaluate onEnter triggers and emit any event-script lines. */
-export function runOnEnter(roomId: string, world: World, state: GameState): string[] {
+function runOnEnter(roomId: string, world: World, state: GameState): string[] {
   const room = world.rooms[roomId];
   if (!room) return [];
   const out: string[] = [];
   for (const trigger of room.onEnter) {
     if (turnHalted(state)) break;
     if (!trigger.repeat && state.firedEvents.includes(trigger.then)) continue;
-    if (evaluateCondition(trigger.if, state, world)) out.push(...runEvent(trigger.then, world, state));
+    if (evaluateCondition(trigger.if, state, world)) out.push(...runEventKey(trigger.then, world, state));
   }
   return out;
 }
 
 const DIRECTION_WORDS = new Set([...COMPASS, 'in', 'out', 'inside', 'outside']);
 
-export const GENERIC_DENIAL = 'Something stops you. The story isn’t ready for you to go there yet.';
+/** Zork's YUKS: replies to an attempt that can't be taken seriously. */
+const YUKS = ['A valiant attempt.', 'You can’t be serious.', 'An interesting idea...', 'What a concept!'];
+
+const GENERIC_DENIAL = 'Something stops you. The story isn’t ready for you to go there yet.';
 
 export function enterRoom(targetId: string, world: World, state: GameState, opts: { quiet?: boolean } = {}): string[] {
   const target = world.rooms[targetId];
@@ -68,33 +70,35 @@ export function enterRoom(targetId: string, world: World, state: GameState, opts
   return lines;
 }
 
-export function exitTarget(exit: string | Exit | undefined): string | undefined {
-  return typeof exit === 'string' ? exit : exit?.to;
-}
+/** An exit's own refusal (V-WALK's RFATAL): it changes nothing, and skips the room's end routine. */
+const refuse = (line: string): EngineResult => ({ ...ok([line]), fatal: true });
 
 /** Follow one exit. Every refusal comes before the move, so it changes nothing. */
-export function followExit(exit: string | Exit, world: World, state: GameState): EngineResult {
+function followExit(exit: string | Exit, world: World, state: GameState): EngineResult {
   if (typeof exit !== 'string') {
     const refused = exit.denials?.find((d) => evaluateCondition(d.if, state, world));
-    if (refused) return ok([refused.text]);
-    if (exit.if && !evaluateCondition(exit.if, state, world)) return ok([exit.denial ?? 'You can’t go that way.']);
-    if (exit.door && !isOpen(world, state, exit.door)) {
-      return ok([`The ${world.items[exit.door]?.name ?? exit.door} is closed.`]);
-    }
-    if (!exit.to) return ok([exit.denial ?? 'You can’t go that way.']);
+    if (refused) return refuse(refused.text);
+    if (exit.if && !evaluateCondition(exit.if, state, world)) return refuse(exit.denial ?? 'You can’t go that way.');
+    if (exit.door && !isOpen(world, state, exit.door)) return refuse(`The ${world.items[exit.door]?.name ?? exit.door} is closed.`);
+    if (!exit.to) return refuse(exit.denial ?? 'You can’t go that way.');
   }
   const to = exitTarget(exit)!;
-  // Zork's GOTO: water needs a water vehicle; a vehicle won't go overland.
-  const vehicle = state.aboard ? world.items[state.aboard] : undefined;
-  const toWater = isWater(world, state, to);
-  if (!vehicle && toWater) return ok(['You can’t go there without a vehicle.']);
-  if (vehicle && ((!toWater && !isWater(world, state)) || (toWater && vehicle.vehicle?.travels !== 'water'))) {
-    return ok([`You can’t go there in a ${vehicle.name}.`]);
-  }
-  const passing = typeof exit !== 'string' && exit.then ? runEvent(exit.then, world, state) : [];
+  // GOTO's own refusals aren't fatal (they RFALSE): the room's end routine still runs.
+  const refused = vehicleRefusal(to, world, state);
+  if (refused) return ok([refused]);
+  const passing = typeof exit !== 'string' && exit.then ? runEventKey(exit.then, world, state) : [];
   if (turnHalted(state) || state.gameOver) return ok(passing, true);
   const lines = [...passing, ...enterRoom(to, world, state)];
   return ok(lines, state.currentRoom === to || passing.length > 0);
+}
+
+/** Zork's GOTO: water needs a water vehicle; a vehicle won't go overland. Null when the move may happen. */
+export function vehicleRefusal(to: string, world: World, state: GameState): string | null {
+  const vehicle = state.aboard ? world.items[state.aboard] : undefined;
+  const toWater = isWater(world, state, to);
+  if (!vehicle && toWater) return 'You can’t go there without a vehicle.';
+  if (vehicle && ((!toWater && !isWater(world, state)) || (toWater && vehicle.vehicle?.travels !== 'water'))) return `You can’t go there in a ${vehicle.name}.`;
+  return null;
 }
 
 export function handleGo(target: string | undefined, world: World, state: GameState): EngineResult {
@@ -136,8 +140,14 @@ export function handleEnter(target: string | undefined, world: World, state: Gam
   const door = exitThroughDoor(target, world, state);
   if (door) return followExit(door, world, state);
   // ENTER BOAT: a vehicle is boarded (Zork's V-THROUGH).
-  const vehicle = pickItem(target, visibleItems(world, state), world, 'target', state);
-  if (vehicle && world.items[vehicle].vehicle) return handleBoard({ action: 'board', target: vehicle }, world, state);
+  const thing = pickItem(target, visibleItems(world, state), world, 'target', state);
+  if (thing && world.items[thing].vehicle) return handleBoard({ action: 'board', target: thing }, world, state);
+  // Zork's V-THROUGH for anything else in sight.
+  if (thing && world.style === 'infocom') {
+    if (!world.items[thing].portable) return ok([`You hit your head against the ${world.items[thing].name} as you attempt this feat.`]);
+    if (state.locations[thing] === 'player') return ok(['That would involve quite a contortion!']);
+    return ok([YUKS[Math.floor(nextRandom(state) * YUKS.length)]]);
+  }
   return miss('You can’t enter that.');
 }
 
@@ -145,10 +155,24 @@ export function handleClimb(target: string | undefined, world: World, state: Gam
   const room = world.rooms[state.currentRoom];
   if (!room) return ok(['You are nowhere.']);
   // CLIMB DOWN LADDER: a thing here, climbed in a direction (Zork's V-CLIMB-DOWN walks that way).
-  if (direction && target && matchItem(target, visibleItems(world, state), world)) {
+  const thing = direction && target ? matchItem(target, visibleItems(world, state), world) : null;
+  if (direction && thing) {
     // Climbing up something takes the room's climbing exit when there's no up exit.
     const exit = room.exits[direction] ?? (direction === 'up' ? room.exits.climb : undefined);
-    return exit ? followExit(exit, world, state) : miss('You can’t climb that way.');
+    if (world.style !== 'infocom') return exit ? followExit(exit, world, state) : miss('You can’t climb that way.');
+    // Zork's V-CLIMB-UP: UP just walks; DOWN walks only if the thing belongs where it leads.
+    if (!exit) {
+      const item = world.items[thing];
+      // ZIL tests WALL among the thing's synonyms, then the tree; then the plain refusals.
+      if ([item.name, ...(item.aliases ?? [])].some((n) => /^walls?$/i.test(n) || /\bwalls?$/i.test(n))) return ok(['Climbing the walls is to no avail.']);
+      if (item.climbRefusal && (!item.climbRefusal.if || evaluateCondition(item.climbRefusal.if, state, world))) return ok([item.climbRefusal.text]);
+      return ok([direction === 'up' ? 'You can’t go that way.' : 'You can’t do that!']);
+    }
+    if (direction === 'down') {
+      const to = exitTarget(exit);
+      if (!to || !(world.rooms[to]?.scenery ?? []).includes(thing)) return ok([`The ${world.items[thing]?.name ?? thing} doesn’t lead downward.`]);
+    }
+    return followExit(exit, world, state);
   }
   if (target === 'up' || target === 'down') {
     return room.exits[target] ? followExit(room.exits[target], world, state) : miss('You can’t climb that way.');

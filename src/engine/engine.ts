@@ -2,24 +2,23 @@ import type { GameState, ParsedAction } from '@/types/game';
 import type { EventStep, World } from '@/types/world';
 import { evaluateCondition } from './conditions';
 import { describeRoom } from './describe';
-import { AskSignal, initialLocations, isLit, matchItem, setResolveById, takeActed, visibleItems } from './model';
+import { AskSignal, initialLocations, inventoryOf, isLit, matchItem, pickItem, restoreState, setResolveById, snapshotState, takeActed, visibleItems } from './model';
 import { whatQuestion, whichQuestion } from './ask';
 import { darknessFalls, tooDark } from './light';
-import { beginTurn, darkLineSaid, runEventKey, runSteps, setEffectHooks, turnFree, turnHalted } from './effects';
+import { beginTick, beginTurn, darkLineSaid, lineStop, runConditional, runSteps, setEffectHooks, turnFree, turnHalted } from './effects';
 import { seedFor } from './rng';
-import { afterTurn } from './time';
+import { afterTurn, fuseFired } from './time';
 import { die } from './death';
 import { runEnding } from './endings';
 import { miss, ok, type EngineResult } from './result';
-import { enterRoom, handleClimb, handleEnter, handleGo, handleIdle } from './verbs/movement';
+import { enterRoom, handleClimb, handleEnter, handleGo, handleIdle, vehicleRefusal } from './verbs/movement';
 import {
-  ALL, handleDrop, handleExamine, handleInventory, handleLook, handleSmash, handleTake, handleUse, handleWear,
+  ALL, handleDrop, handleExamine, handleInventory, handleLook, handleRead, handleSmash, handleSwitch, handleTake, handleUse, handleWear, notHeld,
 } from './verbs/objects';
 import { withRules } from './rules';
 import { handleWorldVerb } from './verbs/world-verbs';
 import { handleAll } from './verbs/all';
 import { handleClose, handleLock, handleOpen, handlePut, handleSearch, handleTakeFrom, handleUnlock } from './verbs/containers';
-import { handleRead, handleSwitch, notHeld } from './verbs/objects';
 import { handleGive, handleTalk } from './verbs/people';
 import { handleAttack, handleThrow } from './verbs/attack';
 import { handleBurn, handleNoEffect } from './verbs/burn';
@@ -59,7 +58,11 @@ export function initialState(world: World): GameState {
 /* ------------------------------------------------------------------ */
 
 setEffectHooks({
-  go: (room, world, state, opts) => enterRoom(room, world, state, opts),
+  // A scripted move meets GOTO's vehicle checks too (Zork's PRAY in the boat).
+  go: (room, world, state, opts) => {
+    const refused = vehicleRefusal(room, world, state);
+    return refused ? [refused] : enterRoom(room, world, state, opts);
+  },
   die: (cause, world, state) => die(cause, world, state, enterRoom),
   end: (id, world, state) => runEnding(id, world, state),
   look: (world, state) => handleLook(world, state).lines,
@@ -67,53 +70,80 @@ setEffectHooks({
 
 /** The player's room's end routines (Zork's M-END): after the action, before the clock. */
 function roomEnd(world: World, state: GameState): string[] {
-  const out: string[] = [];
   // Aboard, the vehicle's end routine runs instead of the room's (Zork's M-END goes to the vehicle).
   const owner = state.aboard ? world.items[state.aboard] : world.rooms[state.currentRoom];
-  for (const e of owner?.onEnd ?? []) {
-    if (!evaluateCondition(e.if, state, world)) continue;
-    out.push(...(typeof e.then === 'string' ? runEventKey(e.then, world, state) : runSteps(e.then, world, state)));
-    if (state.gameOver || turnHalted(state)) break;
-  }
-  return out;
+  return runConditional(owner?.onEnd ?? [], world, state);
 }
 
 // The steps a capture returned, waiting for execute() to run them as a turn.
 const pendingCapture = new WeakMap<GameState, EventStep[]>();
 
 /**
- * A room's or the world's capture taking a piece of input before it's parsed
- * (Zork's Loud Room, a spirit's limits). The room's goes first. Returns null
- * when no capture takes it; a capture that declines changes nothing.
+ * A room's or the world's capture taking a piece of input (Zork's Loud Room,
+ * a spirit's limits): a raw line before it's parsed, or a parsed command. The
+ * room's goes first. Returns the steps of the capture that takes it, or null
+ * when none does; a capture that declines changes nothing.
  */
-function parsedCapture(world: World, state: GameState, action: ParsedAction): EventStep[] | null {
+function firstCapture(world: World, state: GameState, line: string | undefined, action?: ParsedAction): EventStep[] | null {
   for (const capture of [world.rooms[state.currentRoom]?.capture, world.capture]) {
     if (!capture || (capture.if && !evaluateCondition(capture.if, state, world))) continue;
     const rng = state.rng;
-    const steps = scriptSteps(capture.script, undefined, world, state, undefined, action);
+    const steps = scriptSteps(capture.script, undefined, world, state, line, action);
     if (steps.length > 0) return steps;
     state.rng = rng;
   }
   return null;
 }
 
+/** Runs a capture's steps as a turn of their own. */
+function runCapture(steps: EventStep[], target: string | undefined, deps: EngineDeps): EngineResult {
+  pendingCapture.set(deps.state, steps);
+  return execute({ action: 'capture', target }, deps);
+}
+
 export function captureLine(world: World, state: GameState, line: string): EngineResult | null {
-  if (state.gameOver) return null;
-  for (const capture of [world.rooms[state.currentRoom]?.capture, world.capture]) {
-    if (!capture || (capture.if && !evaluateCondition(capture.if, state, world))) continue;
-    const rng = state.rng;
-    const steps = scriptSteps(capture.script, undefined, world, state, line);
-    if (steps.length === 0) {
-      state.rng = rng;
-      continue;
-    }
-    pendingCapture.set(state, steps);
-    return execute({ action: 'capture', target: line }, { world, state });
+  return guarded(state, () => {
+    if (state.gameOver) return null;
+    const steps = firstCapture(world, state, line);
+    return steps ? runCapture(steps, line, { world, state }) : null;
+  });
+}
+
+/** What a turn can change, as one string: equal before and after means nothing changed. */
+function stateKey(state: GameState): string {
+  return JSON.stringify([state.vars, state.fuses, state.flags, state.locations, state.itemState, state.currentRoom, state.player, state.npcs, state.rng, state.aboard ?? null, state.visited, state.gameOver ?? false, state.firedEvents, state.placed ?? null, state.verbosity ?? null]);
+}
+
+/** States inside a turn, so only the outermost call takes a snapshot. */
+const inTurn = new WeakSet<GameState>();
+
+/**
+ * Runs a turn so that a script that throws leaves the state as it found it (the seed too):
+ * the error still surfaces, but never a half-applied turn.
+ */
+function guarded<T>(state: GameState, turn: () => T): T {
+  if (inTurn.has(state)) return turn();
+  const before = snapshotState(state);
+  inTurn.add(state);
+  try {
+    return turn();
+  } catch (e) {
+    restoreState(state, before);
+    pendingCapture.delete(state);
+    throw e;
+  } finally {
+    inTurn.delete(state);
   }
-  return null;
 }
 
 export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
+  const result = guarded(deps.state, () => executeTurn(action, deps));
+  // The rest of the line is dropped by a step, or (Infocom style) by a refused move.
+  const stop = lineStop(deps.state) ?? (result.fatal && deps.world.style === 'infocom' ? true : undefined);
+  return stop && result.understood !== false ? { ...result, stopLine: stop } : result;
+}
+
+function executeTurn(action: ParsedAction, deps: EngineDeps): EngineResult {
   const { world, state } = deps;
 
   if (state.gameOver && action.action !== 'restart' && action.action !== 'help') {
@@ -123,11 +153,8 @@ export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
   if (action.action === 'go' && action.exit && state.aboard) return execute({ action: 'disembark', target: state.aboard, byId: true }, deps);
   // A capture sees parsed commands too (`ctx.action`), however they arrived: a spirit can't take things by AGAIN.
   if (action.action !== 'capture') {
-    const steps = parsedCapture(world, state, action);
-    if (steps) {
-      pendingCapture.set(state, steps);
-      return execute({ action: 'capture', target: action.target }, deps);
-    }
+    const steps = firstCapture(world, state, undefined, action);
+    if (steps) return runCapture(steps, action.target, deps);
   }
 
   beginTurn(state);
@@ -159,23 +186,27 @@ export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
   // Misses don't count as turns: they must not mutate state (see EngineResult).
   state.turns = (state.turns ?? 0) + 1;
   state.moveCount += 1;
-  const before = JSON.stringify([state.vars, state.fuses, state.flags, state.locations, state.itemState, state.currentRoom, state.player, state.npcs, state.rng]);
+  const before = stateKey(state);
   // Zork's WAIT runs the clock inside the action, up to `wait.turns` times; the room's
   // end routine (M-END) then follows it. Anything else: end routine, then one tick.
   const waiting = action.action === 'wait' && Boolean(world.wait);
   const later: string[] = [];
-  if (!waiting && !turnHalted(state)) later.push(...roomEnd(world, state));
+  // A mark left by a turn that threw doesn't count for this one.
+  fuseFired(state);
+  // A refused move skips the room's end routine in Infocom style (V-WALK's RFATAL).
+  if (!waiting && !turnHalted(state) && !(result.fatal && world.style === 'infocom')) later.push(...roomEnd(world, state));
   // A death this turn ends it: no timers or daemons after the resurrection.
   for (let tick = 0; tick < (waiting ? world.wait!.turns : 1) && !turnHalted(state) && !state.gameOver; tick++) {
     if (tick > 0) {
       state.turns = (state.turns ?? 0) + 1;
       state.moveCount += 1;
+      beginTick(state);
     }
     const fuses = Object.keys(state.fuses ?? {});
     const out = afterTurn(world, state, tick === 0 ? pendingFuses : new Set(fuses));
     later.push(...out);
-    // A tick that did something (Zork: an interrupt returned true) ends the wait.
-    if (out.length > 0 || fuses.some((k) => state.fuses?.[k] === undefined)) break;
+    // A tick that did something (Zork: an interrupt returned true) ends the wait; a cancelled timer doesn't.
+    if (fuseFired(state) || out.length > 0) break;
   }
   if (waiting && !turnHalted(state) && !state.gameOver) later.push(...roomEnd(world, state));
   // Light arriving or leaving while the player stays put.
@@ -187,11 +218,10 @@ export function execute(action: ParsedAction, deps: EngineDeps): EngineResult {
     }
     if (!litNow && litBefore && !darkLineSaid(state)) later.push(darknessFalls(world));
   }
-  const changed = before !== JSON.stringify([state.vars, state.fuses, state.flags, state.locations, state.itemState, state.currentRoom, state.player, state.npcs, state.rng]);
+  const changed = before !== stateKey(state);
   if (later.length === 0 && !changed) return result;
   return { ...result, lines: [...result.lines, ...later], mutated: true };
 }
-
 
 function dispatch(action: ParsedAction, world: World, state: GameState): EngineResult {
   switch (action.action) {
@@ -229,6 +259,8 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
       if (action.target && ALL.test(action.target)) return handleAll(action, world, state);
       if (action.target && action.indirect) {
         const { target, indirect } = action;
+        // Zork's PRE-TAKE comes before anything else: what you hold, you already have.
+        if (world.style === 'infocom' && pickItem(target, inventoryOf(world, state), world, 'target', state)) return { ...ok(['You already have that!']), free: true };
         return withRules('take', action, world, state, () => handleTakeFrom(target, indirect, world, state));
       }
       return withRules('take', action, world, state, () => handleTake(action.target, world, state));
@@ -283,7 +315,10 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
     case 'capture': {
       const steps = pendingCapture.get(state) ?? [];
       pendingCapture.delete(state);
-      return ok(runSteps(steps, world, state), true);
+      // A pure echo changes nothing, so it's no UNDO step or save.
+      const before = stateKey(state);
+      const lines = runSteps(steps, world, state);
+      return ok(lines, stateKey(state) !== before);
     }
     case 'diagnose':
       return ok(diagnoseLines(world, state));

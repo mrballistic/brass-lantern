@@ -162,3 +162,42 @@ describe('death variants: before (5a)', () => {
     expect(runSteps([{ die: 'Splat.' }], w, s)).toContain('A ghostly bedroom.');
   });
 });
+
+describe('treasures scattered into the dark (RANDOMIZE-OBJECTS) (fast follow)', () => {
+  it('with death.treasures: “dark”, a treasure lands in an unlit land room; other things scatter as before', async () => {
+    const { fixtureWorld } = await import('../fixtures/world');
+    const { stateWith } = await import('../helpers/state');
+    const { runSteps } = await import('@/engine/effects');
+    const w = {
+      ...fixtureWorld,
+      death: { ...fixtureWorld.death!, lives: 5, treasures: 'dark' as const, scatter: ['yard'] },
+      items: { ...fixtureWorld.items, gem: { name: 'gem', description: '', portable: true, tags: [], treasure: 5 }, pebble: { name: 'pebble', description: '', portable: true, tags: [] } },
+    };
+    const s = stateWith(w, { room: 'bedroom', carrying: ['gem', 'pebble'] });
+    runSteps([{ die: 'Oops.' }], w, s);
+    const gemRoom = s.locations.gem as string;
+    expect(w.rooms[gemRoom]?.dark).toBe(true);
+    expect(s.locations.pebble).toBe('yard');
+  });
+});
+
+describe('the dark-room walk re-tests where the last treasure landed (backlog clear-out)', () => {
+  it('two treasures can share a room, as in RANDOMIZE-OBJECTS', async () => {
+    const { fixtureWorld } = await import('../fixtures/world');
+    const { stateWith } = await import('../helpers/state');
+    const { runSteps } = await import('@/engine/effects');
+    const { nextRandom } = await import('@/engine/rng');
+    const w = {
+      ...fixtureWorld,
+      death: { ...fixtureWorld.death!, lives: 5, treasures: 'dark' as const, scatter: ['yard'] },
+      rooms: { ...fixtureWorld.rooms, loft: { ...fixtureWorld.rooms.loft, dark: true } },
+      items: { ...fixtureWorld.items, gem: { name: 'gem', description: '', portable: true, tags: [], treasure: 5 }, ruby: { name: 'ruby', description: '', portable: true, tags: [], treasure: 5 } },
+    };
+    // A seed whose first two draws both pass the even odds.
+    const seed = Array.from({ length: 500 }, (_, i) => i + 1).find((n) => { const t = { rng: n } as never; return nextRandom(t) < 0.5 && nextRandom(t) < 0.5; })!;
+    const s = stateWith(w, { room: 'bedroom', carrying: ['gem', 'ruby'] });
+    s.rng = seed;
+    runSteps([{ die: 'Oops.' }], w, s);
+    expect(s.locations.gem).toBe(s.locations.ruby);
+  });
+});

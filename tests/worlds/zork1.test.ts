@@ -753,6 +753,8 @@ describe('Zork I, natively: the full game’s fixes (5d)', () => {
   });
   it('the thief wears his LDESC until he has been knocked out and come round (ROBBER-C-DESC)', () => {
     const state = initialState(zork1);
+    // A fixed seed: on some clock seeds the LOOK turn's daemons carry you off before the second look.
+    state.rng = 1;
     state.currentRoom = 'treasure_room';
     state.npcs = { thief: { room: 'treasure_room', hidden: false } };
     state.locations.lamp = 'player';
@@ -773,3 +775,116 @@ describe('Zork I, natively: the full game’s fixes (5d)', () => {
     expect(currentScore(zork1, state) - before).toBe(6);
   });
 });
+
+describe('Zork I, natively: fast follow (C)', () => {
+  const at = (room: string, carrying: string[] = []) => {
+    const state = initialState(zork1);
+    state.currentRoom = room;
+    state.npcs = { thief: { room: null } };
+    for (const id of carrying) state.locations[id] = 'player';
+    return state;
+  };
+  const say = (state: ReturnType<typeof initialState>, line: string) => execute(fallbackParse(line, zork1.verbs)!, { world: zork1, state }).lines;
+  it('CLIMB DOWN a thing walks only if it leads there; CLIMB UP just walks (V-CLIMB-UP)', () => {
+    const tree = at('up_a_tree', ['leaflet']);
+    expect(say(tree, 'climb down leaflet')).toEqual(['The leaflet doesn’t lead downward.']);
+    expect(tree.currentRoom).toBe('up_a_tree');
+    const house = at('west_of_house', ['leaflet']);
+    expect(say(house, 'climb down leaflet')).toEqual(['You can’t do that!']);
+    expect(say(house, 'climb up leaflet')).toEqual(['You can’t go that way.']);
+    const path = at('path', ['leaflet']);
+    say(path, 'climb up leaflet');
+    expect(path.currentRoom).toBe('up_a_tree');
+    const ladder = at('ladder_top', ['lamp']);
+    ladder.itemState.lamp = { ...ladder.itemState.lamp, on: true };
+    say(ladder, 'climb down ladder');
+    expect(ladder.currentRoom).toBe('ladder_bottom');
+  });
+  it('the far basket answers more verbs, but TAKE X FROM it with X held is “You already have that!”', () => {
+    const state = at('lower_shaft', ['garlic', 'lamp']);
+    state.itemState.lamp = { ...state.itemState.lamp, on: true };
+    for (const line of ['look in basket', 'search basket', 'smell basket']) expect(say(state, line)).toEqual(['The basket is at the other end of the chain.']);
+    // The baskets start raised: here, at the bottom, is the far one.
+    expect(say(state, 'take garlic from basket')).toEqual(['You already have that!']);
+  });
+  it('ENTER HOUSE and ENTER TRAP DOOR (WHITE-HOUSE-F, V-THROUGH)', () => {
+    expect(say(at('west_of_house'), 'enter house')).toEqual(['I can’t see how to get in from here.']);
+    const behind = at('east_of_house');
+    expect(say(behind, 'enter house')).toEqual(['The window is closed.']);
+    behind.itemState.kitchen_window = { ...behind.itemState.kitchen_window, open: true };
+    say(behind, 'enter house');
+    expect(behind.currentRoom).toBe('kitchen');
+    const living = at('living_room');
+    living.flags.rug_moved = true;
+    expect(say(living, 'enter trap door')).toEqual(['You hit your head against the trap door as you attempt this feat.']);
+    expect(living.currentRoom).toBe('living_room');
+  });
+  it('dying with the coffin sends it back to the Egyptian Room (RANDOMIZE-OBJECTS)', () => {
+    const state = at('round_room', ['coffin']);
+    runSteps([{ die: 'Oops.' }], zork1, state);
+    expect(state.locations.coffin).toBe('egypt_room');
+  });
+  it('CLIMB DOWN TREE: “There are no climbable trees here.”, but not on the Forest Path', () => {
+    expect(say(at('forest_1'), 'climb down tree')).toEqual(['There are no climbable trees here.']);
+    expect(say(at('path'), 'climb down tree')).toEqual(['You can’t do that!']);
+  });
+  it('KICK, WAVE and SKIP answer with Zork’s random lines (HACK-HACK, V-SKIP)', () => {
+    const s = at('west_of_house', ['lamp']);
+    expect(say(s, 'kick lamp')[0]).toMatch(/^Kicking the brass lantern (doesn’t seem to work|isn’t notably helpful|has no effect)\.$/);
+    expect(say(s, 'wave lamp')[0]).toMatch(/^Waving the brass lantern (doesn’t seem to work|isn’t notably helpful|has no effect)\.$/);
+    expect(['Very good. Now you can go to the second grade.', 'Are you enjoying yourself?', 'Wheeeeeeeeee!!!!!', 'Do you expect me to applaud?']).toContain(say(s, 'skip')[0]);
+  });
+  it('JUMP as V-LEAP', () => {
+    const tree = at('up_a_tree');
+    expect(say(tree, 'jump')[0]).toBe('In a feat of unaccustomed daring, you manage to land on your feet without killing yourself.');
+    expect(tree.currentRoom).toBe('path');
+    const shaft = at('shaft_room', ['lamp']);
+    shaft.itemState.lamp = { ...shaft.itemState.lamp, on: true };
+    expect(say(shaft, 'jump')[0]).toBe('This was not a very safe place to try jumping.');
+    const house = at('west_of_house', ['lamp']);
+    expect(['Very good. Now you can go to the second grade.', 'Are you enjoying yourself?', 'Wheeeeeeeeee!!!!!', 'Do you expect me to applaud?']).toContain(say(house, 'jump')[0]);
+    expect(say(house, 'jump over lamp')).toEqual(['That would be a good trick.']);
+  });
+  it('EXORCISE (V-EXORCISE, LLD-ROOM’s M-BEG)', () => {
+    expect(say(at('west_of_house'), 'exorcise house')).toEqual(['What a bizarre concept!']);
+    const lld = at('entrance_to_hades', ['lamp']);
+    lld.itemState.lamp = { ...lld.itemState.lamp, on: true };
+    expect(say(lld, 'exorcise ghosts')).toEqual(['You aren’t equipped for an exorcism.']);
+    for (const id of ['bell', 'book', 'candles']) lld.locations[id] = 'player';
+    expect(say(lld, 'exorcise ghosts')).toEqual(['You must perform the ceremony.']);
+  });
+  it('a spirit passes the troll (TROLL-FLAG)', () => {
+    const s = at('troll_room');
+    s.flags.dead = true;
+    s.npcs = { thief: { room: null } };
+    say(s, 'east');
+    expect(s.currentRoom).toBe('ew_passage');
+  });
+  it('entering the Loud Room while it roars drops the rest of the line, with Zork’s words', () => {
+    const s = at('round_room', ['lamp']);
+    s.itemState.lamp = { ...s.itemState.lamp, on: true };
+    const r = execute(fallbackParse('east', zork1.verbs)!, { world: zork1, state: s });
+    expect(s.currentRoom).toBe('loud_room');
+    expect(r.stopLine).toBe('The rest of your commands have been lost in the noise.');
+  });
+  it('the thief never robs a maze room: Zork clears its TOUCHBIT on every look (DESCRIBE-ROOM)', () => {
+    const state = at('maze_3', ['lamp']);
+    state.itemState.lamp = { ...state.itemState.lamp, on: true };
+    state.visited.push('maze_1');
+    state.locations.rope = 'maze_1';
+    state.locations.bag_of_coins = 'maze_1';
+    const out: string[] = [];
+    for (let t = 0; t < 60; t++) {
+      state.npcs = { thief: { room: 'maze_1', hidden: true } };
+      out.push(...say(state, 'wait'));
+    }
+    expect(out.join(' ')).not.toContain('off in the distance');
+    expect(state.locations.rope).toBe('maze_1');
+    expect(state.locations.bag_of_coins).toBe('maze_1');
+  });
+  it('JUMP at the Altar with the coffin is deadly (V-LEAP and COFFIN-CURE)', () => {
+    const state = at('south_temple', ['coffin', 'lamp']);
+    expect(say(state, 'jump')[0]).toBe('This was not a very safe place to try jumping.');
+  });
+});
+

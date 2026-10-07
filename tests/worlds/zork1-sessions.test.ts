@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it } from 'vitest';
 import { compare, nativeRun, originalRun, prefixed } from './zsession';
-import { BANK_SESSIONS, BOAT_SESSIONS, DAM_SESSIONS, DOME_SESSIONS, END_SESSIONS, GAS_SESSIONS, GRUE_SESSIONS, MINE_SESSIONS, LOUD_SESSIONS, RAINBOW_SESSIONS, RIVER_SESSIONS, SHAFT_SESSIONS, TEMPLE_SESSIONS } from './zork1-sessions';
+import { BANK_SESSIONS, BOAT_SESSIONS, CYCLOPS_SESSIONS, DAM_SESSIONS, DOME_SESSIONS, END_SESSIONS, GAS_SESSIONS, GRUE_SESSIONS, MINE_SESSIONS, LOUD_SESSIONS, RAINBOW_SESSIONS, RIVER_SESSIONS, SHAFT_SESSIONS, TEMPLE_SESSIONS } from './zork1-sessions';
 
 // Scripted sessions: each puzzle chain runs in native Zork I and in the real story
 // file, both seeded, and the replies are compared line by line.
@@ -53,6 +53,9 @@ const SEEDS: Record<string, { native: number; original: number }> = {
   machine: { native: 4, original: 4 },
   'basket-dummy': { native: 2, original: 4 },
   'barrow-closed': { native: 1, original: 1 },
+  'cyclops-feed': { native: 3, original: 1 },
+  'cyclops-wrath': { native: 3, original: 1 },
+  'cyclops-garlic': { native: 3, original: 1 },
   rainbow: { native: 4, original: 1 },
   'jump-falls': { native: 20, original: 1 },
   'rainbow-death': { native: 4, original: 1 },
@@ -106,6 +109,7 @@ const GROUPS: Array<[string, Record<string, string[]>]> = [
   ['the gas room, the coal mine and the ladder', GAS_SESSIONS],
   ['the narrow passage, the machine and the basket', SHAFT_SESSIONS],
   ['the Mountains and the closed barrow', END_SESSIONS],
+  ['the cyclops’s rarer lines', CYCLOPS_SESSIONS],
 ];
 
 for (const [title, sessions] of GROUPS) {

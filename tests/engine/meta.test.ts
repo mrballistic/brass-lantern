@@ -35,3 +35,14 @@ describe('moves, the status line, SCRIPT and VERSION', () => {
     expect(s.moveCount).toBe(0);
   });
 });
+
+describe('HELP’s columns (fast follow)', () => {
+  it('the vehicle line lines its text up at column 25 with the others', async () => {
+    const { fixtureWorld } = await import('../fixtures/world');
+    const { stateWith } = await import('../helpers/state');
+    const { execute } = await import('@/engine/engine');
+    const lines = execute({ action: 'help' }, { world: fixtureWorld, state: stateWith(fixtureWorld, { room: 'bedroom' }) }).lines;
+    const vehicle = lines.find((l) => l.startsWith('BOARD'))!;
+    expect(vehicle.indexOf('Get in')).toBe(25);
+  });
+});

@@ -3,7 +3,7 @@ import type { World } from '@/types/world';
 import { combatText, heroBlow } from '../combat';
 import { inventoryOf, isCarried, matchNpc, moveItem, needObject, pickItem, visibleItems } from '../model';
 import { miss, ok, type EngineResult } from '../result';
-import { withRules } from '../rules';
+import { BARE_HANDS, withRules } from '../rules';
 
 /**
  * ATTACK, KILL, FIGHT, STAB. At a character it's combat; at anything else,
@@ -41,7 +41,7 @@ function attackNpc(npc: string, indirect: string | undefined, world: World, stat
     // Zork's parser asks which weapon (one held is guessed in handleAttack).
     needObject('indirect');
   }
-  if (/^(?:my\s+|bare\s+)?hands?$/i.test(indirect)) return ok([combatText(world, 'bareHands', { defender })]);
+  if (BARE_HANDS.test(indirect)) return ok([combatText(world, 'bareHands', { defender })]);
   const weapon = pickItem(indirect, visibleItems(world, state), world, 'indirect', state);
   if (!weapon) return miss(`You don’t see a “${indirect}” here.`);
   const fields = { defender, weapon: world.items[weapon].name };

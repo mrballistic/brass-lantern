@@ -1,7 +1,7 @@
 import type { GameState } from '@/types/game';
 import type { World } from '@/types/world';
 import { evaluateCondition } from './conditions';
-import { inventoryOf, moveItem } from './model';
+import { inventoryOf, isWater, moveItem } from './model';
 import { nextRandom } from './rng';
 import { runEventKey } from './effects';
 
@@ -48,9 +48,23 @@ export function die(cause: string, world: World, state: GameState, goTo: GoTo): 
   }
 
   const scatter = (d.scatter ?? []).filter((r) => world.rooms[r]);
+  // Zork's RANDOMIZE-OBJECTS: each treasure walks on from the last room tried to an unlit land room, at even odds.
+  const roomIds = Object.keys(world.rooms);
+  const unlit = (r: string) => Boolean(world.rooms[r].dark) && !isWater(world, state, r);
+  // R stays where the last treasure landed, and is tested again first (two can share a room).
+  let at = 0;
+  const darkRoom = (): string | null => {
+    if (!roomIds.some(unlit)) return null;
+    for (;;) {
+      if (unlit(roomIds[at]) && nextRandom(state) < 0.5) return roomIds[at];
+      at = (at + 1) % roomIds.length;
+    }
+  };
   for (const id of inventoryOf(world, state)) {
     const home = world.items[id]?.home;
+    const dark = d.treasures === 'dark' && (world.items[id]?.treasure ?? 0) > 0 && !(home && world.rooms[home]) ? darkRoom() : null;
     if (home && world.rooms[home]) moveItem(state, id, home);
+    else if (dark) moveItem(state, id, dark);
     else if (scatter.length > 0) moveItem(state, id, scatter[Math.floor(nextRandom(state) * scatter.length)]);
     else moveItem(state, id, state.currentRoom);
   }

@@ -145,3 +145,68 @@ describe('final review fixes (5c)', () => {
     expect(execute(fallbackParse('climb up fence')!, { world, state: s }).lines).toEqual(['The fence is too high to climb.']);
   });
 });
+
+describe('a refused exit, Infocom style (fast follow)', () => {
+  it('still costs a turn, but skips the room’s end routine (V-WALK’s RFATAL)', () => {
+    const w = {
+      ...world,
+      style: 'infocom' as const,
+      rooms: { ...world.rooms, yard: { ...world.rooms.yard, exits: { ...world.rooms.yard.exits, west: { denial: 'A fence.' } }, onEnd: [{ if: 'in:yard', then: ['Tick.'] }] } },
+    };
+    const s = stateWith(w, { room: 'yard' });
+    const moves = s.moveCount;
+    const r = execute({ action: 'go', target: 'west' }, { world: w, state: s });
+    expect(r.lines).toEqual(['A fence.']);
+    expect(s.moveCount).toBe(moves + 1);
+  });
+  it('a room that turns you away (GOTO’s refusal, not V-WALK’s) still runs the end routine (1.12.5 review)', () => {
+    const w = {
+      ...world,
+      style: 'infocom' as const,
+      rooms: { ...world.rooms, yard: { ...world.rooms.yard, onEnd: [{ if: 'in:yard', then: ['Tick.'] }] } },
+    };
+    const s = stateWith(w, { room: 'yard' });
+    const r = execute({ action: 'go', target: 'north' }, { world: w, state: s });
+    expect(r.lines).toEqual(['The shed is locked.', 'Tick.']);
+  });
+});
+
+describe('what drops the rest of a line (backlog clear-out)', () => {
+  it('a refused move in Infocom style; not in brass', () => {
+    const fenced = { ...world.rooms.yard, exits: { ...world.rooms.yard.exits, west: { denial: 'A fence.' } } };
+    const infocom = { ...world, style: 'infocom' as const, rooms: { ...world.rooms, yard: fenced } };
+    const brass = { ...world, rooms: { ...world.rooms, yard: fenced } };
+    expect(execute({ action: 'go', target: 'west' }, { world: infocom, state: stateWith(infocom, { room: 'yard' }) }).stopLine).toBe(true);
+    expect(execute({ action: 'go', target: 'west' }, { world: brass, state: stateWith(brass, { room: 'yard' }) }).stopLine).toBeUndefined();
+  });
+  it('a first strike', async () => {
+    const w = { ...world, combat: { strength: { min: 2, max: 7 } }, npcs: { ...world.npcs, guard: { ...world.npcs.guard, combat: { ...world.npcs.guard.combat!, firstStrike: 100 } } } };
+    const s = stateWith(w, { room: 'shed' });
+    // A fixed seed: <PROB 100> still fails on a roll of 100, as in Zork.
+    s.rng = 1;
+    const r = execute({ action: 'wait' }, { world: w, state: s });
+    expect(s.npcs?.guard?.fighting).toBe(true);
+    expect(r.stopLine).toBe(true);
+  });
+});
+
+describe('V-CLIMB-UP’s other replies (backlog clear-out)', () => {
+  it('a wall with no way that way: “Climbing the walls is to no avail.”; a climbRefusal says its piece', () => {
+    const w = {
+      ...world,
+      style: 'infocom' as const,
+      items: {
+        ...world.items,
+        wall: { name: 'stone wall', aliases: ['wall', 'walls'], description: '', portable: false, tags: [], scenery: true },
+        oak: { name: 'oak', description: '', portable: false, tags: [], scenery: true, climbRefusal: { if: '!flag:nope', text: 'There are no climbable trees here.' } },
+      },
+    };
+    const s = stateWith(w, { room: 'bedroom' });
+    s.locations.wall = 'bedroom';
+    s.locations.oak = 'bedroom';
+    expect(execute({ action: 'climb', target: 'wall', direction: 'down' }, { world: w, state: s }).lines).toEqual(['Climbing the walls is to no avail.']);
+    expect(execute({ action: 'climb', target: 'oak', direction: 'down' }, { world: w, state: s }).lines).toEqual(['There are no climbable trees here.']);
+    s.flags.nope = true;
+    expect(execute({ action: 'climb', target: 'oak', direction: 'down' }, { world: w, state: s }).lines).toEqual(['You can’t do that!']);
+  });
+});

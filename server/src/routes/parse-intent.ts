@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { parseIntent, type IntentContext } from '../llm.js';
+import { IDENTIFIER_RE, parseIntent, type IntentContext } from '../llm.js';
 
 function isIntentContext(value: unknown): value is IntentContext {
   if (typeof value !== 'object' || value === null) return false;
@@ -18,14 +18,12 @@ function isIntentContext(value: unknown): value is IntentContext {
 const MAX_INPUT_CHARS = 200;
 const MAX_CONTEXT_ENTRIES = 50;
 
-const VERB_RE = /^[a-z0-9_]{1,48}$/;
-
 function contextIsBounded(c: IntentContext): boolean {
   const lists = [c.exits, c.items, c.npcs, c.inventory];
   const verbs = c.verbs;
   if (verbs !== undefined) {
     if (!Array.isArray(verbs) || verbs.length > MAX_CONTEXT_ENTRIES) return false;
-    if (!verbs.every((v) => typeof v === 'string' && VERB_RE.test(v))) return false;
+    if (!verbs.every((v) => typeof v === 'string' && IDENTIFIER_RE.test(v))) return false;
   }
   return (
     c.roomName.length <= 100 &&

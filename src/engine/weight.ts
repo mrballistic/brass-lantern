@@ -13,8 +13,20 @@ export function weightOf(world: World, state: GameState, id: string): number {
   return own + childrenOf(world, state, id).reduce((sum, k) => sum + weightOf(world, state, k), 0);
 }
 
+/** Being worn: its WEAR has happened (the `onWear` event has fired). */
+function isWorn(world: World, state: GameState, id: string): boolean {
+  const wear = world.items[id]?.onWear;
+  return Boolean(wear && state.firedEvents.includes(wear));
+}
+
+/** What the player carries weighs; a worn thing counts 1 (Zork's WEIGHT). */
 export function carriedWeight(world: World, state: GameState): number {
-  return inventoryOf(world, state).reduce((sum, id) => sum + weightOf(world, state, id), world.carry?.self ?? 0);
+  return inventoryOf(world, state).reduce((sum, id) => sum + (isWorn(world, state, id) ? 1 : weightOf(world, state, id)), world.carry?.self ?? 0);
+}
+
+/** How many things the player holds, for the fumble: worn things don't count (Zork's CCOUNT). */
+export function carriedCount(world: World, state: GameState): number {
+  return inventoryOf(world, state).filter((id) => !isWorn(world, state, id)).length;
 }
 
 /** What the player can carry now: the world's limit, lowered by wounds. */
@@ -33,7 +45,7 @@ export function takeRefusal(world: World, state: GameState, id: string): string 
     if (loadLimit(world, state) < carry.limit) return carry.tooHeavyHurt ?? 'Your load is too heavy, especially in light of your condition.';
     return carry.tooHeavy ?? 'Your load is too heavy.';
   }
-  const count = inventoryOf(world, state).length;
+  const count = carriedCount(world, state);
   if (carry.fumble && count > carry.fumble.over && prob(state, count * carry.fumble.chance)) {
     return carry.fumbled ?? (infocom ? 'You’re holding too many things already!' : '[You’re carrying too many things.]');
   }

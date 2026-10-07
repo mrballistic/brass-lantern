@@ -28,8 +28,8 @@ export interface NpcState {
   wake?: number;
   /** In the room but unseen: not listed, matched, reached or fought (Zork's INVISIBLE). */
   hidden?: boolean;
-  /** The turn it last moved rooms: one who arrived this turn is listed first (Zork's object order). */
-  arrived?: number;
+  /** When it last moved rooms, on the same sequence as things' placings (`placed`): listed before anything placed earlier (Zork's object order). */
+  seq?: number;
 }
 
 /** The player's condition, once anything has hurt them. */
@@ -102,6 +102,8 @@ export interface ParsedAction {
   prep?: 'in' | 'on';
   /** TAKE ALL BUT …: the words after BUT/EXCEPT. */
   except?: string[];
+  /** DISEMBARK reached by STAND or a bare GET OUT/OFF: Zork guesses the vehicle only for DISEMBARK itself. */
+  via?: 'stand' | 'out';
   /** CLIMB UP / CLIMB DOWN a thing: the direction to climb it in. */
   direction?: 'up' | 'down';
   /** Bare EXIT (a direction, out), which aboard gets out of the vehicle (Zork's V-EXIT). */

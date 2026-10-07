@@ -26,6 +26,8 @@ export interface Conversation {
   lastUnknown: string | null;
   /** Snapshots before each changing turn, for UNDO. */
   history: Array<{ state: GameState; outputLength: number }>;
+  /** The last turn dropped the rest of its line (Zork's P-CONT), with a message to say if commands were left. */
+  stopLine?: true | string;
 }
 
 export function newConversation(): Conversation {

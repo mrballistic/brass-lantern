@@ -68,6 +68,7 @@ let download = defaultDownload;
 export function setDownload(fn: (filename: string, text: string) => void): void {
   download = fn;
 }
+
 /** Save names: lowercase letters, digits, spaces (or _) and -, at most 32. */
 function saveName(raw: string): string {
   return raw
@@ -94,7 +95,6 @@ interface State {
   /** game_completed already reported for the current game. */
   gameOverTracked: boolean;
 }
-
 
 function sameAction(a: ParsedAction, b: ParsedAction): boolean {
   const norm = (s?: string) => (s ?? '').toLowerCase().replace(/[\s-]+/g, '_');
@@ -137,8 +137,7 @@ export const useGameStore = defineStore('game', {
       this.$patch({ game: freshGame(), output: [], isParsing: false, restored: false, gameOverTracked: false });
       const saved = migrateSave(world, persistence.loadRaw());
       if (saved) {
-        this.game = saved.gameState;
-        this.gameOverTracked = saved.gameState.gameOver;
+        this.setGame(saved.gameState);
         this.output = saved.outputHistory;
         this.restored = true;
         this.appendSystem('[Session restored — type LOOK to re-orient]');
@@ -200,13 +199,18 @@ export const useGameStore = defineStore('game', {
         this.appendSystem(`[There’s no save called “${raw!.trim()}”.]`);
         return;
       }
-      this.game = loaded.gameState;
-      this.gameOverTracked = loaded.gameState.gameOver;
+      this.setGame(loaded.gameState);
       // Another timeline: its undo history, question and pronouns don't apply.
       conversation = newConversation();
       this.appendSystem(`Restored ${name}.`);
       this.appendLines(describeCurrentRoom(world, this.game));
       this.persist();
+    },
+
+    /** Plays on from another game state (a save, UNDO, RESTART); game_completed is already reported if it's over. */
+    setGame(game: GameState): void {
+      this.game = game;
+      this.gameOverTracked = game.gameOver;
     },
 
     appendLines(texts: string[]): void {
@@ -245,7 +249,8 @@ export const useGameStore = defineStore('game', {
 
       // "get key and wallet", "take wallet then go outside": each piece runs
       // on its own, so each gets the LLM fallback if it misses.
-      for (const [i, command] of splitCommands(input, world.verbs).entries()) {
+      const pieces = splitCommands(input, world.verbs);
+      for (const [i, command] of pieces.entries()) {
         // Store commands (RESTART above all) work even after the game has ended.
         if (this.storeCommand(command)) {
           if (conversation.prompt) break;
@@ -253,14 +258,31 @@ export const useGameStore = defineStore('game', {
         }
         // Once the game is over, one command hears that it has ended; the rest of the line is dropped.
         if (this.game.gameOver && i > 0) break;
-        // A room or the world can take input before it's parsed; taking it ends the line.
-        const captured = conversation.pending ? null : captureLine(world, this.game, command);
-        if (captured) {
-          if (captured.mutated) line.changed = true;
-          this.applyResult(captured);
+        // A stop left by a command that threw belongs to that line, not this one.
+        conversation.stopLine = undefined;
+        try {
+          // A room or the world can take input before it's parsed; taking it ends the line.
+          const captured = conversation.pending ? null : captureLine(world, this.game, command);
+          if (captured) {
+            if (captured.mutated) line.changed = true;
+            this.applyResult(captured);
+            break;
+          }
+          await this.runCommand(command);
+          // The turn dropped the rest of the line (Zork's P-CONT): its message only if something was left.
+          const stop = conversation.stopLine;
+          conversation.stopLine = undefined;
+          if (stop) {
+            if (typeof stop === 'string' && i < pieces.length - 1) this.applyResult({ lines: [stop], mutated: false });
+            break;
+          }
+        } catch (error) {
+          // The engine rolled the turn back; say so, and drop the rest of the line.
+          console.error('Command failed:', error);
+          conversation.stopLine = undefined;
+          this.appendSystem('[Something went wrong with that command. Nothing changed.]');
           break;
         }
-        await this.runCommand(command);
         // A question stops the line, as in Zork: the next line answers it.
         if (conversation.pending) break;
       }
@@ -308,8 +330,7 @@ export const useGameStore = defineStore('game', {
         this.appendSystem('No saved game found.');
         return;
       }
-      this.game = loaded.gameState;
-      this.gameOverTracked = loaded.gameState.gameOver;
+      this.setGame(loaded.gameState);
       this.output = loaded.outputHistory;
       // Another timeline: its undo history, question and pronouns don't apply.
       conversation = newConversation();
@@ -352,7 +373,6 @@ export const useGameStore = defineStore('game', {
       const retry = await this.reinterpret(step.parse, null);
       this.applyResult(retry ?? this.execute({ action: 'unknown' }), step.parse);
     },
-
 
     /**
      * Ask the LLM what the player meant. Returns the engine's result for that
@@ -398,6 +418,7 @@ export const useGameStore = defineStore('game', {
 
     execute(action: ParsedAction): EngineResult {
       const result = execute(action, { world, state: this.game });
+      if (result.stopLine) conversation.stopLine = result.stopLine;
       // The line's snapshot is kept for UNDO if any piece changes something.
       if (result.mutated) line.changed = true;
       remember(conversation, action, result);
@@ -411,8 +432,7 @@ export const useGameStore = defineStore('game', {
         this.appendSystem('[Nothing to undo.]');
         return;
       }
-      this.game = snapshot.state;
-      this.gameOverTracked = snapshot.state.gameOver;
+      this.setGame(snapshot.state);
       this.output = this.output.slice(0, snapshot.outputLength);
       conversation.pending = null;
       if (scriptFrom !== null) scriptFrom = Math.min(scriptFrom, this.output.length);
@@ -446,8 +466,7 @@ export const useGameStore = defineStore('game', {
       conversation = newConversation();
       if (scriptFrom !== null) scriptFrom = 0;
       persistence.clear();
-      this.game = freshGame();
-      this.gameOverTracked = false;
+      this.setGame(freshGame());
       this.output = [];
       this.appendLines(openingLines(world, this.game));
       this.persist();

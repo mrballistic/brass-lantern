@@ -15,7 +15,7 @@ function tokenPrefixScore(needleTokens: string[], haystackTokens: string[]): num
   for (const nt of needleTokens) {
     if (nt.length < 2) continue;
     for (const ht of haystackTokens) {
-      if (ht === nt || (nt.length >= 2 && ht.startsWith(nt)) || (ht.length >= 2 && nt.startsWith(ht))) {
+      if (ht === nt || ht.startsWith(nt) || (ht.length >= 2 && nt.startsWith(ht))) {
         score += 1;
         break;
       }

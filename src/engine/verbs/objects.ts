@@ -1,14 +1,13 @@
 import type { GameState } from '@/types/game';
 import type { Item, World } from '@/types/world';
 import { evaluateCondition } from '../conditions';
-import { contentsLines, describeRoom, lightNote, npcDescription, withArticle } from '../describe';
-import { closedAround, inventoryOf, isCarried, isOpen, matchItem, matchNpc, moveItem, needObject, pickItem, PLAYER, reachableItems, visibleItems } from '../model';
+import { contentsLines, describeRoom, lightNote, listedName, npcDescription } from '../describe';
+import { closedAround, inventoryOf, isCarried, isHeld, isOpen, matchItem, matchNpc, moveItem, needObject, pickItem, PLAYER, reachableItems, visibleItems } from '../model';
 import { miss, ok, type EngineResult } from '../result';
-import { applyRule, findRule, runEvent } from '../rules';
+import { runEventKey } from '../effects';
+import { afterRuleLines, applyRule, findRule } from '../rules';
 import { takeRefusal } from '../weight';
 import { finishEnding } from '../endings';
-
-const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export function handleLook(world: World, state: GameState): EngineResult {
   return ok(describeRoom(state.currentRoom, world, state));
@@ -20,7 +19,7 @@ export function handleInventory(world: World, state: GameState): EngineResult {
   const lines = ['You are carrying:'];
   for (const id of carried) {
     const name = world.items[id]?.name ?? id;
-    lines.push(world.style === 'infocom' ? `  ${capitalize(withArticle(world, id))}${lightNote(world, state, id)}` : `  - ${name}`);
+    lines.push(world.style === 'infocom' ? `  ${listedName(world, id)}${lightNote(world, state, id)}` : `  - ${name}`);
     lines.push(...contentsLines(world, state, id, 2));
   }
   return ok(lines);
@@ -129,10 +128,10 @@ export function handleWear(target: string | undefined, world: World, state: Game
   const item: Item = world.items[itemId];
   if (!item.onWear) return ok(['That is not really wearable.']);
   if (state.firedEvents.includes(item.onWear)) return ok([`You’re already wearing the ${item.name}.`]);
-  return ok(runEvent(item.onWear, world, state), true);
+  return ok(runEventKey(item.onWear, world, state), true);
 }
 
-export const PRONOUN = /^(?:it|that|this|them)$/i;
+const PRONOUN = /^(?:it|that|this|them)$/i;
 
 export function handleSmash(
   target: string | undefined,
@@ -152,7 +151,7 @@ export function handleSmash(
       if (state.firedEvents.includes(finale.bareHanded)) {
         return ok([finale.bareHandedAgain ?? 'That still won’t work.']);
       }
-      return ok(runEvent(finale.bareHanded, world, state), true);
+      return ok(runEventKey(finale.bareHanded, world, state), true);
     }
   }
 
@@ -162,7 +161,7 @@ export function handleSmash(
     if (state.firedEvents.includes(item.onSmash)) {
       return ok([`The ${item.name} is already in pieces.`]);
     }
-    const lines = runEvent(item.onSmash, world, state);
+    const lines = runEventKey(item.onSmash, world, state);
     moveItem(state, itemId, null);
     return ok(lines, true);
   }
@@ -178,19 +177,19 @@ export function handleSmash(
 }
 
 /** Items that started in this room and have since been smashed. */
-export function smashedHere(world: World, state: GameState): string[] {
+function smashedHere(world: World, state: GameState): string[] {
   return (world.rooms[state.currentRoom]?.items ?? []).filter((id) => {
     const hook = world.items[id]?.onSmash;
     return hook !== undefined && state.firedEvents.includes(hook);
   });
 }
 
-export function runFinale(world: World, state: GameState): EngineResult {
+function runFinale(world: World, state: GameState): EngineResult {
   const finale = world.finale!;
   // The finale is an ending: its event, the epilogues that now hold, the score, the footer.
-  const lines = runEvent(finale.event, world, state);
+  const lines = runEventKey(finale.event, world, state);
   for (const trigger of finale.epilogue) {
-    if (evaluateCondition(trigger.if, state, world)) lines.push(...runEvent(trigger.then, world, state));
+    if (evaluateCondition(trigger.if, state, world)) lines.push(...runEventKey(trigger.then, world, state));
   }
   if (!state.firedEvents.includes(finale.footer)) state.firedEvents.push(finale.footer);
   return ok(finishEnding(lines, true, world.events[finale.footer] ?? [], world, state), true);
@@ -203,11 +202,14 @@ export function handleRead(target: string | undefined, world: World, state: Game
   const item = world.items[id];
   const text = item.text ?? (item.description || `There’s nothing special about the ${item.name}.`);
   // Zork's READ takes the thing first (its syntax's TAKE flag).
-  if (world.style === 'infocom' && item.portable && !isCarried(state, id)) {
+  // Something inside a container you carry counts as held (HELD?): no take.
+  if (world.style === 'infocom' && item.portable && !isHeld(state, id)) {
     const took = takeItem(id, world, state);
     // A take that fails is silent: READ reads anyway (ITAKE-CHECK; READ's syntax has TAKE, not HAVE).
     if (!took.mutated) return ok([text]);
-    return ok(['(Taken)', text], true);
+    // A take is a take: its after rules run (Zork's points for taking it).
+    const extra = afterRuleLines('take', { target: id, indirect: null, room: state.currentRoom }, world, state);
+    return ok(['(Taken)', ...extra, text], true);
   }
   return ok([text]);
 }

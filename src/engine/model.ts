@@ -55,6 +55,10 @@ export function isNpcHidden(world: World, state: GameState, id: string): boolean
 /** A filter for items that aren't hidden (the `hide` effect). */
 export const shown = (state: GameState) => (id: string) => !state.itemState[id]?.hidden;
 
+/** A filter for items a listing names: not scenery, not unlisted (the `unlist` effect), not hidden. */
+export const listable = (world: World, state: GameState) => (id: string) =>
+  !world.items[id]?.scenery && !state.itemState[id]?.unlisted && shown(state)(id);
+
 /** A character's state, created on first use. */
 export function npcStateOf(state: GameState, id: string): NpcState {
   return ((state.npcs ??= {})[id] ??= {});
@@ -109,21 +113,26 @@ export function isWater(world: World, state: GameState, roomId: string = state.c
   return typeof w === 'string' ? evaluateCondition(w, state, world) : Boolean(w);
 }
 
+/** Carried, directly or inside something carried (Zork's HELD?). */
+export function isHeld(state: GameState, id: string): boolean {
+  return isInside(state, id, PLAYER);
+}
+
 /** What the player holds, including things they can see inside what they hold (Zork's HELD). */
 export function heldItems(world: World, state: GameState): string[] {
-  const within = (id: string): boolean => {
-    for (let p = state.locations[id]; p; p = state.locations[p]) if (p === PLAYER) return true;
-    return false;
-  };
-  return visibleItems(world, state).filter(within);
+  return visibleItems(world, state).filter((id) => isHeld(state, id));
 }
 
 export function moveItem(state: GameState, id: string, place: Place): void {
   state.locations[id] = place;
   // A vehicle taken away from the player's room leaves them aboard nothing.
   if (state.aboard === id && place !== state.currentRoom) state.aboard = undefined;
-  const placed = (state.placed ??= {});
-  placed[id] = Math.max(0, ...Object.values(placed)) + 1;
+  (state.placed ??= {})[id] = nextPlacing(state);
+}
+
+/** The next number on the one sequence things' placings and characters' arrivals share (Zork's MOVE order). */
+export function nextPlacing(state: GameState): number {
+  return Math.max(0, ...Object.values(state.placed ?? {}), ...Object.values(state.npcs ?? {}).map((n) => n.seq ?? 0)) + 1;
 }
 
 /**
@@ -141,18 +150,17 @@ function fixturesIn(world: World, state: GameState, roomId: string): string[] {
 
 /** What a room lists: its direct contents (and fixtures it shares), minus scenery. */
 export function visibleItemsIn(roomId: string, world: World, state: GameState): string[] {
-  return [...childrenOf(world, state, roomId), ...fixturesIn(world, state, roomId)].filter((id) => !world.items[id]?.scenery && !state.itemState[id]?.unlisted && shown(state)(id));
+  return [...childrenOf(world, state, roomId), ...fixturesIn(world, state, roomId)].filter(listable(world, state));
 }
 
 /** Fuzzy candidates for items, with aliases folded into the matchable name. */
-export function itemCandidates(ids: string[], world: World): Array<{ id: string; name: string }> {
+function itemCandidates(ids: string[], world: World): Array<{ id: string; name: string }> {
   return ids.map((id) => {
     const item = world.items[id];
     const name = item ? [item.name, ...(item.aliases ?? [])].join(' ') : id;
     return { id, name };
   });
 }
-
 
 export function matchItem(target: string, ids: string[], world: World): string | null {
   return fuzzyMatch(target, itemCandidates(ids, world));
@@ -175,7 +183,7 @@ export interface Acted {
 
 const actedThisTurn = new WeakMap<GameState, Acted>();
 
-export function noteActed(state: GameState, slot: keyof Acted, id: string): void {
+function noteActed(state: GameState, slot: keyof Acted, id: string): void {
   const acted = actedThisTurn.get(state) ?? {};
   acted[slot] = id;
   actedThisTurn.set(state, acted);
@@ -235,14 +243,15 @@ function roots(world: World, state: GameState): string[] {
   ].filter(shown(state));
 }
 
-function collect(world: World, state: GameState, into: (id: string) => boolean): string[] {
+/** `roots` and, through every thing `into` lets you into, the children `keep` allows, at any depth. */
+function collect(world: World, state: GameState, roots: string[], into: (id: string) => boolean, keep: (id: string) => boolean): string[] {
   const out: string[] = [];
   const walk = (id: string) => {
     if (out.includes(id)) return;
     out.push(id);
-    if (into(id)) for (const child of childrenOf(world, state, id).filter(shown(state))) walk(child);
+    if (into(id)) for (const child of childrenOf(world, state, id).filter(keep)) walk(child);
   };
-  roots(world, state).forEach(walk);
+  roots.forEach(walk);
   return out;
 }
 
@@ -267,32 +276,20 @@ export function isLit(world: World, state: GameState, roomId: string = state.cur
   });
 }
 
-/** In the dark you can only find what you're carrying. */
-function inDark(world: World, state: GameState): boolean {
-  return !isLit(world, state);
-}
-
-function collectCarried(world: World, state: GameState, into: (id: string) => boolean): string[] {
-  const out: string[] = [];
-  const walk = (id: string) => {
-    if (out.includes(id)) return;
-    out.push(id);
-    if (into(id)) for (const child of childrenOf(world, state, id)) walk(child);
-  };
-  inventoryOf(world, state).forEach(walk);
-  return out;
+/** What the player can find, opening up what `into` allows. In the dark, only what they carry. */
+function findable(world: World, state: GameState, into: (id: string) => boolean): string[] {
+  if (!isLit(world, state)) return collect(world, state, inventoryOf(world, state), into, () => true);
+  return collect(world, state, roots(world, state), into, shown(state));
 }
 
 /** Everything the player can see: the room, its scenery, what they carry, and inside open or transparent things. */
 export function visibleItems(world: World, state: GameState): string[] {
-  const into = (id: string) => canSeeInside(world, state, id);
-  return inDark(world, state) ? collectCarried(world, state, into) : collect(world, state, into);
+  return findable(world, state, (id) => canSeeInside(world, state, id));
 }
 
 /** Everything the player can touch: like visibleItems, but not through closed glass. */
 export function reachableItems(world: World, state: GameState): string[] {
-  const into = (id: string) => canReachInside(world, state, id);
-  return inDark(world, state) ? collectCarried(world, state, into) : collect(world, state, into);
+  return findable(world, state, (id) => canReachInside(world, state, id));
 }
 
 /** Is `id` inside `ancestor`, at any depth? */
@@ -353,4 +350,15 @@ export function pickItem(target: string, ids: string[], world: World, slot: 'tar
 /** A verb is missing an object: ask for it. */
 export function needObject(slot: 'target' | 'indirect' = 'target'): never {
   throw new AskSignal({ kind: 'what', slot });
+}
+
+/** A copy of the state to go back to: plain data (JSON, as saves are), safe for a reactive proxy. */
+export function snapshotState(state: GameState): GameState {
+  return JSON.parse(JSON.stringify(state)) as GameState;
+}
+
+/** Puts the state back as `snapshot` had it, in place (the same object, keys and all). */
+export function restoreState(state: GameState, snapshot: GameState): void {
+  for (const key of Object.keys(state)) delete (state as unknown as Record<string, unknown>)[key];
+  Object.assign(state, snapshot);
 }

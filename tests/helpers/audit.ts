@@ -9,7 +9,7 @@ import type { Effect, EventStep, Rule, RuleTable, World } from '@/types/world';
 const EFFECT_KINDS = new Set([
   'say', 'set', 'clear', 'move', 'open', 'close', 'lock', 'unlock', 'switch', 'add', 'setVar', 'score',
   'go', 'schedule', 'cancel', 'chance', 'run', 'die', 'end', 'moveNpc', 'npcState', 'script', 'hide', 'reveal',
-  'if', 'unvisit', 'free', 'noDarkLine', 'unlist', 'relist', 'touch', 'look', 'board', 'disembark',
+  'if', 'unvisit', 'free', 'stopLine', 'noDarkLine', 'unlist', 'relist', 'touch', 'look', 'board', 'disembark',
 ]);
 
 export function auditWorld(world: World): string[] {
@@ -152,6 +152,7 @@ export function auditWorld(world: World): string[] {
     checkTable(item.after, 'after', `item ${id}`);
     checkRules(item.onUse, `item ${id} onUse`);
     checkEvent(item.onTake, `item ${id} onTake`);
+    checkCondition(item.climbRefusal?.if, `item ${id} climbRefusal`);
     checkEvent(item.onSmash, `item ${id} onSmash`);
     checkEvent(item.onWear, `item ${id} onWear`);
   }

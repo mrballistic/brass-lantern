@@ -121,6 +121,8 @@ export const PREFIX = [
 export const PREFIXES: Record<string, string[]> = {
   // The garlic from the kitchen's sack, for the bat.
   garlic: [...PREFIX.slice(0, 5), 'open sack', 'take garlic', ...PREFIX.slice(5)],
+  // The lunch from the kitchen's sack, for the cyclops.
+  lunch: [...PREFIX.slice(0, 5), 'open sack', 'take lunch', ...PREFIX.slice(5)],
   // Into the house and the lamp lit, but still above ground (5d).
   surface: PREFIX.slice(0, 9),
 };

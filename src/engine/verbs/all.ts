@@ -1,7 +1,7 @@
 import type { GameState, ParsedAction } from '@/types/game';
 import type { World } from '@/types/world';
 import { fuzzyCandidates } from '../fuzzy';
-import { canReachInside, childrenOf, closedAround, inventoryOf, isCarried, isLit, pickItem, setResolveById, shown, visibleItems } from '../model';
+import { canReachInside, childrenOf, closedAround, inventoryOf, isHeld, isLit, pickItem, setResolveById, shown, visibleItems } from '../model';
 import { turnHalted } from '../effects';
 import { miss, ok, type EngineResult } from '../result';
 import { withRules } from '../rules';
@@ -29,7 +29,7 @@ function covered(verb: string, action: ParsedAction, world: World, state: GameSt
   }
   if (verb === 'take') {
     return visibleItems(world, state).filter(
-      (id) => !isCarried(state, id) && world.items[id]?.portable && !world.items[id]?.scenery && !closedAround(world, state, id) && !insideCarried(world, state, id),
+      (id) => !isHeld(state, id) && world.items[id]?.portable && !world.items[id]?.scenery && !closedAround(world, state, id),
     );
   }
   const carried = inventoryOf(world, state);
@@ -37,11 +37,6 @@ function covered(verb: string, action: ParsedAction, world: World, state: GameSt
   // The destination as the verb resolves it, so PUT ALL IN GLASS JAR leaves the jar out.
   const dest = action.indirect ? pickItem(action.indirect, visibleItems(world, state), world, 'indirect', state) : null;
   return carried.filter((id) => id !== dest && id !== action.indirect);
-}
-
-function insideCarried(world: World, state: GameState, id: string): boolean {
-  for (let p = state.locations[id]; p && world.items[p]; p = state.locations[p]) if (isCarried(state, p)) return true;
-  return false;
 }
 
 /** “Taken: lamp.” → “Taken.”, for the “lamp: Taken.” form. */

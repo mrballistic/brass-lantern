@@ -1,7 +1,7 @@
 import type { GameState, Place } from '@/types/game';
 import type { Effect, EventStep, World } from '@/types/world';
 import { evaluateCondition } from './conditions';
-import { isCarried, moveItem, npcStateOf, PLAYER } from './model';
+import { isCarried, moveItem, nextPlacing, npcStateOf, PLAYER } from './model';
 import { nextRandom } from './rng';
 import { scriptSteps } from './scripts';
 
@@ -29,12 +29,30 @@ const darkSaid = new WeakSet<GameState>();
 // Fuses (re)scheduled this turn don't count down until the next one.
 const scheduled = new WeakMap<GameState, Set<string>>();
 
+const lineStops = new WeakMap<GameState, true | string>();
+
+/** Drops the rest of the command line after this turn (Zork's P-CONT <>). */
+export function stopLine(state: GameState, message: true | string = true): void {
+  if (!lineStops.has(state)) lineStops.set(state, message);
+}
+
+/** Did this turn drop the rest of the line, and with what message? */
+export function lineStop(state: GameState): true | string | undefined {
+  return lineStops.get(state);
+}
+
 /** Called at the start of each command. */
 export function beginTurn(state: GameState): void {
   halted.delete(state);
+  lineStops.delete(state);
   scheduled.delete(state);
   freeTurns.delete(state);
   darkSaid.delete(state);
+}
+
+/** A new tick of a WAIT: fuses scheduled on the last one count down from now on. */
+export function beginTick(state: GameState): void {
+  scheduled.delete(state);
 }
 
 /** Was this fuse set (or reset) during the current turn? */
@@ -64,7 +82,7 @@ export function turnHalted(state: GameState): boolean {
   return halted.has(state);
 }
 
-export function itemIdForName(label: string, world: World): string | null {
+function itemIdForName(label: string, world: World): string | null {
   const normalized = label.trim().toLowerCase();
   for (const [id, item] of Object.entries(world.items)) {
     if (item.name.toLowerCase() === normalized) return id;
@@ -75,7 +93,7 @@ export function itemIdForName(label: string, world: World): string | null {
 const EFFECT_LINE = /^\[(?:Flag set:\s*.+?|Added to inventory:\s*.+?|.+? consumed)\]$/i;
 
 /** A bracket line that changes the game (`[Flag set: …]` and friends). */
-export function isEffectLine(line: string): boolean {
+function isEffectLine(line: string): boolean {
   return EFFECT_LINE.test(line);
 }
 
@@ -108,17 +126,27 @@ function addVar(state: GameState, name: string, by: number): void {
   vars[name] = (vars[name] ?? 0) + by;
 }
 
+/** Effects that act on one item, by the key that names it. */
+const ITEM_EFFECTS = ['move', 'open', 'close', 'lock', 'unlock', 'switch', 'hide', 'reveal', 'touch', 'unlist', 'relist'] as const;
+
+/** The item an effect acts on, or null if it doesn't act on one. */
+function itemOf(e: Effect): string | null {
+  const key = ITEM_EFFECTS.find((k) => k in e);
+  return key ? (e as Record<(typeof ITEM_EFFECTS)[number], string>)[key] : null;
+}
+
 /** Runs one effect. Returns the lines it prints, and whether to stop the list (death, an ending). */
 function runEffect(e: Effect, world: World, state: GameState): { lines: string[]; stop?: boolean } {
   if ('say' in e) return { lines: [e.say] };
   if ('set' in e) return void (state.flags[e.set] = true), { lines: [] };
   if ('clear' in e) return void (state.flags[e.clear] = false), { lines: [] };
   // Naming a thing the world doesn't have does nothing (the audit reports it).
-  const thing = 'move' in e ? e.move : 'open' in e ? e.open : 'close' in e ? e.close : 'lock' in e ? e.lock : 'unlock' in e ? e.unlock : 'switch' in e ? e.switch : null;
+  const thing = itemOf(e);
   if (thing !== null && !world.items[thing]) return { lines: [] };
   if ('move' in e) return void moveItem(state, e.move, (e.to === 'here' ? state.currentRoom : e.to) as Place), { lines: [] };
   if ('moveNpc' in e) {
-    if (world.npcs[e.moveNpc]) Object.assign(npcStateOf(state, e.moveNpc), { room: e.to, arrived: state.turns });
+    // Stamped on the same sequence as things' placings (`placed`): newest first, as Zork's MOVE.
+    if (world.npcs[e.moveNpc]) Object.assign(npcStateOf(state, e.moveNpc), { room: e.to, seq: nextPlacing(state) });
     return { lines: [] };
   }
   if ('npcState' in e) {
@@ -145,23 +173,24 @@ function runEffect(e: Effect, world: World, state: GameState): { lines: string[]
   }
   if ('unvisit' in e) return void (state.visited = state.visited.filter((r) => r !== e.unvisit)), { lines: [] };
   if ('free' in e) return void freeTurns.add(state), { lines: [] };
+  if ('stopLine' in e) return void stopLine(state, e.stopLine), { lines: [] };
   if ('look' in e) return { lines: hooks.look ? hooks.look(world, state) : [] };
   if ('noDarkLine' in e) return void darkSaid.add(state), { lines: [] };
   if ('chance' in e) {
     const hit = nextRandom(state) * 100 < e.chance;
     return { lines: runSteps((hit ? e.then : e.else) ?? [], world, state), stop: state.gameOver };
   }
-  if ('hide' in e) return void (world.items[e.hide] && (itemState(state, e.hide).hidden = true)), { lines: [] };
+  if ('hide' in e) return void (itemState(state, e.hide).hidden = true), { lines: [] };
   if ('board' in e) {
     if (world.items[e.board]?.vehicle && state.locations[e.board] === state.currentRoom) state.aboard = e.board;
     return { lines: [] };
   }
   if ('disembark' in e) return void (state.aboard = undefined), { lines: [] };
   // Zork's TOUCHBIT: handled, so its first-seen sentence is over.
-  if ('touch' in e) return void (world.items[e.touch] && (itemState(state, e.touch).moved = true)), { lines: [] };
-  if ('unlist' in e) return void (world.items[e.unlist] && (itemState(state, e.unlist).unlisted = true)), { lines: [] };
-  if ('relist' in e) return void (world.items[e.relist] && (itemState(state, e.relist).unlisted = false)), { lines: [] };
-  if ('reveal' in e) return void (world.items[e.reveal] && (itemState(state, e.reveal).hidden = false)), { lines: [] };
+  if ('touch' in e) return void (itemState(state, e.touch).moved = true), { lines: [] };
+  if ('unlist' in e) return void (itemState(state, e.unlist).unlisted = true), { lines: [] };
+  if ('relist' in e) return void (itemState(state, e.relist).unlisted = false), { lines: [] };
+  if ('reveal' in e) return void (itemState(state, e.reveal).hidden = false), { lines: [] };
   if ('script' in e) return { lines: runSteps(scriptSteps(e.script, e.arg, world, state), world, state), stop: state.gameOver || halted.has(state) };
   if ('run' in e) return { lines: world.events[e.run] ? runEventKey(e.run, world, state) : [], stop: state.gameOver };
   if ('go' in e) return { lines: hooks.go ? hooks.go(e.go, world, state, { quiet: e.quiet }) : [] };
@@ -195,6 +224,20 @@ export function runSteps(steps: EventStep[], world: World, state: GameState): st
     const { lines, stop } = runEffect(step, world, state);
     out.push(...lines);
     if (stop) break;
+  }
+  return out;
+}
+
+/**
+ * Runs each entry whose condition holds, in order (its `then` an event's name,
+ * or steps), until a death or an ending stops the turn: daemons, end routines.
+ */
+export function runConditional(entries: Array<{ if: string; then: string | EventStep[] }>, world: World, state: GameState): string[] {
+  const out: string[] = [];
+  for (const e of entries) {
+    if (!evaluateCondition(e.if, state, world)) continue;
+    out.push(...(typeof e.then === 'string' ? runEventKey(e.then, world, state) : runSteps(e.then, world, state)));
+    if (state.gameOver || halted.has(state)) break;
   }
   return out;
 }

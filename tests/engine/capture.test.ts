@@ -73,3 +73,13 @@ describe('the audit checks captures', () => {
     expect(problems).toMatch(/capture.*nowhere/);
   });
 });
+
+describe('a capture that throws (fast follow)', () => {
+  it('leaves the state, seed included, as it found it', () => {
+    const w: World = { ...fixtureWorld, capture: { script: 'grab' }, scripts: { ...fixtureWorld.scripts, grab: (ctx) => { void ctx.roll(6); throw new Error('grab'); } } };
+    const s = stateWith(w, { room: 'bedroom' });
+    const before = structuredClone(s);
+    expect(() => captureLine(w, s, 'anything')).toThrow('grab');
+    expect(s).toEqual(before);
+  });
+});

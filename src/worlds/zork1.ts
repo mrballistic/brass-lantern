@@ -151,6 +151,30 @@ function launchFrom(ctx: ScriptContext, here: string): EventStep[] {
 /** SAND-FUNCTION's BDIGS. */
 const BDIGS = ['You seem to be digging a hole here.', 'The hole is getting deeper, but that’s about it.', 'You are surrounded by a wall of sand on all sides.'];
 /** Things with Zork's TOOLBIT. */
+/** V-LEAP: over a thing, or down where there's no safe way; rooms with their own JUMP rule answer for themselves. */
+function vLeap(ctx: ScriptContext, target?: string): EventStep[] | undefined {
+  const room = ctx.world.rooms[ctx.room()];
+  if (target) {
+    const word = target.toLowerCase().replace(/^the\s+/, '');
+    const named = (id: string, names: string[]) => names.some((n) => n.toLowerCase() === word) || id === word;
+    const npc = Object.keys(ctx.world.npcs).find((id) => ctx.npcIn(id, ctx.room()) && !ctx.npc(id)?.hidden && named(id, [ctx.world.npcs[id].name, ...(ctx.world.npcs[id].aliases ?? [])]));
+    if (npc) return [`The ${ctx.world.npcs[npc].name} is too big to jump over.`];
+    const thing = ctx.children(ctx.room()).find((id) => named(id, [ctx.world.items[id].name, ...(ctx.world.items[id].aliases ?? [])]));
+    return thing ? undefined : ['That would be a good trick.'];
+  }
+  if (room.instead?.jump) return undefined;
+  if (ctx.room() === 'up_a_tree') return [{ run: 'tree_leap' }];
+  const down = room.exits.down;
+  // A message-only way down (NEXIT; Zork's one conditional one, the chimney, is modelled that way): the leap kills (JUMPLOSS).
+  if (down && typeof down !== 'string' && !down.to) return [{ run: 'jump_death' }];
+  return undefined;
+}
+
+/** HACK-HACK: a verb's opening and one of HO-HUM's endings, picked at random. */
+const hackHack = (opening: string) => [`${opening} the {target} doesn’t seem to work.`, `${opening} the {target} isn’t notably helpful.`, `${opening} the {target} has no effect.`];
+/** V-SKIP's WHEEEEE. */
+const WHEEEEE = ['Very good. Now you can go to the second grade.', 'Are you enjoying yourself?', 'Wheeeeeeeeee!!!!!', 'Do you expect me to applaud?'];
+
 // Zork's TOOLBIT things (V-DIG's “slow and tedious”, the parser's guess of a missing tool).
 const TOOLS = ['keys', 'pump', 'putty', 'rusty_knife', 'screwdriver', 'shovel', 'wrench'];
 /** SAND-FUNCTION with a tool (DIG SAND [WITH …]). */
@@ -328,24 +352,17 @@ function thiefTurn(ctx: ScriptContext): EventStep[] {
       if (versus()) return steps;
     } else {
       if (seen) hideThief();
-      if (ctx.visited(rm)) {
+      // Only rooms you've seen; Zork clears a maze room's TOUCHBIT on every look (DESCRIBE-ROOM),
+      // so he never robs the maze, and ROB-MAZE's distant voice is never heard.
+      if (ctx.visited(rm) && !ctx.tags(rm).includes('maze')) {
         rob(rm, 75);
-        if (ctx.tags(rm).includes('maze') && ctx.tags(here).includes('maze')) {
-          for (const id of contents(rm)) {
-            if (!ctx.world.items[id]?.portable || ctx.state.itemState[id]?.hidden || !prob(ctx, 40)) continue;
-            steps.push(`You hear, off in the distance, someone saying “My, I wonder what this fine ${ctx.world.items[id].name} is doing here.”`);
-            if (prob(ctx, 60)) move(id, 'thief', true);
-            break;
-          }
-        } else {
-          for (const id of contents(rm)) {
-            const item = ctx.world.items[id];
-            if (!item?.portable || item.scenery || ctx.treasure(id) > 0 || untouchable(id)) continue;
-            if (id !== 'stiletto' && !prob(ctx, 10)) continue;
-            move(id, 'thief', true);
-            if (rm === here) steps.push(`You suddenly notice that the ${item.name} vanished.`);
-            break;
-          }
+        for (const id of contents(rm)) {
+          const item = ctx.world.items[id];
+          if (!item?.portable || item.scenery || ctx.treasure(id) > 0 || untouchable(id)) continue;
+          if (id !== 'stiletto' && !prob(ctx, 10)) continue;
+          move(id, 'thief', true);
+          if (rm === here) steps.push(`You suddenly notice that the ${item.name} vanished.`);
+          break;
         }
       }
     }
@@ -833,7 +850,8 @@ export const zork1: World = {
       onEnter: [],
       tags: ['sacred'],
       // V-PRAY: at the altar, back to the forest.
-      instead: { pray: [{ then: 'prayer_answered' }] },
+      // V-LEAP: the way down is shut while you hold the coffin (COFFIN-CURE), so a leap kills.
+      instead: { pray: [{ then: 'prayer_answered' }], jump: [{ if: 'has:coffin', then: 'jump_death' }] },
     },
     north_temple: {
       name: 'Temple',
@@ -912,6 +930,13 @@ export const zork1: World = {
       items: [],
       npcs: ['ghosts'],
       onEnter: [],
+      // LLD-ROOM's M-BEG for EXORCISE, before the ceremony.
+      instead: {
+        exorcise: [
+          { if: '!flag:lld_flag & has:bell & has:book & has:candles', say: ['You must perform the ceremony.'] },
+          { if: '!flag:lld_flag', say: ['You aren’t equipped for an exorcism.'] },
+        ],
+      },
       // LLD-ROOM's M-END: lit candles in hand while the bell's spell holds.
       onEnd: [{ if: 'flag:xb & has:candles & on:candles & !flag:xc', then: 'exorcism_flames' }],
       scenery: ['bodies'],
@@ -946,7 +971,11 @@ export const zork1: World = {
       exits: { east: 'damp_cave', west: 'round_room', up: 'deep_canyon' },
       items: ['bar'],
       npcs: [],
-      onEnter: [],
+      // LOUD-ROOM-FCN's M-ENTER while it roars: the rest of the line is lost in the noise.
+      onEnter: [
+        { if: 'flag:gates_open & flag:low_tide & !flag:loud_flag', then: 'loud_noise', repeat: true },
+        { if: '!flag:gates_open & !flag:low_tide & !flag:loud_flag', then: 'loud_noise', repeat: true },
+      ],
       // M-ENTER's loop: while it's loud, every line is heard as noise.
       capture: { if: '!flag:loud_flag', script: 'loud_room_capture' },
       // M-END: the gates open at high tide drive you out.
@@ -1483,8 +1512,9 @@ export const zork1: World = {
       dark: true,
       exits: {
         south: 'cellar',
-        east: { to: 'ew_passage', denials: [{ if: 'awake:troll', text: 'The troll fends you off with a menacing gesture.' }] },
-        west: { to: 'maze_1', denials: [{ if: 'awake:troll', text: 'The troll fends you off with a menacing gesture.' }] },
+        // TROLL-FLAG: a spirit passes.
+        east: { to: 'ew_passage', denials: [{ if: 'awake:troll & !flag:dead', text: 'The troll fends you off with a menacing gesture.' }] },
+        west: { to: 'maze_1', denials: [{ if: 'awake:troll & !flag:dead', text: 'The troll fends you off with a menacing gesture.' }] },
       },
       items: [],
       npcs: ['troll'],
@@ -2028,7 +2058,10 @@ export const zork1: World = {
       instead: {
         raise: [{ then: 'basket_raise' }],
         lower: [{ then: 'basket_lower' }],
-        take: [{ say: ['The basket is at the other end of the chain.'] }],
+        // As the thing taken only: TAKE X FROM it meets PRE-TAKE first (“You already have that!”).
+        take: [{ as: 'target', say: ['The basket is at the other end of the chain.'] }],
+        search: [{ say: ['The basket is at the other end of the chain.'] }],
+        smell: [{ say: ['The basket is at the other end of the chain.'] }],
         open: [{ say: ['The basket is at the other end of the chain.'] }],
         close: [{ say: ['The basket is at the other end of the chain.'] }],
         put: [{ say: ['The basket is at the other end of the chain.'] }],
@@ -2236,6 +2269,8 @@ export const zork1: World = {
       portable: true,
       size: 55,
       treasure: 15,
+      // RANDOMIZE-OBJECTS: carried at a death, it goes back.
+      home: 'egypt_room',
       tags: ['sacred'],
       container: { openable: true, weight: 35 },
       contains: ['sceptre'],
@@ -2655,6 +2690,14 @@ export const zork1: World = {
         'The house is a beautiful colonial house which is painted white. It is clear that the owners must have been extremely wealthy.',
       portable: false,
       tags: [],
+      // WHITE-HOUSE-F's THROUGH.
+      instead: {
+        enter: [
+          { if: 'in:east_of_house & open:kitchen_window', then: 'into_kitchen' },
+          { if: 'in:east_of_house', say: ['The window is closed.'] },
+          { say: ['I can’t see how to get in from here.'] },
+        ],
+      },
     },
     forest: {
       name: 'forest',
@@ -2668,6 +2711,8 @@ export const zork1: World = {
       aliases: ['branch', 'large tree'],
       description: 'There’s nothing special about the tree.',
       portable: false,
+      // V-CLIMB-UP: no way up or down here, and it's no use (except on the Forest Path, below the tree).
+      climbRefusal: { if: '!in:path', text: 'There are no climbable trees here.' },
       tags: [],
     },
 
@@ -2977,6 +3022,8 @@ export const zork1: World = {
         closed: 'The door swings shut and closes.',
       },
       instead: {
+        // V-THROUGH: its exit is a routine, not a door, so Zork doesn't walk through it.
+        enter: [{ if: 'flag:rug_moved', say: ['You hit your head against the trap door as you attempt this feat.'] }],
         open: [
           { if: '!flag:rug_moved', say: ['You can’t see any trap door here!'] },
           { if: 'in:cellar & !open:trap_door', say: ['The door is locked from above.'] },
@@ -3388,6 +3435,7 @@ export const zork1: World = {
       if (ctx.state.flags.dead) return deadFunction(ctx);
       if (ctx.aboard() === 'inflated_boat') return boatBeg(ctx);
       const a = ctx.action ?? ctx.parse(ctx.line ?? '');
+      if (a?.action === 'jump') return vLeap(ctx, a.target);
       // LUNGS, one of Zork's global objects: INFLATE … WITH LUNGS is V-BREATHE.
       if (a?.action === 'inflate' && /^(?:the\s+)?(?:lungs|air|mouth|breath)$/i.test(a.indirect ?? '')) {
         const boat = ['inflatable_boat', 'inflated_boat', 'punctured_boat'].find((id) => ctx.here(id) && (ctx.world.items[id].aliases ?? []).concat(ctx.world.items[id].name).some((w) => w === (a.target ?? '').toLowerCase().replace(/^the\s+/, '')));
@@ -3915,17 +3963,24 @@ export const zork1: World = {
     rub: { words: ['rub', 'touch', 'feel', 'pat', 'pet'], target: 'required', indirect: ['with'], reply: 'Fiddling with that doesn’t seem to work.' },
     tie: { words: ['tie', 'fasten', 'secure'], target: 'required', indirect: ['to'], reply: 'You can’t tie that to that.' },
     untie: { words: ['untie', 'unfasten', 'unhook'], target: 'required', indirect: ['from'], reply: 'This cannot be tied, so it cannot be untied!' },
-    jump: { words: ['jump', 'leap', 'dive'], target: 'none', reply: 'Wheeeeeeeeee!!!!!' },
+    // V-LEAP (its room checks are in the world capture); otherwise V-SKIP.
+    jump: { words: ['jump over', 'jump across', 'jump', 'leap', 'dive'], target: 'optional', reply: WHEEEEE },
+    // V-SKIP.
+    skip: { words: ['skip', 'hop'], target: 'none', reply: WHEEEEE },
+    // V-EXORCISE.
+    exorcise: { words: ['exorcise', 'banish', 'cast out', 'drive out', 'begone'], target: 'required', reply: 'What a bizarre concept!' },
     inflate: { words: ['inflate', 'blow up'], target: 'required', indirect: ['with'], reply: 'How can you inflate that?' },
     deflate: { words: ['deflate'], target: 'required', reply: 'Come on, now!' },
     pump: { words: ['pump up', 'pump'], target: 'required', indirect: ['with'], reply: 'It’s really not clear how.' },
     breathe: { words: ['blow in', 'blow into', 'breathe in', 'breathe into'], target: 'required', reply: 'You don’t have enough lung power to inflate it.' },
     launch: { words: ['launch'], target: 'optional', reply: 'You can’t launch that by saying “launch”!' },
     land: { words: ['land'], target: 'none', go: true },
-    wave: { words: ['wave', 'brandish'], target: 'required', reply: 'Waving that has no effect.' },
+    wave: { words: ['wave', 'brandish'], target: 'required', reply: hackHack('Waving') },
+    // V-KICK.
+    kick: { words: ['kick', 'taunt'], target: 'required', reply: hackHack('Kicking') },
     // V-RAISE and V-LOWER (HACK-HACK's line, fixed, as WAVE's is).
-    raise: { words: ['raise', 'lift', 'raise up'], target: 'required', reply: 'Playing in this way with the {target} has no effect.' },
-    lower: { words: ['lower'], target: 'required', reply: 'Playing in this way with the {target} has no effect.' },
+    raise: { words: ['raise', 'lift', 'raise up'], target: 'required', reply: hackHack('Playing in this way with') },
+    lower: { words: ['lower'], target: 'required', reply: hackHack('Playing in this way with') },
     cross: { words: ['cross', 'ford'], target: 'required', reply: 'You can’t cross that!' },
     look_under: { words: ['look under'], target: 'required', reply: 'There is nothing but dust there.' },
     dig: { words: ['dig in', 'dig'], target: 'required', indirect: ['with'], reply: 'Digging with the pair of hands is slow and tedious.' },
@@ -4070,6 +4125,8 @@ export const zork1: World = {
     resurrection: [
       'Now, let’s take a look here... Well, you probably deserve another chance. I can’t quite fix you up completely, but you can’t have everything.',
     ],
+    // RANDOMIZE-OBJECTS: treasures into the dark, the rest above ground.
+    treasures: 'dark',
     scatter: ['canyon_view', 'west_of_house', 'north_of_house', 'south_of_house', 'east_of_house', 'forest_1', 'forest_2', 'forest_3', 'path', 'clearing', 'grating_clearing'],
     // JIGS-UP: once you've seen the Altar, you wake as a spirit before the gates of Hell.
     variants: [
@@ -4165,6 +4222,7 @@ export const zork1: World = {
       'An almost inaudible voice whispers in your ear, “Look to your treasures for the final secret.”',
     ],
     barrow_end: [{ end: 'barrow' }],
+    into_kitchen: [{ go: 'kitchen' }],
     took_canary: [{ set: 'took_canary' }],
     took_bauble: [{ set: 'took_bauble' }],
     canary_wind: [{ script: 'canary_wind' }],
@@ -4252,6 +4310,8 @@ export const zork1: World = {
     rope_untied: [{ clear: 'dome_flag' }, { relist: 'rope' }, 'The rope is now untied.'],
     rope_drops: [{ move: 'rope', to: 'torch_room' }, 'The rope drops gently to the floor below.'],
     jump_death: ['This was not a very safe place to try jumping.', { script: 'jump_loss' }],
+    loud_noise: [{ stopLine: 'The rest of your commands have been lost in the noise.' }],
+    tree_leap: ['In a feat of unaccustomed daring, you manage to land on your feet without killing yourself.', '', { go: 'path' }],
     loud_room_ejects: [
       'It is unbearably loud here, with an ear-splitting roar seeming to come from all around you. There is a pounding in your head which won’t stop. With a tremendous effort, you scramble out of the room.',
       '',

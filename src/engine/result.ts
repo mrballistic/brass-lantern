@@ -14,6 +14,10 @@ export interface EngineResult {
    * instead.
    */
   understood?: boolean;
+  /** The rest of the command line is dropped (Zork's P-CONT); a message is said only if commands were left. */
+  stopLine?: true | string;
+  /** A refused move (Zork's M-FATAL): the turn counts, but Infocom style skips the room's end routine. */
+  fatal?: boolean;
   /** Takes no game time (VERBOSE): no turn, no daemons, no fuses. */
   free?: boolean;
   /** A question back to the player; the conversation layer takes the answer. */

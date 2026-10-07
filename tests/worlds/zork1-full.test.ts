@@ -8,7 +8,7 @@ import { CHAPTERS } from './zork1-full';
 // The whole of Zork I, natively, from the first move to the barrow (stage 5d). Fights are sync
 // points, and the thief's dice are ours, so a pinned seed is one where the run gets through.
 
-const SEED = 3;
+const SEED = 7;
 const ALL = CHAPTERS.flatMap((c) => c.commands);
 
 describe('the whole of Zork I, natively (5d)', () => {

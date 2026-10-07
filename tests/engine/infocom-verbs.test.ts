@@ -282,3 +282,88 @@ describe('final review fixes (5d, brass)', () => {
     expect(execute({ action: 'turn_off', target: 'bat' }, { world: fixtureWorld, state: s }).understood).toBe(false);
   });
 });
+
+describe('READ’s automatic take (fast follow)', () => {
+  it('runs the thing’s after-take rules, and leaves alone what’s in a container you carry', () => {
+    const world: World = {
+      ...w,
+      events: { ...w.events, scored: [{ set: 'took_scroll' }] },
+      items: {
+        ...w.items,
+        scroll: { name: 'scroll', description: '', text: 'Words.', portable: true, tags: [], after: { take: [{ then: 'scored' }] } },
+        pouch: { name: 'pouch', description: '', portable: true, tags: [], container: { open: true } },
+      },
+    };
+    const s = stateWith(world, { room: 'bedroom' });
+    s.locations.scroll = 'bedroom';
+    expect(run(s, { action: 'read', target: 'scroll' }, world)).toEqual(['(Taken)', 'Words.']);
+    expect(s.flags.took_scroll).toBe(true);
+    s.locations.pouch = 'player';
+    s.locations.scroll = 'pouch';
+    expect(run(s, { action: 'read', target: 'scroll' }, world)).toEqual(['Words.']);
+    expect(s.locations.scroll).toBe('pouch');
+  });
+});
+
+describe('ENTER a thing, Infocom style (V-THROUGH) (fast follow)', () => {
+  it('a fixed thing: hit your head; a carried one: a contortion; anything else: a joke', () => {
+    const s = stateWith(w, { room: 'bedroom', carrying: ['note'] });
+    s.locations.tub = 'bedroom';
+    expect(run(s, { action: 'enter', target: 'tub' })).toEqual(['You hit your head against the tub as you attempt this feat.']);
+    expect(run(s, { action: 'enter', target: 'note' })).toEqual(['That would involve quite a contortion!']);
+    s.locations.note = 'bedroom';
+    expect(['A valiant attempt.', 'You can’t be serious.', 'An interesting idea...', 'What a concept!']).toContain(run(s, { action: 'enter', target: 'note' })[0]);
+  });
+});
+
+describe('a character stays listed first until something else moves in (fast follow)', () => {
+  it('first on the turn he arrives and after; a thing dropped later comes before him', async () => {
+    const { runSteps } = await import('@/engine/effects');
+    const { describeCurrentRoom } = await import('@/engine/engine');
+    const s = stateWith(w, { room: 'shed', carrying: ['note'] });
+    s.npcs = { guard: { room: null } };
+    runSteps([{ moveNpc: 'guard', to: 'shed' }], w, s);
+    run(s, { action: 'wait' });
+    let lines = describeCurrentRoom(w, s);
+    expect(lines.findIndex((l) => l.startsWith('A guard'))).toBeGreaterThan(-1);
+    run(s, { action: 'drop', target: 'note' });
+    lines = describeCurrentRoom(w, s);
+    expect(lines.indexOf('There is a note here.')).toBeLessThan(lines.findIndex((l) => l.startsWith('A guard')));
+    const s2 = stateWith(w, { room: 'shed' });
+    s2.locations.note = 'shed';
+    s2.itemState.note = { moved: true };
+    s2.npcs = { guard: { room: null } };
+    runSteps([{ moveNpc: 'guard', to: 'shed' }], w, s2);
+    run(s2, { action: 'wait' });
+    lines = describeCurrentRoom(w, s2);
+    expect(lines.findIndex((l) => l.startsWith('A guard'))).toBeLessThan(lines.indexOf('There is a note here.'));
+  });
+});
+
+describe('final review fixes (1.12.5): one sequence for things and characters', () => {
+  it('a character who has wandered a lot is still listed after a thing put down later', async () => {
+    const { runSteps } = await import('@/engine/effects');
+    const { describeCurrentRoom } = await import('@/engine/engine');
+    const s = stateWith(w, { room: 'shed', carrying: ['note'] });
+    s.npcs = { guard: { room: null } };
+    for (const r of ['yard', 'bedroom', 'yard', 'shed']) runSteps([{ moveNpc: 'guard', to: r }], w, s);
+    run(s, { action: 'drop', target: 'note' });
+    const lines = describeCurrentRoom(w, s);
+    expect(lines.indexOf('There is a note here.')).toBeLessThan(lines.findIndex((l) => l.startsWith('A guard')));
+  });
+});
+
+describe('READ’s automatic take fires onTake once (backlog clear-out)', () => {
+  it('a second READ after a DROP doesn’t fire it again', () => {
+    const world: World = {
+      ...w,
+      events: { ...w.events, first_touch: ['A chill runs down your spine.'] },
+      items: { ...w.items, scroll: { name: 'scroll', description: '', text: 'Words.', portable: true, tags: [], onTake: 'first_touch' } },
+    };
+    const s = stateWith(world, { room: 'bedroom' });
+    s.locations.scroll = 'bedroom';
+    expect(run(s, { action: 'read', target: 'scroll' }, world)).toContain('A chill runs down your spine.');
+    run(s, { action: 'drop', target: 'scroll' }, world);
+    expect(run(s, { action: 'read', target: 'scroll' }, world)).not.toContain('A chill runs down your spine.');
+  });
+});

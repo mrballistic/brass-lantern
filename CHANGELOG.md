@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.5 (2026-10-06)
+
+A fast follow that works through the backlog.
+
+- **Robustness:** a script or capture that throws leaves the turn exactly as it found it, seed included, and the game says “[Something went wrong with that command. Nothing changed.]”; a `continue` rule is undone when the verb's default then misses or asks; leaving a vehicle silently, and a capture that only echoes, are counted right for saves and UNDO; WAIT's extra turns count down timers set on the first, and a cancelled timer no longer ends the wait.
+- **Misses the intent server can read:** a second object that names nothing here (UNLOCK DOOR WITH XYZZY) is a miss before any rule fires; in the dark, aboard, GET OUT OF RAFT finds the raft; “tell bob to ask about x” is an order; BURN's refusal uses the right article outside Infocom style.
+- **Infocom style:** CLIMB DOWN *thing* walks only if the thing leads there (“The leaflet doesn’t lead downward.”); ENTER *thing* answers as Zork's V-THROUGH; READ's automatic take runs the thing's take rules; BURN wants the flame held and won't burn a character; TAKE X FROM Y with X held is “You already have that!”; a refused move skips the room's end routine; STAND and GET OUT don't guess the vehicle (STAND on foot: “You are already standing, I think.”); one vehicle at a time; a scripted move meets the vehicle checks; a character who arrives stays listed first until something else is put down; things on the kitchen table are “(outside the boat)” while aboard.
+- **`death.treasures: 'dark'`:** treasures carried at a death go to an unlit room (Zork's RANDOMIZE-OBJECTS).
+- **Zork I · Native:** ENTER HOUSE and ENTER TRAP DOOR; the far basket's other verbs; the coffin goes home to the Egyptian Room when you die.
+- **Tidy-ups:** HELP's vehicle line, plainer effect steps, and the docs on a bare TELL. A simplification pass over the engine, store and server shares duplicated helpers (the once-only take rule, held-item and scope walks, captures, conditional runs, the server's identifier pattern) and makes file-local helpers private, with no change in behaviour.
+- **The rest of the backlog:** a `{ stopLine }` step drops the rest of a command line (Zork's P-CONT), which a refused move and a first strike also do in Infocom style, with Zork's “The rest of your commands have been lost in the noise.” on entering the Loud Room; a world verb's `reply` can be a list, picked at random (HACK-HACK, V-SKIP); an item's `climbRefusal`, and “Climbing the walls is to no avail.”; worn things weigh 1; Zork gains KICK, SKIP, EXORCISE and V-LEAP, and a spirit passes the troll; the cyclops's food, sleep and wrath, and the thief's maze and junk lines, are now checked against the story file. As in Release 119, the thief never robs a maze room (Zork clears its TOUCHBIT on every look), and jumping at the Altar while holding the coffin kills you (the way down is shut to it).
+
 ## 1.12.0 (2026-10-06)
 
 Engine parity, stage 5d: the barrow, the thief's timing, and the whole game. **Zork I · Native is complete**: every room, all 350 points, and a full game that matches the original chapter by chapter.
