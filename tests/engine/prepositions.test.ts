@@ -72,18 +72,19 @@ describe('prepositions (6a)', () => {
     });
   });
 
-  describe('defaults (Zork’s)', () => {
+  describe('defaults (Zork’s, in Infocom style)', () => {
+    const w: World = { ...world, style: 'infocom' };
     it('PUT UNDER', () => {
-      const { r, state } = play('put mat under door');
+      const { r, state } = play('put mat under door', { w });
       expect(r.lines).toEqual(['You can’t do that.']);
       expect(state.locations.mat).toBe('player');
     });
     it('PUT BEHIND', () => {
-      expect(play('put brass key behind painting').r.lines).toEqual(['That hiding place is too obvious.']);
+      expect(play('put brass key behind painting', { w }).r.lines).toEqual(['That hiding place is too obvious.']);
     });
     it('THROW OFF and OVER', () => {
-      expect(play('throw brass key off door').r.lines).toEqual(['You can’t throw anything off of that!']);
-      const { r, state } = play('throw brass key over door');
+      expect(play('throw brass key off door', { w }).r.lines).toEqual(['You can’t throw anything off of that!']);
+      const { r, state } = play('throw brass key over door', { w });
       expect(r.lines).toEqual(['You can’t throw anything off of that!']);
       expect(state.locations.key).toBe('player');
     });
@@ -91,10 +92,43 @@ describe('prepositions (6a)', () => {
       expect(play('read book through lens').r.lines).toEqual(['A book.']);
     });
     it('PUSH X direction and PUSH X TO Y', () => {
-      expect(play('push box north', { carrying: [] }).r.lines).toEqual(['You can’t push things to that.']);
-      const { r, state } = play('push box to painting', { carrying: [] });
+      expect(play('push box north', { carrying: [], w }).r.lines).toEqual(['You can’t push things to that.']);
+      const { r, state } = play('push box to painting', { carrying: [], w });
       expect(r.lines).toEqual(['You can’t push things to that.']);
       expect(state.locations.box).toBe('living');
+    });
+    it('TURN X TO N and TURN X WITH Y', () => {
+      expect(play('turn painting to 4', { w }).r.lines).toEqual(['This has no effect.']);
+      expect(play('turn painting with lens', { w }).r.lines).toEqual(['This has no effect.']);
+    });
+  });
+
+  describe('brass style: the new forms with no rule are misses, so the intent server can read them', () => {
+    it.each([
+      ['put mat under door', {}],
+      ['put brass key behind painting', {}],
+      ['throw brass key off door', {}],
+      ['throw brass key over door', {}],
+      ['push box north', { carrying: [] }],
+      ['push box to painting', { carrying: [] }],
+      ['turn painting to 4', {}],
+      ['set painting to 776', {}],
+      ['turn painting with lens', {}],
+    ])('%s', (input, opts) => {
+      const state = stateWith(world, { room: 'living', carrying: (opts as { carrying?: string[] }).carrying ?? ['mat', 'key', 'book', 'lens'] });
+      const before = JSON.stringify(state);
+      const r = execute(fallbackParse(input)!, { world, state });
+      expect(r.understood).toBe(false);
+      expect(JSON.stringify(state)).toBe(before);
+    });
+    it('Office-Space-like phrasings: set alarm to 7, turn alarm to 5, push alarm north', () => {
+      for (const input of ['set alarm to 7', 'turn alarm to 5', 'push alarm north']) {
+        const state = stateWith(fixtureWorld, { room: 'bedroom' });
+        const before = JSON.stringify(state);
+        const r = execute(fallbackParse(input, fixtureWorld.verbs)!, { world: fixtureWorld, state });
+        expect(r.understood, input).toBe(false);
+        expect(JSON.stringify(state), input).toBe(before);
+      }
     });
     it('a target naming nothing is a miss with no change', () => {
       for (const input of ['push crate north', 'push box to nowhere', 'throw brass key off nowhere', 'put mat under nowhere']) {
@@ -116,8 +150,11 @@ describe('prepositions (6a)', () => {
         events: { ...world.events, mat_under: ['The mat slides under the door.'] },
       };
       expect(play('put mat under door', { w: ruled }).r.lines).toEqual(['The mat slides under the door.']);
-      // The rule is for UNDER only: BEHIND still gets the default.
-      expect(play('put mat behind door', { w: ruled }).r.lines).toEqual(['That hiding place is too obvious.']);
+      // The rule is for UNDER only: BEHIND still gets the default (a miss in brass style, Zork's line in Infocom style).
+      expect(play('put mat behind door', { w: ruled }).r.understood).toBe(false);
+      const infocom: World = { ...ruled, style: 'infocom' };
+      expect(play('put mat under door', { w: infocom }).r.lines).toEqual(['The mat slides under the door.']);
+      expect(play('put mat behind door', { w: infocom }).r.lines).toEqual(['That hiding place is too obvious.']);
     });
     it('ME reaches a rule with: player', () => {
       const ruled: World = {

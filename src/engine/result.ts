@@ -44,3 +44,12 @@ export function ok(lines: string[], mutated = false): EngineResult {
 export function miss(line: string): EngineResult {
   return { lines: [line], mutated: false, understood: false };
 }
+
+/**
+ * A reply Zork gives to a form brass-style worlds only began to parse in 6a (PUSH X north, PUT UNDER,
+ * THROW OFF, TURN X TO N): Zork's line in Infocom style; elsewhere the same line as a miss, so the
+ * intent server can still read the input, as it did before these forms parsed.
+ */
+export function zorkDefault(world: { style?: string }, line: string): EngineResult {
+  return world.style === 'infocom' ? ok([line]) : miss(line);
+}

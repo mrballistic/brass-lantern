@@ -54,9 +54,11 @@ describe('numbers (Zork’s INTNUM) (6a)', () => {
     const beforeTake = JSON.stringify(s);
     expect(execute({ action: 'take', target: 'number', number: 4, byId: true }, { world: fixtureWorld, state: s }).understood).toBe(false);
     expect(JSON.stringify(s)).toBe(beforeTake);
-    // No rule answers: V-TURN's default.
+    // No rule answers: V-TURN's default in Infocom style; a miss in brass style.
     const plain: World = { ...dial, rooms: { ...dial.rooms, bedroom: { ...dial.rooms.bedroom, instead: undefined } } };
-    expect(execute(fallbackParse('turn dial to 4')!, { world: plain, state: stateWith(plain, { room: 'bedroom' }) }).lines).toEqual(['This has no effect.']);
+    const infocom: World = { ...plain, style: 'infocom' };
+    expect(execute(fallbackParse('turn dial to 4')!, { world: infocom, state: stateWith(infocom, { room: 'bedroom' }) }).lines).toEqual(['This has no effect.']);
+    expect(execute(fallbackParse('turn dial to 4')!, { world: plain, state: stateWith(plain, { room: 'bedroom' }) }).understood).toBe(false);
   });
   it('number conditions read the command being run', () => {
     const s = stateWith(fixtureWorld, { room: 'bedroom' });

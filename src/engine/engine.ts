@@ -10,7 +10,7 @@ import { seedFor } from './rng';
 import { afterTurn, fuseFired } from './time';
 import { die } from './death';
 import { runEnding } from './endings';
-import { miss, ok, type EngineResult } from './result';
+import { miss, ok, zorkDefault, type EngineResult } from './result';
 import { enterRoom, handleClimb, handleEnter, handleGo, handleIdle, vehicleRefusal } from './verbs/movement';
 import {
   ALL, handleDrop, handleExamine, handleInventory, handleLook, handleRead, handleSmash, handleSwitch, handleTake, handleUse, handleWear, notHeld,
@@ -236,11 +236,12 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
       return withRules('go', action, world, state, () => handleGo(action.target, world, state));
     case 'read':
       return withRules('read', action, world, state, () => handleRead(action.target, world, state));
-    // PUSH X north, PUSH X TO Y (Zork's V-PUSH-TO); plain PUSH X is USE.
+    // PUSH X north, PUSH X TO Y (Zork's V-PUSH-TO); plain PUSH X is USE. With no rule, Zork's line in
+    // Infocom style; elsewhere a miss, so the intent server can read it (as before these forms parsed).
     case 'push':
       if (!action.target) needObject();
       if (!pickItem(action.target, visibleItems(world, state), world, 'target', state) && !matchNpc(action.target, world, state)) return miss(`You don’t see a “${action.target}” here.`);
-      return withRules('push', action, world, state, () => ok(['You can’t push things to that.']));
+      return withRules('push', action, world, state, () => zorkDefault(world, 'You can’t push things to that.'));
     case 'turn_on':
       return withRules('turn_on', action, world, state, () => handleSwitch(action.target, true, world, state));
     case 'board':
@@ -322,7 +323,7 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
       if (action.prep === 'off' || action.prep === 'over') {
         if (!action.target) needObject();
         if (!pickItem(action.target, inventoryOf(world, state), world, 'target', state)) return miss(`You aren’t carrying a “${action.target}”.`);
-        return withRules('throw', action, world, state, () => ok(['You can’t throw anything off of that!']));
+        return withRules('throw', action, world, state, () => zorkDefault(world, 'You can’t throw anything off of that!'));
       }
       return handleThrow(action, world, state);
     case 'ask':
