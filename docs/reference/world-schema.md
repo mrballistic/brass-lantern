@@ -282,7 +282,7 @@ The `die` effect uses it. Without a `death` block, dying prints the cause and en
 | `instead?`, `after?` | `Record<verb, Rule[]>` | Rules for verbs aimed at it: THROW X AT it, GIVE, TAKE, a world verb. |
 | `combat?` | `Combatant` | Makes it someone you can fight. See [Combat](#combat). |
 | `aliases?` | string[] | Other words for it (“robber”, “man”). |
-| `scenery?` | boolean | Present but not listed: the room's own description mentions it (Zork's cyclops). |
+| `scenery?` | boolean | Present but not listed: the room's own description mentions it (Zork's cyclops). `{ npcState, scenery }` changes it in play. |
 | `hidden?` | boolean | Starts hidden: in its room for scripts, but not seen, listed, matched or fought until revealed. |
 | `topics?` | `Record<topic, string or { if?, text }[]>` | ASK or TELL it ABOUT a topic. A list is tried in order; the first entry whose `if` holds answers. Text that names an event runs it. |
 | `topicAliases?` | `Record<topic, string[]>` | Other words for a topic. |

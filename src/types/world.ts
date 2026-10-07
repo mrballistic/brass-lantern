@@ -340,8 +340,8 @@ export type Effect =
   | { move: string; to: string | null }
   /** A character to a room, or null (gone). */
   | { moveNpc: string; to: string | null }
-  /** Sets a character's combat state. */
-  | { npcState: string; fighting?: boolean; staggered?: boolean; strength?: number; hidden?: boolean }
+  /** Sets a character's combat state; `scenery` takes it out of the room's list in play, or puts it back (Zork's NDESCBIT). */
+  | { npcState: string; fighting?: boolean; staggered?: boolean; strength?: number; hidden?: boolean; scenery?: boolean }
   /** Hides an item where it is, or reveals it again (Zork's INVISIBLE). */
   | { hide: string }
   | { reveal: string }

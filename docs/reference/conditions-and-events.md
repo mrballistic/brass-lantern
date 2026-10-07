@@ -48,7 +48,7 @@ An event is a named list of steps, run in order. A string is printed. An object 
 | `{ move: 'item', to: 'room' }` | Moves an item to a room, `'player'`, `'here'` (the player's room), another item, a character, or `null` (offstage). |
 | `{ moveNpc: 'npc', to: 'room' }` | Moves a character, or `null` (gone). |
 | `{ follow: 'npc' }`, `{ unfollow: 'npc' }` | Sets or clears the flag `following_<npc>`: the character then goes where the player goes (GO, doors, ENTER, CLIMB; not scripted moves), like a `follows` condition on the character. |
-| `{ npcState: 'npc', fighting?, staggered?, strength?, hidden? }` | Sets a character's combat state, or hides and reveals it. |
+| `{ npcState: 'npc', fighting?, staggered?, strength?, hidden?, scenery? }` | Sets a character's combat state, hides and reveals it, or (`scenery`) keeps it out of the room's list and puts it back (Zork's NDESCBIT in play). |
 | `{ script: 'name', arg? }` | Runs one of the world's [scripts](./world-schema#scripts) and the steps it returns. |
 | `{ hide: 'item' }`, `{ reveal: 'item' }` | Hides an item where it is (not seen, listed or taken), or shows it again. |
 | `{ board: 'item' }`, `{ disembark: true }` | Puts the player in a vehicle that's in the room, or takes them out. |

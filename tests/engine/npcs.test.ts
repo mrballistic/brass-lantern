@@ -71,5 +71,16 @@ describe('characters', () => {
     expect(execute({ action: 'look' }, { world: w, state: s }).lines).not.toContain('A guard watches you.');
     expect(execute({ action: 'examine', target: 'guard' }, { world: w, state: s }).lines).toEqual(['A guard watches you.']);
   });
+  it('npcState scenery: a character goes out of the room’s list in play and comes back (Zork’s NDESCBIT set and cleared)', () => {
+    const w = { ...world, style: 'infocom' as const };
+    const s = stateWith(w, { room: 'shed' });
+    const look = () => execute({ action: 'look' }, { world: w, state: s }).lines;
+    expect(look()).toContain('A guard watches you.');
+    runSteps([{ npcState: 'guard', scenery: true }], w, s);
+    expect(look()).not.toContain('A guard watches you.');
+    expect(execute({ action: 'examine', target: 'guard' }, { world: w, state: s }).lines).toEqual(['A guard watches you.']);
+    runSteps([{ npcState: 'guard', scenery: false }], w, s);
+    expect(look()).toContain('A guard watches you.');
+  });
 });
 

@@ -7,7 +7,7 @@ import { fuzzyCandidates, fuzzyMatchExit, isSelfWord } from '../fuzzy';
 import { AskSignal, isInside, isOpen, matchNpc, moveItem, needObject, nextPlacing, npcRoom, npcScope, npcsSeen, npcStateOf, pickItem, PLAYER } from '../model';
 import { fallbackParse } from '../parser';
 import { miss, ok, type EngineResult } from '../result';
-import { runEventKey } from '../effects';
+import { runEventKey, turnHalted } from '../effects';
 import { applyRule, findRule } from '../rules';
 import { setCommand } from '../scripts';
 import { handleTalk, talkLine } from './people';
@@ -36,7 +36,9 @@ export function handleAsk(action: ParsedAction, world: World, state: GameState):
  * “X, do this”. The character's `instead.order` rules answer first, as they always have. A character
  * with `orders` or `obeys` then hears the inner command, its objects resolved in its own reach:
  * an `orders` rule for the inner verb, else a built-in it obeys (GO, TAKE, DROP, GIVE TO ME), else
- * its refuseOrder line or “X ignores you.” Every order ends the rest of the line.
+ * its refuseOrder line or “X ignores you.” An order rule with `continue` answers first and then
+ * lets the built-in or the refusal go on (Zork's robot says “Whirr, buzz, click!” before it walks).
+ * Every order ends the rest of the line.
  */
 export function handleOrder(action: ParsedAction, world: World, state: GameState): EngineResult {
   if (!action.target) needObject();
@@ -91,9 +93,15 @@ function order(npc: string, action: ParsedAction, world: World, state: GameState
     order: inner,
   });
   const ordered = findRule(world, state, 'orders', verb, { ...ids, room, prep: inner.prep, actor: npc }, [...scope, PLAYER]);
-  if (ordered) return applyRule(ordered, world, state);
+  if (ordered && !ordered.continue) return applyRule(ordered, world, state);
+  const before = ordered ? applyRule(ordered, world, state) : null;
+  if (before && (turnHalted(state) || state.gameOver)) return before;
   const obeyed = person.obeys?.find((v) => v === inner.action);
-  return obeyed ? obey(obeyed, npc, room, inner, ids, world, state) : ok([refusal]);
+  const rest = obeyed ? obey(obeyed, npc, room, inner, ids, world, state) : ok([refusal]);
+  if (!before) return rest;
+  // The character has answered, so a built-in it then can't carry out is no miss: it says so, as
+  // Zork's actor does after its acknowledgement (and the rule may have changed things).
+  return { ...rest, lines: [...before.lines, ...rest.lines], mutated: before.mutated || rest.mutated, understood: true };
 }
 
 /** “give me the sock”: GIVE with ME as the second object, said first. */
@@ -120,7 +128,9 @@ function orderObject(
     if (item) return item;
   } catch (e) {
     if (!(e instanceof AskSignal) || e.ask.kind !== 'which') throw e;
-    // Several things match: ask, taking no time. The answer is a fresh order.
+    // Several things match: ask, taking no time. The answer is a fresh order. Zork's parser
+    // never asks on another's behalf (CANT-ORPHAN).
+    if (world.style === 'infocom') return { ...ok(['“I don’t understand! What are you referring to?”']), free: true };
     return { ...ok([whichQuestion(world, e.ask.word, e.ask.candidates)]), free: true };
   }
   const others = npcsSeen(world, state, room).filter((id) => id !== npc);
@@ -146,7 +156,9 @@ function obey(
   switch (verb) {
     case 'go': {
       const to = npcExit(inner.target, room, world, state);
-      if (!to) return miss(refusal);
+      // No way at all that way: Infocom's actor walks as the player does (V-WALK), with the same line.
+      const noWay = world.style === 'infocom' && !(inner.target && fuzzyMatchExit(inner.target, world.rooms[room]?.exits ?? {}));
+      if (!to) return miss(noWay ? 'You can’t go that way.' : refusal);
       // Stamped on the sequence things' placings share, as the moveNpc effect does.
       Object.assign(npcStateOf(state, npc), { room: to, seq: nextPlacing(state) });
       return done();

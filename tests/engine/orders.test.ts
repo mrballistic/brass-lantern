@@ -238,6 +238,37 @@ describe('orders (6a)', () => {
     expectMiss(s, 'neighbor, go north', 'There is no “neighbor” here.');
   });
 
+  it('a `continue` order rule runs, then the built-in; the character answered, so a refused built-in is no miss', () => {
+    const acking: World = { ...w, npcs: { ...w.npcs, robot: { ...w.npcs.robot, orders: { ...w.npcs.robot.orders, go: [{ say: ['“Whirr.”'], continue: true }] } } } };
+    const s = stateWith(acking, { room: 'bedroom' });
+    s.npcs = { robot: { room: 'bedroom' } };
+    expect(run(s, 'robot, go west', acking).lines).toEqual(['“Whirr.”', 'Okay.']);
+    expect(s.npcs.robot.room).toBe(exitTarget(w.rooms.bedroom.exits.west));
+    s.npcs.robot.room = 'bedroom';
+    const north = run(s, 'robot, go north', acking);
+    expect(north.lines).toEqual(['“Whirr.”', 'robot ignores you.']);
+    expect(north.understood).not.toBe(false);
+    expect(north.stopLine).toBe(true);
+    expect(s.npcs.robot.room).toBe('bedroom');
+    // A `continue` rule ahead of the refusal of an order it doesn't obey.
+    const turning: World = { ...w, npcs: { ...w.npcs, robot: { ...w.npcs.robot, orders: { open: [{ say: ['“Whirr.”'], continue: true }] } } } };
+    expect(run(s, 'robot, open box', turning).lines).toEqual(['“Whirr.”', 'robot ignores you.']);
+  });
+
+  it('Infocom style: GO where there is no way says the player’s line; an ambiguous object is Zork’s CANT-ORPHAN', () => {
+    const infocom: World = { ...w, style: 'infocom' };
+    const s = stateWith(infocom, { room: 'bedroom' });
+    s.npcs = { robot: { room: 'bedroom' } };
+    expectMiss(s, 'robot, go north', 'You can’t go that way.', infocom);
+    s.locations.key = 'bedroom';
+    s.locations.rusty_key = 'bedroom';
+    const before = JSON.stringify(s);
+    const r = run(s, 'robot, take key', infocom);
+    expect(r.lines).toEqual(['“I don’t understand! What are you referring to?”']);
+    expect(r.free).toBe(true);
+    expect(JSON.stringify(s)).toBe(before);
+  });
+
   it('npcScope: what is in its room, reachable there, plus what it holds; not what the player carries', () => {
     const s = stateWith(w, { room: 'bedroom', carrying: ['wallet'] });
     s.npcs = { robot: { room: 'bedroom' } };

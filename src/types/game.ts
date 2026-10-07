@@ -28,6 +28,8 @@ export interface NpcState {
   wake?: number;
   /** In the room but unseen: not listed, matched, reached or fought (Zork's INVISIBLE). */
   hidden?: boolean;
+  /** Present but not listed, set in play (Zork's NDESCBIT): overrides the character's `scenery`. */
+  scenery?: boolean;
   /** When it last moved rooms, on the same sequence as things' placings (`placed`): listed before anything placed earlier (Zork's object order). */
   seq?: number;
 }
