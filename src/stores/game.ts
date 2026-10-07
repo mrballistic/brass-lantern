@@ -137,8 +137,7 @@ export const useGameStore = defineStore('game', {
       this.$patch({ game: freshGame(), output: [], isParsing: false, restored: false, gameOverTracked: false });
       const saved = migrateSave(world, persistence.loadRaw());
       if (saved) {
-        this.game = saved.gameState;
-        this.gameOverTracked = saved.gameState.gameOver;
+        this.setGame(saved.gameState);
         this.output = saved.outputHistory;
         this.restored = true;
         this.appendSystem('[Session restored — type LOOK to re-orient]');
@@ -200,13 +199,18 @@ export const useGameStore = defineStore('game', {
         this.appendSystem(`[There’s no save called “${raw!.trim()}”.]`);
         return;
       }
-      this.game = loaded.gameState;
-      this.gameOverTracked = loaded.gameState.gameOver;
+      this.setGame(loaded.gameState);
       // Another timeline: its undo history, question and pronouns don't apply.
       conversation = newConversation();
       this.appendSystem(`Restored ${name}.`);
       this.appendLines(describeCurrentRoom(world, this.game));
       this.persist();
+    },
+
+    /** Plays on from another game state (a save, UNDO, RESTART); game_completed is already reported if it's over. */
+    setGame(game: GameState): void {
+      this.game = game;
+      this.gameOverTracked = game.gameOver;
     },
 
     appendLines(texts: string[]): void {
@@ -326,8 +330,7 @@ export const useGameStore = defineStore('game', {
         this.appendSystem('No saved game found.');
         return;
       }
-      this.game = loaded.gameState;
-      this.gameOverTracked = loaded.gameState.gameOver;
+      this.setGame(loaded.gameState);
       this.output = loaded.outputHistory;
       // Another timeline: its undo history, question and pronouns don't apply.
       conversation = newConversation();
@@ -430,8 +433,7 @@ export const useGameStore = defineStore('game', {
         this.appendSystem('[Nothing to undo.]');
         return;
       }
-      this.game = snapshot.state;
-      this.gameOverTracked = snapshot.state.gameOver;
+      this.setGame(snapshot.state);
       this.output = this.output.slice(0, snapshot.outputLength);
       conversation.pending = null;
       if (scriptFrom !== null) scriptFrom = Math.min(scriptFrom, this.output.length);
@@ -465,8 +467,7 @@ export const useGameStore = defineStore('game', {
       conversation = newConversation();
       if (scriptFrom !== null) scriptFrom = 0;
       persistence.clear();
-      this.game = freshGame();
-      this.gameOverTracked = false;
+      this.setGame(freshGame());
       this.output = [];
       this.appendLines(openingLines(world, this.game));
       this.persist();
