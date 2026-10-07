@@ -155,6 +155,9 @@ export function withRules(
   });
   const instead = findRule(world, state, 'instead', verb, ids, reach);
   if (instead && !instead.continue) return applyRule(instead, world, state);
+  // ME as the second object with no rule to take it: no built-in default does anything with the player
+  // there, so the word typed names nothing here, as before 6a (and before any `continue` rule runs).
+  if (indirect === PLAYER) return miss(`You don’t see a “${action.indirect}” here.`);
   // A `continue` rule runs first; if the default then misses or asks, the rule is undone too,
   // so a miss never changes state (the intent server retries from where things stood).
   const saved = instead ? snapshotState(state) : null;

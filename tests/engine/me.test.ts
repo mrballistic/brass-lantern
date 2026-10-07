@@ -72,6 +72,11 @@ describe('ME (6a)', () => {
     expectMiss(fixtureWorld, s, 'attack me', 'You don’t see a “me” worth smashing.');
     expectMiss(fixtureWorld, s, 'push me', 'There is no “me” here to use.');
     expectMiss(fixtureWorld, s, 'take myself', 'You don’t see a “myself” here.');
+    // As a second object too, before the verb's own checks, as before 6a.
+    expectMiss(fixtureWorld, s, 'give alarm to me', 'You don’t see a “me” here.');
+    const living = stateWith(fixtureWorld, { room: 'living', carrying: ['wallet'] });
+    expectMiss(fixtureWorld, living, 'give wallet to me', 'You don’t see a “me” here.');
+    expectMiss(fixtureWorld, living, 'put wallet in myself', 'You don’t see a “myself” here.');
   });
 
   it('rules still match ME: target:player on a built-in and on a world verb, with: player as the second object', () => {
