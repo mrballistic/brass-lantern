@@ -17,6 +17,12 @@ describe('typed words (6a)', () => {
     expect(fallbackParse('answer "a well"', riddle.verbs)).toEqual({ action: 'answer', text: 'a well' });
     expect(fallbackParse('reply a well', riddle.verbs)).toEqual({ action: 'answer', text: 'a well' });
   });
+  it('single quotes are no quoting: an apostrophe can’t cut the words short', () => {
+    expect(fallbackParse("answer 'don't know'", riddle.verbs)).toEqual({ action: 'answer', text: "'don't know'" });
+    // said: ignores the quote marks, so a single-quoted answer still matches.
+    const s = stateWith(riddle, { room: 'bedroom' });
+    expect(execute(fallbackParse("answer 'a well'", riddle.verbs)!, { world: riddle, state: s }).lines).toEqual(['There is a clap of thunder.']);
+  });
   it('said: matches case- and punctuation-blind, whole words', () => {
     const s = stateWith(riddle, { room: 'bedroom' });
     expect(execute(fallbackParse('answer "A Well."', riddle.verbs)!, { world: riddle, state: s }).lines).toEqual(['There is a clap of thunder.']);

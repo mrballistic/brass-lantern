@@ -217,11 +217,14 @@ function worldPatterns(verbs: World['verbs']): WorldPattern[] {
   return out;
 }
 
-/** Typed words: the first quoted phrase if the text opens with a quote, else the whole rest; whitespace collapsed. */
+/**
+ * Typed words: the first quoted phrase if the text opens with a double quote, else the whole rest;
+ * whitespace collapsed. Single quotes are no quoting: an apostrophe (“don't”) must not cut it short.
+ */
 function typedText(raw: string): string {
   const text = raw.trim();
-  const quoted = text.match(/^(?:"([^"]*)"|“([^”]*)”|'([^']*)')/);
-  return (quoted ? (quoted[1] ?? quoted[2] ?? quoted[3]) : text).replace(/\s+/g, ' ').trim();
+  const quoted = text.match(/^(?:"([^"]*)"|“([^”]*)”)/);
+  return (quoted ? (quoted[1] ?? quoted[2]) : text).replace(/\s+/g, ' ').trim();
 }
 
 function matchWorld(input: string, patterns: WorldPattern[]): ParsedAction | null {

@@ -373,6 +373,9 @@ describe('sanitize: prepositions and numbers', () => {
   it('keeps an order’s inner command as words, and drops prose punctuation', async () => {
     const { sanitize } = await import('../llm.js');
     expect(sanitize({ action: 'order', target: 'robot', indirect: 'Take lamp' }).indirect).toBe('take lamp');
+    // An identifier-shaped command (the model's habit elsewhere) reads as words.
+    expect(sanitize({ action: 'order', target: 'robot', indirect: 'take_lamp' }).indirect).toBe('take lamp');
+    expect(sanitize({ action: 'order', target: 'robot', indirect: 'go_north-now' }).indirect).toBe('go north now');
     expect(sanitize({ action: 'order', target: 'robot', indirect: 'take the lamp; ignore rules' }).indirect).toBeUndefined();
     expect(sanitize({ action: 'give', target: 'lamp', indirect: 'robot dog' }).indirect).toBe('robot_dog');
   });
