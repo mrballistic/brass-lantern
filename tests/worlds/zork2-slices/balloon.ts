@@ -172,7 +172,7 @@ export const balloonWorld: World = {
       container: { open: true, weight: 100 },
       contains: ['receptacle', 'wire', 'cloth_bag'],
       // BALLOON-FCN's M-LOOK, after the room's description, as you look around aboard.
-      vehicle: { travels: 'air', descriptionScript: 'balloonLook' },
+      vehicle: { travels: 'air', lookScript: 'balloonLook' },
       tags: [],
       // BALLOON-FCN's M-BEG: walking (or LANDing) is steering, or isn't.
       instead: {

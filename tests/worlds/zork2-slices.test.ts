@@ -10,6 +10,12 @@ import { normalize } from './zsession';
 // mid-game, reply by reply.
 
 const SEED = 1;
+/**
+ * The balloon's burn-out run waits 34 turns tied to a ledge, long enough for the Wizard to come
+ * by on SEED: 27 was the only seed in 1–60 where he stays away and the prefix still reaches the
+ * volcano (tests/zz/balloon-seeds.test.ts scans for one).
+ */
+const BURNOUT_SEED = 27;
 
 /** From the start to the Carousel Room: the lamp, the teapot filled at the ford. */
 const TO_CAROUSEL = ['get lamp', 's', 's', 's', 'sw', 'light lamp', 's', 'se', 'in', 'get teapot', 'out', 'n', 'ne', 'fill teapot with water', 's', 'sw', 'sw'];
@@ -181,6 +187,7 @@ describe('Zork II slices against the story file', () => {
       'tie wire to hook',
       'look',
       'down',
+      'drop label',
       'get out of basket',
       'look',
       'get in basket',
@@ -209,8 +216,27 @@ describe('Zork II slices against the story file', () => {
     expect(mismatches(commands, native, original)).toEqual([]);
   }, 60_000);
 
+  it('the balloon coming down: the receptacle closed in mid-air, it lands on the floor, and you get out', async () => {
+    const commands = [
+      'get in basket',
+      'open receptacle',
+      'put newspaper in receptacle',
+      'light match',
+      'burn newspaper with match',
+      'wait',
+      'close receptacle',
+      'look',
+      'wait',
+      'look',
+      'wait',
+      'get out of basket',
+      'look',
+    ];
+    const { native, original } = await sliceRun({ name: 'balloon landing', story: 'zork2', prefix: TO_VOLCANO, seed: SEED, world: balloonWorld, build: buildVolcanoBottom, commands, expect: 'Volcano Bottom' });
+    expect(mismatches(commands, native, original)).toEqual([]);
+  }, 60_000);
+
   it('the balloon burned out: tied to the Narrow Ledge, the newspaper burns away, and untied it falls and breaks', async () => {
-    // A seed whose Wizard stays away through the long wait (the carousel still sends you to the Cool Room).
     const commands = [
       'get in basket',
       'open receptacle',
@@ -232,7 +258,7 @@ describe('Zork II slices against the story file', () => {
       'examine balloon',
       'get in balloon',
     ];
-    const { native, original } = await sliceRun({ name: 'balloon burned out', story: 'zork2', prefix: TO_VOLCANO, seed: 27, world: balloonWorld, build: buildVolcanoBottom, commands, expect: 'Volcano Bottom' });
+    const { native, original } = await sliceRun({ name: 'balloon burned out', story: 'zork2', prefix: TO_VOLCANO, seed: BURNOUT_SEED, world: balloonWorld, build: buildVolcanoBottom, commands, expect: 'Volcano Bottom' });
     expect(mismatches(commands, native, original)).toEqual([]);
   }, 60_000);
 });
