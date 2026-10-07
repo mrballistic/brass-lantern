@@ -5,7 +5,7 @@ import { describeRoom } from './describe';
 import { AskSignal, initialLocations, inventoryOf, isLit, matchItem, pickItem, restoreState, setResolveById, snapshotState, takeActed, visibleItems } from './model';
 import { whatQuestion, whichQuestion } from './ask';
 import { darknessFalls, tooDark } from './light';
-import { beginTick, beginTurn, darkLineSaid, lineStop, runEventKey, runSteps, setEffectHooks, turnFree, turnHalted } from './effects';
+import { beginTick, beginTurn, darkLineSaid, lineStop, runConditional, runSteps, setEffectHooks, turnFree, turnHalted } from './effects';
 import { seedFor } from './rng';
 import { afterTurn, fuseFired } from './time';
 import { die } from './death';
@@ -70,15 +70,9 @@ setEffectHooks({
 
 /** The player's room's end routines (Zork's M-END): after the action, before the clock. */
 function roomEnd(world: World, state: GameState): string[] {
-  const out: string[] = [];
   // Aboard, the vehicle's end routine runs instead of the room's (Zork's M-END goes to the vehicle).
   const owner = state.aboard ? world.items[state.aboard] : world.rooms[state.currentRoom];
-  for (const e of owner?.onEnd ?? []) {
-    if (!evaluateCondition(e.if, state, world)) continue;
-    out.push(...(typeof e.then === 'string' ? runEventKey(e.then, world, state) : runSteps(e.then, world, state)));
-    if (state.gameOver || turnHalted(state)) break;
-  }
-  return out;
+  return runConditional(owner?.onEnd ?? [], world, state);
 }
 
 // The steps a capture returned, waiting for execute() to run them as a turn.

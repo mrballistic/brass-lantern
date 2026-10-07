@@ -228,6 +228,20 @@ export function runSteps(steps: EventStep[], world: World, state: GameState): st
   return out;
 }
 
+/**
+ * Runs each entry whose condition holds, in order (its `then` an event's name,
+ * or steps), until a death or an ending stops the turn: daemons, end routines.
+ */
+export function runConditional(entries: Array<{ if: string; then: string | EventStep[] }>, world: World, state: GameState): string[] {
+  const out: string[] = [];
+  for (const e of entries) {
+    if (!evaluateCondition(e.if, state, world)) continue;
+    out.push(...(typeof e.then === 'string' ? runEventKey(e.then, world, state) : runSteps(e.then, world, state)));
+    if (state.gameOver || halted.has(state)) break;
+  }
+  return out;
+}
+
 /** Runs a named event and records that it fired. */
 export function runEventKey(key: string, world: World, state: GameState): string[] {
   if (!state.firedEvents.includes(key)) state.firedEvents.push(key);
