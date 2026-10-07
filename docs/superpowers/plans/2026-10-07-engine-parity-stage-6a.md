@@ -385,6 +385,31 @@ Slice command lists (extend as the source shows; each must exercise its row of t
 - [ ] **Step 4: Endgame slice** — commit `6a: Zork III slice: the endgame`.
 - [ ] **Step 5: Run** the whole suite. Expected: PASS; each slice test under a minute.
 
+### Task 13: Vehicle terrains (added 2026-10-07 at the owner's request; runs before Task 12)
+
+The owner asked for a more general vehicle model (a dune buggy over a sand maze must be expressible). It reshapes the vehicle part of the world format, so it lands before the npm library. Zork's own model is terrain bits on rooms (RLANDBIT, RWATERBIT, RAIRBIT) and a vehicle type (VTYPE) that must match the destination's terrain; this generalises it to named terrains.
+
+**Files:**
+- Modify: `src/types/world.ts`, `src/engine/model.ts` (`terrainOf(world, state, room): string`; `isWater`/`isAir` become terrain checks), `src/engine/verbs/movement.ts` (`vehicleRefusal`, `enterRoom`'s landing line), `src/engine/verbs/vehicle.ts` (disembark), `src/engine/effects.ts` (`moveVehicle` uses the same lines), `tests/helpers/audit.ts`, `tests/worlds/zork2-slices/balloon.ts` (use `landing`), `docs/reference/world-schema.md`
+- Test: `tests/engine/vehicle.test.ts` (extend), new `tests/engine/terrain.test.ts`
+
+**Interfaces:**
+- `Room.terrain?: string` (default `'land'`). The existing `water?: boolean | string` and `air?: boolean | string` stay as shorthand: when set and holding, the room's terrain is `'water'` / `'air'` (a set `terrain` wins over them).
+- `World.onFoot?: string[]`: terrains the player can walk into and get out of a vehicle in. Default `['land']`. Custom terrains (`'sand'`) are walkable only if listed.
+- `vehicle.travels: string | string[]`: the terrains it can enter. Legacy strings keep working: `'water'` = `['water']`, `'air'` = `['air']`, `'none'` = `[]` (never moves).
+- `vehicle.lands?: string[]`: terrains it can come to rest on from a terrain it travels (the boat reaching the shore; the balloon landing). Default `['land']` when `travels` doesn't include `'land'`. A vehicle can't move between two `lands` terrains it doesn't travel (Zork's "a vehicle won't go overland").
+- Movement aboard from A to B is allowed when B's terrain is in `travels`, or B's terrain is in `lands` and A's terrain is in `travels`. On foot, B's terrain must be in `onFoot`. Refusals keep today's text: “You can’t go there without a vehicle.” / “You can’t go there in a <name>.”
+- Getting out is refused (fatal, as today on water and in air) where the room's terrain isn't in `onFoot`.
+- `vehicle.landing?: string | string[]`: GOTO's line when the vehicle comes onto a `lands` terrain from a travelled terrain not in `onFoot`. Unset: water vehicles print today's “The <name> comes to a rest on the shore.” and its blank line exactly; others print nothing. An array prints its lines as given.
+- `vehicle.leave?` / `vehicle.arrive?`: each `string | string[] | { script: string }`. A string prints as now; an array picks one line with the seeded generator; a script's `say` lines print. Same moments as now (aboard moves and `moveVehicle`).
+- Audit: a terrain named in `travels`, `lands` or `onFoot` that no room has (and isn't `'land'`) is a problem (typo guard); a `leave`/`arrive` script must exist.
+
+- [ ] **Step 1: Write the failing tests:** a fixture world with a `sand` maze and a `buggy` (`travels: ['land', 'sand']`): driving through the sand rooms works and prints the buggy's `leave`/`arrive` lines; on foot into sand gets “You can’t go there without a vehicle.”; getting out in sand is refused; with `onFoot: ['land', 'sand']` walking works. A boat (`travels: 'water'`) keeps every current behaviour and line (existing tests). The balloon (`travels: 'air'`, `landing: 'The balloon lands.'`) prints the landing line onto land. A `'none'` chair never moves. `leave` as an array picks with the seed (same seed, same line); as `{ script }` prints the script's lines. The audit flags `travels: ['snad']`.
+- [ ] **Step 2: Run** — `npx vitest run tests/engine/terrain.test.ts tests/engine/vehicle.test.ts`. Expected: FAIL.
+- [ ] **Step 3: Implement**; use `landing` in the balloon slice and delete its hand-rolled landing line where the engine now prints it.
+- [ ] **Step 4: Run** the whole suite with `ZORK_LONG=1` (Zork I's boat and river sessions and every slice unchanged). Expected: PASS.
+- [ ] **Step 5: Commit** — `git commit -m "6a: vehicle terrains: named terrains, travels/lands/onFoot, landing, and flexible leave/arrive"`.
+
 ### Task 12: Docs, release and the Office Space sync
 
 **Files:**
