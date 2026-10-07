@@ -172,7 +172,7 @@ export const balloonWorld: World = {
       container: { open: true, weight: 100 },
       contains: ['receptacle', 'wire', 'cloth_bag'],
       // BALLOON-FCN's M-LOOK, after the room's description, as you look around aboard.
-      vehicle: { travels: 'air', lookScript: 'balloonLook' },
+      vehicle: { travels: 'air', landing: 'The balloon lands.', lookScript: 'balloonLook' },
       tags: [],
       // BALLOON-FCN's M-BEG: walking (or LANDing) is steering, or isn't.
       instead: {
@@ -368,15 +368,14 @@ export const balloonWorld: World = {
     // M-BEG WALK while tied: any way there is, you're held; any other, you can't steer that way.
     balloonTiedWalk: (ctx) => [typedDirection(ctx) in ctx.world.rooms[ctx.room()].exits ? 'You are tied to the ledge.' : 'You can’t control the balloon this way.'],
     // M-BEG WALK: a way there is, the clock starts over and the move goes on (GOTO's own refusals
-    // and “The balloon lands.” included); any other, you can't steer that way.
+    // and its “The balloon lands.”, the vehicle's `landing`, included); any other, you can't steer that way.
     balloonWalk: (ctx) => {
       const exit = ctx.world.rooms[ctx.room()].exits[typedDirection(ctx)];
       if (exit === undefined) return ['You can’t control the balloon this way.'];
       const to = exitTarget(exit);
       if (!to) return [REQUEUE, typeof exit === 'string' ? 'You can’t go that way.' : (exit.denial ?? 'You can’t go that way.')];
       if (typeof exit !== 'string' && exit.if && !ctx.test(exit.if)) return [REQUEUE, exit.denial ?? 'You can’t go that way.'];
-      const landing = ctx.world.rooms[ctx.room()].air && !ctx.world.rooms[to].air;
-      return [REQUEUE, ...(landing ? ['The balloon lands.'] : []), { go: to }];
+      return [REQUEUE, { go: to }];
     },
     // BALLOON-FCN's M-BEG PUT into the receptacle: unlisted from then on.
     fuelTucked: (ctx) => (ctx.command?.target ? [{ unlist: ctx.command.target }] : []),
@@ -425,7 +424,7 @@ export const balloonWorld: World = {
       // while the fuel burns, and breaks, putting you out, once it's burned out.
       if (at === 'vair_1') {
         if (!aboard) return [...steps, ...putBalloon(ctx, 'volcano_bottom', 'lands.')];
-        if (ctx.test('flag:balloon_inflated')) return [...steps, 'The balloon has landed.', '', 'The balloon lands.', { moveVehicle: 'balloon', to: 'volcano_bottom' }];
+        if (ctx.test('flag:balloon_inflated')) return [...steps, 'The balloon has landed.', '', { moveVehicle: 'balloon', to: 'volcano_bottom' }];
         return [
           { move: 'balloon', to: null },
           { move: 'dead_balloon', to: 'volcano_bottom' },

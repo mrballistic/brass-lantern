@@ -37,6 +37,8 @@ export interface Room {
   water?: boolean | string;
   /** Air (Zork II's balloon): only an air vehicle goes here. A condition for rooms that change. */
   air?: boolean | string;
+  /** What kind of ground this is, for vehicles: `'land'` (the default), or any name the world uses (`'sand'`). `water` and `air` above are shorthand for `'water'` and `'air'`; a set `terrain` wins over them. */
+  terrain?: string;
   /** Takes input here before it's parsed, while `if` holds (Zork's Loud Room). See Capture. */
   capture?: Capture;
   /** Run at the end of every command here, after the action and before the clock (Zork's M-END). */
@@ -145,11 +147,15 @@ export interface Item {
   weapon?: boolean;
   /** Something the player can get into and travel in (Zork's VEHBIT; `travels` is VTYPE). */
   vehicle?: {
-    /** What it moves through: water, air, or nothing (a chair: it never moves while you're in it). */
-    travels: 'water' | 'air' | 'none';
-    /** A line printed as it leaves with you aboard (before the new room), and as it arrives (after). */
-    leave?: string;
-    arrive?: string;
+    /** The terrains it can enter. `'water'`, `'air'` and `'none'` (a chair: it never moves while you're in it) are the legacy spellings of `['water']`, `['air']` and `[]`. */
+    travels: string | string[];
+    /** Terrains it can come to rest on from one it travels (the boat reaching the shore, the balloon landing). Default `['land']` unless it travels on land. It can't cross from one of these to another. */
+    lands?: string[];
+    /** Said as it comes onto a `lands` terrain from a travelled one the player can't walk on (GOTO's line). Unset: a water vehicle says “The <name> comes to a rest on the shore.” and a blank line; others say nothing. */
+    landing?: string | string[];
+    /** Said as it leaves with you aboard (before the new room), and as it arrives (after). A list picks one line with the seeded generator; `{ script }` says the named script's `say` lines. */
+    leave?: VehicleLine;
+    arrive?: VehicleLine;
     /** A world script whose `say` lines describe it from inside: after the room's description as you look around aboard, and after the name on a brief arrival, but not after a room its own `descriptionScript` described in full (Zork's vehicle M-LOOK in DESCRIBE-ROOM). */
     lookScript?: string;
   };
@@ -434,6 +440,9 @@ export interface Carry {
   fumbled?: string;
 }
 
+/** A line a vehicle says: one line, one picked at random from several, or a script's `say` lines. */
+export type VehicleLine = string | string[] | { script: string };
+
 export interface World {
   rooms: Record<string, Room>;
   items: Record<string, Item>;
@@ -441,6 +450,8 @@ export interface World {
   events: EventScripts;
   dialogue: DialogueMap;
   startRoom: string;
+  /** Terrains the player can walk into, and get out of a vehicle in. Default `['land']`; a custom terrain (`'sand'`) is walkable only if listed. */
+  onFoot?: string[];
   /**
    * Friendly labels used in `[Flag set: …]` event lines, lowercased, mapped to
    * the flag IDs that conditions test.

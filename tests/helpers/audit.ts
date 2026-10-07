@@ -1,6 +1,7 @@
 import { conditionProblems } from '@/engine/conditions';
 import { descriptionSteps } from '@/engine/describe';
 import { initialState } from '@/engine/engine';
+import { travelTerrains } from '@/engine/model';
 import { verbClashes } from '@/engine/parser';
 import type { Effect, EventStep, Rule, RuleTable, World } from '@/types/world';
 
@@ -151,6 +152,8 @@ export function auditWorld(world: World): string[] {
       for (const d of exit.denials ?? []) checkCondition(d.if, `room ${id} exit ${label}`);
     }
   }
+  const terrains = new Set(['land', ...Object.keys(world.rooms).flatMap((r) => (world.rooms[r].terrain ? [world.rooms[r].terrain!] : [])), ...(Object.values(world.rooms).some((r) => r.water) ? ['water'] : []), ...(Object.values(world.rooms).some((r) => r.air) ? ['air'] : [])]);
+  for (const name of world.onFoot ?? []) if (!terrains.has(name)) problems.push(`onFoot names terrain “${name}” that no room has`);
   const checkDescriptionScript = (name: string | undefined, where: string, field = 'descriptionScript') => {
     if (name !== undefined && !world.scripts?.[name]) problems.push(`${where}: ${field} names no script “${name}”`);
     else if (name !== undefined) {
@@ -165,6 +168,16 @@ export function auditWorld(world: World): string[] {
     checkDescriptionScript(item.descriptionScript, `item ${id}`);
     checkDescriptionScript(item.roomDescriptionScript, `item ${id}`, 'roomDescriptionScript');
     checkDescriptionScript(item.vehicle?.lookScript, `item ${id} vehicle`, 'lookScript');
+    if (item.vehicle) {
+      for (const field of ['leave', 'arrive'] as const) {
+        const line = item.vehicle[field];
+        if (line && typeof line === 'object' && !Array.isArray(line) && !world.scripts?.[line.script]) problems.push(`item ${id} vehicle: ${field} names no script “${line.script}”`);
+      }
+      // A terrain nobody has is a typo (`land` is everywhere by default).
+      for (const [field, names] of [['travels', travelTerrains(item.vehicle)], ['lands', item.vehicle.lands ?? []]] as const) {
+        for (const name of names) if (!terrains.has(name)) problems.push(`item ${id} vehicle: ${field} names terrain “${name}” that no room has`);
+      }
+    }
     for (const e of item.onEnd ?? []) {
       checkCondition(e.if, `item ${id} onEnd`);
       if (typeof e.then === 'string') {

@@ -7,6 +7,7 @@ Every field a world can use. The source of truth is [`src/types/world.ts`](https
 | Field | Type | |
 |---|---|---|
 | `startRoom` | room ID | Where a new game begins. |
+| `onFoot?` | string[] | Terrains the player can walk into and get out of a vehicle in. Default `['land']`; a custom terrain is walkable only if listed. See [Vehicles](#vehicles). |
 | `rooms` | `Record<id, Room>` | |
 | `items` | `Record<id, Item>` | |
 | `npcs` | `Record<id, NPC>` | |
@@ -62,6 +63,8 @@ Every field a world can use. The source of truth is [`src/types/world.ts`](https
 | `tags?` | string[] | Free-form labels for scripts to read (`maze`, `sacred`). The engine doesn't. |
 | `capture?` | `Capture` | Takes input here before it's parsed. See [Capture](#capture). |
 | `water?` | boolean or condition | Water (Zork's NONLANDBIT): only a water vehicle goes here. A condition for a room that changes (a reservoir that drains: `'!flag:low_tide'`). See [Vehicles](#vehicles). |
+| `air?` | boolean or condition | Air (Zork II's balloon): shorthand for `terrain: 'air'`. Same shape as `water`. |
+| `terrain?` | string | What kind of ground this is, for vehicles. Default `'land'` (or `'water'` / `'air'` where those shorthands hold); a set `terrain` wins over them. Any name works (`'sand'`). See [Vehicles](#vehicles). |
 | `onEnd?` | `{ if, then }[]` | Run at the end of every command here, after the action and before the clock (Zork's M-END). After WAIT's turns when `wait` is set. |
 
 ### Exit
@@ -98,7 +101,7 @@ Message-only exits aren't listed unless `listExits` names them.
 | `door?` | boolean | A door between rooms; exits name it. Uses `container` for openable/open/locked/key. |
 | `size?` | number | Its weight, in worlds with `carry` (Zork's SIZE). Default 5. |
 | `weapon?` | boolean | Something to fight with. |
-| `vehicle?` | `{ travels: 'water' }` | Something the player can get into and travel in. See [Vehicles](#vehicles). |
+| `vehicle?` | `{ travels, lands?, landing?, leave?, arrive?, lookScript? }` | Something the player can get into and travel in. See [Vehicles](#vehicles). |
 | `onEnd?` | `{ if, then }[]` | A vehicle's end routines: while the player is aboard they run instead of the room's. |
 | `burnable?` | boolean | BURN can set it alight (Zork's BURNBIT). |
 | `flaming?` | boolean | It can set things alight: always, or while it's on if it switches (Zork's FLAMEBIT). |
@@ -372,8 +375,11 @@ raft: { name: 'raft', vehicle: { travels: 'water' }, container: { open: true }, 
 pond: { name: 'Pond', water: true, … },
 ```
 
-- **BOARD** (GET IN, CLIMB IN) gets in a vehicle that's on the ground here; **DISEMBARK** (GET OUT, GET OFF, STAND) gets out, except on water or in the air: “You realize that getting out here would be fatal.” While aboard, EXIT on its own is DISEMBARK too (Zork's V-EXIT); otherwise it's the direction out. In Infocom style, DISEMBARK with no object names the one vehicle in sight: “(raft)”.
-- **Moving:** without a vehicle, water is out of reach (“You can’t go there without a vehicle.”); aboard, the vehicle won't go overland (“You can’t go there in a raft.”); coming from water onto land it rests on the shore (“The raft comes to a rest on the shore.”), and you stay aboard. The vehicle goes wherever you go, scripted moves included.
+- **BOARD** (GET IN, CLIMB IN) gets in a vehicle that's on the ground here; **DISEMBARK** (GET OUT, GET OFF, STAND) gets out, except where the room's terrain isn't one the player walks (water, air, sand unless `onFoot` lists it): “You realize that getting out here would be fatal.” While aboard, EXIT on its own is DISEMBARK too (Zork's V-EXIT); otherwise it's the direction out. In Infocom style, DISEMBARK with no object names the one vehicle in sight: “(raft)”.
+- **Terrains:** every room has one: `terrain`, or `'water'` / `'air'` from those shorthands, else `'land'`. The world's `onFoot` (default `['land']`) lists those the player walks on. A vehicle's `travels` is a terrain name or list (`['land', 'sand']`); the old `'water'`, `'air'` and `'none'` still work (`'none'` is `[]`: it never moves). Its `lands` (default `['land']`, unless it travels on land) are the terrains it comes to rest on from one it travels, and it can't cross from one to another.
+- **Moving:** on foot, a room's terrain must be in `onFoot`, else “You can’t go there without a vehicle.” Aboard, the destination's terrain must be in `travels`, or in `lands` while you're on a terrain in `travels`, else “You can’t go there in a raft.” (a vehicle won't go overland). The vehicle goes wherever you go, scripted moves included, and you stay aboard.
+- **Landing:** `landing` (a line or list of lines) is said as the vehicle comes onto a `lands` terrain from a travelled one you can't walk on (`landing: 'The balloon lands.'`). Unset, a water vehicle says Zork's “The raft comes to a rest on the shore.” and a blank line; others say nothing.
+- **`leave` / `arrive`:** said as it leaves with you aboard (before the new room) and as it arrives (after), and by `{ moveVehicle }`. Each is a string, a list (one line picked with the seeded generator; a plain string draws nothing), or `{ script: 'name' }` (that script's `say` lines print; its other steps don't run). Example: a dune buggy over a sand maze is `vehicle: { travels: ['land', 'sand'], leave: ['The engine roars.', 'Sand sprays.'] }` with the maze rooms `terrain: 'sand'`.
 - **Aboard:** DROP puts things in the vehicle, TAKE *vehicle* says “You’re inside of it!”, and the room's things stay in reach. The vehicle's rules are asked before the room's (Zork's M-BEG): an `instead.go` on it can refuse directions. Its `onEnd` runs in place of the room's. GO goes through rules too, so a room can have `instead.go` rules.
 - **Looking:** the header names the vehicle (“Pond, in the raft”); the vehicle isn't listed, its contents are; in Infocom style the room's things are “(outside the raft)”, as Zork's PRINT-CONT does. A vehicle's `lookScript` (`vehicle: { travels: 'air', lookScript: 'basketLook' }`) describes it from inside: its `say` lines follow the room's description, and the name on a brief arrival, but not a room whose own `descriptionScript` described it in full (Zork's vehicle M-LOOK, which a room's M-LOOK cuts off).
 - Dying takes you out of the vehicle, which stays where you died. Conditions `aboard`, `aboard:ITEM` and `water:here|ROOM`; effects `{ board }` and `{ disembark }`; script helpers `ctx.aboard()` and `ctx.water(room?)`.

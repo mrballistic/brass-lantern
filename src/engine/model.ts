@@ -1,5 +1,5 @@
 import type { GameState, NpcState, Place } from '@/types/game';
-import type { World } from '@/types/world';
+import type { Item, World } from '@/types/world';
 import { evaluateCondition } from './conditions';
 import { fuzzyCandidates, fuzzyMatch, isSelfWord } from './fuzzy';
 
@@ -107,16 +107,39 @@ export function isCarried(state: GameState, id: string): boolean {
   return state.locations[id] === PLAYER;
 }
 
+/** The kind of ground a room is: its `terrain`, else water or air where those shorthands hold, else land. */
+export function terrainOf(world: World, state: GameState, roomId: string = state.currentRoom): string {
+  const room = world.rooms[roomId];
+  if (!room) return 'land';
+  if (room.terrain) return room.terrain;
+  const holds = (v: boolean | string | undefined) => (typeof v === 'string' ? evaluateCondition(v, state, world) : Boolean(v));
+  return holds(room.water) ? 'water' : holds(room.air) ? 'air' : 'land';
+}
+
 /** Is the room water (Zork's NONLANDBIT)? A condition string decides for rooms that change. */
 export function isWater(world: World, state: GameState, roomId: string = state.currentRoom): boolean {
-  const w = world.rooms[roomId]?.water;
-  return typeof w === 'string' ? evaluateCondition(w, state, world) : Boolean(w);
+  return terrainOf(world, state, roomId) === 'water';
 }
 
 /** Is the room air (Zork II's balloon)? Same shape as `isWater`. */
 export function isAir(world: World, state: GameState, roomId: string = state.currentRoom): boolean {
-  const a = world.rooms[roomId]?.air;
-  return typeof a === 'string' ? evaluateCondition(a, state, world) : Boolean(a);
+  return terrainOf(world, state, roomId) === 'air';
+}
+
+/** The terrains the player can walk into (and get out of a vehicle in). */
+export function onFootTerrains(world: World): string[] {
+  return world.onFoot ?? ['land'];
+}
+
+/** The terrains a vehicle enters: `'water'`, `'air'` and `'none'` are the legacy spellings. */
+export function travelTerrains(vehicle: NonNullable<Item['vehicle']>): string[] {
+  const t = vehicle.travels;
+  return t === 'none' ? [] : typeof t === 'string' ? [t] : t;
+}
+
+/** The terrains a vehicle comes to rest on from one it travels: `land`, unless it travels on land itself. */
+export function landTerrains(vehicle: NonNullable<Item['vehicle']>): string[] {
+  return vehicle.lands ?? (travelTerrains(vehicle).includes('land') ? [] : ['land']);
 }
 
 /** Carried, directly or inside something carried (Zork's HELD?). */

@@ -1,5 +1,5 @@
 import type { GameState, Place } from '@/types/game';
-import type { Effect, EventStep, World } from '@/types/world';
+import type { Effect, EventStep, VehicleLine, World } from '@/types/world';
 import { evaluateCondition } from './conditions';
 import { isCarried, moveItem, nextPlacing, npcStateOf, PLAYER } from './model';
 import { nextRandom } from './rng';
@@ -198,8 +198,8 @@ function runEffect(e: Effect, world: World, state: GameState): { lines: string[]
     const from = state.locations[e.moveVehicle];
     moveItem(state, e.moveVehicle, e.to);
     const lines: string[] = [];
-    if (from === here && e.to !== here && vehicle.leave) lines.push(vehicle.leave);
-    if (e.to === here && from !== here && vehicle.arrive) lines.push(vehicle.arrive);
+    if (from === here && e.to !== here) lines.push(...vehicleLine(vehicle.leave, world, state));
+    if (e.to === here && from !== here) lines.push(...vehicleLine(vehicle.arrive, world, state));
     return { lines };
   }
   // Zork's TOUCHBIT: handled, so its first-seen sentence is over.
@@ -262,4 +262,17 @@ export function runConditional(entries: Array<{ if: string; then: string | Event
 export function runEventKey(key: string, world: World, state: GameState): string[] {
   if (!state.firedEvents.includes(key)) state.firedEvents.push(key);
   return runSteps(world.events[key] ?? [], world, state);
+}
+
+/**
+ * What a vehicle says as it leaves or arrives: a string as it is (drawing nothing), one line picked from a list
+ * with the seeded generator, or a script's `say` lines. A script's other steps don't run: this is a line said
+ * mid-move, like a description script's, and the script may draw from the generator as it likes.
+ */
+export function vehicleLine(line: VehicleLine | undefined, world: World, state: GameState): string[] {
+  if (line === undefined) return [];
+  if (typeof line === 'string') return [line];
+  if (Array.isArray(line)) return line.length > 0 ? [line[Math.floor(nextRandom(state) * line.length)]] : [];
+  if (!world.scripts?.[line.script]) return [];
+  return scriptSteps(line.script, undefined, world, state).flatMap((step) => (typeof step === 'string' ? [step] : 'say' in step ? [step.say] : []));
 }
