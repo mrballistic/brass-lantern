@@ -1,4 +1,5 @@
 import type { ParsedAction } from '@/types/game';
+import { isSelfWord } from './fuzzy';
 import type { World, WorldVerb } from '@/types/world';
 
 const DIRECTIONS: Record<string, string> = {
@@ -29,6 +30,14 @@ const RE = {
   drop: /^(?:drop|put\s+down|leave)\s+(?:the\s+)?(.+)$/i,
   examine: /^(?:examine|inspect|look\s+at|x)\s+(?:the\s+)?(.+)$/i,
   read: /^read\s+(?:the\s+)?(.+)$/i,
+  // Zork's prepositions: PUT UNDER/BEHIND, THROW OFF/OVER, READ THROUGH, PUSH X dir / TO Y.
+  putUnder: /^(?:put|place|slide|push|stick)\s+(?:the\s+)?(.+?)\s+(?:under|underneath|beneath|below)\s+(?:the\s+)?(.+)$/i,
+  putBehind: /^(?:put|place|slide|push|stick)\s+(?:the\s+)?(.+?)\s+behind\s+(?:the\s+)?(.+)$/i,
+  throwOff: /^(?:throw|toss|hurl)\s+(?:the\s+)?(.+?)\s+off\s+(?:of\s+)?(?:the\s+)?(.+)$/i,
+  throwOver: /^(?:throw|toss|hurl)\s+(?:the\s+)?(.+?)\s+over\s+(?:of\s+)?(?:the\s+)?(.+)$/i,
+  readWith: /^read\s+(?:the\s+)?(.+?)\s+(?:through|with|using)\s+(?:the\s+)?(.+)$/i,
+  pushDir: /^(?:push|move|shove)\s+(?:the\s+)?(.+?)\s+(north|south|east|west|northeast|northwest|southeast|southwest|up|down|n|s|e|w|ne|nw|se|sw|u|d)$/i,
+  pushTo: /^(?:push|move|shove)\s+(?:the\s+)?(.+?)\s+to\s+(?:the\s+)?(.+)$/i,
   turnOn: /^(?:turn|switch)\s+on\s+(?:the\s+)?(.+)$/i,
   turnOnAfter: /^(?:turn|switch)\s+(?:the\s+)?(.+?)\s+on$/i,
   light: /^light\s+(?:the\s+)?(.+)$/i,
@@ -109,12 +118,19 @@ const SINGLE_WORD: Record<string, ParsedAction> = {
 // Each entry maps a verb-pattern regex to the canonical action. The first capture
 // group is the target; an optional second group is the indirect object. Order
 // matters — earlier entries win on ambiguous input.
-const VERB_PATTERNS: ReadonlyArray<readonly [RegExp, string, ('in' | 'on')?]> = [
+const VERB_PATTERNS: ReadonlyArray<readonly [RegExp, string, ParsedAction['prep']?]> = [
+  [RE.putUnder, 'put', 'under'],
+  [RE.putBehind, 'put', 'behind'],
+  [RE.throwOff, 'throw', 'off'],
+  [RE.throwOver, 'throw', 'over'],
+  [RE.readWith, 'read', 'through'],
   [RE.board, 'board'],
   [RE.disembark, 'disembark'],
   [RE.enter, 'enter'],
   [RE.moveTo, 'go'],
   [RE.movement, 'go'],
+  [RE.pushDir, 'push'],
+  [RE.pushTo, 'push'],
   [RE.takeFrom, 'take'],
   [RE.take, 'take'],
   [RE.drop, 'drop'],
@@ -208,6 +224,11 @@ function typedText(raw: string): string {
   return (quoted ? (quoted[1] ?? quoted[2] ?? quoted[3]) : text).replace(/\s+/g, ' ').trim();
 }
 
+/** ME, MYSELF, SELF in the second-object slot name the player: the reserved ID 'player'. */
+function selfIndirect(parsed: ParsedAction): ParsedAction {
+  return parsed.indirect && isSelfWord(parsed.indirect) ? { ...parsed, indirect: 'player' } : parsed;
+}
+
 function matchWorld(input: string, patterns: WorldPattern[]): ParsedAction | null {
   for (const { re, id, verb } of patterns) {
     const m = input.match(re);
@@ -220,7 +241,7 @@ function matchWorld(input: string, patterns: WorldPattern[]): ParsedAction | nul
     }
     if (m[1]) parsed.target = m[1].trim();
     if (m[2]) parsed.indirect = m[2].trim();
-    return parsed;
+    return selfIndirect(parsed);
   }
   return null;
 }
@@ -415,7 +436,12 @@ function parse(rawInput: string, allowBareWord: boolean, verbs?: World['verbs'])
     const parsed: ParsedAction = m[1] ? { action, target: m[1].trim() } : { action };
     if (m[2]) parsed.indirect = m[2].trim();
     if (prep) parsed.prep = prep;
-    return withNumbers(parsed);
+    // PUSH X north: the second capture is a direction, not a second object.
+    if (action === 'push' && m[2] && re === RE.pushDir) {
+      delete parsed.indirect;
+      parsed.direction = DIRECTIONS[m[2].trim()] as ParsedAction['direction'];
+    }
+    return withNumbers(selfIndirect(parsed));
   }
 
   if (RE.sit.test(input)) return { action: 'sit' };

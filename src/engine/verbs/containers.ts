@@ -141,6 +141,9 @@ export function handlePut(
   if (!indirect) needObject('indirect');
   const dest = find(indirect, world, state, 'indirect');
   if (!dest) return miss(`You don’t see a “${indirect}” here.`);
+  // Zork's V-PUT-UNDER and V-PUT-BEHIND: no place to hide things, unless a rule says so.
+  if (prep === 'under') return ok(['You can’t do that.']);
+  if (prep === 'behind') return ok(['That hiding place is too obvious.']);
   const sealed = behindGlass(world, state, dest);
   if (sealed) return sealed;
   const d = world.items[dest];

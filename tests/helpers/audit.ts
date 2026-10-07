@@ -72,7 +72,7 @@ export function auditWorld(world: World): string[] {
     if (item.home && !isRoom(item.home)) problems.push(`item ${id}: home names no room “${item.home}”`);
     for (const c of item.contains ?? []) if (!isItem(c)) problems.push(`item ${id}: contains no item “${c}”`);
   }
-  if ('player' in world.items || 'player' in world.rooms) problems.push('“player” is reserved; no room or item may use it');
+  if ('player' in world.items || 'player' in world.rooms || 'player' in world.npcs) problems.push('“player” is reserved; no room, item or character may use it');
 
   for (const [id, room] of Object.entries(world.rooms)) {
     for (const i of [...room.items, ...(room.scenery ?? [])]) if (!isItem(i)) problems.push(`room ${id}: no item “${i}”`);

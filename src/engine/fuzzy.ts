@@ -157,3 +157,6 @@ export function fuzzyMatchExit(
   }
   return null;
 }
+
+/** ME, MYSELF, SELF, YOURSELF: the player as an object, whose reserved ID is 'player'. */
+export const isSelfWord = (word: string): boolean => /^(?:me|myself|self|yourself|player)$/i.test(word.trim());

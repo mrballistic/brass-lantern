@@ -98,14 +98,14 @@ export interface ParsedAction {
   target?: string;
   /** Second object: the NPC in "give X to Y", the item in "use X on Y". */
   indirect?: string;
-  /** For PUT: in or on. */
-  prep?: 'in' | 'on';
+  /** The preposition: PUT in/on/under/behind, THROW off/over, READ through. */
+  prep?: 'in' | 'on' | 'under' | 'behind' | 'off' | 'over' | 'through';
   /** TAKE ALL BUT …: the words after BUT/EXCEPT. */
   except?: string[];
   /** DISEMBARK reached by STAND or a bare GET OUT/OFF: Zork guesses the vehicle only for DISEMBARK itself. */
   via?: 'stand' | 'out';
-  /** CLIMB UP / CLIMB DOWN a thing: the direction to climb it in. */
-  direction?: 'up' | 'down';
+  /** CLIMB UP / CLIMB DOWN a thing, or PUSH X north: the direction. */
+  direction?: 'north' | 'south' | 'east' | 'west' | 'northeast' | 'northwest' | 'southeast' | 'southwest' | 'up' | 'down';
   /** Bare EXIT (a direction, out), which aboard gets out of the vehicle (Zork's V-EXIT). */
   exit?: boolean;
   /** TURN X TO 4, SET X TO 776: the number, with `indirect` (or `target`) the literal 'number'. */

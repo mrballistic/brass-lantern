@@ -89,7 +89,7 @@ describe('world audit', () => {
         expect.stringContaining('unknown effect'),
         'daemon 0: names no event “absent”',
         'item player: home names no room “mars”',
-        '“player” is reserved; no room or item may use it',
+        '“player” is reserved; no room, item or character may use it',
       ]),
     );
   });

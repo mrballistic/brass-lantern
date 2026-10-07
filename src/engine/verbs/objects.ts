@@ -2,7 +2,7 @@ import type { GameState } from '@/types/game';
 import type { Item, World } from '@/types/world';
 import { evaluateCondition } from '../conditions';
 import { contentsLines, describeRoom, lightNote, listedName, npcDescription } from '../describe';
-import { closedAround, inventoryOf, isCarried, isHeld, isOpen, matchItem, matchNpc, moveItem, needObject, pickItem, PLAYER, reachableItems, visibleItems } from '../model';
+import { closedAround, inventoryOf, isCarried, isHeld, isOpen, matchItem, matchNpc, moveItem, needObject, pickItem, pickSecond, PLAYER, reachableItems, visibleItems } from '../model';
 import { miss, ok, type EngineResult } from '../result';
 import { runEventKey } from '../effects';
 import { afterRuleLines, applyRule, findRule } from '../rules';
@@ -106,13 +106,13 @@ export function handleUse(
   const reach = reachableItems(world, state);
   const itemId = pickItem(target, reach, world, 'target', state);
   if (!itemId) return miss(`There is no “${target}” here to use.`);
-  const otherId = indirect ? pickItem(indirect, reach, world, 'indirect', state) : null;
+  const otherId = indirect ? pickSecond(indirect, reach, world, state) : null;
   if (indirect && !otherId) return miss(`There is no “${indirect}” here.`);
 
   // "put the disk in the terminal" and "use the terminal with the disk" mean
   // the same thing, so check the rules on both sides.
   const rule =
-    findRule(world, state, 'instead', 'use', { target: itemId, indirect: otherId, room: state.currentRoom }, reach);
+    findRule(world, state, 'instead', 'use', { target: itemId, indirect: otherId, room: state.currentRoom }, otherId === PLAYER ? [...reach, PLAYER] : reach);
   if (rule) return applyRule(rule, world, state);
 
   if (world.items[itemId]?.onWear && isCarried(state, itemId)) {

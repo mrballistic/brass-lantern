@@ -1,7 +1,7 @@
 import type { GameState, NpcState, Place } from '@/types/game';
 import type { World } from '@/types/world';
 import { evaluateCondition } from './conditions';
-import { fuzzyCandidates, fuzzyMatch } from './fuzzy';
+import { fuzzyCandidates, fuzzyMatch, isSelfWord } from './fuzzy';
 
 /** The place that means “carried by the player”. Reserved: no room or item may use it. */
 export const PLAYER = 'player';
@@ -345,6 +345,11 @@ export function pickItem(target: string, ids: string[], world: World, slot: 'tar
   }
   const word = target.trim().split(/\s+/).at(-1) ?? target;
   throw new AskSignal({ kind: 'which', slot, word, candidates: found });
+}
+
+/** A second object: ME, MYSELF, SELF (or 'player') is the player, else as pickItem. */
+export function pickSecond(target: string, ids: string[], world: World, state?: GameState): string | null {
+  return isSelfWord(target) ? PLAYER : pickItem(target, ids, world, 'indirect', state);
 }
 
 /** A verb is missing an object: ask for it. */

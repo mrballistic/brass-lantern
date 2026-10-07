@@ -2,7 +2,7 @@ import type { GameState, ParsedAction } from '@/types/game';
 import type { EventStep, World } from '@/types/world';
 import { evaluateCondition } from './conditions';
 import { describeRoom } from './describe';
-import { AskSignal, initialLocations, inventoryOf, isLit, matchItem, pickItem, restoreState, setResolveById, snapshotState, takeActed, visibleItems } from './model';
+import { AskSignal, initialLocations, inventoryOf, isLit, matchItem, matchNpc, needObject, pickItem, restoreState, setResolveById, snapshotState, takeActed, visibleItems } from './model';
 import { whatQuestion, whichQuestion } from './ask';
 import { darknessFalls, tooDark } from './light';
 import { beginTick, beginTurn, darkLineSaid, lineStop, runConditional, runSteps, setEffectHooks, turnFree, turnHalted } from './effects';
@@ -229,6 +229,11 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
       return withRules('go', action, world, state, () => handleGo(action.target, world, state));
     case 'read':
       return withRules('read', action, world, state, () => handleRead(action.target, world, state));
+    // PUSH X north, PUSH X TO Y (Zork's V-PUSH-TO); plain PUSH X is USE.
+    case 'push':
+      if (!action.target) needObject();
+      if (!pickItem(action.target, visibleItems(world, state), world, 'target', state) && !matchNpc(action.target, world, state)) return miss(`You don’t see a “${action.target}” here.`);
+      return withRules('push', action, world, state, () => ok(['You can’t push things to that.']));
     case 'turn_on':
       return withRules('turn_on', action, world, state, () => handleSwitch(action.target, true, world, state));
     case 'board':
@@ -247,7 +252,7 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
     case 'enter':
       return withRules('enter', action, world, state, () => handleEnter(action.target, world, state));
     case 'climb':
-      return withRules('climb', action, world, state, () => handleClimb(action.target, world, state, action.direction));
+      return withRules('climb', action, world, state, () => handleClimb(action.target, world, state, action.direction === 'up' || action.direction === 'down' ? action.direction : undefined));
     case 'verbose':
     case 'brief':
     case 'superbrief':
@@ -306,6 +311,12 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
       if (action.prep === 'in' && world.style === 'infocom') return dispatch({ ...action, action: 'put' }, world, state);
       // Elsewhere THROW X IN Y with no rule is a miss, so the intent server can read it (as PUT, likely).
       if (action.prep === 'in') return withRules('throw', action, world, state, () => miss(`You can’t throw that in there.`));
+      // Zork's V-THROW-OFF: nothing here to throw things off of, unless a rule says so.
+      if (action.prep === 'off' || action.prep === 'over') {
+        if (!action.target) needObject();
+        if (!pickItem(action.target, inventoryOf(world, state), world, 'target', state)) return miss(`You aren’t carrying a “${action.target}”.`);
+        return withRules('throw', action, world, state, () => ok(['You can’t throw anything off of that!']));
+      }
       return handleThrow(action, world, state);
     case 'ask':
       return handleAsk(action, world, state);
