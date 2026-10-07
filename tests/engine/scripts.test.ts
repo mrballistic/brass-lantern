@@ -25,7 +25,7 @@ const world: World = {
 };
 
 describe('scripts', () => {
-  afterEach(() => setScriptFreeze(false));
+  afterEach(() => setScriptFreeze(true));
 
   it('return steps the engine runs', () => {
     const s = stateWith(world);
@@ -47,9 +47,10 @@ describe('scripts', () => {
   });
 
   describe('the development freeze', () => {
-    afterEach(() => setScriptFreeze(false));
+    afterEach(() => setScriptFreeze(true));
 
-    it('is off by default: a script that assigns runs on the real state', () => {
+    it('when off, a script that assigns runs on the real state', () => {
+      setScriptFreeze(false);
       const s = stateWith(world);
       expect(runSteps([{ script: 'meddle' }], world, s)).toEqual([]);
       expect(s.currentRoom).toBe('yard');

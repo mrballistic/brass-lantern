@@ -18,6 +18,8 @@ export default defineConfig({
     // file was three quarters of the run.
     environment: 'node',
     globals: true,
+    // Every test runs with the scripts' state freeze on, as the app does in development.
+    setupFiles: ['tests/setup.ts'],
     include: ['tests/**/*.test.ts'],
     exclude: ['node_modules', 'dist', 'cdk', 'lambda'],
     coverage: {

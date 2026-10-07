@@ -81,7 +81,7 @@ describe('LocalStorageDialog', () => {
   });
 
   it('never throws when storage fails, and says it isn’t available', () => {
-    const d = new LocalStorageDialog('test', brokenStorage());
+    const d = new LocalStorageDialog(localStorageSaveStore('test:', brokenStorage()));
     const ref = d.file_construct_ref('slot', 'save', 'g');
     expect(d.isAvailable()).toBe(false);
     expect(d.file_write(ref, [1])).toBe(false);
