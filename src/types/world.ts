@@ -9,6 +9,8 @@ export interface Room {
   dark?: boolean;
   /** Descriptions that depend on the state of things; the first whose `if` holds replaces `description`. */
   descriptions?: Array<{ if: string; text: string }>;
+  /** A world script whose `say` lines (joined with newlines) are the description, ahead of `firstDescription` and `descriptions`. */
+  descriptionScript?: string;
   /** Label → a room ID, or an Exit for conditions, messages and doors. */
   exits: Record<string, string | Exit>;
   /**
@@ -114,6 +116,8 @@ export interface Item {
   /** Other words the parser should accept for this item ("disk", "virus"). */
   aliases?: string[];
   description: string;
+  /** A world script whose `say` lines are EXAMINE's text, ahead of `description`. */
+  descriptionScript?: string;
   portable: boolean;
   tags: string[];
   /** Shown when the player tries to take a non-portable item. */
@@ -204,6 +208,8 @@ export interface NPC {
   /** Items it holds at the start. Things a character holds aren't visible or reachable. */
   holds?: string[];
   /** Descriptions that depend on the state of things; the first whose condition holds wins. */
+  /** A world script whose `say` lines are its description, ahead of `descriptions`. */
+  descriptionScript?: string;
   descriptions?: Array<{ if: string; text: string }>;
   /** Rules for verbs aimed at this character (THROW X AT it, GIVE, ATTACK…). */
   instead?: RuleTable;
@@ -422,6 +428,12 @@ export interface World {
   title?: string;
   /** Lines VERSION prints after the title (copyright, authors). */
   credits?: string[];
+  /** SCORE's line, replacing the style's own: `{score}`, `{max}`, `{moves}` (“3 moves”). */
+  scoreLine?: string;
+  /** SCORE's rank line, replacing the style's own: `{rank}`. */
+  rankLine?: string;
+  /** DIAGNOSE's own wording for being unhurt and for being wounded. */
+  diagnose?: { healthy?: string; wounded?: string };
   /** Highest `min` the score reaches wins. */
   ranks?: Rank[];
   /** Reply to QUIT. */

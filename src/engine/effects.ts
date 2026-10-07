@@ -4,6 +4,7 @@ import { evaluateCondition } from './conditions';
 import { isCarried, moveItem, nextPlacing, npcStateOf, PLAYER } from './model';
 import { nextRandom } from './rng';
 import { commandOf, scriptSteps } from './scripts';
+import { expandTemplate } from './text';
 
 // Running event steps: printed lines (bracket lines also act) and typed effects.
 
@@ -137,7 +138,7 @@ function itemOf(e: Effect): string | null {
 
 /** Runs one effect. Returns the lines it prints, and whether to stop the list (death, an ending). */
 function runEffect(e: Effect, world: World, state: GameState): { lines: string[]; stop?: boolean } {
-  if ('say' in e) return { lines: [e.say] };
+  if ('say' in e) return { lines: [expandTemplate(e.say, world, state)] };
   if ('set' in e) return void (state.flags[e.set] = true), { lines: [] };
   if ('clear' in e) return void (state.flags[e.clear] = false), { lines: [] };
   // Naming a thing the world doesn't have does nothing (the audit reports it).
@@ -218,7 +219,7 @@ export function runSteps(steps: EventStep[], world: World, state: GameState): st
     if (typeof step === 'string') {
       const effect = isEffectLine(step);
       if (effect) applyBracketLine(step, world, state);
-      if (!(effect && world.style === 'infocom')) out.push(step);
+      if (!(effect && world.style === 'infocom')) out.push(effect ? step : expandTemplate(step, world, state));
       continue;
     }
     const { lines, stop } = runEffect(step, world, state);

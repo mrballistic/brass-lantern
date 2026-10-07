@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { execute, initialState } from '@/engine/engine';
 import { fallbackParse } from '@/engine/parser';
-import { statusText } from '@/engine/verbs/meta';
+import { scoreLines, statusText } from '@/engine/verbs/meta';
 import type { GameState } from '@/types/game';
 import { stateWith } from '../helpers/state';
 import { fixtureWorld as world } from '../fixtures/world';
@@ -46,3 +46,39 @@ describe('HELP’s columns (fast follow)', () => {
     expect(vehicle.indexOf('Get in')).toBe(25);
   });
 });
+
+describe('world-set SCORE text', () => {
+  const scored = { ...world, scoring: [{ if: 'flag:paid', points: 5 }], maxScore: 10, ranks: [{ min: 0, title: 'Beginner' }] };
+  const infocom = { ...scored, style: 'infocom' as const };
+  const score = (w: typeof scored) => {
+    const s = stateWith(w, { room: 'living' });
+    s.turns = 1;
+    return scoreLines(w, s);
+  };
+  it('prints today’s lines without templates', () => {
+    expect(score(infocom)).toEqual(['Your score is 0 (total of 10 points), in 1 move.', 'This gives you the rank of Beginner.']);
+  });
+  it('prints the world’s own lines with them', () => {
+    const w = { ...infocom, scoreLine: 'Your score would be {score} (total of {max} points), in {moves}.', rankLine: 'This score gives you the rank of {rank}.' };
+    expect(score(w)).toEqual(['Your score would be 0 (total of 10 points), in 1 move.', 'This score gives you the rank of Beginner.']);
+    expect(score({ ...infocom, scoreLine: 'Your potential is {score} of a possible {max}, in {moves}.' })).toEqual([
+      'Your potential is 0 of a possible 10, in 1 move.',
+      'This gives you the rank of Beginner.',
+    ]);
+  });
+  it('applies to brass style too', () => {
+    expect(score({ ...scored, scoreLine: '{score}/{max} in {moves}' })[0]).toBe('0/10 in 0 moves');
+  });
+});
+
+describe('world-set DIAGNOSE text', () => {
+  it('a world’s healthy and wounded lines replace the defaults', () => {
+    const w = { ...world, diagnose: { healthy: 'You feel fine.', wounded: 'You ache.' } };
+    const s = stateWith(w, { room: 'living' });
+    expect(run2(s, w)).toEqual(['[You feel fine.]']);
+    s.player = { wounds: 1, cureIn: 5 };
+    expect(run2(s, w)).toEqual(['[You ache.]']);
+    expect(run2(stateWith(world, { room: 'living' }), world)).toEqual(['[You are in perfect health.]']);
+  });
+});
+const run2 = (s: GameState, w: typeof world) => execute({ action: 'diagnose' }, { world: w, state: s }).lines;

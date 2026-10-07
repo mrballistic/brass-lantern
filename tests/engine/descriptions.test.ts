@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { describeCurrentRoom, execute, initialState, openingLines } from '@/engine/engine';
 import { fallbackParse } from '@/engine/parser';
+import { expandTemplate } from '@/engine/text';
 import type { GameState } from '@/types/game';
+import type { World } from '@/types/world';
+import { auditWorld } from '../helpers/audit';
 import { stateWith } from '../helpers/state';
 import { fixtureWorld as world } from '../fixtures/world';
 
@@ -83,5 +86,53 @@ describe('descriptions that change with the state of the world', () => {
     expect(go('west')).toContain('A living room with a table by the door.');
     expect(go('east')).toEqual(['📍 Bedroom', 'There is a bed here.', 'There is a alarm clock here.']);
     expect(execute({ action: 'look' }, { world: w, state: s }).lines).toContain('A small bedroom.');
+  });
+});
+
+describe('descriptions from state', () => {
+  const w: World = {
+    ...world,
+    rooms: {
+      ...world.rooms,
+      bedroom: { ...world.rooms.bedroom, description: 'The dial reads {var:cell}.' },
+      living: { ...world.rooms.living, firstDescription: 'First visit.', descriptionScript: 'grid' },
+    },
+    items: { ...world.items, alarm: { ...world.items.alarm, description: 'It shows {var:cell}; you typed {number}.', descriptionScript: undefined } },
+    scripts: { grid: () => [{ say: '###' }, { say: '#.#' }] },
+  };
+
+  it('{var:NAME} reads a variable, and 0 when unset', () => {
+    const s = stateWith(w, { room: 'bedroom' });
+    expect(describeCurrentRoom(w, s)).toContain('The dial reads 0.');
+    s.vars = { cell: 4 };
+    expect(describeCurrentRoom(w, s)).toContain('The dial reads 4.');
+  });
+
+  it('expands in EXAMINE, leaves {number} and unknown placeholders as written, and never draws randomness', () => {
+    const s = stateWith(w, { room: 'bedroom' });
+    s.vars = { cell: 4 };
+    expect(execute({ action: 'examine', target: 'alarm' }, { world: w, state: s }).lines).toEqual(['It shows 4; you typed {number}.']);
+    const before = JSON.stringify(s);
+    expect(expandTemplate('{a thing} {var:cell} {nope}', w, s)).toBe('{a thing} 4 {nope}');
+    expect(JSON.stringify(s)).toBe(before);
+  });
+
+  it('a description script’s say lines are the description, ahead of the first-visit text', () => {
+    const s = stateWith(w, { room: 'bedroom' });
+    const lines = execute({ action: 'go', target: 'west' }, { world: w, state: s }).lines;
+    expect(lines).toContain('###\n#.#');
+    expect(lines).not.toContain('First visit.');
+  });
+
+  it('an item’s description script describes it in EXAMINE', () => {
+    const w2: World = { ...w, items: { ...w.items, alarm: { ...w.items.alarm, descriptionScript: 'grid' } } };
+    const s = stateWith(w2, { room: 'bedroom' });
+    expect(execute({ action: 'examine', target: 'alarm' }, { world: w2, state: s }).lines).toEqual(['###\n#.#']);
+  });
+
+  it('the audit flags a description script naming no script', () => {
+    const bad: World = { ...w, rooms: { ...w.rooms, bedroom: { ...w.rooms.bedroom, descriptionScript: 'nope' } } };
+    expect(auditWorld(bad).some((p) => p.includes('nope'))).toBe(true);
+    expect(auditWorld(w).some((p) => p.includes('descriptionScript'))).toBe(false);
   });
 });

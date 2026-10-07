@@ -1,7 +1,8 @@
 import type { GameState } from '@/types/game';
 import type { Item, World } from '@/types/world';
 import { evaluateCondition } from '../conditions';
-import { contentsLines, describeRoom, lightNote, listedName, npcDescription } from '../describe';
+import { contentsLines, describeRoom, lightNote, listedName, npcDescription, scriptDescription } from '../describe';
+import { expandTemplate } from '../text';
 import { closedAround, inventoryOf, isCarried, isHeld, isOpen, matchItem, matchNpc, moveItem, needObject, pickItem, pickSecond, PLAYER, reachableItems, visibleItems } from '../model';
 import { miss, ok, type EngineResult } from '../result';
 import { runEventKey } from '../effects';
@@ -78,6 +79,8 @@ export function handleExamine(target: string | undefined, world: World, state: G
   if (matchedItem) {
     const item = world.items[matchedItem];
     const contents = contentsLines(world, state, matchedItem);
+    const scripted = scriptDescription(item?.descriptionScript, world, state);
+    if (scripted !== undefined) return ok([expandTemplate(scripted, world, state), ...contents]);
     // No description of its own: a container shows what's in it, as Zork's EXAMINE does.
     if (item && !item.description) {
       // Zork's EXAMINE reads what's written on it.
@@ -87,7 +90,7 @@ export function handleExamine(target: string | undefined, world: World, state: G
       if (contents.length > 0) return ok(contents);
       return ok([item.container ? `The ${item.name} is empty.` : `There’s nothing special about the ${item.name}.`]);
     }
-    return ok([item?.description ?? 'It’s nondescript.', ...contents]);
+    return ok([expandTemplate(item?.description ?? 'It’s nondescript.', world, state), ...contents]);
   }
 
   const matchedNpc = matchNpc(target, world, state);

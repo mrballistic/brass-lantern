@@ -200,3 +200,26 @@ describe('score<op>N (5d)', () => {
     expect(conditionProblems('score>=x', fixtureWorld)).not.toEqual([]);
   });
 });
+
+describe('held:ITEM', () => {
+  it('is true for a thing inside a carried closed box, where has: is false', () => {
+    const w: World = {
+      ...fixtureWorld,
+      items: {
+        ...fixtureWorld.items,
+        sock: { name: 'sock', description: 'A sock.', portable: true, tags: [] },
+        box: { name: 'box', description: 'A box.', portable: true, tags: [], container: { openable: true } },
+      },
+    };
+    const s = stateWith(w, { room: 'bedroom', carrying: ['box'] });
+    s.locations.sock = 'box';
+    expect(evaluateCondition('held:sock', s, w)).toBe(true);
+    expect(evaluateCondition('has:sock', s, w)).toBe(false);
+    expect(evaluateCondition('!held:sock', s, w)).toBe(false);
+    expect(evaluateCondition('held:box', s, w)).toBe(true);
+    s.locations.sock = 'bedroom';
+    expect(evaluateCondition('held:sock', s, w)).toBe(false);
+    expect(conditionProblems('held:sock', w)).toEqual([]);
+    expect(conditionProblems('held:unicorn', w)).toEqual(['“held:unicorn” names no item “unicorn”']);
+  });
+});

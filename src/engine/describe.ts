@@ -2,6 +2,8 @@ import type { GameState } from '@/types/game';
 import type { Exit, Room, World } from '@/types/world';
 import { evaluateCondition } from './conditions';
 import { darknessLook } from './light';
+import { scriptSteps } from './scripts';
+import { expandTemplate } from './text';
 import { canSeeInside, childrenOf, isLit, listable, npcsSeen, visibleItemsIn } from './model';
 
 export const COMPASS = ['north', 'south', 'east', 'west', 'northeast', 'northwest', 'southeast', 'southwest', 'up', 'down'];
@@ -157,7 +159,8 @@ export function describeRoom(
   // BRIEF (Infocom's default) and SUPERBRIEF: just the name and contents.
   if (!opts.brief) {
     const varied = room.descriptions?.find((d) => evaluateCondition(d.if, state, world))?.text;
-    lines.push(opts.first && room.firstDescription ? room.firstDescription : (varied ?? room.description));
+    const scripted = scriptDescription(room.descriptionScript, world, state);
+    lines.push(expandTemplate(scripted ?? (opts.first && room.firstDescription ? room.firstDescription : (varied ?? room.description)), world, state));
   }
 
   // The vehicle you're in isn't listed; what's in it is, after the room's things.
@@ -209,8 +212,18 @@ export function describeRoom(
   return lines;
 }
 
-/** A character's line: the first description whose condition holds, else its description. */
+/** What a description script says: its `say` lines, a line each (undefined when there's no such script). */
+export function scriptDescription(name: string | undefined, world: World, state: GameState): string | undefined {
+  if (!name || !world.scripts?.[name]) return undefined;
+  return scriptSteps(name, undefined, world, state)
+    .map((step) => (typeof step === 'string' ? step : 'say' in step ? step.say : undefined))
+    .filter((s): s is string => s !== undefined)
+    .join('\n');
+}
+
+/** A character's line: its description script, else the first description whose condition holds, else its description. */
 export function npcDescription(world: World, state: GameState, id: string): string {
   const npc = world.npcs[id];
-  return npc?.descriptions?.find((d) => evaluateCondition(d.if, state, world))?.text ?? npc?.description ?? id;
+  const text = scriptDescription(npc?.descriptionScript, world, state) ?? npc?.descriptions?.find((d) => evaluateCondition(d.if, state, world))?.text ?? npc?.description ?? id;
+  return expandTemplate(text, world, state);
 }

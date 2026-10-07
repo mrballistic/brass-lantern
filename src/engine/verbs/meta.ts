@@ -32,15 +32,23 @@ export function scoreLines(world: World, state: GameState): string[] {
   const max = world.maxScore ?? scoring.reduce((sum, s) => sum + Math.max(0, s.points), 0);
   const score = currentScore(world, state);
   const rank = [...(world.ranks ?? [])].sort((a, b) => b.min - a.min).find((r) => score >= r.min);
-  if (world.style === 'infocom') {
-    // Zork reports the turns before this one.
-    const moves = state.turns ?? 0;
-    const lines = [`Your score is ${score} (total of ${max} points), in ${moves} move${moves === 1 ? '' : 's'}.`];
-    if (rank) lines.push(`This gives you the rank of ${rank.title}.`);
-    return lines;
-  }
-  const lines = [`[Score: ${score} of ${max}, in ${state.moveCount} move${state.moveCount === 1 ? '' : 's'}.]`];
-  if (rank) lines.push(`[Rank: ${rank.title}]`);
+  const infocom = world.style === 'infocom';
+  // Zork reports the turns before this one.
+  const moves = infocom ? (state.turns ?? 0) : state.moveCount;
+  const fill = (template: string) =>
+    template
+      .replace(/\{score\}/g, String(score))
+      .replace(/\{max\}/g, String(max))
+      .replace(/\{moves\}/g, `${moves} move${moves === 1 ? '' : 's'}`)
+      .replace(/\{rank\}/g, rank?.title ?? '');
+  const lines = [
+    world.scoreLine
+      ? fill(world.scoreLine)
+      : infocom
+        ? `Your score is ${score} (total of ${max} points), in ${moves} move${moves === 1 ? '' : 's'}.`
+        : `[Score: ${score} of ${max}, in ${moves} move${moves === 1 ? '' : 's'}.]`,
+  ];
+  if (rank) lines.push(world.rankLine ? fill(world.rankLine) : infocom ? `This gives you the rank of ${rank.title}.` : `[Rank: ${rank.title}]`);
   return lines;
 }
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { runSteps } from '@/engine/effects';
 import { execute } from '@/engine/engine';
 import { roll } from '@/engine/rng';
+import { setCommand } from '@/engine/scripts';
 import type { World } from '@/types/world';
 import { stateWith } from '../helpers/state';
 import { fixtureWorld } from '../fixtures/world';
@@ -99,5 +100,42 @@ describe('a script that throws (fast follow)', () => {
     const before = structuredClone(s);
     expect(() => execute({ action: 'explode' }, { world: w, state: s })).toThrow('boom');
     expect(s).toEqual(before);
+  });
+});
+
+describe('script helpers (6a)', () => {
+  const seen: Record<string, unknown> = {};
+  const w: World = {
+    ...fixtureWorld,
+    scripts: {
+      probe: (ctx) => {
+        seen.test = [ctx.test('flag:a'), ctx.test('!flag:a')];
+        seen.exits = ctx.exits('shed');
+        seen.resolve = [ctx.resolve('alarm'), ctx.resolve('alarm', 'held'), ctx.resolve('alarm clock', 'all'), ctx.resolve('zeppelin')];
+        seen.typed = [ctx.number, ctx.text];
+      },
+    },
+  };
+  it('test, exits, resolve, number and text', () => {
+    const s = stateWith(w, { room: 'bedroom', flags: ['a'] });
+    runSteps([{ script: 'probe' }], w, s);
+    expect(seen.test).toEqual([true, false]);
+    // The hatch is closed: the loft exits are absent.
+    expect(seen.exits).toEqual([
+      { direction: 'south', to: 'yard' },
+      { direction: 'out', to: 'yard' },
+      { direction: 'down', to: 'cellar' },
+    ]);
+    expect(seen.resolve).toEqual(['alarm', null, 'alarm', null]);
+    expect(seen.typed).toEqual([undefined, undefined]);
+    s.itemState.hatch = { open: true };
+    runSteps([{ script: 'probe' }], w, s);
+    expect((seen.exits as unknown[]).length).toBe(5);
+  });
+  it('number and text come from the command being run', () => {
+    const s = stateWith(w, { room: 'bedroom' });
+    setCommand(s, { verb: 'turn', number: 4, text: 'hello' });
+    runSteps([{ script: 'probe' }], w, s);
+    expect(seen.typed).toEqual([4, 'hello']);
   });
 });

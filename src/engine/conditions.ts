@@ -3,7 +3,7 @@ import type { World } from '@/types/world';
 import { currentScore } from './score';
 import { commandOf } from './scripts';
 import { weightOf } from './weight';
-import { isAlive, isAwake, isCarried, isLit, isLocked, isNpcIn, isOn, isOpen, isReachable, isWater, npcsSeen, PLAYER } from './model';
+import { isAlive, isAwake, isCarried, isHeld, isLit, isLocked, isNpcIn, isOn, isOpen, isReachable, isWater, npcsSeen, PLAYER } from './model';
 
 /**
  * Evaluate a condition string against the current game state.
@@ -11,6 +11,7 @@ import { isAlive, isAwake, isCarried, isLit, isLocked, isNpcIn, isOn, isOpen, is
  * all must hold:
  *   flag:NAME       the flag is set
  *   has:ITEM        the player carries it
+ *   held:ITEM       the player carries it, or it's inside something carried (Zork's HELD?)
  *   in:ROOM         the player is in the room
  *   visited:ROOM    the player has been there
  *   inside:X:PLACE  X's parent is PLACE (a room, an item, or "player")
@@ -98,6 +99,9 @@ export function evaluateCondition(condition: string, state: GameState, world?: W
     case 'has':
       result = isCarried(state, value);
       break;
+    case 'held':
+      result = isHeld(state, value);
+      break;
     case 'in':
       result = state.currentRoom === value;
       break;
@@ -180,6 +184,7 @@ export function conditionProblems(condition: string, world: World): string[] {
         if (!/^-?\d+$/.test(value)) problems.push(`unknown condition “${body}”`);
         break;
       case 'has':
+      case 'held':
       case 'on':
       case 'open':
       case 'locked':

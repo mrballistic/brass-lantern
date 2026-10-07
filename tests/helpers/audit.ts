@@ -141,7 +141,12 @@ export function auditWorld(world: World): string[] {
       for (const d of exit.denials ?? []) checkCondition(d.if, `room ${id} exit ${label}`);
     }
   }
+  const checkDescriptionScript = (name: string | undefined, where: string) => {
+    if (name !== undefined && !world.scripts?.[name]) problems.push(`${where}: descriptionScript names no script “${name}”`);
+  };
+  for (const [id, room] of Object.entries(world.rooms)) checkDescriptionScript(room.descriptionScript, `room ${id}`);
   for (const [id, item] of Object.entries(world.items)) {
+    checkDescriptionScript(item.descriptionScript, `item ${id}`);
     for (const e of item.onEnd ?? []) {
       checkCondition(e.if, `item ${id} onEnd`);
       if (typeof e.then === 'string') {
@@ -164,6 +169,7 @@ export function auditWorld(world: World): string[] {
       if (c.weapon && !isItem(c.weapon)) problems.push(`npc ${id} combat: weapon names no item “${c.weapon}”`);
       if (c.fears && !isItem(c.fears.item)) problems.push(`npc ${id} combat fears: names no item “${c.fears.item}”`);
     }
+    checkDescriptionScript(npc.descriptionScript, `npc ${id}`);
     for (const held of npc.holds ?? []) if (!isItem(held)) problems.push(`npc ${id} holds: no item “${held}”`);
     for (const d of npc.descriptions ?? []) checkCondition(d.if, `npc ${id} descriptions`);
     checkTable(npc.instead, 'instead', `npc ${id}`);
