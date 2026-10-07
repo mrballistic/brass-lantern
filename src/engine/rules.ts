@@ -54,7 +54,8 @@ export function findRule(
   reach: string[],
 ): Rule | null {
   if (phase === 'orders') {
-    const rules = (ids.actor && world.npcs[ids.actor]?.orders?.[verb]) || [];
+    const table = ids.actor ? world.npcs[ids.actor]?.orders : undefined;
+    const rules = table && Object.hasOwn(table, verb) ? table[verb] : [];
     return rules.find((rule) => ruleApplies(rule, ids.indirect ?? ids.target, reach, world, state, undefined, ids.prep)) ?? null;
   }
   type Role = 'target' | 'indirect' | 'vehicle' | undefined;

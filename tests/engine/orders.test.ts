@@ -57,6 +57,8 @@ const expectMiss = (s: GameState, input: string, line?: string, world: World = w
   const before = JSON.stringify(s);
   const r = run(s, input, world);
   expect(r.understood).toBe(false);
+  // A miss never ends the line: the store retries it, and the retry decides.
+  expect(r.stopLine).toBeUndefined();
   if (line) expect(r.lines).toEqual([line]);
   expect(JSON.stringify(s)).toBe(before);
   return r;
@@ -82,6 +84,7 @@ describe('orders (6a)', () => {
     const before = JSON.stringify(s);
     const north = execute(fallbackParse('robot, go north', w.verbs)!, { world: w, state: s });
     expect(north.understood).toBe(false);
+    expect(north.stopLine).toBeUndefined();
     expect(north.lines).toEqual(['robot ignores you.']);
     expect(JSON.stringify(s)).toBe(before);
   });
@@ -204,12 +207,28 @@ describe('orders (6a)', () => {
     expect(s.locations.sock).toBe('bedroom');
   });
 
-  it('an order ends the rest of the line', () => {
+  it('an understood order to a character with orders or obeys ends the rest of the line; others are as before', () => {
     const s = stateWith(w, { room: 'bedroom' });
     s.npcs = { robot: { room: 'bedroom' } };
     expect(run(s, 'robot, take sock').stopLine).toBe(true);
-    expect(run(s, 'robot, dance').stopLine).toBe(true);
-    expect(run(stateWith(w, { room: 'shed' }), 'guard, go north').stopLine).toBe(true);
+    expect(run(s, 'robot, dance a jig').stopLine).toBe(true);
+    const guard = run(stateWith(w, { room: 'shed' }), 'guard, go north');
+    expect(guard.lines).toEqual(['guard ignores you.']);
+    expect(guard.stopLine).toBeUndefined();
+  });
+
+  it('a first word that is an Object prototype name is no rule key', () => {
+    const s = stateWith(w, { room: 'bedroom' });
+    s.npcs = { robot: { room: 'bedroom' } };
+    // Like any refused order (a bare word reads as GO, a missed exit; the rest are understood
+    // refusals that take a turn): no throw, and nothing else changes.
+    const world = (st: GameState) => JSON.stringify([st.locations, st.itemState, st.flags, st.vars, st.npcs, st.currentRoom, st.rng]);
+    for (const input of ['robot, constructor', 'robot, tostring sock', 'robot, valueof', 'robot, hasownproperty me']) {
+      const before = world(s);
+      const r = run(s, input);
+      expect(r.lines).toEqual(['robot ignores you.']);
+      expect(world(s)).toBe(before);
+    }
   });
 
   it('an order to a thing or someone absent is a miss', () => {

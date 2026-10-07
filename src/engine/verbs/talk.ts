@@ -39,18 +39,22 @@ export function handleAsk(action: ParsedAction, world: World, state: GameState):
  * its refuseOrder line or “X ignores you.” Every order ends the rest of the line.
  */
 export function handleOrder(action: ParsedAction, world: World, state: GameState): EngineResult {
-  return { ...order(action, world, state), stopLine: true };
-}
-
-function order(action: ParsedAction, world: World, state: GameState): EngineResult {
   if (!action.target) needObject();
   const npc = matchNpc(action.target, world, state);
   if (!npc) return miss(`There is no “${action.target}” here.`);
   const person = world.npcs[npc];
+  const result = order(npc, action, world, state);
+  // Only an understood order to someone who can take orders ends the line. A miss never
+  // does (the store retries it), and characters without orders or obeys answer as they always have.
+  return result.understood !== false && (person.orders || person.obeys) ? { ...result, stopLine: true } : result;
+}
+
+function order(npc: string, action: ParsedAction, world: World, state: GameState): EngineResult {
+  const person = world.npcs[npc];
   const refusal = person.refuseOrder ?? `${person.name} ignores you.`;
   // Only the character addressed answers, and for its order rules the order's words stay
   // words: they aren't resolved as things (“give me the key” mustn't ask which key).
-  setCommand(state, { verb: 'order', target: npc, words: { target: action.target, indirect: action.indirect } });
+  setCommand(state, { verb: 'order', target: npc, words: { target: action.target!, indirect: action.indirect } });
   const rule = findRule(world, state, 'instead', 'order', { target: null, indirect: null, room: state.currentRoom, npcs: [npc] }, []);
   if (rule) return applyRule(rule, world, state);
   if (!person.orders && !person.obeys) return ok([refusal]);
@@ -72,7 +76,9 @@ function order(action: ParsedAction, world: World, state: GameState): EngineResu
   }
   // Rules are keyed by the inner verb, or by the word typed (PUSH reads as USE, but `orders.push` answers it).
   const typed = action.indirect!.trim().split(/\s+/)[0].toLowerCase();
-  const verb = person.orders?.[inner.action] || !person.orders?.[typed] ? inner.action : typed;
+  // Own keys only: “constructor” typed first must not find Object's.
+  const has = (key: string) => Boolean(person.orders && Object.hasOwn(person.orders, key));
+  const verb = has(inner.action) || !has(typed) ? inner.action : typed;
   setCommand(state, {
     verb,
     actor: npc,
