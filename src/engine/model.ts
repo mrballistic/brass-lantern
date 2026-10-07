@@ -113,6 +113,12 @@ export function isWater(world: World, state: GameState, roomId: string = state.c
   return typeof w === 'string' ? evaluateCondition(w, state, world) : Boolean(w);
 }
 
+/** Is the room air (Zork II's balloon)? Same shape as `isWater`. */
+export function isAir(world: World, state: GameState, roomId: string = state.currentRoom): boolean {
+  const a = world.rooms[roomId]?.air;
+  return typeof a === 'string' ? evaluateCondition(a, state, world) : Boolean(a);
+}
+
 /** Carried, directly or inside something carried (Zork's HELD?). */
 export function isHeld(state: GameState, id: string): boolean {
   return isInside(state, id, PLAYER);

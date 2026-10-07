@@ -35,6 +35,8 @@ export interface Room {
   tags?: string[];
   /** Water (Zork's NONLANDBIT): only a water vehicle goes here. A condition for rooms that change (a reservoir that drains). */
   water?: boolean | string;
+  /** Air (Zork II's balloon): only an air vehicle goes here. A condition for rooms that change. */
+  air?: boolean | string;
   /** Takes input here before it's parsed, while `if` holds (Zork's Loud Room). See Capture. */
   capture?: Capture;
   /** Run at the end of every command here, after the action and before the clock (Zork's M-END). */
@@ -138,7 +140,13 @@ export interface Item {
   /** Something to fight with. */
   weapon?: boolean;
   /** Something the player can get into and travel in (Zork's VEHBIT; `travels` is VTYPE). */
-  vehicle?: { travels: 'water' };
+  vehicle?: {
+    /** What it moves through: water, air, or nothing (a chair: it never moves while you're in it). */
+    travels: 'water' | 'air' | 'none';
+    /** A line printed as it leaves with you aboard (before the new room), and as it arrives (after). */
+    leave?: string;
+    arrive?: string;
+  };
   /** A vehicle's end routines: while the player is aboard, they run instead of the room's (Zork's M-END). */
   onEnd?: Array<{ if: string; then: string | EventStep[] }>;
   /** BURN can set it alight (Zork's BURNBIT). */
@@ -340,6 +348,8 @@ export type Effect =
   /** Puts the player in a vehicle that's in the room, or takes them out. */
   | { board: string }
   | { disembark: true }
+  /** Moves a vehicle to a room, with the player if aboard (not a player move: followers stay). */
+  | { moveVehicle: string; to: string }
   /** Keeps an item where it is but out of listings, or lists it again (Zork's NDESCBIT, set in play: the tied rope). */
   | { unlist: string }
   /** Marks an item handled (Zork's TOUCHBIT): its first-seen sentence is over. */

@@ -63,6 +63,7 @@ setEffectHooks({
     const refused = vehicleRefusal(room, world, state);
     return refused ? [refused] : enterRoom(room, world, state, opts);
   },
+  enter: (room, world, state) => enterRoom(room, world, state),
   die: (cause, world, state) => die(cause, world, state, enterRoom),
   end: (id, world, state) => runEnding(id, world, state),
   look: (world, state) => handleLook(world, state).lines,

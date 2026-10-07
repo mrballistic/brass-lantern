@@ -325,3 +325,93 @@ describe('things on a floor-like surface while aboard (fast follow)', () => {
     expect(run(s, { action: 'look' }, w).lines).toContain('There is a cup here. (outside the raft)');
   });
 });
+
+describe('vehicle kinds beyond water', () => {
+  const skyWorld: World = {
+    ...boatWorld,
+    rooms: {
+      ...boatWorld.rooms,
+      yard: {
+        ...boatWorld.rooms.yard,
+        exits: { ...boatWorld.rooms.yard.exits, up: 'sky', down: 'cellar' },
+        items: [...boatWorld.rooms.yard.items, 'balloon', 'chair'],
+      },
+      cellar: { ...boatWorld.rooms.cellar, exits: { up: 'yard' } },
+      sky: { name: 'Sky', description: 'Open sky.', exits: { down: 'yard', east: 'sky2' }, items: [], npcs: [], onEnter: [], air: true },
+      sky2: { name: 'Far Sky', description: 'More open sky.', exits: { west: 'sky' }, items: [], npcs: [], onEnter: [], air: true },
+    },
+    items: {
+      ...boatWorld.items,
+      balloon: {
+        name: 'balloon', description: 'A balloon.', portable: false, tags: [], container: { open: true },
+        vehicle: { travels: 'air', leave: 'The balloon lifts off.', arrive: 'The balloon bobs gently.' },
+      },
+      chair: { name: 'chair', description: 'A chair.', portable: false, tags: [], vehicle: { travels: 'none' }, container: { open: true } },
+    },
+  };
+  const go = (s: ReturnType<typeof stateWith>, dir: string) => run(s, { action: 'go', target: dir }, skyWorld);
+
+  it('an air vehicle flies from land into the air, between air rooms and back down', () => {
+    const s = stateWith(skyWorld, { room: 'yard' });
+    s.aboard = 'balloon';
+    const up = go(s, 'up').lines;
+    expect(s.currentRoom).toBe('sky');
+    expect(s.locations.balloon).toBe('sky');
+    expect(up).toEqual(['The balloon lifts off.', '📍 Sky, in the balloon', 'Open sky.', 'The balloon bobs gently.']);
+    go(s, 'east');
+    expect(s.currentRoom).toBe('sky2');
+    go(s, 'west');
+    go(s, 'down');
+    expect(s.currentRoom).toBe('yard');
+    expect(s.locations.balloon).toBe('yard');
+    expect(s.aboard).toBe('balloon');
+  });
+  it('an air vehicle will not go overland or onto water', () => {
+    const s = stateWith(skyWorld, { room: 'yard' });
+    s.aboard = 'balloon';
+    expect(go(s, 'north').lines[0]).toBe('You can’t go there in a balloon.');
+    expect(go(s, 'down').lines[0]).toBe('You can’t go there in a balloon.');
+    expect(s.currentRoom).toBe('yard');
+  });
+  it('a raft will not enter an air room, and a person on foot cannot either', () => {
+    const s = stateWith(skyWorld, { room: 'yard' });
+    s.aboard = 'raft';
+    expect(go(s, 'up').lines).toEqual(['You can’t go there in a raft.']);
+    const f = stateWith(skyWorld, { room: 'yard' });
+    expect(go(f, 'up').lines).toEqual(['You can’t go there without a vehicle.']);
+    expect(f.currentRoom).toBe('yard');
+  });
+  it('a vehicle that does not travel refuses every move while aboard', () => {
+    const s = stateWith(skyWorld, { room: 'yard' });
+    s.aboard = 'chair';
+    for (const dir of ['north', 'up', 'down', 'inside']) expect(go(s, dir).lines[0]).toBe('You can’t go there in a chair.');
+    expect(s.currentRoom).toBe('yard');
+  });
+  it('MOVE VEHICLE with the player aboard carries them, describes the room and prints arrive', () => {
+    const s = stateWith(skyWorld, { room: 'yard' });
+    s.aboard = 'balloon';
+    const lines = runSteps([{ moveVehicle: 'balloon', to: 'sky' }], skyWorld, s);
+    expect(lines).toEqual(['The balloon lifts off.', '📍 Sky, in the balloon', 'Open sky.', 'The balloon bobs gently.']);
+    expect(s.currentRoom).toBe('sky');
+    expect(s.locations.balloon).toBe('sky');
+    expect(s.aboard).toBe('balloon');
+  });
+  it('MOVE VEHICLE with the player not aboard is silent unless they see it leave or arrive', () => {
+    const away = stateWith(skyWorld, { room: 'sky2' });
+    expect(runSteps([{ moveVehicle: 'balloon', to: 'sky' }], skyWorld, away)).toEqual([]);
+    expect(away.locations.balloon).toBe('sky');
+    const watching = stateWith(skyWorld, { room: 'yard' });
+    expect(runSteps([{ moveVehicle: 'balloon', to: 'sky' }], skyWorld, watching)).toEqual(['The balloon lifts off.']);
+    expect(watching.currentRoom).toBe('yard');
+    const meeting = stateWith(skyWorld, { room: 'sky' });
+    expect(runSteps([{ moveVehicle: 'balloon', to: 'sky' }], skyWorld, meeting)).toEqual(['The balloon bobs gently.']);
+  });
+  it('MOVE VEHICLE is not a player move: followers stay behind', () => {
+    const w: World = { ...skyWorld, npcs: { ...skyWorld.npcs, neighbor: { ...skyWorld.npcs.neighbor, follows: 'flag:never_set' } } };
+    const s = stateWith(w, { room: 'yard' });
+    s.flags.following_neighbor = true;
+    s.aboard = 'balloon';
+    runSteps([{ moveVehicle: 'balloon', to: 'sky' }], w, s);
+    expect(s.npcs?.neighbor?.room ?? 'yard').toBe('yard');
+  });
+});

@@ -3,7 +3,7 @@ import type { Exit, World } from '@/types/world';
 import { evaluateCondition } from '../conditions';
 import { COMPASS, describeRoom, exitList, exitTarget } from '../describe';
 import { fuzzyMatchExit } from '../fuzzy';
-import { isAwake, isLit, isNpcHidden, isOpen, isWater, matchItem, nextPlacing, npcStateOf, npcsIn, pickItem, visibleItems } from '../model';
+import { isAwake, isLit, isNpcHidden, isOpen, isAir, isWater, matchItem, nextPlacing, npcStateOf, npcsIn, pickItem, visibleItems } from '../model';
 import { handleBoard } from './vehicle';
 import { runEventKey, runSteps, turnHalted } from '../effects';
 import { nextRandom } from '../rng';
@@ -47,7 +47,16 @@ export function moveFollowers(fromRoom: string, world: World, state: GameState):
 
 const GENERIC_DENIAL = 'Something stops you. The story isn’t ready for you to go there yet.';
 
+/** A player's move into a room; aboard a vehicle with `leave`/`arrive` lines, they frame the new room. */
 export function enterRoom(targetId: string, world: World, state: GameState, opts: { quiet?: boolean } = {}): string[] {
+  const vehicle = state.aboard ? world.items[state.aboard]?.vehicle : undefined;
+  const from = state.currentRoom;
+  const lines = enterRoomInner(targetId, world, state, opts);
+  if (!vehicle || opts.quiet || state.currentRoom === from || state.currentRoom !== targetId) return lines;
+  return [...(vehicle.leave ? [vehicle.leave] : []), ...lines, ...(vehicle.arrive && !state.gameOver ? [vehicle.arrive] : [])];
+}
+
+function enterRoomInner(targetId: string, world: World, state: GameState, opts: { quiet?: boolean }): string[] {
   const target = world.rooms[targetId];
   if (!target) return ['There is nothing in that direction.'];
   if (target.requires && !evaluateCondition(target.requires, state, world)) {
@@ -113,12 +122,21 @@ function followExit(exit: string | Exit, world: World, state: GameState): Engine
   return ok(lines, state.currentRoom === to || passing.length > 0);
 }
 
-/** Zork's GOTO: water needs a water vehicle; a vehicle won't go overland. Null when the move may happen. */
+/**
+ * Zork's GOTO: a water room needs a water vehicle, an air room an air vehicle; a vehicle won't go overland
+ * (it only comes ashore, or down, from a room of its own kind); a vehicle that doesn't travel never moves.
+ * Null when the move may happen.
+ */
 export function vehicleRefusal(to: string, world: World, state: GameState): string | null {
   const vehicle = state.aboard ? world.items[state.aboard] : undefined;
   const toWater = isWater(world, state, to);
-  if (!vehicle && toWater) return 'You can’t go there without a vehicle.';
-  if (vehicle && ((!toWater && !isWater(world, state)) || (toWater && vehicle.vehicle?.travels !== 'water'))) return `You can’t go there in a ${vehicle.name}.`;
+  const toAir = isAir(world, state, to);
+  if (!vehicle) return toWater || toAir ? 'You can’t go there without a vehicle.' : null;
+  const travels = vehicle.vehicle?.travels;
+  const refusal = `You can’t go there in a ${vehicle.name}.`;
+  if (travels === 'none') return refusal;
+  if ((toWater && travels !== 'water') || (toAir && travels !== 'air')) return refusal;
+  if (!toWater && !toAir && !isWater(world, state) && !isAir(world, state)) return refusal;
   return null;
 }
 

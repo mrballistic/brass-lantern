@@ -14,7 +14,7 @@ type Hook = (arg: string, world: World, state: GameState, opts?: { quiet?: boole
  * Effects that need other engine modules (moving the player, death, endings)
  * are wired in by engine.ts, so this module doesn't import them in a cycle.
  */
-const hooks: { go?: Hook; die?: Hook; end?: Hook; look?: (world: World, state: GameState) => string[] } = {};
+const hooks: { go?: Hook; die?: Hook; end?: Hook; look?: (world: World, state: GameState) => string[]; enter?: Hook } = {};
 
 export function setEffectHooks(h: typeof hooks): void {
   Object.assign(hooks, h);
@@ -189,6 +189,19 @@ function runEffect(e: Effect, world: World, state: GameState): { lines: string[]
     return { lines: [] };
   }
   if ('disembark' in e) return void (state.aboard = undefined), { lines: [] };
+  if ('moveVehicle' in e) {
+    const vehicle = world.items[e.moveVehicle]?.vehicle;
+    if (!vehicle || !world.rooms[e.to]) return { lines: [] };
+    // Aboard, the player goes too, as on any arrival (but it isn't a player move: nobody follows).
+    if (state.aboard === e.moveVehicle) return { lines: hooks.enter ? hooks.enter(e.to, world, state) : [] };
+    const here = state.currentRoom;
+    const from = state.locations[e.moveVehicle];
+    moveItem(state, e.moveVehicle, e.to);
+    const lines: string[] = [];
+    if (from === here && e.to !== here && vehicle.leave) lines.push(vehicle.leave);
+    if (e.to === here && from !== here && vehicle.arrive) lines.push(vehicle.arrive);
+    return { lines };
+  }
   // Zork's TOUCHBIT: handled, so its first-seen sentence is over.
   if ('touch' in e) return void (itemState(state, e.touch).moved = true), { lines: [] };
   if ('unlist' in e) return void (itemState(state, e.unlist).unlisted = true), { lines: [] };
