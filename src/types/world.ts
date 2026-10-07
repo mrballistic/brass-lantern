@@ -150,10 +150,10 @@ export interface Item {
     /** The terrains it can enter. `'water'`, `'air'` and `'none'` (a chair: it never moves while you're in it) are the legacy spellings of `['water']`, `['air']` and `[]`. */
     travels: string | string[];
     /** Terrains it can come to rest on from one it travels (the boat reaching the shore, the balloon landing). Default `['land']` unless it travels on land. It can't cross from one of these to another. */
-    lands?: string[];
-    /** Said as it comes onto a `lands` terrain from a travelled one the player can't walk on (GOTO's line). Unset: a water vehicle says “The <name> comes to a rest on the shore.” and a blank line; others say nothing. */
-    landing?: string | string[];
-    /** Said as it leaves with you aboard (before the new room), and as it arrives (after). A list picks one line with the seeded generator; `{ script }` says the named script's `say` lines. */
+    restsOn?: string[];
+    /** Said as it comes onto a `restsOn` terrain from a travelled one the player can't walk on (GOTO's line); the same forms as `leave`. Unset: a water vehicle says “The <name> comes to a rest on the shore.” and a blank line; others say nothing. */
+    landing?: VehicleLine;
+    /** Said as it leaves with you aboard (worked out in the room being left, before the move), and as it arrives (after). A list picks one line with the seeded generator; `{ script }` says the named script's `say` lines. */
     leave?: VehicleLine;
     arrive?: VehicleLine;
     /** A world script whose `say` lines describe it from inside: after the room's description as you look around aboard, and after the name on a brief arrival, but not after a room its own `descriptionScript` described in full (Zork's vehicle M-LOOK in DESCRIBE-ROOM). */

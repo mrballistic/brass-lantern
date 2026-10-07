@@ -138,8 +138,8 @@ export function travelTerrains(vehicle: NonNullable<Item['vehicle']>): string[] 
 }
 
 /** The terrains a vehicle comes to rest on from one it travels: `land`, unless it travels on land itself. */
-export function landTerrains(vehicle: NonNullable<Item['vehicle']>): string[] {
-  return vehicle.lands ?? (travelTerrains(vehicle).includes('land') ? [] : ['land']);
+export function restTerrains(vehicle: NonNullable<Item['vehicle']>): string[] {
+  return vehicle.restsOn ?? (travelTerrains(vehicle).includes('land') ? [] : ['land']);
 }
 
 /** Carried, directly or inside something carried (Zork's HELD?). */

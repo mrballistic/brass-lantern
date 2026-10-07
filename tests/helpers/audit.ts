@@ -154,6 +154,11 @@ export function auditWorld(world: World): string[] {
   }
   const terrains = new Set(['land', ...Object.keys(world.rooms).flatMap((r) => (world.rooms[r].terrain ? [world.rooms[r].terrain!] : [])), ...(Object.values(world.rooms).some((r) => r.water) ? ['water'] : []), ...(Object.values(world.rooms).some((r) => r.air) ? ['air'] : [])]);
   for (const name of world.onFoot ?? []) if (!terrains.has(name)) problems.push(`onFoot names terrain “${name}” that no room has`);
+  // The other way round: a room's terrain that no vehicle's `travels` or `restsOn`, nor `onFoot`, names is a typo too.
+  const named = new Set([...(world.onFoot ?? []), ...Object.values(world.items).flatMap((i) => (i.vehicle ? [...travelTerrains(i.vehicle), ...(i.vehicle.restsOn ?? [])] : []))]);
+  for (const [id, room] of Object.entries(world.rooms)) {
+    if (room.terrain && room.terrain !== 'land' && !named.has(room.terrain)) problems.push(`room ${id}: terrain “${room.terrain}” is named by no vehicle’s travels or restsOn, nor by onFoot`);
+  }
   const checkDescriptionScript = (name: string | undefined, where: string, field = 'descriptionScript') => {
     if (name !== undefined && !world.scripts?.[name]) problems.push(`${where}: ${field} names no script “${name}”`);
     else if (name !== undefined) {
@@ -169,12 +174,12 @@ export function auditWorld(world: World): string[] {
     checkDescriptionScript(item.roomDescriptionScript, `item ${id}`, 'roomDescriptionScript');
     checkDescriptionScript(item.vehicle?.lookScript, `item ${id} vehicle`, 'lookScript');
     if (item.vehicle) {
-      for (const field of ['leave', 'arrive'] as const) {
+      for (const field of ['leave', 'arrive', 'landing'] as const) {
         const line = item.vehicle[field];
-        if (line && typeof line === 'object' && !Array.isArray(line) && !world.scripts?.[line.script]) problems.push(`item ${id} vehicle: ${field} names no script “${line.script}”`);
+        if (line && typeof line === 'object' && !Array.isArray(line)) checkDescriptionScript(line.script, `item ${id} vehicle`, field);
       }
       // A terrain nobody has is a typo (`land` is everywhere by default).
-      for (const [field, names] of [['travels', travelTerrains(item.vehicle)], ['lands', item.vehicle.lands ?? []]] as const) {
+      for (const [field, names] of [['travels', travelTerrains(item.vehicle)], ['restsOn', item.vehicle.restsOn ?? []]] as const) {
         for (const name of names) if (!terrains.has(name)) problems.push(`item ${id} vehicle: ${field} names terrain “${name}” that no room has`);
       }
     }

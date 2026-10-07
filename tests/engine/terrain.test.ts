@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { runSteps } from '@/engine/effects';
 import { execute } from '@/engine/engine';
+import { conditionProblems, evaluateCondition } from '@/engine/conditions';
 import { terrainOf } from '@/engine/model';
+import { nextRandom } from '@/engine/rng';
 import type { ParsedAction } from '@/types/game';
 import type { Room, World } from '@/types/world';
 import { auditWorld } from '../helpers/audit';
@@ -118,12 +120,18 @@ describe('landing', () => {
     // Going up from the land says nothing of landing.
     expect(go(s, 'up', skyWorld).lines[0]).toBe('📍 Sky, in the balloon');
   });
-  it('an array landing prints its lines as given', () => {
-    const w: World = { ...skyWorld, items: { ...skyWorld.items, balloon: { ...skyWorld.items.balloon, vehicle: { travels: 'air', landing: ['Bump.', 'Thud.'] } } } };
-    const s = stateWith(w, { room: 'sky' });
-    s.locations.balloon = 'sky';
-    s.aboard = 'balloon';
-    expect(go(s, 'down', w).lines.slice(0, 2)).toEqual(['Bump.', 'Thud.']);
+  it('an array landing picks one line with the seed; a script landing says its say lines', () => {
+    const land = (landing: unknown, seed = 7) => {
+      const w: World = { ...skyWorld, scripts: { thud: () => [{ say: 'Thud.' }, { say: 'Again.' }] }, items: { ...skyWorld.items, balloon: { ...skyWorld.items.balloon, vehicle: { travels: 'air', landing } as never } } };
+      const s = stateWith(w, { room: 'sky' });
+      s.rng = seed;
+      s.locations.balloon = 'sky';
+      s.aboard = 'balloon';
+      return go(s, 'down', w).lines;
+    };
+    expect(land(['Bump.', 'Crunch.', 'Splat.'])).toEqual(land(['Bump.', 'Crunch.', 'Splat.']));
+    expect(new Set([1, 2, 3, 4, 5, 6, 7, 8].map((seed) => land(['Bump.', 'Crunch.', 'Splat.'], seed)[0]))).toEqual(new Set(['Bump.', 'Crunch.', 'Splat.']));
+    expect(land({ script: 'thud' }).slice(0, 3)).toEqual(['Thud.', 'Again.', '📍 Garage, in the balloon']);
   });
   it('a water vehicle with no landing says Zork’s shore line and a blank line; an air one says nothing', () => {
     const w: World = {
@@ -177,9 +185,8 @@ describe('leave and arrive forms', () => {
   it('moveVehicle uses the same forms', () => {
     const w = withLines({ script: 'roar' }, ['Sand sprays.']);
     const here = stateWith(w, { room: 'garage' });
-    const sink = { world: w, state: here };
-    expect(runSteps([{ moveVehicle: 'buggy', to: 'lot' }], w, sink.state)).toEqual(['Vroom.', 'Vroom vroom.']);
-    expect(runSteps([{ moveVehicle: 'buggy', to: 'garage' }], w, sink.state)).toEqual(['Sand sprays.']);
+    expect(runSteps([{ moveVehicle: 'buggy', to: 'lot' }], w, here)).toEqual(['Vroom.', 'Vroom vroom.']);
+    expect(runSteps([{ moveVehicle: 'buggy', to: 'garage' }], w, here)).toEqual(['Sand sprays.']);
   });
 });
 
@@ -189,15 +196,109 @@ describe('the audit and terrains', () => {
     expect(auditWorld(w).join('\n')).toContain('snad');
     expect(auditWorld(desert).filter((p) => p.includes('buggy'))).toEqual([]);
   });
-  it('flags a lands or onFoot terrain no room has, and a missing leave script', () => {
+  it('flags a restsOn or onFoot terrain no room has, and a missing leave script', () => {
     const w: World = {
       ...desert,
       onFoot: ['land', 'mud'],
-      items: { ...desert.items, buggy: { ...desert.items.buggy, vehicle: { travels: ['land', 'sand'], lands: ['moss'], leave: { script: 'nope' } } } },
+      items: { ...desert.items, buggy: { ...desert.items.buggy, vehicle: { travels: ['land', 'sand'], restsOn: ['moss'], leave: { script: 'nope' } } } },
     };
     const p = auditWorld(w).join('\n');
     expect(p).toContain('mud');
     expect(p).toContain('moss');
     expect(p).toContain('nope');
+  });
+});
+
+describe('leave is worked out in the room being left', () => {
+  const lw = (leave: unknown, extra: Partial<World> = {}): World => ({
+    ...desert,
+    ...extra,
+    scripts: { ...desert.scripts, whereFrom: (ctx) => [{ say: `Leaving ${ctx.world.rooms[ctx.room()].name}.` }] },
+    items: { ...desert.items, buggy: { ...desert.items.buggy, vehicle: { travels: ['land', 'sand'], leave } as never } },
+  });
+  it('a leave script sees the origin room', () => {
+    const w = lw({ script: 'whereFrom' });
+    const s = stateWith(w, { room: 'garage' });
+    s.aboard = 'buggy';
+    expect(go(s, 'east', w).lines[0]).toBe('Leaving Garage.');
+    expect(act(s, { action: 'look' }, w).lines.length).toBeGreaterThan(0);
+  });
+  it('moveVehicle’s leave also sees the room it leaves', () => {
+    const w = lw({ script: 'whereFrom' });
+    const s = stateWith(w, { room: 'garage' });
+    expect(runSteps([{ moveVehicle: 'buggy', to: 'lot' }], w, s)).toEqual(['Leaving Garage.']);
+  });
+  it('its draw comes before the grue’s', () => {
+    const lines = ['Rev.', 'Roar.', 'Vroom.'];
+    let seed = 1;
+    const draws = (n: number) => {
+      const t = { rng: seed } as never;
+      return Array.from({ length: n }, () => nextRandom(t));
+    };
+    while (draws(1)[0] - draws(2)[1] < 0.05) seed++;
+    const [r1, r2] = draws(2);
+    // The stumble fires only for a draw under `chance`: set it just over the second draw, under the first.
+    const w = lw(lines, {
+      darkness: { ...desert.darkness!, stumble: { chance: r2 * 100 + 0.001, then: [{ die: 'Grue.' }] } },
+      rooms: { ...desert.rooms, garage: { ...desert.rooms.garage, dark: true }, dune_1: { ...desert.rooms.dune_1, dark: true } },
+    });
+    const s = stateWith(w, { room: 'garage' });
+    s.rng = seed;
+    s.aboard = 'buggy';
+    const out = go(s, 'east', w).lines;
+    expect(out[0]).toBe(lines[Math.floor(r1 * 3)]);
+    expect(out.join('\n')).toContain('Grue.');
+  });
+});
+
+describe('edges of the terrain rule', () => {
+  const edge = (travels: string, terrain: Partial<Room>) => {
+    const w: World = {
+      ...desert,
+      rooms: { ...desert.rooms, lot: room('Lot', { south: 'garage' }), garage: room('Garage', { north: 'lot', up: 'pond' }, { ...terrain, items: ['buggy'] }), pond: room('Pond', { down: 'garage' }) },
+      items: { ...desert.items, buggy: { ...desert.items.buggy, vehicle: { travels } as never } },
+    };
+    const s = stateWith(w, { room: 'garage' });
+    s.aboard = 'buggy';
+    return go(s, 'north', w).lines[0];
+  };
+  it('a water vehicle in an air room is refused onto land', () => expect(edge('water', { air: true })).toBe('You can’t go there in a buggy.'));
+  it('an air vehicle in a water room is refused onto land', () => expect(edge('air', { water: true })).toBe('You can’t go there in a buggy.'));
+  it('a water vehicle in a water room still comes ashore', () => expect(edge('water', { water: true })).not.toBe('You can’t go there in a buggy.'));
+  it('a room with both water and air holding counts as water', () => {
+    const w: World = { ...desert, rooms: { ...desert.rooms, pond: room('Pond', {}, { water: true, air: true }) } };
+    expect(terrainOf(w, stateWith(w), 'pond')).toBe('water');
+  });
+});
+
+describe('the terrain condition and ctx.terrain', () => {
+  it('terrain:NAME tests the player’s room; terrain:NAME:ROOM another', () => {
+    const s = stateWith(desert, { room: 'dune_1' });
+    expect(evaluateCondition('terrain:sand', s, desert)).toBe(true);
+    expect(evaluateCondition('!terrain:land', s, desert)).toBe(true);
+    expect(evaluateCondition('terrain:water:pond', s, desert)).toBe(true);
+    expect(evaluateCondition('terrain:land:garage & terrain:sand:here', s, desert)).toBe(true);
+    expect(evaluateCondition('terrain:land:dune_2', s, desert)).toBe(false);
+  });
+  it('the audit checks its room', () => {
+    expect(conditionProblems('terrain:sand', desert)).toEqual([]);
+    expect(conditionProblems('terrain:sand:nowhere9', desert).join()).toContain('nowhere9');
+  });
+  it('ctx.terrain(room?) answers the same', () => {
+    const w: World = { ...desert, scripts: { t: (ctx) => [{ say: `${ctx.terrain()}/${ctx.terrain('pond')}` }] } };
+    const s = stateWith(w, { room: 'dune_1' });
+    expect(runSteps([{ script: 't' }], w, s)).toEqual(['sand/water']);
+  });
+});
+
+describe('more audit', () => {
+  it('flags a leave script with a step that is not a say', () => {
+    const w: World = { ...desert, scripts: { bad: () => [{ say: 'x' }, { set: 'f' }] }, items: { ...desert.items, buggy: { ...desert.items.buggy, vehicle: { travels: ['land', 'sand'], arrive: { script: 'bad' } } } } };
+    expect(auditWorld(w).join('\n')).toMatch(/arrive.*bad.*isn’t a say/);
+  });
+  it('flags a room terrain no list names', () => {
+    const w: World = { ...desert, rooms: { ...desert.rooms, lot: room('Lot', {}, { terrain: 'lava' }) } };
+    expect(auditWorld(w).join('\n')).toContain('lava');
+    expect(auditWorld(desert).join('\n')).not.toContain('sand');
   });
 });

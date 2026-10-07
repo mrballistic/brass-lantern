@@ -5,7 +5,7 @@ import { fallbackParse } from './parser';
 import { evaluateCondition } from './conditions';
 import { exitTarget } from './describe';
 import { fuzzyCandidates } from './fuzzy';
-import { childrenOf, isCarried, isHeld, isLit, isNpcHidden, isNpcIn, isOpen, isReachable, isWater, parentOf } from './model';
+import { childrenOf, isCarried, isHeld, isLit, isNpcHidden, isNpcIn, isOpen, isReachable, isWater, parentOf, terrainOf } from './model';
 import { nextRandom, roll } from './rng';
 
 // The code hatch: a world's own functions for behavior its data can't express.
@@ -51,6 +51,8 @@ export interface ScriptContext {
   aboard(): string | undefined;
   /** Is the room (default: the player's) water? */
   water(room?: string): boolean;
+  /** The terrain of the room (default: the player's): `land`, `water`, `air`, or the world's own. */
+  terrain(room?: string): string;
   /** Does the condition hold now? (The engine's own parser; scripts never parse conditions.) */
   test(condition: string): boolean;
   /** The room's exits the player could take now: the exit's `if` holds and its door is open. */
@@ -144,6 +146,7 @@ export function scriptSteps(name: string, arg: string | undefined, world: World,
     hidden: (id) => isNpcHidden(world, state, id),
     aboard: () => state.aboard,
     water: (room) => isWater(world, state, room ?? state.currentRoom),
+    terrain: (room) => terrainOf(world, state, room ?? state.currentRoom),
     test: (condition) => evaluateCondition(condition, state, world),
     exits: (room) => passableExits(world, state, room),
     resolve: (words, scope = 'here') => {

@@ -3,7 +3,7 @@ import type { World } from '@/types/world';
 import { currentScore } from './score';
 import { commandOf } from './scripts';
 import { weightOf } from './weight';
-import { isAlive, isAwake, isCarried, isHeld, isLit, isLocked, isNpcIn, isOn, isOpen, isReachable, isWater, npcsSeen, PLAYER } from './model';
+import { isAlive, isAwake, isCarried, isHeld, isLit, isLocked, isNpcIn, isOn, isOpen, isReachable, isWater, npcsSeen, PLAYER, terrainOf } from './model';
 
 /**
  * Evaluate a condition string against the current game state.
@@ -27,6 +27,7 @@ import { isAlive, isAwake, isCarried, isHeld, isLit, isLocked, isNpcIn, isOn, is
  *   direction:DIR   the direction typed (PUSH X NORTH)
  *   following:NPC  the character follows the player (the `follow` effect set its flag)
  *   lit:here, lit:ROOM  the room has light (needs `world`)
+ *   terrain:NAME, terrain:NAME:ROOM  the room (default the player's) is that kind of ground (`land`, `water`, `air`, or a world's own)
  * Unrecognized strings evaluate to false.
  */
 /** Typed words compare as lowercase whole words, punctuation and quotes ignored. */
@@ -133,6 +134,9 @@ export function evaluateCondition(condition: string, state: GameState, world?: W
     case 'aboard':
       result = value ? state.aboard === value : Boolean(state.aboard);
       break;
+    case 'terrain':
+      result = world ? terrainOf(world, state, !extra || extra === 'here' ? state.currentRoom : extra) === value : false;
+      break;
     case 'water':
       result = world ? isWater(world, state, !value || value === 'here' ? state.currentRoom : value) : false;
       break;
@@ -211,6 +215,10 @@ export function conditionProblems(condition: string, world: World): string[] {
         break;
       case 'aboard':
         if (value && !item(value)) noItem();
+        break;
+      case 'terrain':
+        if (!value) problems.push(`unknown condition “${body}”`);
+        if (extra !== undefined && extra !== 'here' && !room(extra)) problems.push(`“${body}” names no room “${extra}”`);
         break;
       case 'water':
         if (value && value !== 'here' && !room(value)) noRoom();

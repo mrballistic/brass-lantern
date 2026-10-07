@@ -32,6 +32,7 @@ Conditions are strings, used by `requires`, exits (`if`, `denials`), room `descr
 | `seen:NPC` | in the player's room and not hidden |
 | `aboard`, `aboard:ITEM` | the player is in a vehicle (that one) |
 | `water:here`, `water:ROOM` | the room is water now |
+| `terrain:NAME`, `terrain:NAME:ROOM` | the room (default: the player's) is that terrain now: `land`, `water`, `air`, or one of the world's own |
 | `!…` | negates any of the above |
 | `a & b` | every part holds: `in:break_room & !flag:lunch_freed` |
 

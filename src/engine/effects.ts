@@ -196,9 +196,9 @@ function runEffect(e: Effect, world: World, state: GameState): { lines: string[]
     if (state.aboard === e.moveVehicle) return { lines: hooks.enter ? hooks.enter(e.to, world, state) : [] };
     const here = state.currentRoom;
     const from = state.locations[e.moveVehicle];
+    // `leave` is worked out before it moves, in the room it leaves.
+    const lines = from === here && e.to !== here ? vehicleLine(vehicle.leave, world, state) : [];
     moveItem(state, e.moveVehicle, e.to);
-    const lines: string[] = [];
-    if (from === here && e.to !== here) lines.push(...vehicleLine(vehicle.leave, world, state));
     if (e.to === here && from !== here) lines.push(...vehicleLine(vehicle.arrive, world, state));
     return { lines };
   }
@@ -267,7 +267,7 @@ export function runEventKey(key: string, world: World, state: GameState): string
 /**
  * What a vehicle says as it leaves or arrives: a string as it is (drawing nothing), one line picked from a list
  * with the seeded generator, or a script's `say` lines. A script's other steps don't run: this is a line said
- * mid-move, like a description script's, and the script may draw from the generator as it likes.
+ * mid-move. Unlike a description script, its draws from the generator are kept.
  */
 export function vehicleLine(line: VehicleLine | undefined, world: World, state: GameState): string[] {
   if (line === undefined) return [];

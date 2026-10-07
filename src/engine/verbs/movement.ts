@@ -3,7 +3,7 @@ import type { Exit, World } from '@/types/world';
 import { evaluateCondition } from '../conditions';
 import { COMPASS, describeRoom, exitList, exitTarget } from '../describe';
 import { fuzzyMatchExit } from '../fuzzy';
-import { isAwake, isLit, isNpcHidden, isOpen, isWater, landTerrains, matchItem, nextPlacing, npcStateOf, npcsIn, onFootTerrains, pickItem, terrainOf, travelTerrains, visibleItems } from '../model';
+import { isAwake, isLit, isNpcHidden, isOpen, isWater, restTerrains, matchItem, nextPlacing, npcStateOf, npcsIn, onFootTerrains, pickItem, terrainOf, travelTerrains, visibleItems } from '../model';
 import { handleBoard } from './vehicle';
 import { runEventKey, runSteps, turnHalted, vehicleLine } from '../effects';
 import { nextRandom } from '../rng';
@@ -46,7 +46,7 @@ export function moveFollowers(fromRoom: string, world: World, state: GameState):
 }
 
 /**
- * GOTO's line as a vehicle comes onto a terrain it rests on (`lands`) from one it travels that the player can't
+ * GOTO's line as a vehicle comes onto a terrain it rests on (`restsOn`) from one it travels that the player can't
  * walk on. A vehicle's own `landing` says it; unset, a water vehicle coming off water says Zork's “comes to a rest
  * on the shore.” and a blank line, and anything else says nothing.
  */
@@ -55,8 +55,8 @@ function landingLines(from: string, targetId: string, world: World, state: GameS
   const vehicle = item?.vehicle;
   if (!item || !vehicle) return [];
   const to = terrainOf(world, state, targetId);
-  if (!landTerrains(vehicle).includes(to) || !travelTerrains(vehicle).includes(from) || onFootTerrains(world).includes(from)) return [];
-  if (vehicle.landing !== undefined) return Array.isArray(vehicle.landing) ? vehicle.landing : [vehicle.landing];
+  if (!restTerrains(vehicle).includes(to) || !travelTerrains(vehicle).includes(from) || onFootTerrains(world).includes(from)) return [];
+  if (vehicle.landing !== undefined) return vehicleLine(vehicle.landing, world, state);
   return from === 'water' ? [`The ${item.name} comes to a rest on the shore.`, ''] : [];
 }
 
@@ -65,10 +65,13 @@ const GENERIC_DENIAL = 'Something stops you. The story isn’t ready for you to 
 /** A player's move into a room; aboard a vehicle with `leave`/`arrive` lines, they frame the new room. */
 export function enterRoom(targetId: string, world: World, state: GameState, opts: { quiet?: boolean } = {}): string[] {
   const vehicle = state.aboard ? world.items[state.aboard]?.vehicle : undefined;
-  const from = state.currentRoom;
+  const target = world.rooms[targetId];
+  // The move is certain once the room exists and lets you in: `leave` is worked out now, in the room being left, before anything changes.
+  const going = vehicle && !opts.quiet && target && (!target.requires || evaluateCondition(target.requires, state, world));
+  const leaving = going ? vehicleLine(vehicle.leave, world, state) : [];
   const lines = enterRoomInner(targetId, world, state, opts);
-  if (!vehicle || opts.quiet || state.currentRoom === from || state.currentRoom !== targetId) return lines;
-  return [...vehicleLine(vehicle.leave, world, state), ...lines, ...(state.gameOver ? [] : vehicleLine(vehicle.arrive, world, state))];
+  if (!going) return lines;
+  return [...leaving, ...lines, ...(state.gameOver || state.currentRoom !== targetId ? [] : vehicleLine(vehicle.arrive, world, state))];
 }
 
 function enterRoomInner(targetId: string, world: World, state: GameState, opts: { quiet?: boolean }): string[] {
@@ -139,7 +142,7 @@ function followExit(exit: string | Exit, world: World, state: GameState): Engine
 
 /**
  * Zork's GOTO, over named terrains. On foot, a room's terrain must be one the player walks (`onFoot`). Aboard,
- * the vehicle enters the terrains it `travels`, and comes to rest on its `lands` terrains only from one it
+ * the vehicle enters the terrains it `travels`, and comes to rest on its `restsOn` terrains only from one it
  * travels (a vehicle won't go overland); one that travels nowhere never moves. Null when the move may happen.
  */
 export function vehicleRefusal(to: string, world: World, state: GameState): string | null {
@@ -147,7 +150,7 @@ export function vehicleRefusal(to: string, world: World, state: GameState): stri
   const target = terrainOf(world, state, to);
   if (!vehicle?.vehicle) return onFootTerrains(world).includes(target) ? null : 'You can’t go there without a vehicle.';
   const travels = travelTerrains(vehicle.vehicle);
-  const ok = travels.includes(target) || (landTerrains(vehicle.vehicle).includes(target) && travels.includes(terrainOf(world, state)));
+  const ok = travels.includes(target) || (restTerrains(vehicle.vehicle).includes(target) && travels.includes(terrainOf(world, state)));
   return ok ? null : `You can’t go there in a ${vehicle.name}.`;
 }
 
