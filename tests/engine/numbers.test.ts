@@ -44,12 +44,15 @@ describe('numbers (Zork’s INTNUM) (6a)', () => {
     expect(execute(fallbackParse('turn dial to 9')!, { world: dial, state: s }).lines).toEqual(['The dial only goes to 8.']);
   });
   it('the default is Zork’s V-TURN, and a thing where a number goes is not a number', () => {
-    const s = stateWith(fixtureWorld, { room: 'bedroom' });
-    const before = JSON.stringify(s);
-    const r = execute(fallbackParse('turn dial to lamp')!, { world: dial, state: stateWith(dial, { room: 'bedroom' }) });
+    const missed = stateWith(dial, { room: 'bedroom' });
+    const before = JSON.stringify(missed);
+    const r = execute(fallbackParse('turn dial to lamp')!, { world: dial, state: missed });
     expect(r.understood).toBe(false);
+    expect(JSON.stringify(missed)).toBe(before);
+    const s = stateWith(fixtureWorld, { room: 'bedroom' });
+    const beforeTake = JSON.stringify(s);
     expect(execute({ action: 'take', target: 'number', number: 4 }, { world: fixtureWorld, state: s }).understood).toBe(false);
-    expect(JSON.stringify(s)).toBe(before);
+    expect(JSON.stringify(s)).toBe(beforeTake);
     // No rule answers: V-TURN's default.
     const plain: World = { ...dial, rooms: { ...dial.rooms, bedroom: { ...dial.rooms.bedroom, instead: undefined } } };
     expect(execute(fallbackParse('turn dial to 4')!, { world: plain, state: stateWith(plain, { room: 'bedroom' }) }).lines).toEqual(['This has no effect.']);
