@@ -1,6 +1,6 @@
 # The demo game: Snack Attack
 
-A world is one TypeScript object: rooms, items, people, the lines they say, and the rules that join them. If you haven't written one yet, start with [a two-room game](./building-worlds/two-rooms); this page goes further, and builds **Snack Attack**, the tutorial world in [`src/worlds/tutorial.ts`](https://github.com/mrballistic/brass-lantern/blob/main/src/worlds/tutorial.ts), piece by piece. A test plays that exact file to the end, so everything here matches what the engine does.
+A world is one TypeScript object: rooms, items, people, the lines they say, and the rules that join them. If you haven't written one yet, start with [a two-room game](./building-worlds/two-rooms); this page goes further, and builds **Snack Attack**, the tutorial world in [`src/worlds/tutorial.ts`](https://github.com/mrballistic/brass-lantern/blob/main/packages/engine/src/worlds/tutorial.ts), piece by piece. A test plays that exact file to the end, so everything here matches what the engine does.
 
 The story: it's 12:01, your pretzels are stuck in the break room vending machine, and you need your badge, a heavy object, and maybe some advice from Gary in Accounts.
 

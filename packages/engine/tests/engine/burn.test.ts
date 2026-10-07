@@ -1,0 +1,104 @@
+import { describe, expect, it } from 'vitest';
+import { execute } from '../../src/engine/engine';
+import type { ParsedAction } from '../../src/types/game';
+import type { World } from '../../src/types/world';
+import { stateWith } from '../helpers/state';
+import { fixtureWorld } from '../fixtures/world';
+
+const w: World = {
+  ...fixtureWorld,
+  items: {
+    ...fixtureWorld.items,
+    book: { ...fixtureWorld.items.book, burnable: true },
+    match: { name: 'match', description: 'A match.', portable: true, tags: [], switchable: true, flaming: true },
+    torch: { name: 'torch', description: 'A torch.', portable: true, tags: [], flaming: true },
+    candle: { name: 'candle', description: 'A candle.', portable: true, tags: [], instead: { burn: [{ with: 'match', say: ['The candle is lit.'] }] } },
+    bolt: { name: 'bolt', description: 'A bolt.', portable: false, tags: [] },
+  },
+};
+type S = ReturnType<typeof stateWith>;
+const run = (s: S, a: ParsedAction) => execute(a, { world: w, state: s });
+
+describe('BURN', () => {
+  it('asks what with, taking no turn, when there is no tool', () => {
+    const s = stateWith(w, { room: 'living', carrying: ['book'] });
+    const r = run(s, { action: 'burn', target: 'book' });
+    expect(r.lines.join(' ')).toMatch(/What do you want to burn the book with\?/);
+    expect(s.moveCount).toBe(0);
+  });
+  it('refuses a tool that isn’t burning, in Zork’s words', () => {
+    const s = stateWith(w, { room: 'living', carrying: ['book', 'match'] });
+    expect(run(s, { action: 'burn', target: 'book', indirect: 'match' }).lines).toEqual(['With a match??!?']);
+  });
+  it('burns a burnable thing on the floor with a lit tool', () => {
+    const s = stateWith(w, { room: 'living', carrying: ['match'] });
+    s.locations.book = 'living';
+    s.itemState.match = { on: true };
+    expect(run(s, { action: 'burn', target: 'book', indirect: 'match' }).lines).toEqual(['The book catches fire and is consumed.']);
+    expect(s.locations.book).toBeNull();
+  });
+  it('kills a player holding what burns', () => {
+    const s = stateWith(w, { room: 'living', carrying: ['book', 'torch'] });
+    const r = run(s, { action: 'burn', target: 'book', indirect: 'torch' });
+    expect(r.lines[0]).toBe('The book catches fire. Unfortunately, you were holding it at the time.');
+    expect(r.lines).toContain('**** You have died ****');
+    expect(s.currentRoom).toBe('bedroom');
+  });
+  it('refuses what can’t burn', () => {
+    const s = stateWith(w, { room: 'living', carrying: ['torch'] });
+    s.locations.bolt = 'living';
+    expect(run(s, { action: 'burn', target: 'bolt', indirect: 'torch' }).lines).toEqual(['You can’t burn a bolt.']);
+  });
+  it('lets a rule answer first', () => {
+    const s = stateWith(w, { room: 'living', carrying: ['candle', 'match'] });
+    expect(run(s, { action: 'burn', target: 'candle', indirect: 'match' }).lines).toEqual(['The candle is lit.']);
+  });
+});
+
+describe('TURN and PLUG with a tool', () => {
+  it('have no effect without a rule', () => {
+    const s = stateWith(w, { room: 'shed', carrying: ['match'] });
+    s.locations.bolt = 'shed';
+    const infocom: World = { ...w, style: 'infocom' };
+    expect(execute({ action: 'turn', target: 'bolt', indirect: 'match' }, { world: infocom, state: s }).lines).toEqual(['This has no effect.']);
+    expect(run(s, { action: 'plug', target: 'bolt', indirect: 'match' }).lines).toEqual(['This has no effect.']);
+  });
+  it('TURN X WITH Y with no rule has no effect in brass style too, as before 6a (only TURN X TO N misses)', () => {
+    const s = stateWith(w, { room: 'shed', carrying: ['match'] });
+    s.locations.bolt = 'shed';
+    const r = run(s, { action: 'turn', target: 'bolt', indirect: 'match' });
+    expect(r.understood).not.toBe(false);
+    expect(r.lines).toEqual(['This has no effect.']);
+    expect(s.moveCount).toBe(1);
+  });
+  it('TURN ON with a tool ignores the tool', () => {
+    const s = stateWith(w, { room: 'living', carrying: ['lamp', 'match'] });
+    run(s, { action: 'turn_on', target: 'lamp', indirect: 'match' });
+    expect(s.itemState.lamp?.on).toBe(true);
+  });
+});
+
+describe('BURN’s refusal in brass (fast follow)', () => {
+  it('uses the right article', async () => {
+    const { fixtureWorld } = await import('../fixtures/world');
+    const { stateWith } = await import('../helpers/state');
+    const { execute } = await import('../../src/engine/engine');
+    const w = { ...fixtureWorld, items: { ...fixtureWorld.items, apple: { name: 'apple', description: '', portable: true, tags: [] }, torch2: { name: 'torch', description: '', portable: true, tags: [], flaming: true, light: true, switchable: true } } };
+    const s = stateWith(w, { room: 'bedroom', carrying: ['apple'] });
+    expect(execute({ action: 'burn', target: 'bed', indirect: 'apple' }, { world: w, state: s }).lines.join(' ')).toContain('an apple');
+  });
+});
+
+describe('BURN’s scopes, Infocom style (fast follow)', () => {
+  it('the flame must be held; a character can’t be burned', async () => {
+    const { fixtureWorld } = await import('../fixtures/world');
+    const { stateWith } = await import('../helpers/state');
+    const { execute } = await import('../../src/engine/engine');
+    const w = { ...fixtureWorld, style: 'infocom' as const, items: { ...fixtureWorld.items, brand: { name: 'torch', description: '', portable: true, tags: [], flaming: true } } };
+    const s = stateWith(w, { room: 'shed' });
+    s.locations.brand = 'shed';
+    expect(execute({ action: 'burn', target: 'guard', indirect: 'torch' }, { world: w, state: s }).lines).toEqual(['You don’t have the torch.']);
+    s.locations.brand = 'player';
+    expect(execute({ action: 'burn', target: 'guard', indirect: 'torch' }, { world: w, state: s }).lines).toEqual(['You can’t burn a guard.']);
+  });
+});

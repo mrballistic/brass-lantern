@@ -1,0 +1,27 @@
+import { defineConfig } from 'vitest/config';
+import vue from '@vitejs/plugin-vue';
+
+export default defineConfig({
+  plugins: [vue()],
+  test: {
+    // Files that need a DOM say so with a `// @vitest-environment happy-dom`
+    // comment: creating happy-dom for every file was most of the run.
+    environment: 'node',
+    globals: true,
+    // Every test runs with the scripts' state freeze on, as the app does in development.
+    setupFiles: ['tests/setup.ts'],
+    include: ['tests/**/*.test.ts'],
+    exclude: ['node_modules', 'dist'],
+    coverage: {
+      provider: 'v8',
+      include: ['src/**/*.{ts,vue}'],
+      exclude: ['src/**/*.d.ts'],
+      thresholds: {
+        lines: 80,
+        functions: 80,
+        statements: 80,
+        branches: 75,
+      },
+    },
+  },
+});

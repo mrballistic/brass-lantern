@@ -5,8 +5,15 @@ import vue from 'eslint-plugin-vue';
 
 export default tseslint.config(
   {
-    // server/ is its own package with its own lint run.
-    ignores: ['dist/**', 'coverage/**', 'server/**', 'node_modules/**', 'docs/.vitepress/cache/**', 'docs/.vitepress/dist/**', 'src/zmachine/vendor/**'],
+    // packages/server has its own eslint.config.js, which ESLint uses for its files.
+    ignores: [
+      '**/dist/**',
+      '**/coverage/**',
+      '**/node_modules/**',
+      'docs/.vitepress/cache/**',
+      'docs/.vitepress/dist/**',
+      'packages/engine/src/zmachine/vendor/**',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -20,8 +27,10 @@ export default tseslint.config(
   },
   {
     languageOptions: {
-      // __APP_VERSION__ is injected by vite.config.ts (see src/env.d.ts).
+      // __APP_VERSION__ is injected by apps/site/vite.config.ts (see apps/site/src/env.d.ts).
       globals: { ...globals.browser, ...globals.node, __APP_VERSION__: 'readonly' },
+      // Two configs in the repo (this and packages/server's), so name the root.
+      parserOptions: { tsconfigRootDir: import.meta.dirname },
     },
     rules: {
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],

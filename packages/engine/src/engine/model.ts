@@ -1,0 +1,444 @@
+import type { GameState, NpcState, Place } from '../types/game';
+import type { Item, World } from '../types/world';
+import { evaluateCondition } from './conditions';
+import { fuzzyCandidates, fuzzyMatch, isSelfWord, namesSelf } from './fuzzy';
+
+/** The place that means “carried by the player”. Reserved: no room or item may use it. */
+export const PLAYER = 'player';
+
+/** Every item's starting parent: rooms' `items`, then items' `contains`. Unlisted items are offstage. */
+export function initialLocations(world: World): Record<string, Place> {
+  const loc: Record<string, Place> = {};
+  for (const id of Object.keys(world.items)) loc[id] = null;
+  for (const [roomId, room] of Object.entries(world.rooms)) {
+    // First listing wins; a fixed item listed again elsewhere is also present there (fixturesIn).
+    for (const id of room.items) if (loc[id] === null) loc[id] = roomId;
+  }
+  for (const [id, item] of Object.entries(world.items)) {
+    for (const child of item.contains ?? []) loc[child] = id;
+  }
+  for (const [id, npc] of Object.entries(world.npcs)) {
+    for (const held of npc.holds ?? []) loc[held] = id;
+  }
+  return loc;
+}
+
+/**
+ * Is a character in this room? Until something moves it, a character is in
+ * every room that lists it (Office Space's Lumbergh is in three); once moved,
+ * it's in one place. Dead or gone, it's nowhere.
+ */
+export function isNpcIn(world: World, state: GameState, id: string, roomId: string): boolean {
+  const s = state.npcs?.[id];
+  if (s?.strength === 0) return false;
+  if (s && s.room !== undefined) return s.room === roomId;
+  return world.rooms[roomId]?.npcs.includes(id) ?? false;
+}
+
+/** The characters in a room: the room's own list order, then any who arrived. */
+export function npcsIn(world: World, state: GameState, roomId: string): string[] {
+  const here = Object.keys(world.npcs).filter((id) => isNpcIn(world, state, id, roomId));
+  const listed = world.rooms[roomId]?.npcs ?? [];
+  return [...listed.filter((id) => here.includes(id)), ...here.filter((id) => !listed.includes(id)).sort()];
+}
+
+/** The characters in a room the player can see: present and not hidden. */
+export function npcsSeen(world: World, state: GameState, roomId: string): string[] {
+  return npcsIn(world, state, roomId).filter((id) => !isNpcHidden(world, state, id));
+}
+
+/** Is a character unseen? Its state says, else whether it starts hidden. */
+export function isNpcHidden(world: World, state: GameState, id: string): boolean {
+  return state.npcs?.[id]?.hidden ?? world.npcs[id]?.hidden ?? false;
+}
+
+/** A filter for items that aren't hidden (the `hide` effect). */
+export const shown = (state: GameState) => (id: string) => !state.itemState[id]?.hidden;
+
+/** A filter for items a listing names: not scenery, not unlisted (the `unlist` effect), not hidden. */
+export const listable = (world: World, state: GameState) => (id: string) =>
+  !world.items[id]?.scenery && !state.itemState[id]?.unlisted && shown(state)(id);
+
+/** A character's state, created on first use. */
+export function npcStateOf(state: GameState, id: string): NpcState {
+  return ((state.npcs ??= {})[id] ??= {});
+}
+
+export function isAlive(_world: World, state: GameState, id: string): boolean {
+  const s = state.npcs?.[id];
+  return s?.strength !== 0 && s?.room !== null;
+}
+
+/** Alive and conscious. */
+export function isAwake(world: World, state: GameState, id: string): boolean {
+  return isAlive(world, state, id) && (state.npcs?.[id]?.strength ?? 1) > 0;
+}
+
+export function parentOf(state: GameState, id: string): Place {
+  return state.locations[id] ?? null;
+}
+
+/**
+ * What's directly in or on `place`. Untouched things come in the order the room
+ * or container lists them, and
+ * moved things follow in the order they arrived (so the inventory keeps pickup
+ * order). Infocom style reverses both, newest first, as Zork lists them.
+ */
+export function childrenOf(world: World, state: GameState, place: string): string[] {
+  const here = Object.keys(world.items).filter((id) => state.locations[id] === place);
+  const placed = state.placed ?? {};
+  // Untouched things keep the order the room (or container) lists them in.
+  const listed = world.rooms[place]?.items ?? world.items[place]?.contains ?? [];
+  const rank = (id: string) => {
+    const i = listed.indexOf(id);
+    return i < 0 ? listed.length : i;
+  };
+  const untouched = here.filter((id) => placed[id] === undefined).sort((a, b) => rank(a) - rank(b));
+  const moved = here.filter((id) => placed[id] !== undefined).sort((a, b) => placed[a] - placed[b]);
+  if (world.style === 'infocom') return [...moved.reverse(), ...untouched.reverse()];
+  return [...untouched, ...moved];
+}
+
+export function inventoryOf(world: World, state: GameState): string[] {
+  return childrenOf(world, state, PLAYER);
+}
+
+export function isCarried(state: GameState, id: string): boolean {
+  return state.locations[id] === PLAYER;
+}
+
+/** The kind of ground a room is: its `terrain`, else water or air where those shorthands hold, else land. */
+export function terrainOf(world: World, state: GameState, roomId: string = state.currentRoom): string {
+  const room = world.rooms[roomId];
+  if (!room) return 'land';
+  if (room.terrain) return room.terrain;
+  const holds = (v: boolean | string | undefined) => (typeof v === 'string' ? evaluateCondition(v, state, world) : Boolean(v));
+  return holds(room.water) ? 'water' : holds(room.air) ? 'air' : 'land';
+}
+
+/** Is the room water (Zork's NONLANDBIT)? A condition string decides for rooms that change. */
+export function isWater(world: World, state: GameState, roomId: string = state.currentRoom): boolean {
+  return terrainOf(world, state, roomId) === 'water';
+}
+
+/** Is the room air (Zork II's balloon)? Same shape as `isWater`. */
+export function isAir(world: World, state: GameState, roomId: string = state.currentRoom): boolean {
+  return terrainOf(world, state, roomId) === 'air';
+}
+
+/** The terrains the player can walk into (and get out of a vehicle in). */
+export function onFootTerrains(world: World): string[] {
+  return world.onFoot ?? ['land'];
+}
+
+/** The terrains a vehicle enters: `'water'`, `'air'` and `'none'` are the legacy spellings. */
+export function travelTerrains(vehicle: NonNullable<Item['vehicle']>): string[] {
+  const t = vehicle.travels;
+  return t === 'none' ? [] : typeof t === 'string' ? [t] : t;
+}
+
+/** The terrains a vehicle comes to rest on from one it travels: `land`, unless it travels on land itself. */
+export function restTerrains(vehicle: NonNullable<Item['vehicle']>): string[] {
+  return vehicle.restsOn ?? (travelTerrains(vehicle).includes('land') ? [] : ['land']);
+}
+
+/** Carried, directly or inside something carried (Zork's HELD?). */
+export function isHeld(state: GameState, id: string): boolean {
+  return isInside(state, id, PLAYER);
+}
+
+/** What the player holds, including things they can see inside what they hold (Zork's HELD). */
+export function heldItems(world: World, state: GameState): string[] {
+  return visibleItems(world, state).filter((id) => isHeld(state, id));
+}
+
+export function moveItem(state: GameState, id: string, place: Place): void {
+  state.locations[id] = place;
+  // A vehicle taken away from the player's room leaves them aboard nothing.
+  if (state.aboard === id && place !== state.currentRoom) state.aboard = undefined;
+  (state.placed ??= {})[id] = nextPlacing(state);
+}
+
+/** The next number on the one sequence things' placings and characters' arrivals share (Zork's MOVE order). */
+export function nextPlacing(state: GameState): number {
+  return Math.max(0, ...Object.values(state.placed ?? {}), ...Object.values(state.npcs ?? {}).map((n) => n.seq ?? 0)) + 1;
+}
+
+/**
+ * Fixed items a room lists that live in another room: the same printer in two
+ * versions of the break room. Nobody can carry them off, so they're present in
+ * every room that lists them, until they leave the world altogether.
+ */
+function fixturesIn(world: World, state: GameState, roomId: string): string[] {
+  return (world.rooms[roomId]?.items ?? []).filter((id) => {
+    const home = state.locations[id];
+    // Shared: it sits in another room that lists it too (a door between two rooms), not merely moved away.
+    return world.items[id] && !world.items[id].portable && home !== roomId && home != null && home in world.rooms && (world.rooms[home].items ?? []).includes(id);
+  });
+}
+
+/** What a room lists: its direct contents (and fixtures it shares), minus scenery. */
+export function visibleItemsIn(roomId: string, world: World, state: GameState): string[] {
+  return [...childrenOf(world, state, roomId), ...fixturesIn(world, state, roomId)].filter(listable(world, state));
+}
+
+/** Fuzzy candidates for items, with aliases folded into the matchable name. */
+function itemCandidates(ids: string[], world: World): Array<{ id: string; name: string; aliases?: string[] }> {
+  return ids.map((id) => {
+    const item = world.items[id];
+    const name = item ? [item.name, ...(item.aliases ?? [])].join(' ') : id;
+    return { id, name, aliases: item?.aliases };
+  });
+}
+
+export function matchItem(target: string, ids: string[], world: World): string | null {
+  return fuzzyMatch(target, itemCandidates(ids, world));
+}
+
+export function matchNpc(target: string, world: World, state: GameState): string | null {
+  const present = npcsSeen(world, state, state.currentRoom);
+  // Names and aliases, through the one fuzzy matcher.
+  const [id = null] = fuzzyCandidates(target, npcCandidates(present, world), { byId: byIdTurns.has(state) });
+  if (id) noteActed(state, 'npc', id);
+  return id;
+}
+
+/** What this turn's command resolved to, for pronouns (“it”, “her”). */
+export interface Acted {
+  target?: string;
+  indirect?: string;
+  npc?: string;
+}
+
+const actedThisTurn = new WeakMap<GameState, Acted>();
+
+function noteActed(state: GameState, slot: keyof Acted, id: string): void {
+  const acted = actedThisTurn.get(state) ?? {};
+  acted[slot] = id;
+  actedThisTurn.set(state, acted);
+}
+
+export function takeActed(state: GameState): Acted {
+  const acted = actedThisTurn.get(state) ?? {};
+  actedThisTurn.delete(state);
+  return acted;
+}
+
+export function isOpen(world: World, state: GameState, id: string): boolean {
+  const c = world.items[id]?.container;
+  if (!c) return false;
+  if (!c.openable) return true;
+  return state.itemState[id]?.open ?? c.open ?? false;
+}
+
+export function isLocked(world: World, state: GameState, id: string): boolean {
+  const c = world.items[id]?.container;
+  if (!c) return false;
+  return state.itemState[id]?.locked ?? c.locked ?? false;
+}
+
+export function isOn(state: GameState, id: string): boolean {
+  return Boolean(state.itemState[id]?.on);
+}
+
+/** Can the player touch it? */
+export function isReachable(world: World, state: GameState, id: string): boolean {
+  return reachableItems(world, state).includes(id);
+}
+
+/** You can see what's in or on it: a surface, or an open or transparent container. */
+export function canSeeInside(world: World, state: GameState, id: string): boolean {
+  const item = world.items[id];
+  if (!item) return false;
+  if (item.surface) return true;
+  if (!item.container || item.door) return false;
+  return isOpen(world, state, id) || Boolean(item.container.transparent);
+}
+
+/** You can touch what's in or on it: a surface, or an open container. */
+export function canReachInside(world: World, state: GameState, id: string): boolean {
+  const item = world.items[id];
+  if (!item) return false;
+  return Boolean(item.surface) || (Boolean(item.container) && !item.door && isOpen(world, state, id));
+}
+
+function roots(world: World, state: GameState): string[] {
+  const room = state.currentRoom;
+  return [
+    ...childrenOf(world, state, room),
+    ...fixturesIn(world, state, room),
+    ...(world.rooms[room]?.scenery ?? []),
+    ...inventoryOf(world, state),
+  ].filter(shown(state));
+}
+
+/** `roots` and, through every thing `into` lets you into, the children `keep` allows, at any depth. */
+function collect(world: World, state: GameState, roots: string[], into: (id: string) => boolean, keep: (id: string) => boolean): string[] {
+  const out: string[] = [];
+  const walk = (id: string) => {
+    if (out.includes(id)) return;
+    out.push(id);
+    if (into(id)) for (const child of childrenOf(world, state, id).filter(keep)) walk(child);
+  };
+  roots.forEach(walk);
+  return out;
+}
+
+/**
+ * Whether a room has light: it isn't dark, or a light source that's on is in
+ * it, carried there, or inside something open or transparent there.
+ */
+export function isLit(world: World, state: GameState, roomId: string = state.currentRoom): boolean {
+  if (!world.rooms[roomId]?.dark) return true;
+  if (world.darkness?.litIf && evaluateCondition(world.darkness.litIf, state, world)) return true;
+  return Object.keys(world.items).some((id) => {
+    if (!world.items[id].light || !state.itemState[id]?.on) return false;
+    const seen = new Set<string>();
+    let p = state.locations[id];
+    while (p && world.items[p] && !seen.has(p)) {
+      if (!canSeeInside(world, state, p)) return false; // shut in something opaque
+      seen.add(p);
+      p = state.locations[p];
+    }
+    const room = p === PLAYER ? state.currentRoom : p;
+    return room === roomId;
+  });
+}
+
+/** What the player can find, opening up what `into` allows. In the dark, only what they carry. */
+function findable(world: World, state: GameState, into: (id: string) => boolean): string[] {
+  if (!isLit(world, state)) return collect(world, state, inventoryOf(world, state), into, () => true);
+  return collect(world, state, roots(world, state), into, shown(state));
+}
+
+/** Everything the player can see: the room, its scenery, what they carry, and inside open or transparent things. */
+export function visibleItems(world: World, state: GameState): string[] {
+  return findable(world, state, (id) => canSeeInside(world, state, id));
+}
+
+/** Everything the player can touch: like visibleItems, but not through closed glass. */
+export function reachableItems(world: World, state: GameState): string[] {
+  return findable(world, state, (id) => canReachInside(world, state, id));
+}
+
+/** The room a character is in: its state's room, else the player's room if it's there, else the first room listing it. */
+export function npcRoom(world: World, state: GameState, id: string): string | null {
+  const s = state.npcs?.[id];
+  if (s && s.room !== undefined) return s.room;
+  if (isNpcIn(world, state, id, state.currentRoom)) return state.currentRoom;
+  return Object.keys(world.rooms).find((r) => world.rooms[r].npcs.includes(id)) ?? null;
+}
+
+/**
+ * What a character can lay hands on (for orders): what the player could reach standing
+ * in its room (not what the player carries), and what it holds. In the dark, only what it holds.
+ */
+export function npcScope(world: World, state: GameState, id: string): string[] {
+  const room = npcRoom(world, state, id);
+  const into = (x: string) => canReachInside(world, state, x);
+  const held = childrenOf(world, state, id).filter(shown(state));
+  if (!room || !isLit(world, state, room)) return collect(world, state, held, into, shown(state));
+  const roomRoots = [...childrenOf(world, state, room), ...fixturesIn(world, state, room), ...(world.rooms[room]?.scenery ?? [])].filter(shown(state));
+  return collect(world, state, [...roomRoots, ...held], into, shown(state));
+}
+
+/** Is `id` inside `ancestor`, at any depth? */
+export function isInside(state: GameState, id: string, ancestor: string): boolean {
+  const seen = new Set<string>();
+  for (let p = state.locations[id]; p && !seen.has(p); p = state.locations[p]) {
+    if (p === ancestor) return true;
+    seen.add(p);
+  }
+  return false;
+}
+
+/** The closed container keeping the player's hands off `id`, if any. */
+export function closedAround(world: World, state: GameState, id: string): string | null {
+  for (let p = state.locations[id]; p && world.items[p]; p = state.locations[p]) {
+    if (!canReachInside(world, state, p)) return p;
+  }
+  return null;
+}
+
+/** Raised while resolving an object, before anything changes; execute turns it into a question. */
+export class AskSignal extends Error {
+  constructor(
+    readonly ask: { kind: 'which'; slot: 'target' | 'indirect'; word: string; candidates: string[] } | { kind: 'what'; slot: 'target' | 'indirect' },
+  ) {
+    super('ask');
+  }
+}
+
+// Commands the intent server produced name things by ID; those resolve by ID first.
+const byIdTurns = new WeakSet<GameState>();
+
+export function setResolveById(state: GameState, on: boolean): void {
+  if (on) byIdTurns.add(state);
+  else byIdTurns.delete(state);
+}
+
+/**
+ * Resolves what the player named among `ids`: the item, or null if nothing
+ * matches. Several equally good matches raise a question (AskSignal), which
+ * is safe because handlers resolve before they change anything.
+ */
+export function pickItem(target: string, ids: string[], world: World, slot: 'target' | 'indirect' = 'target', state?: GameState): string | null {
+  const candidates = ids.map((id) => ({ id, name: world.items[id]?.name ?? id, aliases: world.items[id]?.aliases }));
+  let found = [...new Set(fuzzyCandidates(target, candidates, { byId: state ? byIdTurns.has(state) : false }))];
+  if (found.length === 0) return null;
+  // In Infocom style a room's scenery (Zork's local globals) only counts when nothing else matches.
+  const fixtures = state && world.style === 'infocom' ? (world.rooms[state.currentRoom]?.scenery ?? []) : [];
+  if (found.length > 1 && found.some((id) => !fixtures.includes(id))) found = found.filter((id) => !fixtures.includes(id));
+  if (found.length === 1) {
+    if (state) noteActed(state, slot, found[0]);
+    return found[0];
+  }
+  const word = target.trim().split(/\s+/).at(-1) ?? target;
+  throw new AskSignal({ kind: 'which', slot, word, candidates: found });
+}
+
+/** Fuzzy candidates for characters: names and aliases. */
+function npcCandidates(ids: string[], world: World): Array<{ id: string; name: string; aliases?: string[] }> {
+  return ids.map((id) => ({ id, name: world.npcs[id]?.name ?? id, aliases: world.npcs[id]?.aliases }));
+}
+
+/**
+ * Does `word` name the player (ME)? ME and MYSELF always; SELF and YOURSELF unless something in
+ * sight or someone here is called that; the reserved ID 'player' only from the intent server.
+ */
+export function namesPlayer(word: string, world: World, state: GameState): boolean {
+  if (!isSelfWord(word) && !byIdTurns.has(state)) return false;
+  const seen = [...itemCandidates(visibleItems(world, state), world), ...npcCandidates(npcsSeen(world, state, state.currentRoom), world)];
+  return namesSelf(word, seen, { byId: byIdTurns.has(state) });
+}
+
+/**
+ * Do the digits typed where an object goes name something: a thing in sight or a character here?
+ * Then the slot is that thing (Zork's parser reads a word in its vocabulary before trying NUMBER?);
+ * only when nothing is called that are they the command's number.
+ */
+export function namesThing(word: string, world: World, state: GameState): boolean {
+  const seen = [...itemCandidates(visibleItems(world, state), world), ...npcCandidates(npcsSeen(world, state, state.currentRoom), world)];
+  return fuzzyCandidates(word, seen, { byId: byIdTurns.has(state) }).length > 0;
+}
+
+/** A second object: ME (see namesPlayer) is the player, else as pickItem. */
+export function pickSecond(target: string, ids: string[], world: World, state?: GameState): string | null {
+  return state && namesPlayer(target, world, state) ? PLAYER : pickItem(target, ids, world, 'indirect', state);
+}
+
+/** A verb is missing an object: ask for it. */
+export function needObject(slot: 'target' | 'indirect' = 'target'): never {
+  throw new AskSignal({ kind: 'what', slot });
+}
+
+/** A copy of the state to go back to: plain data (JSON, as saves are), safe for a reactive proxy. */
+export function snapshotState(state: GameState): GameState {
+  return JSON.parse(JSON.stringify(state)) as GameState;
+}
+
+/** Puts the state back as `snapshot` had it, in place (the same object, keys and all). */
+export function restoreState(state: GameState, snapshot: GameState): void {
+  for (const key of Object.keys(state)) delete (state as unknown as Record<string, unknown>)[key];
+  Object.assign(state, snapshot);
+}

@@ -1,10 +1,10 @@
 # A two-room game
 
-This page builds the smallest complete game, [`src/worlds/examples/two-rooms.ts`](https://github.com/mrballistic/brass-lantern/blob/main/src/worlds/examples/two-rooms.ts), from nothing. You're home after a long time away; the door is locked, and you left the key somewhere obvious. [A test](https://github.com/mrballistic/brass-lantern/blob/main/tests/worlds/examples/two-rooms.test.ts) plays it to the end, and the code below is that file.
+This page builds the smallest complete game, [`src/worlds/examples/two-rooms.ts`](https://github.com/mrballistic/brass-lantern/blob/main/packages/engine/src/worlds/examples/two-rooms.ts), from nothing. You're home after a long time away; the door is locked, and you left the key somewhere obvious. [A test](https://github.com/mrballistic/brass-lantern/blob/main/packages/engine/tests/worlds/examples/two-rooms.test.ts) plays it to the end, and the code below is that file.
 
 ## Two rooms
 
-<<< ../../../src/worlds/examples/two-rooms.ts#rooms{ts}
+<<< ../../../packages/engine/src/worlds/examples/two-rooms.ts#rooms{ts}
 
 - **`startRoom`** is where a new game begins.
 - **`exits`** map what the player types to where it goes. A plain string (`north: 'hall'`) is enough for an open way through; here each exit is an object naming a **`door`**, an item that has to be open before anyone passes. Several labels for the same way (`north`, `in`) are normal.
@@ -14,7 +14,7 @@ This page builds the smallest complete game, [`src/worlds/examples/two-rooms.ts`
 
 ## Things
 
-<<< ../../../src/worlds/examples/two-rooms.ts#items{ts}
+<<< ../../../packages/engine/src/worlds/examples/two-rooms.ts#items{ts}
 
 - **Every item has a `name`** (shown to players), a **`description`** (EXAMINE), and says whether it's **`portable`**. **`aliases`** are other words for it.
 - **The door** is an item with `door: true` and a `container` block: it can be opened, it starts locked, and the `key` item unlocks it. UNLOCK DOOR WITH KEY and OPEN DOOR work with no rules at all.
@@ -25,7 +25,7 @@ This page builds the smallest complete game, [`src/worlds/examples/two-rooms.ts`
 
 ## What happens
 
-<<< ../../../src/worlds/examples/two-rooms.ts#events{ts}
+<<< ../../../packages/engine/src/worlds/examples/two-rooms.ts#events{ts}
 
 - **`events`** are named lists of steps. A string prints; an object is an [effect](../../reference/conditions-and-events#events-and-effects). `find_key` prints a line, sets a flag and moves the key onto the porch.
 - **`intro`** plays when a new game starts.

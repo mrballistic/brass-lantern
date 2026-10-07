@@ -1,0 +1,9 @@
+{
+  "extends": ["@vue/tsconfig/tsconfig.dom.json", "../../tsconfig.base.json"],
+  "compilerOptions": {
+    "types": ["node", "vite/client"]
+  },
+  // The engine is read from source until it ships declarations (its ifvms
+  // module types are ambient, so they have to be included by name).
+  "include": ["../engine/src/zmachine/vendor/*.d.ts", "src/**/*.ts", "src/**/*.vue"]
+}

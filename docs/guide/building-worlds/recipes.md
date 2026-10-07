@@ -1,12 +1,12 @@
 # Recipes
 
-Each recipe is a small world in [`src/worlds/examples/`](https://github.com/mrballistic/brass-lantern/tree/main/src/worlds/examples) about one idea. The code is included from those files, and the transcripts are what [`tests/worlds/examples/recipes.test.ts`](https://github.com/mrballistic/brass-lantern/blob/main/tests/worlds/examples/recipes.test.ts) checks.
+Each recipe is a small world in [`src/worlds/examples/`](https://github.com/mrballistic/brass-lantern/tree/main/packages/engine/src/worlds/examples) about one idea. The code is included from those files, and the transcripts are what [`tests/worlds/examples/recipes.test.ts`](https://github.com/mrballistic/brass-lantern/blob/main/packages/engine/tests/worlds/examples/recipes.test.ts) checks.
 
 ## Containers and keys
 
 A shelf with a glass jar on it, a key in the jar, and a locked tin the key opens.
 
-<<< ../../../src/worlds/examples/containers.ts#items{ts}
+<<< ../../../packages/engine/src/worlds/examples/containers.ts#items{ts}
 
 - **A `surface`** (the shelf) shows what's on it, and you can reach it.
 - **A `container`** holds things. `openable` gives it a lid; `locked` and `key` lock it; `capacity` limits how many things fit directly inside; `opened` replaces the default “Opened.”.
@@ -36,11 +36,11 @@ Doors between rooms are the same block on an item with `door: true`; the [two-ro
 
 A shed with a lamp, and a dark cellar below it.
 
-<<< ../../../src/worlds/examples/darkness.ts#cellar{ts}
+<<< ../../../packages/engine/src/worlds/examples/darkness.ts#cellar{ts}
 
-<<< ../../../src/worlds/examples/darkness.ts#lamp{ts}
+<<< ../../../packages/engine/src/worlds/examples/darkness.ts#lamp{ts}
 
-<<< ../../../src/worlds/examples/darkness.ts#darkness{ts}
+<<< ../../../packages/engine/src/worlds/examples/darkness.ts#darkness{ts}
 
 - **`dark: true`** makes a room need light. A **`light`** item gives it while it's on (it has to be **`switchable`** to turn on), whether it's carried, on the floor, or inside something open.
 - **In the dark** the player can only find what they're carrying. Anything else gets `tooDark` (“It’s too dark to see.”), and no time passes.
@@ -78,9 +78,9 @@ A lamp that runs out is a variable and a few daemons: see [Time](../../reference
 
 A kettle that boils three turns after you turn it on, a clock, and a dripping tap.
 
-<<< ../../../src/worlds/examples/timers.ts#kettle{ts}
+<<< ../../../packages/engine/src/worlds/examples/timers.ts#kettle{ts}
 
-<<< ../../../src/worlds/examples/timers.ts#clock{ts}
+<<< ../../../packages/engine/src/worlds/examples/timers.ts#clock{ts}
 
 - **A fuse** is the `schedule` effect: run an event after so many turns. `cancel` stops it. Here **`after`** rules start and stop it: they run once TURN ON or TURN OFF has worked.
 - **A daemon** runs after every turn while its `if` holds. Two daemons make a clock: one counts minutes in a **variable**, the other chimes when it reaches 5.
@@ -107,9 +107,9 @@ The clock chimes the hour.
 
 A garden with something buried in it, and a chapel. Digging and praying aren't built in, so the world declares them.
 
-<<< ../../../src/worlds/examples/endings.ts#verbs{ts}
+<<< ../../../packages/engine/src/worlds/examples/endings.ts#verbs{ts}
 
-<<< ../../../src/worlds/examples/endings.ts#endings{ts}
+<<< ../../../packages/engine/src/worlds/examples/endings.ts#endings{ts}
 
 - **A world verb** does nothing by itself. Rules give it meaning: the flowerbed has an `instead.dig` rule, and so does the garden, for DIG with no object. The chapel has `instead.pray`. Anywhere else, the verb's `reply` answers.
 - **`end`** plays an ending: its lines, the score (with `score: true`), then the footer.
@@ -133,11 +133,11 @@ Restart, go east and PRAY for the other ending.
 
 An armory with a sword and an anvil too heavy to lift, and a guard who won't let you through.
 
-<<< ../../../src/worlds/examples/guard.ts#items{ts}
+<<< ../../../packages/engine/src/worlds/examples/guard.ts#items{ts}
 
-<<< ../../../src/worlds/examples/guard.ts#guard{ts}
+<<< ../../../packages/engine/src/worlds/examples/guard.ts#guard{ts}
 
-<<< ../../../src/worlds/examples/guard.ts#gate{ts}
+<<< ../../../packages/engine/src/worlds/examples/guard.ts#gate{ts}
 
 - **`carry`** turns on weight. Each item weighs its `size` (5 if unset) plus what's inside it, and TAKE refuses what would go over `limit`.
 - **`combat`** on a character makes it someone you can fight with a `weapon`. The engine runs the fight: your strength against theirs, a seeded roll, and Zork's tables of results. The guard's `messages` are its blows at you; `world.combat` holds yours (short defaults here).
@@ -187,7 +187,7 @@ In Infocom style the same fight uses Zork's words, and `kill guard` picks the on
 
 A fortune teller who tells you one of three fortunes, then sticks to it.
 
-<<< ../../../src/worlds/examples/fortune.ts#script{ts}
+<<< ../../../packages/engine/src/worlds/examples/fortune.ts#script{ts}
 
 - **A script** is a function in `scripts` that returns ordinary steps: lines and effects. Events call it with `{ script: 'name' }`.
 - **It reads the game, it doesn't change it.** `ctx.state` is read-only; to change things, return effects (`setVar` here). That keeps the engine's guarantees: a command it didn't understand changes nothing, and saves replay exactly.
@@ -209,7 +209,7 @@ Reach for a script only when data can't say it. Most behavior is rules, conditio
 
 A librarian who answers questions, and won't be bossed about.
 
-<<< ../../../src/worlds/examples/topics.ts#librarian{ts}
+<<< ../../../packages/engine/src/worlds/examples/topics.ts#librarian{ts}
 
 - **`topics`** answer ASK (or TELL) *librarian* ABOUT *something*. Each topic is a line, or a list of entries tried in order; the first whose `if` holds wins.
 - **An entry can name an event**, which runs instead of printing. Asking about the archive lends you the key, once; after that the `has:brass_key` entry answers first.
@@ -236,7 +236,7 @@ A character with no `orders` or `obeys` only answers; see [Orders, numbers and a
 
 A cat who wanders three rooms and walks off with your sock.
 
-<<< ../../../src/worlds/examples/wanderer.ts#cat{ts}
+<<< ../../../packages/engine/src/worlds/examples/wanderer.ts#cat{ts}
 
 - **A daemon** runs after every turn the engine acts on. This one's `if` (`alive:cat`) keeps the cat moving for as long as it lives, and its step is a script.
 - **The script decides; its steps act.** `ctx.npcIn` finds the cat, `ctx.roll` decides whether it moves, and `{ moveNpc }` moves it. Lines are printed only when the player can see the cat leave or arrive (`ctx.room()` is where the player is).
@@ -266,9 +266,9 @@ Native Zork I's thief is this recipe grown up: he moves through the rooms, steal
 
 A cave that hears everything you say as an echo, until you say the magic word.
 
-<<< ../../../src/worlds/examples/echo.ts#cave{ts}
+<<< ../../../packages/engine/src/worlds/examples/echo.ts#cave{ts}
 
-<<< ../../../src/worlds/examples/echo.ts#script{ts}
+<<< ../../../packages/engine/src/worlds/examples/echo.ts#script{ts}
 
 - **`capture`** sees each command before the parser does, while its `if` holds. The script reads the raw words from `ctx.line`.
 - **Returning steps takes the command**, and drops the rest of the line. **Returning nothing declines**: the command is parsed as usual, so OUT still leaves.
@@ -297,9 +297,9 @@ Native Zork I's Loud Room is this recipe with Zork's rules: ECHO quiets it, and 
 
 A raft, a pond you can't wade, and an island beyond it.
 
-<<< ../../../src/worlds/examples/raft.ts#raft{ts}
+<<< ../../../packages/engine/src/worlds/examples/raft.ts#raft{ts}
 
-<<< ../../../src/worlds/examples/raft.ts#pond{ts}
+<<< ../../../packages/engine/src/worlds/examples/raft.ts#pond{ts}
 
 - **`vehicle`** makes an item something to get into: BOARD it while it's on the ground, DISEMBARK to get out.
 - **`water`** marks a room only a water vehicle reaches. On foot it's “You can’t go there without a vehicle.”; aboard, getting out there is refused.
@@ -330,19 +330,19 @@ Native Zork I's magic boat is this recipe with Zork's rules on top: inflating it
 
 A workshop with a robot that does as it's told, a dial you turn to a number, and a dune buggy for the sand beyond the yard.
 
-<<< ../../../src/worlds/examples/workshop.ts#robot{ts}
+<<< ../../../packages/engine/src/worlds/examples/workshop.ts#robot{ts}
 
 - **`obeys`** lists the built-in orders the robot carries out itself: GO, TAKE, DROP and GIVE (“robot, give me the wrench”). `obeyReplies` is what it says; the default is “Okay.”
 - **`orders`** is a table of rules per verb, for anything else (“robot, push the button”). Its rules read the order as the player wrote it: `target:button` is what it was told to push. “Push” is also the word the parser files under USE; the word typed is tried first, so `orders.push` answers it even when `orders.use` exists.
 - **An order ends the rest of the line**, and the objects of an order are looked up in *its* room, not the player's.
 
-<<< ../../../src/worlds/examples/workshop.ts#dial{ts}
+<<< ../../../packages/engine/src/worlds/examples/workshop.ts#dial{ts}
 
 - **A number** is a second object: `turn dial to 4`. A rule says `with: 'number'` and tests `number:4`; `{ setVar: 'dial', from: 'number' }` keeps it and `{number}` prints it. `{var:dial}` fills in a description from the game, so EXAMINE shows where the dial points now.
 
-<<< ../../../src/worlds/examples/workshop.ts#sand{ts}
+<<< ../../../packages/engine/src/worlds/examples/workshop.ts#sand{ts}
 
-<<< ../../../src/worlds/examples/workshop.ts#buggy{ts}
+<<< ../../../packages/engine/src/worlds/examples/workshop.ts#buggy{ts}
 
 - **A terrain** is any name a room gives itself. On foot you can walk only where `onFoot` allows (default `['land']`), so the dunes need a vehicle that `travels` on `'sand'`. `leave` (and `arrive`, `landing`) are lines the vehicle says as it goes.
 

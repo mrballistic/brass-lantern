@@ -1,0 +1,34 @@
+{
+  "name": "@brass-lantern/engine",
+  "version": "1.13.0",
+  "author": "Todd Greco <mrballistic@gmail.com>",
+  "private": true,
+  "description": "The Brass Lantern text-adventure engine: worlds as data, a regex parser, a headless turn loop, and a Z-machine runtime for story files.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mrballistic/brass-lantern.git",
+    "directory": "packages/engine"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./zmachine": "./src/zmachine/index.ts",
+    "./zmachine/session": "./src/zmachine/session.ts",
+    "./worlds": "./src/worlds/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "ifvms": "1.1.6"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

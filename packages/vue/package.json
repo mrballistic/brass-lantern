@@ -1,0 +1,33 @@
+{
+  "name": "@brass-lantern/vue",
+  "version": "1.13.0",
+  "author": "Todd Greco <mrballistic@gmail.com>",
+  "private": true,
+  "description": "Brass Lantern for Vue: the CRT terminal, the game store, themes, and a mountGame helper.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mrballistic/brass-lantern.git",
+    "directory": "packages/vue"
+  },
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./style.css": "./src/styles/crt.css"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "type-check": "vue-tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@brass-lantern/engine": "1.13.0",
+    "pinia": "^4.0.3",
+    "vue": "^3.5.43"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

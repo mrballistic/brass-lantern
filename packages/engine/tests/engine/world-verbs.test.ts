@@ -1,0 +1,154 @@
+import { describe, expect, it } from 'vitest';
+import { execute } from '../../src/engine/engine';
+import { fallbackParse, splitCommands, verbClashes } from '../../src/engine/parser';
+import { stateWith } from '../helpers/state';
+import { fixtureWorld as world } from '../fixtures/world';
+
+describe('world verbs', () => {
+  it('parse from the world’s words, with and without a target', () => {
+    expect(fallbackParse('snooze', world.verbs)).toEqual({ action: 'snooze' });
+    expect(fallbackParse('hit the snooze button', world.verbs)).toEqual({ action: 'snooze' });
+    expect(fallbackParse('ring bell', world.verbs)).toEqual({ action: 'ring', target: 'bell' });
+    expect(fallbackParse('ring the bell', world.verbs)).toEqual({ action: 'ring', target: 'bell' });
+    expect(fallbackParse('snooze')).toEqual({ action: 'go', target: 'snooze' });
+  });
+
+  it('dispatch to rules on things in reach when they take no target', () => {
+    const s = stateWith(world, { room: 'bedroom' });
+    const before = structuredClone(s);
+    const r = execute({ action: 'snooze' }, { world, state: s });
+    expect(r.lines).toEqual(['😴 You hit snooze.']);
+    expect(r.understood).not.toBe(false);
+    expect(s).toEqual({ ...before, turns: 1, moveCount: 1 });
+  });
+
+  it('a room rule wins when its condition holds', () => {
+    const s = stateWith(world, { room: 'bedroom', flags: ['alarm_smashed'] });
+    s.locations.alarm = null;
+    expect(execute({ action: 'snooze' }, { world, state: s }).lines[0]).toContain('nothing left to snooze');
+  });
+
+  it('with no matching rule, print the reply and change nothing', () => {
+    const s = stateWith(world, { room: 'yard' });
+    const r = execute({ action: 'snooze' }, { world, state: s });
+    expect(r.lines).toEqual(['There is nothing here to snooze.']);
+  });
+
+  it('a go verb moves through the named exit', () => {
+    const s = stateWith(world, { room: 'yard', carrying: ['key'] });
+    execute({ action: 'wander', target: 'shed' }, { world, state: s });
+    expect(s.currentRoom).toBe('shed');
+  });
+
+  it('an unknown target for a world verb is a miss that changes nothing', () => {
+    const s = stateWith(world, { room: 'yard' });
+    const before = structuredClone(s);
+    const r = execute({ action: 'ring', target: 'trombone' }, { world, state: s });
+    expect(r.understood).toBe(false);
+    expect(s).toEqual(before);
+  });
+
+  it('a required target that’s missing asks for one', () => {
+    const s = stateWith(world, { room: 'yard' });
+    expect(execute({ action: 'ring' }, { world, state: s }).lines).toEqual(['What do you want to ring?']);
+  });
+
+  it('splitCommands treats world verbs as commands', () => {
+    expect(splitCommands('snooze and ring bell', world.verbs)).toEqual(['snooze', 'ring bell']);
+  });
+
+  it('an afterBuiltIns verb may use a built-in word, and reads only what no built-in verb reads (Zork’s bare TURN X)', () => {
+    expect(fallbackParse('turn bell', world.verbs)).toEqual({ action: 'twist', target: 'bell' });
+    expect(fallbackParse('twist the bell', world.verbs)).toEqual({ action: 'twist', target: 'bell' });
+    // TURN … TO, TURN ON and TURN … OFF stay the engine's.
+    expect(fallbackParse('turn dial to 4', world.verbs)).toEqual({ action: 'turn', target: 'dial', indirect: '4', number: 4 });
+    expect(fallbackParse('turn on lamp', world.verbs)).toEqual({ action: 'turn_on', target: 'lamp' });
+    expect(fallbackParse('turn lamp off', world.verbs)).toEqual({ action: 'turn_off', target: 'lamp' });
+    // Without the world's verbs a bare TURN is nothing the parser reads, as before.
+    expect(fallbackParse('turn bell')).toBeNull();
+    const s = stateWith(world, { room: 'bedroom' });
+    expect(execute(fallbackParse('turn alarm', world.verbs)!, { world, state: s }).lines).toEqual(['It won’t turn.']);
+  });
+
+  it('reports a world verb word that clashes with a built-in', () => {
+    expect(verbClashes({ shut: { words: ['take', 'shove'], target: 'required' } })).toEqual(['take']);
+    expect(verbClashes(world.verbs)).toEqual([]);
+  });
+
+  it('HELP leaves out an afterBuiltIns verb’s built-in words, and a verb that has only those', () => {
+    const verbs = { ...world.verbs, turn_bare: { words: ['turn', 'set'], target: 'required' as const, afterBuiltIns: true } };
+    const lines = execute({ action: 'help' }, { world: { ...world, verbs }, state: stateWith(world) }).lines;
+    expect(lines.find((l) => l.startsWith('TWIST'))).toBe('TWIST');
+    expect(lines.some((l) => l.startsWith('TURN_BARE'))).toBe(false);
+  });
+
+  it('HELP lists the world’s verbs after the built-ins, and no longer lists SNOOZE as built in', () => {
+    const lines = execute({ action: 'help' }, { world, state: stateWith(world) }).lines;
+    expect(lines.some((l) => l.startsWith('RING'))).toBe(true);
+    expect(lines.find((l) => l.startsWith('SNOOZE'))).toBe('SNOOZE                   hit snooze, hit the snooze button, press snooze');
+    expect(lines.join('\n')).not.toContain('liberated');
+  });
+
+  it('can be aimed at a character, whose rules answer', () => {
+    const w = {
+      ...world,
+      verbs: { ...world.verbs, salute: { words: ['salute'], target: 'required' as const } },
+      npcs: { ...world.npcs, guard: { ...world.npcs.guard, instead: { salute: [{ say: ['The guard salutes back.'] }] } } },
+    };
+    const s = stateWith(w, { room: 'shed' });
+    expect(execute({ action: 'salute', target: 'guard' }, { world: w, state: s }).lines).toEqual(['The guard salutes back.']);
+  });
+
+  it('aimed at a person with no rule for it, it’s a miss (the LLM gets a turn)', () => {
+    const w = { ...world, verbs: { ...world.verbs, salute: { words: ['salute'], target: 'required' as const } } };
+    const s = stateWith(w, { room: 'shed' });
+    expect(execute({ action: 'salute', target: 'guard' }, { world: w, state: s }).understood).toBe(false);
+  });
+});
+
+describe('a world verb’s reply can name its object (5c)', () => {
+  it('{a target} is the object with its article', () => {
+    const w = {
+      ...world,
+      items: { ...world.items, sock: { name: 'sock', description: '', portable: true, tags: [] } },
+      verbs: { ...world.verbs, sniff: { words: ['sniff'], target: 'required' as const, reply: 'It smells like {a target}.' } },
+    };
+    const s = stateWith(w, { room: 'bedroom' });
+    s.locations.sock = 'bedroom';
+    expect(execute({ action: 'sniff', target: 'sock' }, { world: w, state: s }).lines).toEqual(['It smells like a sock.']);
+    const v = { ...w, verbs: { ...w.verbs, sniff: { ...w.verbs.sniff, reply: 'It smells like an {target}.' } } };
+    expect(execute({ action: 'sniff', target: 'sock' }, { world: v, state: s }).lines).toEqual(['It smells like an sock.']);
+  });
+});
+
+describe('final review fixes (5c)', () => {
+  it('a templated reply aimed at a character names the character', () => {
+    const w = { ...world, verbs: { ...world.verbs, sniff: { words: ['sniff'], target: 'required' as const, reply: 'It smells like a {target}.' } } };
+    const s = stateWith(w, { room: 'shed' });
+    expect(execute({ action: 'sniff', target: 'guard' }, { world: w, state: s }).lines).toEqual(['It smells like a guard.']);
+  });
+});
+
+describe('a world verb’s reply can be a list, one picked at random (backlog clear-out)', () => {
+  it('says one of them, with its object named', () => {
+    const w = {
+      ...world,
+      items: { ...world.items, sock: { name: 'sock', description: '', portable: true, tags: [] } },
+      verbs: { ...world.verbs, kick: { words: ['kick'], target: 'required' as const, reply: ['Kicking the {target} doesn’t seem to work.', 'Kicking the {target} has no effect.'] } },
+    };
+    const s = stateWith(w, { room: 'bedroom' });
+    s.locations.sock = 'bedroom';
+    expect(['Kicking the sock doesn’t seem to work.', 'Kicking the sock has no effect.']).toContain(execute({ action: 'kick', target: 'sock' }, { world: w, state: s }).lines[0]);
+  });
+});
+
+describe('a list reply aimed at a character (1.12.5 review)', () => {
+  it('is a miss that leaves the seed alone', () => {
+    const w = { ...world, verbs: { ...world.verbs, kick: { words: ['kick'], target: 'required' as const, reply: ['A.', 'B.'] } } };
+    const s = stateWith(w, { room: 'shed' });
+    const rng = s.rng;
+    const r = execute({ action: 'kick', target: 'guard' }, { world: w, state: s });
+    expect(r.understood).toBe(false);
+    expect(s.rng).toBe(rng);
+  });
+});

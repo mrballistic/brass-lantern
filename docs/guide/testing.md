@@ -4,7 +4,7 @@ A world is data, and data rots quietly: an exit points at a renamed room, a flag
 
 ## Play it
 
-[`tests/helpers/play.ts`](https://github.com/mrballistic/brass-lantern/blob/main/tests/helpers/play.ts) runs typed commands through the real parser and engine, so a test reads like a transcript:
+[`tests/helpers/play.ts`](https://github.com/mrballistic/brass-lantern/blob/main/packages/engine/tests/helpers/play.ts) runs typed commands through the real parser and engine, so a test reads like a transcript:
 
 ```ts
 import { play } from '../helpers/play';
@@ -34,7 +34,7 @@ To pin every word, compare the whole transcript: `expect(text).toMatchInlineSnap
 
 ## Check the data
 
-[`tests/worlds/audit.test.ts`](https://github.com/mrballistic/brass-lantern/blob/main/tests/worlds/audit.test.ts) checks every world in `cartridges` for mistakes (`tests/worlds/examples/audit.test.ts` does the same for the example worlds) that fail silently in play:
+[`tests/worlds/audit.test.ts`](https://github.com/mrballistic/brass-lantern/blob/main/packages/engine/tests/worlds/audit.test.ts) checks every world in `cartridges` for mistakes (`tests/worlds/examples/audit.test.ts` does the same for the example worlds) that fail silently in play:
 
 - effects naming items, rooms, events or endings that don't exist, and unknown effects;
 - events named by rules, `onEnter`, `onTake`, `onWear`, `onSmash`, `onGive`, daemons and the finale that don't exist;
