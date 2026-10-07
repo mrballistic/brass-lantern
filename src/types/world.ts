@@ -256,7 +256,7 @@ export interface NPC {
   /**
    * A condition under which it goes where the player goes (Zork II's dragon, Zork III's Dungeon Master).
    * Checked after the move, so `in:ROOM` sees the new room. It must have been in the room the player left,
-   * be awake and unhidden. `{ follow: 'npc' }` / `{ unfollow: 'npc' }` set and clear the flag `following_<npc>`,
+   * be awake and unhidden. `{ follow: 'npc' }` / `{ unfollow: 'npc' }` set and clear its state's `following`,
    * which `following:NPC` reads; that follows too, with or without this.
    */
   follows?: string;
@@ -349,7 +349,7 @@ export type Effect =
   | { say: string }
   | { set: string }
   | { clear: string }
-  /** A character follows the player (sets the flag `following_<npc>`, which `following:NPC` reads). */
+  /** A character follows the player (sets its state's `following`, which `following:NPC` reads). */
   | { follow: string }
   /** It stops following (clears that flag). */
   | { unfollow: string }

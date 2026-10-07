@@ -409,7 +409,7 @@ describe('vehicle kinds beyond water', () => {
   it('MOVE VEHICLE is not a player move: followers stay behind', () => {
     const w: World = { ...skyWorld, npcs: { ...skyWorld.npcs, neighbor: { ...skyWorld.npcs.neighbor, follows: 'flag:never_set' } } };
     const s = stateWith(w, { room: 'yard' });
-    s.flags.following_neighbor = true;
+    s.npcs = { neighbor: { following: true } };
     s.aboard = 'balloon';
     runSteps([{ moveVehicle: 'balloon', to: 'sky' }], w, s);
     expect(s.npcs?.neighbor?.room ?? 'yard').toBe('yard');

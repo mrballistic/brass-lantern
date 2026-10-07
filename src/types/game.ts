@@ -32,6 +32,8 @@ export interface NpcState {
   scenery?: boolean;
   /** When it last moved rooms, on the same sequence as things' placings (`placed`): listed before anything placed earlier (Zork's object order). */
   seq?: number;
+  /** Set by the `{ follow }` effect, cleared by `{ unfollow }`: it goes where the player goes (read by `following:NPC`). */
+  following?: boolean;
 }
 
 /** The player's condition, once anything has hurt them. */

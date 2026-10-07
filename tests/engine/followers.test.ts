@@ -1,3 +1,4 @@
+import { evaluateCondition } from '@/engine/conditions';
 import { describe, expect, it } from 'vitest';
 import { runSteps } from '@/engine/effects';
 import { execute } from '@/engine/engine';
@@ -127,16 +128,20 @@ describe('followers (6a)', () => {
     expect(s.npcs?.dog).toBeUndefined();
     const t = stateWith(v, { room: 'bedroom' });
     runSteps([{ follow: 'dog' }], v, t);
-    expect(t.flags.following_dog).toBe(true);
+    // Kept in the character's state (an optional field: saves stay format 2.0), not a flag.
+    expect(t.npcs?.dog?.following).toBe(true);
+    expect(t.flags.following_dog).toBeUndefined();
     run(t, 'go west', v);
     expect(t.npcs?.dog?.room).toBe('living');
     runSteps([{ unfollow: 'dog' }], v, t);
-    expect(t.flags.following_dog).toBe(false);
+    expect(t.npcs?.dog?.following).toBe(false);
     run(t, 'go east', v);
     expect(t.npcs?.dog?.room).toBe('living');
   });
 
-  it('following:NPC reads the flag', () => {
+  it('following:NPC reads the character’s state, and a flag of that name means nothing', () => {
+    const flagged = stateWith(w, { room: 'bedroom', flags: ['following_dog'] });
+    expect(evaluateCondition('following:dog', flagged, w)).toBe(false);
     const s = stateWith(w, { room: 'bedroom' });
     runSteps([{ follow: 'dog' }], w, s);
     const v: World = { ...w, events: { ...w.events, ask: [{ if: 'following:dog', then: ['Heel.'], else: ['Stay.'] }] } };

@@ -343,7 +343,7 @@ robot: {
 
 ### Followers
 
-`follows` is a condition on the character; while it holds, after each move the **player** makes (GO, doors, ENTER, CLIMB; not a script's `goTo` or a `moveVehicle`), the character moves into the player's new room if it was in the room the player left, and is awake and not hidden. It's checked after the move, so `in:ROOM` sees the new room. Its `followLine` prints as it arrives. The `follow` and `unfollow` effects set and clear the flag `following_<npc>` that `following:NPC` reads, for a switch rather than a condition. Characters who arrive take the engine's placing order, so room listings keep it.
+`follows` is a condition on the character; while it holds, after each move the **player** makes (GO, doors, ENTER, CLIMB; not a script's `goTo` or a `moveVehicle`), the character moves into the player's new room if it was in the room the player left, and is awake and not hidden. It's checked after the move, so `in:ROOM` sees the new room. Its `followLine` prints as it arrives. The `follow` and `unfollow` effects set and clear the character's `following` state (an optional field of its game state, not a flag), which `following:NPC` reads, for a switch rather than a condition. Characters who arrive take the engine's placing order, so room listings keep it.
 
 ## Weight
 

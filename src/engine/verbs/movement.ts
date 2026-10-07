@@ -29,7 +29,7 @@ const YUKS = ['A valiant attempt.', 'You can’t be serious.', 'An interesting i
 
 /**
  * Characters that follow the player: each one that was in the room just left, is awake and unseen-not,
- * and whose `follows` condition (or `following_<npc>` flag) holds now, arrives in the player's room,
+ * and whose `follows` condition (or `{ follow }` state) holds now, arrives in the player's room,
  * newest on the shared placing sequence. Only the player's own moves call this.
  */
 export function moveFollowers(fromRoom: string, world: World, state: GameState): string[] {
@@ -37,7 +37,7 @@ export function moveFollowers(fromRoom: string, world: World, state: GameState):
   for (const id of npcsIn(world, state, fromRoom)) {
     const npc = world.npcs[id];
     if (!npc || !isAwake(world, state, id) || isNpcHidden(world, state, id)) continue;
-    if (!state.flags[`following_${id}`] && !(npc.follows && evaluateCondition(npc.follows, state, world))) continue;
+    if (state.npcs?.[id]?.following !== true && !(npc.follows && evaluateCondition(npc.follows, state, world))) continue;
     Object.assign(npcStateOf(state, id), { room: state.currentRoom, seq: nextPlacing(state) });
     const line = npc.followLine ?? (world.style === 'infocom' ? undefined : `${npc.name[0].toUpperCase()}${npc.name.slice(1)} follows you.`);
     if (line) lines.push(line);
