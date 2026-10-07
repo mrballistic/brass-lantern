@@ -116,6 +116,7 @@ describe('POST /api/parse-intent', () => {
       .mockResolvedValueOnce(geminiReply('{"action":"inventory"}'));
     const started = Date.now();
     const out = await parseIntent('check my pockets', makeContext(), {
+      apiKey: 'test-key',
       models: ['slow', 'fast'],
       timeoutMs: 1_000,
       attemptMs: 100,
@@ -133,6 +134,7 @@ describe('POST /api/parse-intent', () => {
         init?.signal?.addEventListener('abort', () => reject(new Error('aborted')));
       });
     const out = await parseIntent('look', makeContext(), {
+      apiKey: 'test-key',
       models: ['a', 'b'],
       timeoutMs: 150,
       attemptMs: 100,

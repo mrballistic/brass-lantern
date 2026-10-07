@@ -17,16 +17,12 @@ function optional_env(name: string, fallback: string): string {
   return v && v.trim().length > 0 ? v : fallback;
 }
 
-// Measured 2026-10-03 through this server: 3.5-flash-lite answered 7/7 test
-// commands correctly in ~0.7s; 3.6-flash ~0.9s but occasionally 429s or runs
-// past the deadline; 3.5-flash took 5–6s even at thinkingLevel minimal, so it
-// can't fit the 5s budget and is deliberately left out.
-const DEFAULT_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.6-flash'];
+import { DEFAULT_MODELS } from './llm.js';
 
 function model_list(): string[] {
   const raw = optional_env('GEMINI_MODELS', optional_env('GEMINI_MODEL', ''));
   const models = raw.split(',').map((m) => m.trim()).filter(Boolean);
-  return models.length > 0 ? models : DEFAULT_MODELS;
+  return models.length > 0 ? models : [...DEFAULT_MODELS];
 }
 
 export const config = {
@@ -40,12 +36,6 @@ export const config = {
   // adds models. GEMINI_MODELS is comma-separated; GEMINI_MODEL is the
   // single-model shorthand older env files use.
   geminiModels: model_list(),
-  // Hard ceiling on LLM call latency, across every model tried.
-  llmTimeoutMs: 5_000,
-  // Cap on each attempt before the last. 3.5-flash-lite usually answers in
-  // under a second but occasionally stalls past 4s; 2.5s leaves the fallback
-  // (~1s typical) room inside the overall deadline.
-  llmAttemptMs: 2_500,
   // Per-client request cap for /api/parse-intent, per worker process.
   rateLimitPerMinute: Number.parseInt(optional_env('RATE_LIMIT_PER_MINUTE', '30'), 10),
 } as const;

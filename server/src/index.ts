@@ -1,7 +1,6 @@
 import express from 'express';
 import { config } from './config.js';
-import { intentRouter } from './routes/parse-intent.js';
-import { rateLimit } from './rate-limit.js';
+import { intentRoute } from './express.js';
 
 const app = express();
 
@@ -20,7 +19,14 @@ app.get('/health', (_req, res) => {
   res.status(200).json({ ok: true });
 });
 
-app.use('/api', rateLimit(config.rateLimitPerMinute), intentRouter);
+app.use(
+  '/api',
+  intentRoute({
+    apiKey: config.geminiKey,
+    models: config.geminiModels,
+    rateLimitPerMinute: config.rateLimitPerMinute,
+  }),
+);
 
 // JSON 404 so a misrouted request from Apache doesn't return HTML.
 app.use((_req, res) => {

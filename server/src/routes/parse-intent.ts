@@ -1,5 +1,13 @@
 import { Router } from 'express';
-import { IDENTIFIER_RE, parseIntent, type IntentContext } from '../llm.js';
+import {
+  DEFAULT_ATTEMPT_MS,
+  DEFAULT_MODELS,
+  DEFAULT_TIMEOUT_MS,
+  IDENTIFIER_RE,
+  parseIntent,
+  requireApiKey,
+  type IntentContext,
+} from '../llm.js';
 
 function isIntentContext(value: unknown): value is IntentContext {
   if (typeof value !== 'object' || value === null) return false;
@@ -35,41 +43,60 @@ function contextIsBounded(c: IntentContext): boolean {
   );
 }
 
-export const intentRouter = Router();
+export interface IntentRouterOptions {
+  apiKey: string;
+  models?: readonly string[];
+  timeoutMs?: number;
+}
 
-/**
- * POST /api/parse-intent
- * Body: { input: string, context: IntentContext }
- * Returns 200 { action, target? } or 500 { error, fallback }.
- *
- * No auth. Abuse is bounded by the per-IP rate limit in index.ts, the input
- * caps above, and Gemini's own quota.
- */
-intentRouter.post('/parse-intent', async (req, res) => {
-  const body = req.body as Partial<{ input: unknown; context: unknown }> | undefined;
-  if (!body || typeof body.input !== 'string' || body.input.trim().length === 0) {
-    res.status(400).json({ error: 'Missing required field: input' });
-    return;
-  }
-  if (body.input.length > MAX_INPUT_CHARS) {
-    res.status(400).json({ error: 'Input too long', fallback: { action: 'unknown' } });
-    return;
-  }
-  if (!isIntentContext(body.context) || !contextIsBounded(body.context)) {
-    res.status(400).json({ error: 'Missing required field: context' });
-    return;
-  }
-  try {
-    const parsed = await parseIntent(body.input, body.context);
-    res.status(200).json(parsed);
-  } catch (err) {
-    console.error(
-      'parse-intent route failed:',
-      err instanceof Error ? err.stack ?? err.message : err,
-    );
-    res.status(500).json({
-      error: 'Intent parsing failed',
-      fallback: { action: 'unknown' },
-    });
-  }
-});
+/** The POST /parse-intent handler, no rate limit. `intentRoute` (express.ts) adds that. */
+export function createIntentRouter(options: IntentRouterOptions): Router {
+  const apiKey = requireApiKey(options.apiKey);
+  const models = options.models?.length ? options.models : DEFAULT_MODELS;
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const router = Router();
+
+  /**
+   * POST /api/parse-intent
+   * Body: { input: string, context: IntentContext }
+   * Returns 200 { action, target? } or 500 { error, fallback }.
+   *
+   * No auth. Abuse is bounded by the per-IP rate limit in intentRoute, the input
+   * caps above, and Gemini's own quota.
+   */
+  router.post('/parse-intent', async (req, res) => {
+    const body = req.body as Partial<{ input: unknown; context: unknown }> | undefined;
+    if (!body || typeof body.input !== 'string' || body.input.trim().length === 0) {
+      res.status(400).json({ error: 'Missing required field: input' });
+      return;
+    }
+    if (body.input.length > MAX_INPUT_CHARS) {
+      res.status(400).json({ error: 'Input too long', fallback: { action: 'unknown' } });
+      return;
+    }
+    if (!isIntentContext(body.context) || !contextIsBounded(body.context)) {
+      res.status(400).json({ error: 'Missing required field: context' });
+      return;
+    }
+    try {
+      const parsed = await parseIntent(body.input, body.context, {
+        apiKey,
+        models,
+        timeoutMs,
+        attemptMs: DEFAULT_ATTEMPT_MS,
+      });
+      res.status(200).json(parsed);
+    } catch (err) {
+      console.error(
+        'parse-intent route failed:',
+        err instanceof Error ? err.stack ?? err.message : err,
+      );
+      res.status(500).json({
+        error: 'Intent parsing failed',
+        fallback: { action: 'unknown' },
+      });
+    }
+  });
+
+  return router;
+}

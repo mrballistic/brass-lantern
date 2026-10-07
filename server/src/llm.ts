@@ -1,5 +1,3 @@
-import { config } from './config.js';
-
 export interface IntentContext {
   roomName: string;
   exits: string[];
@@ -34,6 +32,20 @@ export const ACTION_VOCAB = [
 
 /** The built-in theme names: the only targets the theme action may carry. */
 export const THEME_SLUGS: readonly string[] = ['crt-amber', 'crt-green', 'simple', 'simple-light', 'simple-dark'];
+
+// Measured 2026-10-03 through this server: 3.5-flash-lite answered 7/7 test
+// commands correctly in ~0.7s; 3.6-flash ~0.9s but occasionally 429s or runs
+// past the deadline; 3.5-flash took 5–6s even at thinkingLevel minimal, so it
+// can't fit the 5s budget and is deliberately left out.
+export const DEFAULT_MODELS: readonly string[] = ['gemini-3.5-flash-lite', 'gemini-3.6-flash'];
+/** Hard ceiling on LLM call latency, across every model tried. */
+export const DEFAULT_TIMEOUT_MS = 5_000;
+/**
+ * Cap on each attempt before the last. 3.5-flash-lite usually answers in under
+ * a second but occasionally stalls past 4s; 2.5s leaves the fallback (~1s
+ * typical) room inside the overall deadline.
+ */
+export const DEFAULT_ATTEMPT_MS = 2_500;
 
 const ACTIONS: ReadonlySet<string> = new Set(ACTION_VOCAB);
 
@@ -223,13 +235,14 @@ async function tryModel(
   signal: AbortSignal,
   fetchImpl: typeof fetch,
   ctx: IntentContext,
+  apiKey: string,
 ): Promise<ParsedAction> {
   let res: Response;
   try {
     res = await fetchImpl(`${ENDPOINT}/${encodeURIComponent(model)}:generateContent`, {
       method: 'POST',
       // Key in a header, never the URL, so it can't leak into error text or logs.
-      headers: { 'content-type': 'application/json', 'x-goog-api-key': config.geminiKey },
+      headers: { 'content-type': 'application/json', 'x-goog-api-key': apiKey },
       body,
       signal,
     });
@@ -273,7 +286,17 @@ async function tryModel(
   }
 }
 
+/** Fail fast on a missing key, so a misconfigured server never starts answering `unknown`. */
+export function requireApiKey(apiKey: unknown): string {
+  if (typeof apiKey !== 'string' || apiKey.trim().length === 0) {
+    throw new Error('A Gemini apiKey is required (got an empty value).');
+  }
+  return apiKey;
+}
+
 export interface ParseIntentOptions {
+  /** Gemini API key. Required: the caller supplies it, nothing here reads the environment. */
+  apiKey: string;
   models?: readonly string[];
   timeoutMs?: number;
   /** Cap on any single attempt, so one slow model can't spend the whole deadline. */
@@ -284,18 +307,20 @@ export interface ParseIntentOptions {
 /**
  * Parse natural-language input into a structured game action. Tries each
  * configured model in order within one shared deadline. Returns
- * `{action:'unknown'}` on any failure. Never throws.
+ * `{action:'unknown'}` on any failure. Throws only for a missing `apiKey`
+ * (a configuration error, not a model failure).
  */
 export async function parseIntent(
   input: string,
   ctx: IntentContext,
-  opts: ParseIntentOptions = {},
+  opts: ParseIntentOptions,
 ): Promise<ParsedAction> {
-  const models = opts.models ?? config.geminiModels;
+  const apiKey = requireApiKey(opts.apiKey);
+  const models = opts.models ?? DEFAULT_MODELS;
   // Resolved per call so tests can stub global fetch after import.
   const fetchImpl = opts.fetchImpl ?? fetch;
-  const deadline = AbortSignal.timeout(opts.timeoutMs ?? config.llmTimeoutMs);
-  const attemptMs = opts.attemptMs ?? config.llmAttemptMs;
+  const deadline = AbortSignal.timeout(opts.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+  const attemptMs = opts.attemptMs ?? DEFAULT_ATTEMPT_MS;
   const body = requestBody(input, ctx);
   const failures: string[] = [];
 
@@ -309,7 +334,7 @@ export async function parseIntent(
     const last = i === models.length - 1;
     const signal = last ? deadline : AbortSignal.any([deadline, AbortSignal.timeout(attemptMs)]);
     try {
-      return await tryModel(model, body, signal, fetchImpl, ctx);
+      return await tryModel(model, body, signal, fetchImpl, ctx, apiKey);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       failures.push(`${model}: ${message}`);
