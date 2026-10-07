@@ -4,6 +4,11 @@ import CrtBootSequence from '@/components/CrtBootSequence.vue';
 import Terminal from '@/components/Terminal.vue';
 import ConsentBanner from '@/components/ConsentBanner.vue';
 import { willResume } from '@/cartridges';
+import { useTheme } from '@/theme/useTheme';
+
+// The shell carries the theme too, so the overlays (scanlines, noise, flicker) follow it.
+const shellEl = ref<HTMLElement | null>(null);
+useTheme(shellEl, { theme: 'crt-amber' });
 
 const bootComplete = ref(false);
 const fastBoot = ref(false);
@@ -34,7 +39,7 @@ onMounted(scheduleGlitch);
 </script>
 
 <template>
-  <div class="crt-shell">
+  <div ref="shellEl" class="crt-shell">
     <div class="crt-noise" />
     <div class="crt-vignette" />
 

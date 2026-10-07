@@ -103,11 +103,21 @@ html, body, #app {
   inset: 0;
   pointer-events: none;
   z-index: 1;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='4' height='4'><rect width='4' height='4' fill='%23000'/><circle cx='1' cy='1' r='0.5' fill='%23ffb000' opacity='0.4'/><circle cx='3' cy='2' r='0.5' fill='%23ffb000' opacity='0.3'/></svg>");
-  background-size: 4px 4px;
+  /* Dark base; the dots are a mask over the foreground colour so they follow the theme. */
+  background-color: var(--bl-shade);
   opacity: 0.03;
   animation: crt-noise-shift 12s steps(8, end) infinite;
   will-change: transform;
+}
+.crt-noise::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-color: var(--bl-fg);
+  -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='4' height='4'><circle cx='1' cy='1' r='0.5' fill='%23000' opacity='0.4'/><circle cx='3' cy='2' r='0.5' fill='%23000' opacity='0.3'/></svg>");
+  mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='4' height='4'><circle cx='1' cy='1' r='0.5' fill='%23000' opacity='0.4'/><circle cx='3' cy='2' r='0.5' fill='%23000' opacity='0.3'/></svg>");
+  -webkit-mask-size: 4px 4px;
+  mask-size: 4px 4px;
 }
 
 @keyframes crt-noise-shift {
@@ -472,3 +482,24 @@ html, body, #app {
 @media (max-width: 599px) {
   .consent { left: 12px; right: 12px; bottom: 64px; max-width: none; }
 }
+
+/* ============================================================
+   Effect switches. A theme puts these classes on its root (the
+   .crt-shell, and the .terminal itself), so two terminals on one
+   page stay independent.
+   ============================================================ */
+.bl-bloom-off.crt-shell::before { display: none; }
+.bl-scanlines-off.crt-shell::after { display: none; }
+.bl-vignette-off .crt-vignette { display: none; }
+.bl-noise-off .crt-noise { display: none; }
+.bl-flicker-off .crt-flicker-base,
+.bl-flicker-off .crt-flicker-secondary { animation: none; }
+.bl-glitch-off .crt-glitch.crt-glitch-pulse { animation: none; }
+
+/* Bloom is the glow: every text-shadow and box-shadow that comes from it. */
+.bl-bloom-off :is(.line, .terminal-input-bar input, .consent) { text-shadow: none; }
+.bl-bloom-off :is(.block-cursor, .consent) { box-shadow: none; }
+
+/* Decay is the opacity steps on older lines. */
+.bl-decay-off .line.decay-recent,
+.bl-decay-off .line.decay-old { opacity: 1; }

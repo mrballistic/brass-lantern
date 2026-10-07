@@ -5,7 +5,25 @@ import { appName } from '@/app.config';
 import { analyticsConfigured } from '@/services/analytics';
 import { useSession } from '@/stores/session';
 import { useTypewriter } from '@/composables/useTypewriter';
+import { useTheme } from '@/theme/useTheme';
+import type { Theme, ThemeName, ThemeOverrides } from '@/theme/themes';
 import type { OutputLine } from '@/types/game';
+
+const props = withDefaults(
+  defineProps<{
+    theme?: ThemeName | Theme | string;
+    customThemes?: Record<string, Theme>;
+    themeOverrides?: ThemeOverrides;
+  }>(),
+  { theme: 'crt-amber', customThemes: () => ({}), themeOverrides: () => ({}) },
+);
+
+const rootEl = ref<HTMLElement | null>(null);
+useTheme(rootEl, {
+  theme: () => props.theme,
+  custom: () => props.customThemes,
+  overrides: () => props.themeOverrides,
+});
 
 const session = useSession();
 const { output, isParsing, restored, status, title, mode } = session;
@@ -203,6 +221,7 @@ const inputPlaceholder = computed(() =>
 
 <template>
   <div
+    ref="rootEl"
     class="terminal"
     tabindex="-1"
     @click="onShellClick"

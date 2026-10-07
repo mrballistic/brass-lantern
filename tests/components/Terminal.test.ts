@@ -214,4 +214,43 @@ describe('Terminal.vue', () => {
     await vi.runAllTimersAsync();
     expect(wrapper.find('.terminal-output').text()).toContain('[Previous turn undone.]');
   });
+
+  describe('themes', () => {
+    const root = (w: ReturnType<typeof mount>) => w.find('.terminal');
+
+    it('puts the -off classes and variables on the root', async () => {
+      const wrapper = mount(Terminal, { props: { theme: 'simple-dark' } });
+      await vi.runOnlyPendingTimersAsync();
+      expect(root(wrapper).classes()).toContain('bl-bloom-off');
+      expect(root(wrapper).classes()).toContain('bl-scanlines-off');
+      expect((root(wrapper).element as HTMLElement).style.getPropertyValue('--bl-bg')).toBe('#121212');
+    });
+
+    it('updates when the theme changes', async () => {
+      const wrapper = mount(Terminal, { props: { theme: 'crt-amber' } });
+      await vi.runOnlyPendingTimersAsync();
+      expect(root(wrapper).classes()).not.toContain('bl-bloom-off');
+      await wrapper.setProps({ theme: 'simple-light' });
+      expect(root(wrapper).classes()).toContain('bl-bloom-off');
+      expect((root(wrapper).element as HTMLElement).style.getPropertyValue('--bl-bg')).toBe('#f7f5ef');
+      await wrapper.setProps({ theme: 'crt-green' });
+      expect(root(wrapper).classes()).not.toContain('bl-bloom-off');
+      expect((root(wrapper).element as HTMLElement).style.getPropertyValue('--bl-fg')).toBe('#33ff66');
+    });
+
+    it('keeps two terminals’ variables apart', async () => {
+      const a = mount(Terminal, { props: { theme: 'simple-dark' } });
+      const b = mount(Terminal, { props: { theme: 'crt-green' } });
+      await vi.runOnlyPendingTimersAsync();
+      expect((root(a).element as HTMLElement).style.getPropertyValue('--bl-bg')).toBe('#121212');
+      expect((root(b).element as HTMLElement).style.getPropertyValue('--bl-bg')).toBe('#050a06');
+      expect(root(b).classes()).not.toContain('bl-bloom-off');
+    });
+
+    it('defaults to crt-amber with no extra classes', async () => {
+      const wrapper = mount(Terminal);
+      await vi.runOnlyPendingTimersAsync();
+      expect(root(wrapper).classes()).toEqual(['terminal']);
+    });
+  });
 });
