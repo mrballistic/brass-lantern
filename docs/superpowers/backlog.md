@@ -26,6 +26,7 @@ Known gaps the reviews found and deferred. Each stage's spec picks up the ones i
 
 From the 6a final review:
 
+- **A number as the first object with a thing as the second is understood in brass style.** “turn 4 with wrench” answers “This has no effect.” and takes a move, where a number no rule wants should miss with the digits (PLUG 5 WITH X too).
 - **Infocom READ X THROUGH Y ignores PRE-READ.** Zork runs PRE-READ's checks before V-READ for READ X THROUGH Y; native's READ THROUGH just reads X. Check the ZIL and match it in Infocom style.
 - **Infocom TURN X TO N ignores TURNBIT.** Zork answers “You can't turn that!” for anything without TURNBIT before V-TURN; native says “This has no effect.” for any thing with no rule.
 - **Templates don't expand in item listing sentences.** `{var:NAME}` and `{number}` fill in descriptions and event lines, but not the sentences that list items in a room.

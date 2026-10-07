@@ -7,6 +7,7 @@ Engine parity, stage 6a: the foundations for Zork II and Zork III, which later s
 - **ME and numbers are parsed.** ME, MYSELF (and SELF or YOURSELF, when nothing here is called that) reach a world's rules as `target:player`; a number in an object slot rides along as `number` (digits that name something here, like a locker 12, are that thing, so its rules still fire). With no rule, the reply is the same miss as before, with the word typed (“You don’t see a “me” here.”, “You don’t see a “5” here.”).
 - **New forms parse:** PUT X UNDER/BEHIND Y, THROW X OFF/OVER Y, PUSH X *direction*, PUSH X TO Y, TURN/SET X TO N. In Infocom style they answer with Zork's replies; in brass style, with no rule, they are misses, so the intent server still gets its turn as it did before they parsed; when it can't read them either, the literal reply is now the form's own line (“You can’t push things to that.”, “This has no effect.”) where it used to be the old reading's miss or the world's “didn’t understand”. TURN X WITH Y is not one of them: it is understood with “This has no effect.” in every style, as before.
 - **READ X WITH (or THROUGH) Y** reads X.
+- **Digits typed alone match only whole words** of a thing's name, alias or ID: “examine 10” no longer finds Zork I's “pdp10”, and “1” no longer picks a “locker 12”.
 - **Infocom style:** SCORE and VERBOSE (and BRIEF, SUPERBRIEF) take no move; every openable says “It is already open.” or “It is already closed.” when it is.
 - **Quoted text no longer splits a line:** a “. ” or “, ” inside double quotes doesn't end the command.
 
