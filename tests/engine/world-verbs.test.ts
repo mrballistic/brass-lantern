@@ -57,6 +57,19 @@ describe('world verbs', () => {
     expect(splitCommands('snooze and ring bell', world.verbs)).toEqual(['snooze', 'ring bell']);
   });
 
+  it('a fallback verb may use a built-in word, and reads only what no built-in verb reads (Zork’s bare TURN X)', () => {
+    expect(fallbackParse('turn bell', world.verbs)).toEqual({ action: 'twist', target: 'bell' });
+    expect(fallbackParse('twist the bell', world.verbs)).toEqual({ action: 'twist', target: 'bell' });
+    // TURN … TO, TURN ON and TURN … OFF stay the engine's.
+    expect(fallbackParse('turn dial to 4', world.verbs)).toEqual({ action: 'turn', target: 'dial', indirect: 'number', number: 4 });
+    expect(fallbackParse('turn on lamp', world.verbs)).toEqual({ action: 'turn_on', target: 'lamp' });
+    expect(fallbackParse('turn lamp off', world.verbs)).toEqual({ action: 'turn_off', target: 'lamp' });
+    // Without the world's verbs a bare TURN is nothing the parser reads, as before.
+    expect(fallbackParse('turn bell')).toBeNull();
+    const s = stateWith(world, { room: 'bedroom' });
+    expect(execute(fallbackParse('turn alarm', world.verbs)!, { world, state: s }).lines).toEqual(['It won’t turn.']);
+  });
+
   it('reports a world verb word that clashes with a built-in', () => {
     expect(verbClashes({ shut: { words: ['take', 'shove'], target: 'required' } })).toEqual(['take']);
     expect(verbClashes(world.verbs)).toEqual([]);

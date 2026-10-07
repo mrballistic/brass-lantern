@@ -4,7 +4,7 @@ import { whichQuestion } from '../ask';
 import { evaluateCondition } from '../conditions';
 import { exitTarget } from '../describe';
 import { fuzzyCandidates, fuzzyMatchExit, isSelfWord } from '../fuzzy';
-import { AskSignal, isInside, isOpen, matchNpc, moveItem, needObject, nextPlacing, npcRoom, npcScope, npcsSeen, npcStateOf, pickItem, PLAYER } from '../model';
+import { AskSignal, isAwake, isInside, isNpcHidden, isOpen, matchNpc, moveItem, needObject, nextPlacing, npcRoom, npcScope, npcsSeen, npcStateOf, pickItem, PLAYER } from '../model';
 import { fallbackParse } from '../parser';
 import { miss, ok, type EngineResult } from '../result';
 import { runEventKey, turnHalted } from '../effects';
@@ -42,13 +42,22 @@ export function handleAsk(action: ParsedAction, world: World, state: GameState):
  */
 export function handleOrder(action: ParsedAction, world: World, state: GameState): EngineResult {
   if (!action.target) needObject();
-  const npc = matchNpc(action.target, world, state);
+  const npc = matchNpc(action.target, world, state) ?? matchHeard(action.target, world, state);
   if (!npc) return miss(`There is no “${action.target}” here.`);
   const person = world.npcs[npc];
   const result = order(npc, action, world, state);
   // Only an understood order to someone who can take orders ends the line. A miss never
   // does (the store retries it), and characters without orders or obeys answer as they always have.
   return result.understood !== false && (person.orders || person.obeys) ? { ...result, stopLine: true } : result;
+}
+
+/** A character elsewhere that can be addressed from the player's room (`heardFrom`), awake and unhidden. */
+function matchHeard(target: string, world: World, state: GameState): string | null {
+  const heard = Object.keys(world.npcs).filter(
+    (id) => world.npcs[id].heardFrom?.includes(state.currentRoom) && npcRoom(world, state, id) !== null && isAwake(world, state, id) && !isNpcHidden(world, state, id),
+  );
+  const [id = null] = fuzzyCandidates(target, heard.map((id) => ({ id, name: world.npcs[id]?.name ?? id, aliases: world.npcs[id]?.aliases })));
+  return id;
 }
 
 function order(npc: string, action: ParsedAction, world: World, state: GameState): EngineResult {

@@ -86,7 +86,18 @@ describe('Infocom style', () => {
       'This gives you the rank of Beginner.',
     ]);
     s.flags.paid = true;
-    expect(run(s, 'score').lines[0]).toBe('Your score is 30 (total of 350 points), in 2 moves.');
+    // SCORE takes no time: Zork's main loop doesn't run the clock for it.
+    expect(run(s, 'score').lines[0]).toBe('Your score is 30 (total of 350 points), in 1 move.');
+    expect(s.turns).toBe(1);
+  });
+
+  it('SCORE runs no daemons or fuses (Zork’s CLOCKER skips it)', () => {
+    const ticking: World = { ...world, daemons: [{ if: 'in:kitchen', then: ['Tick.'] }] };
+    const s = stateWith(ticking, { room: 'kitchen' });
+    const r = execute({ action: 'score' }, { world: ticking, state: s });
+    expect(r.lines).not.toContain('Tick.');
+    expect(r.free).toBe(true);
+    expect(execute({ action: 'look' }, { world: ticking, state: s }).lines).toContain('Tick.');
   });
 
   it('a lit light source says so in the inventory', () => {

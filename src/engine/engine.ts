@@ -336,8 +336,11 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
       return ok(diagnoseLines(world, state));
     case 'hint':
       return handleHint(world, state);
-    case 'score':
-      return handleScore(world, state);
+    case 'score': {
+      // Zork's main loop runs no clock for SCORE: no move, no timers.
+      const scored = handleScore(world, state);
+      return world.style === 'infocom' ? { ...scored, free: true } : scored;
+    }
     case 'script':
     case 'unscript':
       return { lines: [], mutated: false, free: true, script: action.action === 'script' ? 'start' : 'stop' };

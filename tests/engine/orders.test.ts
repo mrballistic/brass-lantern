@@ -312,4 +312,20 @@ describe('orders (6a)', () => {
     expect(guard).toEqual(expect.arrayContaining(['crate', 'cudgel']));
     expect(guard).not.toContain('sock');
   });
+
+  it('a character heard from another room takes orders there, carried out where it stands (Zork’s local-global MASTER)', () => {
+    const robot = w.npcs.robot;
+    // `here:` is the player's reach; the button is in the robot's.
+    const heard: World = { ...w, npcs: { ...w.npcs, robot: { ...robot, heardFrom: ['living'], orders: { ...robot.orders, push: [{ if: 'target:button', then: 'robot_push' }] } } } };
+    const s = stateWith(heard, { room: 'living' });
+    s.npcs = { robot: { room: 'bedroom' } };
+    // The button is in the bedroom, where the robot is, not in the living room.
+    const r = run(s, 'robot, push button', heard);
+    expect(r.lines).toEqual(['The robot pushes the button. Something clicks.', '[Flag set: Button pushed]']);
+    expect(r.stopLine).toBe(true);
+    // From a room it isn't heard in, there's no one to order.
+    const yard = stateWith(heard, { room: 'yard' });
+    yard.npcs = { robot: { room: 'bedroom' } };
+    expectMiss(yard, 'robot, push button', 'There is no “robot” here.', heard);
+  });
 });

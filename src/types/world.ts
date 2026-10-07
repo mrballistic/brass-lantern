@@ -86,6 +86,8 @@ export interface WorldVerb {
   held?: boolean;
   /** Treat it as GO: through the target exit, or the exit labeled with the verb's ID when bare. */
   go?: boolean;
+  /** Its words may be built-in words: it reads only lines no built-in verb reads (Zork's bare TURN X, where the engine's TURN wants TO or WITH). */
+  fallback?: boolean;
 }
 
 /** An exit with conditions. Without `to`, it only prints `denial`. */
@@ -254,6 +256,11 @@ export interface NPC {
   follows?: string;
   /** What it says on arriving after you. Brass style: “<Name> follows you.” if unset; Infocom prints nothing if unset. */
   followLine?: string;
+  /**
+   * Rooms from which the player can address it while it's elsewhere (Zork's local-global actor: MASTER
+   * in a room's GLOBAL list hands the order to the dungeon master). Its orders are carried out where it stands.
+   */
+  heardFrom?: string[];
   /** Present but not listed in the room: the room's own description mentions it (Zork's NDESCBIT). */
   scenery?: boolean;
   /** Starts hidden (in its room, unseen). Its state's `hidden` overrides this. */

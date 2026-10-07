@@ -189,6 +189,7 @@ export function auditWorld(world: World): string[] {
     }
     checkDescriptionScript(npc.descriptionScript, `npc ${id}`);
     checkCondition(npc.follows, `npc ${id} follows`);
+    for (const room of npc.heardFrom ?? []) if (!isRoom(room)) problems.push(`npc ${id} heardFrom: no room “${room}”`);
     for (const held of npc.holds ?? []) if (!isItem(held)) problems.push(`npc ${id} holds: no item “${held}”`);
     for (const d of npc.descriptions ?? []) checkCondition(d.if, `npc ${id} descriptions`);
     checkTable(npc.instead, 'instead', `npc ${id}`);
