@@ -224,9 +224,12 @@ function typedText(raw: string): string {
   return (quoted ? (quoted[1] ?? quoted[2] ?? quoted[3]) : text).replace(/\s+/g, ' ').trim();
 }
 
-/** ME, MYSELF, SELF in the second-object slot name the player: the reserved ID 'player'. */
+/** ME, MYSELF, SELF in an object slot name the player: the reserved ID 'player'. */
 function selfIndirect(parsed: ParsedAction): ParsedAction {
-  return parsed.indirect && isSelfWord(parsed.indirect) ? { ...parsed, indirect: 'player' } : parsed;
+  const out = { ...parsed };
+  if (out.indirect && isSelfWord(out.indirect)) out.indirect = 'player';
+  if (out.target && isSelfWord(out.target)) out.target = 'player';
+  return out;
 }
 
 function matchWorld(input: string, patterns: WorldPattern[]): ParsedAction | null {

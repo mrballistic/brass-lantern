@@ -22,6 +22,8 @@ import { isAlive, isAwake, isCarried, isLit, isLocked, isNpcIn, isOn, isOpen, is
  *   score<=N        the score, as SCORE reports it
  *   said:WORDS           the words typed after a text verb (SAY HELLO), case and punctuation ignored
  *   number:N, number<=N  the number in the command being run (TURN DIAL TO 4); false when it has none
+ *   target:ID, indirect:ID  that slot of the command being run resolved to ID (ME is `player`)
+ *   direction:DIR   the direction typed (PUSH X NORTH)
  *   lit:here, lit:ROOM  the room has light (needs `world`)
  * Unrecognized strings evaluate to false.
  */
@@ -80,6 +82,13 @@ export function evaluateCondition(condition: string, state: GameState, world?: W
       break;
     case 'number':
       result = commandOf(state)?.number === Number(value);
+      break;
+    case 'target':
+    case 'indirect':
+      result = commandOf(state)?.[kind] === value;
+      break;
+    case 'direction':
+      result = commandOf(state)?.direction === value;
       break;
     case 'said': {
       const typed = commandOf(state)?.text;
@@ -159,6 +168,13 @@ export function conditionProblems(condition: string, world: World): string[] {
         break;
       case 'said':
         if (!sayable(body.slice('said:'.length))) problems.push(`unknown condition “${body}”`);
+        break;
+      case 'target':
+      case 'indirect':
+        if (value !== 'player' && value !== 'number' && !item(value)) noItem();
+        break;
+      case 'direction':
+        if (!/^(?:north|south|east|west|northeast|northwest|southeast|southwest|up|down)$/.test(value)) problems.push(`unknown condition “${body}”`);
         break;
       case 'number':
         if (!/^-?\d+$/.test(value)) problems.push(`unknown condition “${body}”`);

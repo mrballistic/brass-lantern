@@ -17,6 +17,8 @@ Conditions are strings, used by `requires`, exits (`if`, `denials`), room `descr
 | `here:ITEM` | the player can reach it (in the room, carried, or in something open) |
 | `var:NAME<op>N` | a numeric variable compared with `=`, `<`, `>`, `<=` or `>=` (unset is 0) |
 | `carrying<op>N` | how many things the player holds directly |
+| `target:ID`, `indirect:ID` | that slot of the command being run resolved to that ID (`player` for ME, MYSELF, SELF); false otherwise |
+| `direction:DIR` | the direction typed in `PUSH X NORTH` (compass, `up`, `down`) |
 | `number:N`, `number<op>N` | the number typed in the command being run (`TURN DIAL TO 4`, `SET DIAL TO 776`); false when the command has none. A rule with `with: 'number'` matches that command |
 | `said:WORDS` | the words typed after a text verb (`target: 'text'`, e.g. `ANSWER A WELL`), compared as lowercase whole words with punctuation and quotes ignored; false when the command has none |
 | `heaviest<op>N` | the weight of the heaviest thing the player holds directly, counting what's inside it (Zork's narrow passage: `heaviest<=4`) |

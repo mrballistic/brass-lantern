@@ -117,12 +117,12 @@ export function withRules(
   run: () => EngineResult,
 ): EngineResult {
   // ME names the player: a second object that is always at hand.
-  const reach = [...reachableItems(world, state), ...(action.number !== undefined ? ['number'] : []), ...(action.indirect && isSelfWord(action.indirect) ? [PLAYER] : [])];
+  const reach = [...reachableItems(world, state), ...(action.number !== undefined ? ['number'] : []), ...([action.target, action.indirect].some((w) => w && isSelfWord(w)) ? [PLAYER] : [])];
   // A number typed where an object goes (TURN DIAL TO 4) is no thing: the literal 'number' stands for it.
   const typed = (word?: string) => action.number !== undefined && word === 'number';
   // Resolve the target the way the verb's handler will, so the rules that fire
   // belong to the item the verb actually acts on.
-  const target = typed(action.target) ? 'number' : action.target ? pickItem(action.target, targetScope(verb, world, state), world, 'target', state) : null;
+  const target = typed(action.target) ? 'number' : action.target && isSelfWord(action.target) ? PLAYER : action.target ? pickItem(action.target, targetScope(verb, world, state), world, 'target', state) : null;
   const indirect = typed(action.indirect) ? 'number' : action.indirect ? pickSecond(action.indirect, visibleItems(world, state), world, state) : null;
   // Words that aren't items may name characters, whose rules count too.
   const targetNpc = !target && action.target ? matchNpc(action.target, world, state) : null;
@@ -138,6 +138,7 @@ export function withRules(
     target: target ?? targetNpc ?? undefined,
     indirect: indirect ?? indirectNpc ?? undefined,
     number: action.number,
+    direction: action.direction,
     text: action.text,
     words: { target: action.target, indirect: action.indirect },
   });

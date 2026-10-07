@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { conditionProblems } from '@/engine/conditions';
 import { execute } from '@/engine/engine';
 import { fallbackParse } from '@/engine/parser';
 import type { World } from '@/types/world';
@@ -135,6 +136,43 @@ describe('prepositions (6a)', () => {
       const state = stateWith(ruled, { room: 'living', carrying: ['key'] });
       const r = execute({ action: 'put', target: 'brass key', indirect: 'me', prep: 'in' }, { world: ruled, state });
       expect(r.lines).toEqual(['You can’t put that in yourself.']);
+    });
+  });
+
+  describe('ME in either slot', () => {
+    const ruledRoom = (instead: Record<string, unknown>): World => ({
+      ...world,
+      rooms: { ...world.rooms, living: { ...world.rooms.living, instead } as World['rooms'][string] },
+    });
+    it('examine me and attack myself with no rule are misses that change nothing', () => {
+      for (const input of ['examine me', 'attack myself']) {
+        const state = stateWith(world, { room: 'living', carrying: ['key'] });
+        const before = JSON.stringify(state);
+        const r = execute(fallbackParse(input)!, { world, state });
+        expect(r.understood, input).toBe(false);
+        expect(JSON.stringify(state), input).toBe(before);
+      }
+    });
+    it('a room rule on target:player answers examine me', () => {
+      const w = ruledRoom({ examine: [{ if: 'target:player', say: ['You look fine.'] }] });
+      expect(play('examine me', { w }).r.lines).toEqual(['You look fine.']);
+    });
+    it('put brass key in me: a miss with no rule, the rule’s line with one', () => {
+      const state = stateWith(world, { room: 'living', carrying: ['key'] });
+      const before = JSON.stringify(state);
+      expect(execute(fallbackParse('put brass key in me')!, { world, state }).understood).toBe(false);
+      expect(JSON.stringify(state)).toBe(before);
+      const w = ruledRoom({ put: [{ if: 'indirect:player', say: ['That would be messy.'] }] });
+      expect(play('put brass key in me', { w }).r.lines).toEqual(['That would be messy.']);
+    });
+    it('direction: conditions tell the pushes apart', () => {
+      const w = ruledRoom({ push: [{ if: 'direction:north', say: ['It slides north.'] }, { say: ['It won’t budge that way.'] }] });
+      expect(play('push box north', { w, carrying: [] }).r.lines).toEqual(['It slides north.']);
+      expect(play('push box east', { w, carrying: [] }).r.lines).toEqual(['It won’t budge that way.']);
+    });
+    it('conditionProblems accepts the command conditions', () => {
+      expect(conditionProblems('target:player & indirect:lamp & direction:north', fixtureWorld)).toEqual([]);
+      expect(conditionProblems('direction:sideways', fixtureWorld)).toHaveLength(1);
     });
   });
 });
