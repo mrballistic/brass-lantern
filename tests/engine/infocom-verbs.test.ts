@@ -367,3 +367,13 @@ describe('READ’s automatic take fires onTake once (backlog clear-out)', () => 
     expect(run(s, { action: 'read', target: 'scroll' }, world)).not.toContain('A chill runs down your spine.');
   });
 });
+
+describe('EXAMINE a door (V-LOOK-INSIDE’s DOORBIT) (6a)', () => {
+  it('closed, it says so; open, it can’t tell what’s beyond', () => {
+    const world: World = { ...w, items: { ...w.items, hatch: { ...w.items.hatch, description: '' } } };
+    const s = stateWith(world, { room: 'shed' });
+    expect(run(s, { action: 'examine', target: 'hatch' }, world)).toEqual(['The hatch is closed.']);
+    run(s, { action: 'open', target: 'hatch' }, world);
+    expect(run(s, { action: 'examine', target: 'hatch' }, world)).toEqual(['The hatch is open, but I can’t tell what’s beyond it.']);
+  });
+});

@@ -85,6 +85,10 @@ export function handleExamine(target: string | undefined, world: World, state: G
     if (item && !item.description) {
       // Zork's EXAMINE reads what's written on it.
       if (item.text && world.style === 'infocom') return ok([item.text]);
+      // Zork's EXAMINE of a door (V-LOOK-INSIDE): open or closed, never what's beyond.
+      if (world.style === 'infocom' && item.door) {
+        return ok([isOpen(world, state, matchedItem) ? `The ${item.name} is open, but I can’t tell what’s beyond it.` : `The ${item.name} is closed.`]);
+      }
       // Zork's EXAMINE of a closed box: it says so, rather than calling it empty.
       if (world.style === 'infocom' && item.container && !item.container.transparent && !isOpen(world, state, matchedItem)) return ok([`The ${item.name} is closed.`]);
       if (contents.length > 0) return ok(contents);
