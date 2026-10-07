@@ -8,7 +8,6 @@ import { handleGo } from './movement';
 import { withArticle } from '../describe';
 import { nextRandom } from '../rng';
 
-
 /** A verb the world declared. Null if the world has no such verb. */
 export function handleWorldVerb(action: ParsedAction, world: World, state: GameState): EngineResult | null {
   const verb = world.verbs?.[action.action];

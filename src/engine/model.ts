@@ -162,7 +162,6 @@ function itemCandidates(ids: string[], world: World): Array<{ id: string; name: 
   });
 }
 
-
 export function matchItem(target: string, ids: string[], world: World): string | null {
   return fuzzyMatch(target, itemCandidates(ids, world));
 }

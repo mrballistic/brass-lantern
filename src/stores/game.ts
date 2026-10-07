@@ -68,6 +68,7 @@ let download = defaultDownload;
 export function setDownload(fn: (filename: string, text: string) => void): void {
   download = fn;
 }
+
 /** Save names: lowercase letters, digits, spaces (or _) and -, at most 32. */
 function saveName(raw: string): string {
   return raw
@@ -94,7 +95,6 @@ interface State {
   /** game_completed already reported for the current game. */
   gameOverTracked: boolean;
 }
-
 
 function sameAction(a: ParsedAction, b: ParsedAction): boolean {
   const norm = (s?: string) => (s ?? '').toLowerCase().replace(/[\s-]+/g, '_');
@@ -373,7 +373,6 @@ export const useGameStore = defineStore('game', {
       const retry = await this.reinterpret(step.parse, null);
       this.applyResult(retry ?? this.execute({ action: 'unknown' }), step.parse);
     },
-
 
     /**
      * Ask the LLM what the player meant. Returns the engine's result for that

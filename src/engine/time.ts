@@ -4,12 +4,6 @@ import type { World } from '@/types/world';
 import { evaluateCondition } from './conditions';
 import { runConditional, runEventKey, scheduledThisTurn, turnHalted } from './effects';
 
-/**
- * After every turn the engine acted on: fuses count down and fire, then
- * daemons run, then ambient lines. Never after a miss, so a miss still
- * changes nothing. `existing` holds the fuses pending before this turn, so a
- * fuse set during the turn starts counting next turn.
- */
 const fired = new WeakSet<GameState>();
 
 /** Did a timer go off in the last afterTurn (a cancelled one doesn't count)? Clears the mark. */
@@ -19,6 +13,12 @@ export function fuseFired(state: GameState): boolean {
   return did;
 }
 
+/**
+ * After every turn the engine acted on: fuses count down and fire, then
+ * daemons run, then ambient lines. Never after a miss, so a miss still
+ * changes nothing. `existing` holds the fuses pending before this turn, so a
+ * fuse set during the turn starts counting next turn.
+ */
 export function afterTurn(world: World, state: GameState, existing: Set<string>): string[] {
   // Zork's CLOCKER runs the newest interrupts first: healing (queued in
   // fights), then the timers and daemons, and the fight (queued first) last.

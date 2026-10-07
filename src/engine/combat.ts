@@ -209,7 +209,6 @@ export function heroBlow(world: World, state: GameState, npc: string, weapon: st
   return lines;
 }
 
-
 /** Wakes a knocked-out character (Zork's AWAKEN): its strength back, and its onWake. */
 function awaken(world: World, state: GameState, npc: string): string[] {
   if ((state.npcs?.[npc]?.strength ?? 0) >= 0) return [];

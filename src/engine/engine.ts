@@ -223,7 +223,6 @@ function executeTurn(action: ParsedAction, deps: EngineDeps): EngineResult {
   return { ...result, lines: [...result.lines, ...later], mutated: true };
 }
 
-
 function dispatch(action: ParsedAction, world: World, state: GameState): EngineResult {
   switch (action.action) {
     case 'go':
