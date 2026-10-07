@@ -168,6 +168,7 @@ export function auditWorld(world: World): string[] {
     for (const d of npc.descriptions ?? []) checkCondition(d.if, `npc ${id} descriptions`);
     checkTable(npc.instead, 'instead', `npc ${id}`);
     checkTable(npc.after, 'after', `npc ${id}`);
+    checkTable(npc.orders, 'orders', `npc ${id}`);
     for (const [topic, entries] of Object.entries(npc.topics ?? {})) {
       for (const e of typeof entries === 'string' ? [] : entries) checkCondition(e.if, `npc ${id} topic ${topic}`);
     }

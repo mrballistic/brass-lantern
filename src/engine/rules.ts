@@ -37,17 +37,26 @@ export interface RuleIds {
   npcs?: string[];
   /** The command's preposition (PUT … IN or ON). */
   prep?: string;
+  /** In an order, the character carrying it out: phase `orders` reads its `orders` table alone. */
+  actor?: string;
 }
 
-/** The target item's rules, then the indirect item's, then the room's. The first that applies wins. */
+/**
+ * The target item's rules, then the indirect item's, then the room's. The first that applies wins.
+ * Phase `orders` asks only the ordered character's `orders` table (ids.actor).
+ */
 export function findRule(
   world: World,
   state: GameState,
-  phase: 'instead' | 'after',
+  phase: 'instead' | 'after' | 'orders',
   verb: string,
   ids: RuleIds,
   reach: string[],
 ): Rule | null {
+  if (phase === 'orders') {
+    const rules = (ids.actor && world.npcs[ids.actor]?.orders?.[verb]) || [];
+    return rules.find((rule) => ruleApplies(rule, ids.indirect ?? ids.target, reach, world, state, undefined, ids.prep)) ?? null;
+  }
   type Role = 'target' | 'indirect' | 'vehicle' | undefined;
   const target: [Item | undefined, string | null | undefined, Role] = [ids.target ? world.items[ids.target] : undefined, ids.indirect, 'target'];
   const indirect: [Item | undefined, string | null | undefined, Role] = [ids.indirect ? world.items[ids.indirect] : undefined, ids.target, 'indirect'];

@@ -70,6 +70,10 @@ export interface Command {
   text?: string;
   /** The words typed, for objects that didn't resolve (water inside a carried bottle). */
   words?: { target?: string; indirect?: string };
+  /** In an order (“robot, take the sphere”), the character carrying it out. */
+  actor?: string;
+  /** In an order, the inner command as parsed. */
+  order?: ParsedAction;
 }
 
 const commands = new WeakMap<GameState, Command | null>();

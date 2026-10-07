@@ -218,6 +218,15 @@ export interface NPC {
   noTopic?: string;
   /** Its answer to an order (“thief, give me the bag”). Default: “Name ignores you.” */
   refuseOrder?: string;
+  /**
+   * Rules for orders, by the inner command's verb (“robot, push the button” runs `orders.push`,
+   * or `orders.use` if no `push` table): they see the inner command (`target:`, `number:`, …).
+   */
+  orders?: RuleTable;
+  /** Built-in orders it carries out (Zork II's robot): GO DIR, TAKE X, DROP X, GIVE X TO ME. */
+  obeys?: Array<'go' | 'take' | 'drop' | 'give'>;
+  /** Its reply when it obeys a built-in order. Default: “Okay.” */
+  obeyReplies?: Partial<Record<'go' | 'take' | 'drop' | 'give', string>>;
   /** Present but not listed in the room: the room's own description mentions it (Zork's NDESCBIT). */
   scenery?: boolean;
   /** Starts hidden (in its room, unseen). Its state's `hidden` overrides this. */

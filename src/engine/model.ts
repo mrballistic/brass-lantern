@@ -292,6 +292,27 @@ export function reachableItems(world: World, state: GameState): string[] {
   return findable(world, state, (id) => canReachInside(world, state, id));
 }
 
+/** The room a character is in: its state's room, else the player's room if it's there, else the first room listing it. */
+export function npcRoom(world: World, state: GameState, id: string): string | null {
+  const s = state.npcs?.[id];
+  if (s && s.room !== undefined) return s.room;
+  if (isNpcIn(world, state, id, state.currentRoom)) return state.currentRoom;
+  return Object.keys(world.rooms).find((r) => world.rooms[r].npcs.includes(id)) ?? null;
+}
+
+/**
+ * What a character can lay hands on (for orders): what the player could reach standing
+ * in its room (not what the player carries), and what it holds. In the dark, only what it holds.
+ */
+export function npcScope(world: World, state: GameState, id: string): string[] {
+  const room = npcRoom(world, state, id);
+  const into = (x: string) => canReachInside(world, state, x);
+  const held = childrenOf(world, state, id).filter(shown(state));
+  if (!room || !isLit(world, state, room)) return collect(world, state, held, into, shown(state));
+  const roomRoots = [...childrenOf(world, state, room), ...fixturesIn(world, state, room), ...(world.rooms[room]?.scenery ?? [])].filter(shown(state));
+  return collect(world, state, [...roomRoots, ...held], into, shown(state));
+}
+
 /** Is `id` inside `ancestor`, at any depth? */
 export function isInside(state: GameState, id: string, ancestor: string): boolean {
   const seen = new Set<string>();
