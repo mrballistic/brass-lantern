@@ -1,20 +1,22 @@
 import type { GameState } from '@/types/game';
-import type { Room, World } from '@/types/world';
+import type { Exit, Room, World } from '@/types/world';
 import { evaluateCondition } from './conditions';
 import { darknessLook } from './light';
 import { canSeeInside, childrenOf, isLit, listable, npcsSeen, visibleItemsIn } from './model';
 
 export const COMPASS = ['north', 'south', 'east', 'west', 'northeast', 'northwest', 'southeast', 'southwest', 'up', 'down'];
 
+/** Where an exit leads, if anywhere (a message-only exit leads nowhere). */
+export function exitTarget(exit: string | Exit | undefined): string | undefined {
+  return typeof exit === 'string' ? exit : exit?.to;
+}
+
 /**
  * "cubicles (east), lobby (west)". Shows the room's listed exits, each with
  * the compass direction that leads to the same place, if there is one.
  */
 export function exitList(room: Room): string {
-  const to = (label: string) => {
-    const e = room.exits[label];
-    return typeof e === 'string' ? e : e?.to;
-  };
+  const to = (label: string) => exitTarget(room.exits[label]);
   // Message-only exits are listed only when listExits names them.
   const labels = room.listExits ?? Object.keys(room.exits).filter((l) => to(l) !== undefined);
   return labels

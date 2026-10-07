@@ -1,7 +1,7 @@
 import type { GameState } from '@/types/game';
 import type { Exit, World } from '@/types/world';
 import { evaluateCondition } from '../conditions';
-import { COMPASS, describeRoom, exitList } from '../describe';
+import { COMPASS, describeRoom, exitList, exitTarget } from '../describe';
 import { fuzzyMatchExit } from '../fuzzy';
 import { isLit, isOpen, isWater, matchItem, pickItem, visibleItems } from '../model';
 import { handleBoard } from './vehicle';
@@ -68,10 +68,6 @@ export function enterRoom(targetId: string, world: World, state: GameState, opts
   const lines = [...landing, ...describeRoom(targetId, world, state, { first, brief, namesOnly: verbosity === 'superbrief' })];
   lines.push(...runOnEnter(targetId, world, state));
   return lines;
-}
-
-export function exitTarget(exit: string | Exit | undefined): string | undefined {
-  return typeof exit === 'string' ? exit : exit?.to;
 }
 
 /** An exit's own refusal (V-WALK's RFATAL): it changes nothing, and skips the room's end routine. */
@@ -173,7 +169,7 @@ export function handleClimb(target: string | undefined, world: World, state: Gam
       return ok([direction === 'up' ? 'You can’t go that way.' : 'You can’t do that!']);
     }
     if (direction === 'down') {
-      const to = typeof exit === 'string' ? exit : exit.to;
+      const to = exitTarget(exit);
       if (!to || !(world.rooms[to]?.scenery ?? []).includes(thing)) return ok([`The ${world.items[thing]?.name ?? thing} doesn’t lead downward.`]);
     }
     return followExit(exit, world, state);
