@@ -753,6 +753,8 @@ describe('Zork I, natively: the full game’s fixes (5d)', () => {
   });
   it('the thief wears his LDESC until he has been knocked out and come round (ROBBER-C-DESC)', () => {
     const state = initialState(zork1);
+    // A fixed seed: on some clock seeds the LOOK turn's daemons carry you off before the second look.
+    state.rng = 1;
     state.currentRoom = 'treasure_room';
     state.npcs = { thief: { room: 'treasure_room', hidden: false } };
     state.locations.lamp = 'player';

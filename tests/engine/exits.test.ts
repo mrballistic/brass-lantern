@@ -182,6 +182,8 @@ describe('what drops the rest of a line (backlog clear-out)', () => {
   it('a first strike', async () => {
     const w = { ...world, combat: { strength: { min: 2, max: 7 } }, npcs: { ...world.npcs, guard: { ...world.npcs.guard, combat: { ...world.npcs.guard.combat!, firstStrike: 100 } } } };
     const s = stateWith(w, { room: 'shed' });
+    // A fixed seed: <PROB 100> still fails on a roll of 100, as in Zork.
+    s.rng = 1;
     const r = execute({ action: 'wait' }, { world: w, state: s });
     expect(s.npcs?.guard?.fighting).toBe(true);
     expect(r.stopLine).toBe(true);
