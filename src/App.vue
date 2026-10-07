@@ -1,17 +1,31 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import CrtBootSequence from '@/components/CrtBootSequence.vue';
 import Terminal from '@/components/Terminal.vue';
 import ConsentBanner from '@/components/ConsentBanner.vue';
 import { willResume } from '@/cartridges';
+import { useGameStore } from '@/stores/game';
 import { useTheme } from '@/theme/useTheme';
 import type { Theme, ThemeName } from '@/theme/themes';
 
 // The shell is the one theme root: it holds the overlays, the boot sequence and the
 // terminal, so its classes and variables reach all of them.
-const props = withDefaults(defineProps<{ theme?: ThemeName | Theme | string }>(), { theme: 'crt-amber' });
+// `theme` is the author's default and `themes` their own; the player's THEME, BLOOM and
+// EFFECTS commands (kept in the store) win over the default.
+const props = withDefaults(
+  defineProps<{ theme?: ThemeName | Theme | string; themes?: Record<string, Theme> }>(),
+  { theme: 'crt-amber', themes: () => ({}) },
+);
+const store = useGameStore();
+store.configureThemes(props.theme, props.themes);
+watch(() => [props.theme, props.themes], () => store.configureThemes(props.theme, props.themes));
 const shellEl = ref<HTMLElement | null>(null);
-useTheme(shellEl, { theme: () => props.theme });
+useTheme(shellEl, {
+  // Read from the prop here (not store.themeBase) so two shells keep their own defaults.
+  theme: () => (store.themeChosen ? store.theme.base : props.theme),
+  custom: () => props.themes,
+  overrides: () => store.theme.overrides,
+});
 
 const bootComplete = ref(false);
 const fastBoot = ref(false);

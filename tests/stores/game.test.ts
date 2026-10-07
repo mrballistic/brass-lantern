@@ -889,3 +889,129 @@ describe('orders and the rest of the line (6a)', () => {
     }
   });
 });
+
+describe('theme commands', () => {
+    function mockIntent(reply: object) {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(reply) }));
+    }
+    beforeEach(() => localStorage.clear());
+    const KEY = 'test:theme';
+    const last = (store: ReturnType<typeof useGameStore>) => store.output.at(-1)!.text;
+
+    it('THEME lists the presets and the current one', async () => {
+      const store = freshStore();
+      store.initialize();
+      await store.submit('theme');
+      expect(last(store)).toBe(
+        'Themes: crt-amber, crt-green, simple, simple-light, simple-dark. Current: crt-amber. Try THEME <name>.',
+      );
+      expect(store.game.moveCount).toBe(0);
+    });
+
+    it('THEME <name> switches, accepting short and spaced names', async () => {
+      const store = freshStore();
+      store.initialize();
+      await store.submit('theme green');
+      expect(last(store)).toBe('Theme: crt-green.');
+      expect(store.theme.base).toBe('crt-green');
+      await store.submit('THEME Simple Light');
+      expect(store.theme.base).toBe('simple-light');
+      await store.submit('theme crt amber');
+      expect(store.theme.base).toBe('crt-amber');
+      await store.submit('theme amber');
+      expect(store.theme.base).toBe('crt-amber');
+    });
+
+    it('an unknown theme lists the choices and changes nothing', async () => {
+      const store = freshStore();
+      store.initialize();
+      await store.submit('theme green');
+      await store.submit('theme purple');
+      expect(last(store)).toBe(
+        'There’s no theme called “purple”. Try: crt-amber, crt-green, simple, simple-light, simple-dark.',
+      );
+      expect(store.theme.base).toBe('crt-green');
+    });
+
+    it('lists and accepts the author’s custom themes', async () => {
+      const store = freshStore();
+      store.initialize();
+      store.configureThemes('crt-amber', { Parchment: { palette: 'light', effects: { bloom: false, scanlines: false, flicker: false, vignette: false, noise: false, glitch: false, decay: false } } });
+      await store.submit('theme');
+      expect(last(store)).toContain('simple-dark, Parchment.');
+      await store.submit('theme parchment');
+      expect(store.theme.base).toBe('Parchment');
+    });
+
+    it('BLOOM and EFFECTS set the overrides', async () => {
+      const store = freshStore();
+      store.initialize();
+      await store.submit('bloom off');
+      expect(last(store)).toBe('Bloom is off.');
+      expect(store.theme.overrides).toEqual({ bloom: false });
+      await store.submit('effects off');
+      expect(last(store)).toBe('Effects are off.');
+      expect(store.theme.overrides).toEqual({ bloom: false, effects: false });
+      await store.submit('BLOOM ON');
+      await store.submit('effects on');
+      expect(last(store)).toBe('Effects are on.');
+      expect(store.theme.overrides).toEqual({ bloom: true, effects: true });
+      await store.submit('bloom');
+      expect(last(store)).toBe('BLOOM ON or BLOOM OFF?');
+    });
+
+    it('is remembered by a fresh store with the same prefix', async () => {
+      const store = freshStore();
+      store.initialize();
+      await store.submit('theme simple dark');
+      await store.submit('bloom off');
+      expect(JSON.parse(localStorage.getItem(KEY)!)).toEqual({ base: 'simple-dark', overrides: { bloom: false } });
+      const again = freshStore();
+      again.initialize();
+      expect(again.theme).toEqual({ base: 'simple-dark', overrides: { bloom: false } });
+    });
+
+    it('falls back to the author default on a corrupt or unknown stored value', () => {
+      localStorage.setItem(KEY, '{not json');
+      const a = freshStore();
+      a.initialize();
+      expect(a.theme.base).toBe('crt-amber');
+      localStorage.setItem(KEY, JSON.stringify({ base: 'purple', overrides: { bloom: 'yes' } }));
+      const b = freshStore();
+      b.initialize();
+      b.configureThemes('simple', {});
+      expect(b.theme).toEqual({ base: 'simple', overrides: {} });
+      expect(b.themeBase).toBe('simple');
+    });
+
+    it('survives RESTART, is not in game saves, and is not undone', async () => {
+      const store = freshStore();
+      store.initialize();
+      await store.submit('west');
+      await store.submit('theme green');
+      await store.submit('undo');
+      expect(store.game.currentRoom).toBe('bedroom');
+      expect(store.theme.base).toBe('crt-green');
+      await store.submit('restart');
+      expect(store.theme.base).toBe('crt-green');
+      expect(localStorage.getItem(SAVE_KEY)).not.toContain('crt-green');
+    });
+
+    it('HELP lists the commands', async () => {
+      const store = freshStore();
+      store.initialize();
+      await store.submit('help');
+      const text = store.output.map((l) => l.text).join('\n');
+      expect(text).toMatch(/THEME/);
+      expect(text).toMatch(/BLOOM/);
+      expect(text).toMatch(/EFFECTS/);
+    });
+
+    it('the LLM can map “make it green” to THEME', async () => {
+      const store = freshStore();
+      store.initialize();
+      mockIntent({ action: 'theme', target: 'crt-green' });
+      await store.submit('make it green please');
+      expect(store.theme.base).toBe('crt-green');
+    });
+  });

@@ -389,3 +389,13 @@ describe('sanitize: prepositions and numbers', () => {
     expect(res.body).toEqual({ action: 'turn', target: 'dial', indirect: 'number', number: 4 });
   });
 });
+
+describe('sanitize: theme', () => {
+  it('keeps a known preset slug as the target and drops anything else', async () => {
+    const { sanitize } = await import('../llm.js');
+    expect(sanitize({ action: 'theme', target: 'crt-green' })).toEqual({ action: 'theme', target: 'crt-green' });
+    expect(sanitize({ action: 'theme', target: 'Simple Light' })).toEqual({ action: 'theme', target: 'simple-light' });
+    expect(sanitize({ action: 'theme', target: 'purple' })).toEqual({ action: 'theme' });
+    expect(sanitize({ action: 'take', target: 'crt-green' })).toEqual({ action: 'take', target: 'crt_green' });
+  });
+});

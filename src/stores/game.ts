@@ -4,7 +4,8 @@ import type { GameState, OutputLine, ParsedAction } from '@/types/game';
 import type { World } from '@/types/world';
 import type { WorldCartridge } from '@/types/cartridge';
 import { defaultWorldCartridge, saveKeyFor } from '@/cartridges';
-import { appName } from '@/app.config';
+import { appName, storagePrefix } from '@/app.config';
+import { PRESETS, type Theme, type ThemeName, type ThemeOverrides } from '@/theme/themes';
 import { cookiesCommand } from '@/services/cookies';
 import {
   captureLine,
@@ -93,6 +94,41 @@ let persistence = createPersistenceService(initialCartridge ? saveKeyFor(initial
 let conversation = newConversation();
 const UNDO_LIMIT = 50;
 
+/** Store-command keys for the player's theme, remembered per game. */
+const THEME_KEY = `${storagePrefix}:theme`;
+const PRESET_NAMES = Object.keys(PRESETS);
+const THEME_ALIASES: Record<string, string> = {
+  amber: 'crt-amber', green: 'crt-green', crt: 'crt-amber', light: 'simple-light', dark: 'simple-dark',
+};
+/** What the author chose, and the author's own themes: set by configureThemes. */
+let authorTheme: ThemeName | Theme | string = 'crt-amber';
+let customThemes: Record<string, Theme> = {};
+
+function themeNames(): string[] {
+  return [...PRESET_NAMES, ...Object.keys(customThemes)];
+}
+
+/** A typed or intent-server theme name as a known one, or null. */
+function matchTheme(raw: string): string | null {
+  const key = raw.trim().toLowerCase().replace(/[\s_-]+/g, '-');
+  const names = themeNames();
+  return names.find((n) => n.toLowerCase() === key) ?? (THEME_ALIASES[key] && names.includes(THEME_ALIASES[key]) ? THEME_ALIASES[key] : null);
+}
+
+function readStoredTheme(): { base: string | null; overrides: ThemeOverrides } {
+  try {
+    const raw = window.localStorage.getItem(THEME_KEY);
+    const v = raw ? (JSON.parse(raw) as { base?: unknown; overrides?: Record<string, unknown> }) : null;
+    const base = typeof v?.base === 'string' ? matchTheme(v.base) : null;
+    const overrides: ThemeOverrides = {};
+    if (typeof v?.overrides?.bloom === 'boolean') overrides.bloom = v.overrides.bloom;
+    if (typeof v?.overrides?.effects === 'boolean') overrides.effects = v.overrides.effects;
+    return { base, overrides };
+  } catch {
+    return { base: null, overrides: {} };
+  }
+}
+
 interface State {
   game: GameState;
   output: OutputLine[];
@@ -100,6 +136,10 @@ interface State {
   restored: boolean;
   /** game_completed already reported for the current game. */
   gameOverTracked: boolean;
+  /** The player's THEME, BLOOM and EFFECTS. Not part of a game: saves, UNDO and RESTART leave it alone. */
+  theme: { base: string; overrides: ThemeOverrides };
+  /** Has the player picked a theme (so `base` beats the author's default)? */
+  themeChosen: boolean;
 }
 
 function sameAction(a: ParsedAction, b: ParsedAction): boolean {
@@ -118,6 +158,8 @@ export const useGameStore = defineStore('game', {
     isParsing: false,
     restored: false,
     gameOverTracked: false,
+    theme: { base: 'crt-amber', overrides: {} },
+    themeChosen: false,
   }),
 
   getters: {
@@ -129,12 +171,73 @@ export const useGameStore = defineStore('game', {
     world: () => world,
     currentRoom: (s) => world.rooms[s.game.currentRoom],
     // In the dark the player sees nothing in the room, and neither does the LLM.
+    /** The theme to show: the player's choice, else the author's default. */
+    themeBase: (s): ThemeName | Theme | string => (s.themeChosen ? s.theme.base : authorTheme),
     visibleItems: (s) => (isLit(world, s.game) ? visibleItemsIn(s.game.currentRoom, world, s.game) : []),
   },
 
   actions: {
+    /** The author's default theme and own themes; re-reads what the player chose. */
+    configureThemes(author: ThemeName | Theme | string = 'crt-amber', custom: Record<string, Theme> = {}): void {
+      authorTheme = author;
+      customThemes = custom;
+      this.loadTheme();
+    },
+
+    /** The remembered choice, if it is still a theme that exists; anything else is the author's default. */
+    loadTheme(): void {
+      const stored = readStoredTheme();
+      this.themeChosen = stored.base !== null;
+      this.theme = {
+        base: stored.base ?? (typeof authorTheme === 'string' ? authorTheme : 'custom'),
+        overrides: stored.overrides,
+      };
+    },
+
+    saveTheme(): void {
+      try {
+        window.localStorage.setItem(
+          THEME_KEY,
+          JSON.stringify({ base: this.themeChosen ? this.theme.base : '', overrides: this.theme.overrides }),
+        );
+      } catch {
+        // Silent: storage may be unavailable or full.
+      }
+    },
+
+    /** THEME [name]. */
+    themeCommand(raw: string | undefined): void {
+      const names = themeNames();
+      if (!raw?.trim()) {
+        const current = typeof this.themeBase === 'string' ? this.themeBase : 'custom';
+        this.appendSystem(`Themes: ${names.join(', ')}. Current: ${current}. Try THEME <name>.`);
+        return;
+      }
+      const name = matchTheme(raw);
+      if (!name) {
+        this.appendSystem(`There’s no theme called “${raw.trim()}”. Try: ${names.join(', ')}.`);
+        return;
+      }
+      this.theme = { ...this.theme, base: name };
+      this.themeChosen = true;
+      this.saveTheme();
+      this.appendSystem(`Theme: ${name}.`);
+    },
+
+    /** BLOOM ON|OFF and EFFECTS ON|OFF. */
+    themeSwitch(which: 'bloom' | 'effects', value: string | undefined): void {
+      if (value !== 'on' && value !== 'off') {
+        this.appendSystem(`${which.toUpperCase()} ON or ${which.toUpperCase()} OFF?`);
+        return;
+      }
+      this.theme = { ...this.theme, overrides: { ...this.theme.overrides, [which]: value === 'on' } };
+      this.saveTheme();
+      this.appendSystem(`${which === 'bloom' ? 'Bloom is' : 'Effects are'} ${value}.`);
+    },
+
     initialize(cartridge: WorldCartridge | undefined = defaultWorldCartridge()): void {
       if (!cartridge) throw new Error('There is no world cartridge to play.');
+      this.loadTheme();
       world = cartridge.world;
       cartridgeId = cartridge.id;
       scriptFrom = null;
@@ -312,12 +415,17 @@ export const useGameStore = defineStore('game', {
     storeCommand(command: string): boolean {
       const lower = command.trim().toLowerCase();
       const saveOrRestore = lower.match(/^(save|restore)(?:\s+(.+))?$/);
-      const isStore = Boolean(saveOrRestore) || ['load', 'undo', 'restart', 'cookies', 'privacy'].includes(lower);
+      const themeCmd = lower.match(/^(theme|bloom|effects)(?:\s+(.+))?$/);
+      const isStore = Boolean(saveOrRestore) || Boolean(themeCmd) || ['load', 'undo', 'restart', 'cookies', 'privacy'].includes(lower);
       if (!isStore) return false;
       // A store command answers no question, and UNDO and the rest act on the line so far.
       conversation.pending = null;
       this.endLine();
-      if (saveOrRestore) {
+      if (themeCmd) {
+        const [, verb, arg] = themeCmd;
+        if (verb === 'theme') this.themeCommand(arg);
+        else this.themeSwitch(verb as 'bloom' | 'effects', arg?.trim());
+      } else if (saveOrRestore) {
         const [, verb, name] = saveOrRestore;
         if (verb === 'save') this.saveAs(name);
         else this.restoreFrom(name);
@@ -401,6 +509,10 @@ export const useGameStore = defineStore('game', {
         // “Take that back”, “save this as cellar”: the store's own commands.
         if (['undo', 'load', 'restart'].includes(action.action)) {
           this.storeCommand(action.action);
+          return { lines: [], mutated: false };
+        }
+        if (action.action === 'theme') {
+          this.storeCommand(`theme ${action.target ?? ''}`);
           return { lines: [], mutated: false };
         }
         if (action.action === 'save' || action.action === 'restore') {
