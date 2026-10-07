@@ -5,11 +5,11 @@ import { captureLine, execute, initialState, openingLines } from './engine';
 import { fallbackParse, splitCommands } from './parser';
 import type { EngineResult } from './result';
 
-/** What one line of input produced. `question` is set when the game is waiting for an answer. */
+/** What one line of input produced. `awaiting` is true while the game waits for an answer to a question (its text is the last of `lines`). */
 export interface EngineReply {
   lines: string[];
   gameOver: boolean;
-  question?: string;
+  awaiting: boolean;
 }
 
 /**
@@ -54,7 +54,17 @@ export function createGame(world: World, options: { seed?: number } = {}): {
       // Once the game is over, one command hears that it has ended; the rest of the line is dropped.
       if (state.gameOver && i > 0) break;
       conv.stopLine = undefined;
-      const turn = runTurn(world, state, conv, command);
+      let turn: { lines: string[]; captured: boolean };
+      try {
+        turn = runTurn(world, state, conv, command);
+      } catch (error) {
+        // The engine rolled the turn back; say so, and drop the rest of the line.
+        console.error('Command failed:', error);
+        conv.pending = null;
+        conv.stopLine = undefined;
+        lines.push('[Something went wrong with that command. Nothing changed.]');
+        break;
+      }
       lines.push(...turn.lines);
       if (turn.captured) break;
       // The turn dropped the rest of the line (Zork's P-CONT): its message only if something was left.
@@ -67,9 +77,7 @@ export function createGame(world: World, options: { seed?: number } = {}): {
       // A question stops the line: the next one answers it.
       if (conv.pending) break;
     }
-    const reply: EngineReply = { lines, gameOver: state.gameOver };
-    if (conv.pending && lines.length) reply.question = lines[lines.length - 1];
-    return reply;
+    return { lines, gameOver: state.gameOver, awaiting: Boolean(conv.pending) };
   }
 
   return { state, opening, send };
