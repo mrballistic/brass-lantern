@@ -14,6 +14,7 @@ export interface ParsedAction {
   action: string;
   target?: string;
   indirect?: string;
+  number?: number;
 }
 
 export const ACTION_VOCAB = [
@@ -53,7 +54,12 @@ const responseSchema = (ctx: IntentContext) => ({
     indirect: {
       type: 'STRING',
       description:
-        'Second identifier for two-object commands: the NPC in give, the other item in use. Omit otherwise.',
+        'Second identifier for two-object commands: the NPC in give, the other item in use. Omit otherwise. The literal number when a number was typed (turn dial to 4).',
+      nullable: true,
+    },
+    number: {
+      type: 'INTEGER',
+      description: 'The number typed in a command like turn dial to 4 (0 to 1000). Omit otherwise.',
       nullable: true,
     },
   },
@@ -89,6 +95,7 @@ function buildSystemInstruction(ctx: IntentContext): string {
     '- Throwing something is throw: target is the thing thrown, indirect is what it is thrown at.',
     '- Setting fire to something is burn: target is what burns, indirect is what lights it (light candles with match).',
     '- Turning something with a tool is turn: target is the thing, indirect is the tool (turn bolt with wrench).',
+    '- Setting something to a number is turn: target is the thing, indirect is the literal number, and number is the value (set dial to 4).',
     '- Plugging something with something is plug: target is the hole or leak, indirect is what plugs it.',
     '- Getting into a vehicle (a boat, a cart) is board: target is the vehicle. Getting out is disembark.',
     '- Asking how hurt or healthy the player is is diagnose.',
@@ -159,6 +166,7 @@ export function sanitize(raw: unknown, ctx?: Pick<IntentContext, 'verbs'>): Pars
   if (target) out.target = target;
   const indirect = identifier(r.indirect);
   if (indirect) out.indirect = indirect;
+  if (typeof r.number === 'number' && Number.isInteger(r.number) && r.number >= 0 && r.number <= 1000) out.number = r.number;
   return out;
 }
 

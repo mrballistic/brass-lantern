@@ -73,6 +73,7 @@ export async function parseIntentRemote(
     const out: ParsedAction = { action: json.action };
     if (typeof json.target === 'string') out.target = json.target;
     if (typeof json.indirect === 'string') out.indirect = json.indirect;
+    if (typeof json.number === 'number') out.number = json.number;
     return out;
   } catch {
     return { action: 'unknown' };

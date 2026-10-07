@@ -3,7 +3,7 @@ import type { Effect, EventStep, World } from '@/types/world';
 import { evaluateCondition } from './conditions';
 import { isCarried, moveItem, nextPlacing, npcStateOf, PLAYER } from './model';
 import { nextRandom } from './rng';
-import { scriptSteps } from './scripts';
+import { commandOf, scriptSteps } from './scripts';
 
 // Running event steps: printed lines (bracket lines also act) and typed effects.
 
@@ -160,7 +160,7 @@ function runEffect(e: Effect, world: World, state: GameState): { lines: string[]
   if ('unlock' in e) return void (itemState(state, e.unlock).locked = false), { lines: [] };
   if ('switch' in e) return void (itemState(state, e.switch).on = e.on), { lines: [] };
   if ('add' in e) return void addVar(state, e.add, e.by), { lines: [] };
-  if ('setVar' in e) return void ((state.vars ??= {})[e.setVar] = e.to), { lines: [] };
+  if ('setVar' in e) return void ((state.vars ??= {})[e.setVar] = 'from' in e ? (commandOf(state)?.number ?? 0) : e.to), { lines: [] };
   if ('score' in e) return void addVar(state, 'score', e.score), { lines: [] };
   if ('schedule' in e) return void (world.events[e.schedule] && schedule(state, e.schedule, e.in)), { lines: [] };
   if ('cancel' in e) {

@@ -17,6 +17,7 @@ Conditions are strings, used by `requires`, exits (`if`, `denials`), room `descr
 | `here:ITEM` | the player can reach it (in the room, carried, or in something open) |
 | `var:NAME<op>N` | a numeric variable compared with `=`, `<`, `>`, `<=` or `>=` (unset is 0) |
 | `carrying<op>N` | how many things the player holds directly |
+| `number:N`, `number<op>N` | the number typed in the command being run (`TURN DIAL TO 4`, `SET DIAL TO 776`); false when the command has none. A rule with `with: 'number'` matches that command |
 | `heaviest<op>N` | the weight of the heaviest thing the player holds directly, counting what's inside it (Zork's narrow passage: `heaviest<=4`) |
 | `score<op>N` | the score, as SCORE reports it (Zork wins at `score>=350`); a `scoring` entry can't test it |
 | `lit:here`, `lit:ROOM` | the room has light |
@@ -51,6 +52,7 @@ An event is a named list of steps, run in order. A string is printed. An object 
 | `{ open }`, `{ close }`, `{ lock }`, `{ unlock }` | Changes a container's or door's state. |
 | `{ switch: 'item', on: true }` | Switches a light (or anything switchable). |
 | `{ add: 'var', by: n }`, `{ setVar: 'var', to: n }` | Changes a numeric variable. |
+| `{ setVar: 'var', from: 'number' }` | Sets it to the number typed in the command (0 if none). |
 | `{ score: n }` | Adds to the score. |
 | `{ go: 'room' }` | Moves the player there and describes it. With `quiet: true`, without describing it (Zork's mirror). |
 | `{ look: true }` | Describes the player's room in full, as LOOK does. |

@@ -108,6 +108,8 @@ export interface ParsedAction {
   direction?: 'up' | 'down';
   /** Bare EXIT (a direction, out), which aboard gets out of the vehicle (Zork's V-EXIT). */
   exit?: boolean;
+  /** TURN X TO 4, SET X TO 776: the number, with `indirect` (or `target`) the literal 'number'. */
+  number?: number;
   /** The targets are IDs (the intent server's answer), so they resolve by ID first. */
   byId?: boolean;
 }

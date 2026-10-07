@@ -16,8 +16,9 @@ function isFlaming(world: World, state: GameState, id: string): boolean {
 export function handleNoEffect(action: ParsedAction, world: World, state: GameState): EngineResult {
   if (!action.target) needObject();
   const scope = visibleItems(world, state);
-  if (!pickItem(action.target, scope, world, 'target', state) && !matchNpc(action.target, world, state)) return miss(`You don’t see a “${action.target}” here.`);
-  if (action.indirect && !pickItem(action.indirect, scope, world, 'indirect', state)) return miss(`You don’t see a “${action.indirect}” here.`);
+  const typed = (word?: string) => action.number !== undefined && word === 'number';
+  if (!typed(action.target) && !pickItem(action.target, scope, world, 'target', state) && !matchNpc(action.target, world, state)) return miss(`You don’t see a “${action.target}” here.`);
+  if (action.indirect && !typed(action.indirect) && !pickItem(action.indirect, scope, world, 'indirect', state)) return miss(`You don’t see a “${action.indirect}” here.`);
   return ok(['This has no effect.']);
 }
 

@@ -53,7 +53,7 @@ export interface Capture {
 export interface Rule {
   /** Condition string (see conditions.ts). */
   if?: string;
-  /** The other item, for two-object commands. Must be in reach. */
+  /** The other item, for two-object commands. Must be in reach. `'number'` matches a number typed as the second object (TURN DIAL TO 4). */
   with?: string;
   then?: string;
   say?: string[];
@@ -325,6 +325,8 @@ export type Effect =
   | { switch: string; on: boolean }
   | { add: string; by: number }
   | { setVar: string; to: number }
+  /** Sets the variable to the number in the command (TURN DIAL TO 4); 0 when there is none. */
+  | { setVar: string; from: 'number' }
   /** Adds to the `score` variable. */
   | { score: number }
   /** Moves the player there and describes it; `quiet` moves without describing (Zork's mirror). */

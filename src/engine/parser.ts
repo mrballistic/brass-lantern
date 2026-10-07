@@ -35,6 +35,8 @@ const RE = {
   burn: /^(?:burn(?:\s+down)?|ignite|incinerate|light)\s+(?:the\s+)?(.+?)\s+with\s+(?:the\s+|a\s+)?(.+)$/i,
   burnAlone: /^(?:burn(?:\s+down)?|ignite|incinerate)\s+(?:the\s+)?(.+)$/i,
   turnOnWith: /^(?:turn|switch)\s+on\s+(?:the\s+)?(.+?)\s+with\s+(?:the\s+|a\s+)?(.+)$/i,
+  // TURN X TO N, SET X TO N (and FOR): a dial. SET X ON Y stays PUT.
+  turnTo: /^(?:turn|set)\s+(?:the\s+)?(.+?)\s+(?:to|for)\s+(?:the\s+)?(.+)$/i,
   turnWith: /^turn\s+(?:the\s+)?(.+?)\s+with\s+(?:the\s+|a\s+)?(.+)$/i,
   plugWith: /^plug\s+(?:the\s+)?(.+?)\s+with\s+(?:the\s+|a\s+)?(.+)$/i,
   turnOff: /^(?:(?:turn|switch)\s+off|extinguish|douse|blow\s+out|put\s+out)\s+(?:the\s+)?(.+)$/i,
@@ -129,6 +131,7 @@ const VERB_PATTERNS: ReadonlyArray<readonly [RegExp, string, ('in' | 'on')?]> = 
   [RE.light, 'turn_on'],
   [RE.turnOff, 'turn_off'],
   [RE.turnOffAfter, 'turn_off'],
+  [RE.turnTo, 'turn'],
   [RE.open, 'open'],
   [RE.close, 'close'],
   [RE.lock, 'lock'],
@@ -208,6 +211,41 @@ function matchWorld(input: string, patterns: WorldPattern[]): ParsedAction | nul
     return parsed;
   }
   return null;
+}
+
+/**
+ * Zork's NUMBER?: digits make a number up to 1000, and H:MM is minutes (an hour
+ * under 8 is taken as the afternoon; over 23 is not a time). Anything else is a word.
+ */
+export function parseNumber(word: string): number | null {
+  let sum = 0;
+  let hours: number | null = null;
+  for (const ch of word) {
+    if (ch === ':') {
+      hours = sum;
+      sum = 0;
+    } else if (sum > 10000 || ch < '0' || ch > '9') {
+      return null;
+    } else {
+      sum = sum * 10 + (ch.charCodeAt(0) - 48);
+    }
+  }
+  if (word === '' || sum > 1000) return null;
+  if (hours !== null) {
+    if (hours < 8) hours += 12;
+    else if (hours > 23) return null;
+    sum += hours * 60;
+  }
+  return sum;
+}
+
+/** An object slot that holds a number (TURN DIAL TO 4) reads the literal 'number', and the value rides along. */
+function withNumbers(parsed: ParsedAction): ParsedAction {
+  for (const slot of ['target', 'indirect'] as const) {
+    const n = parsed[slot] === undefined ? null : parseNumber(parsed[slot]!);
+    if (n !== null) return { ...parsed, [slot]: 'number', number: n };
+  }
+  return parsed;
 }
 
 /**
@@ -349,7 +387,7 @@ function parse(rawInput: string, allowBareWord: boolean, verbs?: World['verbs'])
     const parsed: ParsedAction = m[1] ? { action, target: m[1].trim() } : { action };
     if (m[2]) parsed.indirect = m[2].trim();
     if (prep) parsed.prep = prep;
-    return parsed;
+    return withNumbers(parsed);
   }
 
   if (RE.sit.test(input)) return { action: 'sit' };

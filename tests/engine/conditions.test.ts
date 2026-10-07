@@ -26,6 +26,9 @@ describe('conditionProblems', () => {
     expect(conditionProblems('visited:mars', fixtureWorld)).toEqual(['“visited:mars” names no room “mars”']);
     expect(conditionProblems('inside:wallet:mars', fixtureWorld)).toEqual(['“inside:wallet:mars” names no place “mars”']);
     expect(conditionProblems('wibble:x', fixtureWorld)).toEqual(['unknown condition “wibble:x”']);
+    expect(conditionProblems('number<=8', fixtureWorld)).toEqual([]);
+    expect(conditionProblems('number:4', fixtureWorld)).toEqual([]);
+    expect(conditionProblems('number<=x', fixtureWorld)).not.toEqual([]);
   });
 });
 

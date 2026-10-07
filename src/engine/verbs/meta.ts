@@ -68,6 +68,7 @@ export function handleHelp(world: World): EngineResult {
     'EXAMINE <item|npc>       Inspect (synonyms: INSPECT, LOOK AT, X)',
     'READ <thing>             Read what’s written on it',
     'TURN ON / OFF <thing>    Lamps and the like (also LIGHT)',
+    'TURN <thing> TO <n>      Set a dial or the like (also SET … TO)',
     'BURN <thing> WITH <item> Set it alight (also LIGHT … WITH)',
     'BOARD / GET OUT <thing>  Get in or out of a vehicle (also DISEMBARK, EXIT)',
     'USE <item> [ON <thing>]  Use an item, or use it on something',

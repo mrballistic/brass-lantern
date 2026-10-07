@@ -62,6 +62,8 @@ export interface Command {
   verb: string;
   target?: string;
   indirect?: string;
+  /** The number typed (TURN DIAL TO 4), when an object slot held one. */
+  number?: number;
   /** The words typed, for objects that didn't resolve (water inside a carried bottle). */
   words?: { target?: string; indirect?: string };
 }
