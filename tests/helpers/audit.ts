@@ -164,7 +164,7 @@ export function auditWorld(world: World): string[] {
   for (const [id, item] of Object.entries(world.items)) {
     checkDescriptionScript(item.descriptionScript, `item ${id}`);
     checkDescriptionScript(item.roomDescriptionScript, `item ${id}`, 'roomDescriptionScript');
-    checkDescriptionScript(item.vehicle?.descriptionScript, `item ${id} vehicle`);
+    checkDescriptionScript(item.vehicle?.lookScript, `item ${id} vehicle`, 'lookScript');
     for (const e of item.onEnd ?? []) {
       checkCondition(e.if, `item ${id} onEnd`);
       if (typeof e.then === 'string') {

@@ -431,7 +431,7 @@ describe('a vehicle of the air, described from inside (6a balloon)', () => {
       ...boatWorld.items,
       basket: {
         name: 'basket', description: 'A basket.', portable: false, tags: [], container: { open: true },
-        vehicle: { travels: 'air', descriptionScript: 'basketLook' },
+        vehicle: { travels: 'air', lookScript: 'basketLook' },
         roomDescriptionScript: 'basketHere',
       },
     },
@@ -485,6 +485,17 @@ describe('a vehicle of the air, described from inside (6a balloon)', () => {
     expect(run(s, { action: 'look' }, airWorld).lines).toContain('There is a basket here.');
   });
 
+  it('a scripted room sentence says it all: the item’s contents aren’t listed after it (DESCRIBE-OBJECT’s RTRUE)', () => {
+    const s = stateWith(airWorld, { room: 'yard', carrying: ['key'] });
+    s.locations.key = 'basket';
+    const look = run(s, { action: 'look' }, airWorld).lines;
+    expect(look).toContain('A wicker basket sits here.');
+    expect(look.join('\n')).not.toMatch(/basket contains|key/i);
+    // Its plain sentence still lists them.
+    s.flags.quiet = true;
+    expect(run(s, { action: 'look' }, airWorld).lines.join('\n')).toMatch(/The basket contains:/);
+  });
+
   it('aboard another vehicle, a scripted room sentence takes no “(outside …)”', () => {
     const s = stateWith(airWorld, { room: 'yard' });
     s.aboard = 'raft';
@@ -494,9 +505,9 @@ describe('a vehicle of the air, described from inside (6a balloon)', () => {
   it('the audit checks both scripts', async () => {
     const { auditWorld } = await import('../helpers/audit');
     expect(auditWorld(airWorld).filter((p) => p.includes('basket'))).toEqual([]);
-    const broken: World = { ...airWorld, items: { ...airWorld.items, basket: { ...airWorld.items.basket, roomDescriptionScript: 'nope', vehicle: { travels: 'air', descriptionScript: 'nada' } } } };
+    const broken: World = { ...airWorld, items: { ...airWorld.items, basket: { ...airWorld.items.basket, roomDescriptionScript: 'nope', vehicle: { travels: 'air', lookScript: 'nada' } } } };
     const problems = auditWorld(broken).join('\n');
     expect(problems).toMatch(/roomDescriptionScript names no script “nope”/);
-    expect(problems).toMatch(/descriptionScript names no script “nada”/);
+    expect(problems).toMatch(/lookScript names no script “nada”/);
   });
 });

@@ -149,7 +149,7 @@ export interface Item {
     leave?: string;
     arrive?: string;
     /** A world script whose `say` lines describe it from inside: after the room's description as you look around aboard, and after the name on a brief arrival, but not after a room its own `descriptionScript` described in full (Zork's vehicle M-LOOK in DESCRIBE-ROOM). */
-    descriptionScript?: string;
+    lookScript?: string;
   };
   /** A vehicle's end routines: while the player is aboard, they run instead of the room's (Zork's M-END). */
   onEnd?: Array<{ if: string; then: string | EventStep[] }>;

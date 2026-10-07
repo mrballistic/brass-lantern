@@ -171,7 +171,7 @@ export function describeRoom(
     lines.push(expandTemplate(scripted ?? (opts.first && room.firstDescription ? room.firstDescription : (varied ?? room.description)), world, state));
   }
   // DESCRIBE-ROOM: aboard, the vehicle's own M-LOOK, unless the room's M-LOOK described it in full.
-  const inside = vehicle?.vehicle?.descriptionScript && !roomScripted ? scriptDescription(vehicle.vehicle.descriptionScript, world, state) : undefined;
+  const inside = vehicle?.vehicle?.lookScript && !roomScripted ? scriptDescription(vehicle.vehicle.lookScript, world, state) : undefined;
   if (inside !== undefined) lines.push(expandTemplate(inside, world, state));
 
   // The vehicle you're in isn't listed; what's in it is, after the room's things.
@@ -198,11 +198,11 @@ export function describeRoom(
     else if (sentence) lines.push(isFirst ? sentence : sentence + outside);
     else if (infocom) lines.push(`There is ${withArticle(world, id)} here${lightNote(world, state, id)}.${outside}`);
     else plain.push(world.items[id]?.name ?? id);
-    // Zork describes what's in each thing right after it.
-    if (infocom) lines.push(...contentsLines(world, state, id));
+    // Zork describes what's in each thing right after it (but a DESCFCN has said all there is).
+    if (infocom && scripted === undefined) lines.push(...contentsLines(world, state, id));
   }
   if (plain.length > 0) lines.push(`You can see: ${plain.join(', ')}.`);
-  if (!infocom) for (const id of visibleItems) lines.push(...contentsLines(world, state, id));
+  if (!infocom) for (const id of visibleItems) if (scriptedSentence(world, state, id) === undefined) lines.push(...contentsLines(world, state, id));
   // Scenery isn't listed, but what's on or in it is (the kitchen table's sack).
   for (const id of childrenOf(world, state, roomId).filter((k) => world.items[k]?.scenery)) {
     if (infocom && floorLike(world, id)) {
