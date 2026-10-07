@@ -13,13 +13,12 @@ import { runEnding } from './endings';
 import { miss, ok, type EngineResult } from './result';
 import { enterRoom, handleClimb, handleEnter, handleGo, handleIdle, vehicleRefusal } from './verbs/movement';
 import {
-  ALL, handleDrop, handleExamine, handleInventory, handleLook, handleSmash, handleTake, handleUse, handleWear,
+  ALL, handleDrop, handleExamine, handleInventory, handleLook, handleRead, handleSmash, handleSwitch, handleTake, handleUse, handleWear, notHeld,
 } from './verbs/objects';
 import { withRules } from './rules';
 import { handleWorldVerb } from './verbs/world-verbs';
 import { handleAll } from './verbs/all';
 import { handleClose, handleLock, handleOpen, handlePut, handleSearch, handleTakeFrom, handleUnlock } from './verbs/containers';
-import { handleRead, handleSwitch, notHeld } from './verbs/objects';
 import { handleGive, handleTalk } from './verbs/people';
 import { handleAttack, handleThrow } from './verbs/attack';
 import { handleBurn, handleNoEffect } from './verbs/burn';
@@ -86,39 +85,34 @@ function roomEnd(world: World, state: GameState): string[] {
 const pendingCapture = new WeakMap<GameState, EventStep[]>();
 
 /**
- * A room's or the world's capture taking a piece of input before it's parsed
- * (Zork's Loud Room, a spirit's limits). The room's goes first. Returns null
- * when no capture takes it; a capture that declines changes nothing.
+ * A room's or the world's capture taking a piece of input (Zork's Loud Room,
+ * a spirit's limits): a raw line before it's parsed, or a parsed command. The
+ * room's goes first. Returns the steps of the capture that takes it, or null
+ * when none does; a capture that declines changes nothing.
  */
-function parsedCapture(world: World, state: GameState, action: ParsedAction): EventStep[] | null {
+function firstCapture(world: World, state: GameState, line: string | undefined, action?: ParsedAction): EventStep[] | null {
   for (const capture of [world.rooms[state.currentRoom]?.capture, world.capture]) {
     if (!capture || (capture.if && !evaluateCondition(capture.if, state, world))) continue;
     const rng = state.rng;
-    const steps = scriptSteps(capture.script, undefined, world, state, undefined, action);
+    const steps = scriptSteps(capture.script, undefined, world, state, line, action);
     if (steps.length > 0) return steps;
     state.rng = rng;
   }
   return null;
 }
 
-export function captureLine(world: World, state: GameState, line: string): EngineResult | null {
-  return guarded(state, () => captureTurn(world, state, line));
+/** Runs a capture's steps as a turn of their own. */
+function runCapture(steps: EventStep[], target: string | undefined, deps: EngineDeps): EngineResult {
+  pendingCapture.set(deps.state, steps);
+  return execute({ action: 'capture', target }, deps);
 }
 
-function captureTurn(world: World, state: GameState, line: string): EngineResult | null {
-  if (state.gameOver) return null;
-  for (const capture of [world.rooms[state.currentRoom]?.capture, world.capture]) {
-    if (!capture || (capture.if && !evaluateCondition(capture.if, state, world))) continue;
-    const rng = state.rng;
-    const steps = scriptSteps(capture.script, undefined, world, state, line);
-    if (steps.length === 0) {
-      state.rng = rng;
-      continue;
-    }
-    pendingCapture.set(state, steps);
-    return execute({ action: 'capture', target: line }, { world, state });
-  }
-  return null;
+export function captureLine(world: World, state: GameState, line: string): EngineResult | null {
+  return guarded(state, () => {
+    if (state.gameOver) return null;
+    const steps = firstCapture(world, state, line);
+    return steps ? runCapture(steps, line, { world, state }) : null;
+  });
 }
 
 /** What a turn can change, as one string: equal before and after means nothing changed. */
@@ -165,11 +159,8 @@ function executeTurn(action: ParsedAction, deps: EngineDeps): EngineResult {
   if (action.action === 'go' && action.exit && state.aboard) return execute({ action: 'disembark', target: state.aboard, byId: true }, deps);
   // A capture sees parsed commands too (`ctx.action`), however they arrived: a spirit can't take things by AGAIN.
   if (action.action !== 'capture') {
-    const steps = parsedCapture(world, state, action);
-    if (steps) {
-      pendingCapture.set(state, steps);
-      return execute({ action: 'capture', target: action.target }, deps);
-    }
+    const steps = firstCapture(world, state, undefined, action);
+    if (steps) return runCapture(steps, action.target, deps);
   }
 
   beginTurn(state);
