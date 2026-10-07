@@ -1,9 +1,10 @@
 import type { GameState, Place } from '@/types/game';
-import type { Effect, EventStep, World } from '@/types/world';
+import type { Effect, EventStep, VehicleLine, World } from '@/types/world';
 import { evaluateCondition } from './conditions';
 import { isCarried, moveItem, nextPlacing, npcStateOf, PLAYER } from './model';
 import { nextRandom } from './rng';
-import { scriptSteps } from './scripts';
+import { commandOf, scriptSteps } from './scripts';
+import { expandTemplate } from './text';
 
 // Running event steps: printed lines (bracket lines also act) and typed effects.
 
@@ -13,7 +14,7 @@ type Hook = (arg: string, world: World, state: GameState, opts?: { quiet?: boole
  * Effects that need other engine modules (moving the player, death, endings)
  * are wired in by engine.ts, so this module doesn't import them in a cycle.
  */
-const hooks: { go?: Hook; die?: Hook; end?: Hook; look?: (world: World, state: GameState) => string[] } = {};
+const hooks: { go?: Hook; die?: Hook; end?: Hook; look?: (world: World, state: GameState) => string[]; enter?: Hook } = {};
 
 export function setEffectHooks(h: typeof hooks): void {
   Object.assign(hooks, h);
@@ -137,9 +138,11 @@ function itemOf(e: Effect): string | null {
 
 /** Runs one effect. Returns the lines it prints, and whether to stop the list (death, an ending). */
 function runEffect(e: Effect, world: World, state: GameState): { lines: string[]; stop?: boolean } {
-  if ('say' in e) return { lines: [e.say] };
+  if ('say' in e) return { lines: [expandTemplate(e.say, world, state)] };
   if ('set' in e) return void (state.flags[e.set] = true), { lines: [] };
   if ('clear' in e) return void (state.flags[e.clear] = false), { lines: [] };
+  if ('follow' in e) return void (world.npcs[e.follow] && (npcStateOf(state, e.follow).following = true)), { lines: [] };
+  if ('unfollow' in e) return void (world.npcs[e.unfollow] && (npcStateOf(state, e.unfollow).following = false)), { lines: [] };
   // Naming a thing the world doesn't have does nothing (the audit reports it).
   const thing = itemOf(e);
   if (thing !== null && !world.items[thing]) return { lines: [] };
@@ -160,7 +163,7 @@ function runEffect(e: Effect, world: World, state: GameState): { lines: string[]
   if ('unlock' in e) return void (itemState(state, e.unlock).locked = false), { lines: [] };
   if ('switch' in e) return void (itemState(state, e.switch).on = e.on), { lines: [] };
   if ('add' in e) return void addVar(state, e.add, e.by), { lines: [] };
-  if ('setVar' in e) return void ((state.vars ??= {})[e.setVar] = e.to), { lines: [] };
+  if ('setVar' in e) return void ((state.vars ??= {})[e.setVar] = 'from' in e ? (commandOf(state)?.number ?? 0) : e.to), { lines: [] };
   if ('score' in e) return void addVar(state, 'score', e.score), { lines: [] };
   if ('schedule' in e) return void (world.events[e.schedule] && schedule(state, e.schedule, e.in)), { lines: [] };
   if ('cancel' in e) {
@@ -186,6 +189,19 @@ function runEffect(e: Effect, world: World, state: GameState): { lines: string[]
     return { lines: [] };
   }
   if ('disembark' in e) return void (state.aboard = undefined), { lines: [] };
+  if ('moveVehicle' in e) {
+    const vehicle = world.items[e.moveVehicle]?.vehicle;
+    if (!vehicle || !world.rooms[e.to]) return { lines: [] };
+    // Aboard, the player goes too, as on any arrival (but it isn't a player move: nobody follows).
+    if (state.aboard === e.moveVehicle) return { lines: hooks.enter ? hooks.enter(e.to, world, state) : [] };
+    const here = state.currentRoom;
+    const from = state.locations[e.moveVehicle];
+    // `leave` is worked out before it moves, in the room it leaves.
+    const lines = from === here && e.to !== here ? vehicleLine(vehicle.leave, world, state) : [];
+    moveItem(state, e.moveVehicle, e.to);
+    if (e.to === here && from !== here) lines.push(...vehicleLine(vehicle.arrive, world, state));
+    return { lines };
+  }
   // Zork's TOUCHBIT: handled, so its first-seen sentence is over.
   if ('touch' in e) return void (itemState(state, e.touch).moved = true), { lines: [] };
   if ('unlist' in e) return void (itemState(state, e.unlist).unlisted = true), { lines: [] };
@@ -218,7 +234,7 @@ export function runSteps(steps: EventStep[], world: World, state: GameState): st
     if (typeof step === 'string') {
       const effect = isEffectLine(step);
       if (effect) applyBracketLine(step, world, state);
-      if (!(effect && world.style === 'infocom')) out.push(step);
+      if (!(effect && world.style === 'infocom')) out.push(effect ? step : expandTemplate(step, world, state));
       continue;
     }
     const { lines, stop } = runEffect(step, world, state);
@@ -246,4 +262,17 @@ export function runConditional(entries: Array<{ if: string; then: string | Event
 export function runEventKey(key: string, world: World, state: GameState): string[] {
   if (!state.firedEvents.includes(key)) state.firedEvents.push(key);
   return runSteps(world.events[key] ?? [], world, state);
+}
+
+/**
+ * What a vehicle says as it leaves or arrives: a string as it is (drawing nothing), one line picked from a list
+ * with the seeded generator, or a script's `say` lines. A script's other steps don't run: this is a line said
+ * mid-move. Unlike a description script, its draws from the generator are kept.
+ */
+export function vehicleLine(line: VehicleLine | undefined, world: World, state: GameState): string[] {
+  if (line === undefined) return [];
+  if (typeof line === 'string') return [line];
+  if (Array.isArray(line)) return line.length > 0 ? [line[Math.floor(nextRandom(state) * line.length)]] : [];
+  if (!world.scripts?.[line.script]) return [];
+  return scriptSteps(line.script, undefined, world, state).flatMap((step) => (typeof step === 'string' ? [step] : 'say' in step ? [step.say] : []));
 }

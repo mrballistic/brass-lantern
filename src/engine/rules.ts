@@ -1,7 +1,8 @@
 import type { GameState, ParsedAction } from '@/types/game';
 import type { Item, NPC, Room, Rule, World } from '@/types/world';
 import { evaluateCondition } from './conditions';
-import { heldItems, inventoryOf, matchNpc, pickItem, reachableItems, restoreState, snapshotState, visibleItems } from './model';
+import { readsNumber } from './parser';
+import { heldItems, inventoryOf, matchNpc, namesPlayer, namesThing, pickItem, pickSecond, PLAYER, reachableItems, restoreState, snapshotState, visibleItems } from './model';
 import { setCommand } from './scripts';
 import { runEventKey, turnHalted } from './effects';
 import { miss, ok, type EngineResult } from './result';
@@ -36,17 +37,27 @@ export interface RuleIds {
   npcs?: string[];
   /** The command's preposition (PUT … IN or ON). */
   prep?: string;
+  /** In an order, the character carrying it out: phase `orders` reads its `orders` table alone. */
+  actor?: string;
 }
 
-/** The target item's rules, then the indirect item's, then the room's. The first that applies wins. */
+/**
+ * The target item's rules, then the indirect item's, then the room's. The first that applies wins.
+ * Phase `orders` asks only the ordered character's `orders` table (ids.actor).
+ */
 export function findRule(
   world: World,
   state: GameState,
-  phase: 'instead' | 'after',
+  phase: 'instead' | 'after' | 'orders',
   verb: string,
   ids: RuleIds,
   reach: string[],
 ): Rule | null {
+  if (phase === 'orders') {
+    const table = ids.actor ? world.npcs[ids.actor]?.orders : undefined;
+    const rules = table && Object.hasOwn(table, verb) ? table[verb] : [];
+    return rules.find((rule) => ruleApplies(rule, ids.indirect ?? ids.target, reach, world, state, undefined, ids.prep)) ?? null;
+  }
   type Role = 'target' | 'indirect' | 'vehicle' | undefined;
   const target: [Item | undefined, string | null | undefined, Role] = [ids.target ? world.items[ids.target] : undefined, ids.indirect, 'target'];
   const indirect: [Item | undefined, string | null | undefined, Role] = [ids.indirect ? world.items[ids.indirect] : undefined, ids.target, 'indirect'];
@@ -115,11 +126,16 @@ export function withRules(
   state: GameState,
   run: () => EngineResult,
 ): EngineResult {
-  const reach = reachableItems(world, state);
+  // ME names the player: an object that is always at hand.
+  const me = (word?: string) => word !== undefined && namesPlayer(word, world, state);
+  const reach = [...reachableItems(world, state), ...(action.number !== undefined ? ['number'] : []), ...(me(action.target) || me(action.indirect) ? [PLAYER] : [])];
+  // A number typed where an object goes (TURN DIAL TO 4) is no thing: the literal 'number' stands for it,
+  // unless something here is named by those digits (locker 12, a club called 5), which the slot then is.
+  const typed = (word?: string) => readsNumber(action, word) && !namesThing(word!, world, state);
   // Resolve the target the way the verb's handler will, so the rules that fire
   // belong to the item the verb actually acts on.
-  const target = action.target ? pickItem(action.target, targetScope(verb, world, state), world, 'target', state) : null;
-  const indirect = action.indirect ? pickItem(action.indirect, visibleItems(world, state), world, 'indirect', state) : null;
+  const target = typed(action.target) ? 'number' : me(action.target) ? PLAYER : action.target ? pickItem(action.target, targetScope(verb, world, state), world, 'target', state) : null;
+  const indirect = typed(action.indirect) ? 'number' : action.indirect ? pickSecond(action.indirect, visibleItems(world, state), world, state) : null;
   // Words that aren't items may name characters, whose rules count too.
   const targetNpc = !target && action.target ? matchNpc(action.target, world, state) : null;
   const indirectNpc = !indirect && action.indirect ? matchNpc(action.indirect, world, state) : null;
@@ -133,10 +149,16 @@ export function withRules(
     verb,
     target: target ?? targetNpc ?? undefined,
     indirect: indirect ?? indirectNpc ?? undefined,
+    number: action.number,
+    direction: action.direction,
+    text: action.text,
     words: { target: action.target, indirect: action.indirect },
   });
   const instead = findRule(world, state, 'instead', verb, ids, reach);
   if (instead && !instead.continue) return applyRule(instead, world, state);
+  // ME as the second object with no rule to take it: no built-in default does anything with the player
+  // there, so the word typed names nothing here, as before 6a (and before any `continue` rule runs).
+  if (indirect === PLAYER) return miss(`You don’t see a “${action.indirect}” here.`);
   // A `continue` rule runs first; if the default then misses or asks, the rule is undone too,
   // so a miss never changes state (the intent server retries from where things stood).
   const saved = instead ? snapshotState(state) : null;

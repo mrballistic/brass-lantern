@@ -9,6 +9,8 @@ export interface Room {
   dark?: boolean;
   /** Descriptions that depend on the state of things; the first whose `if` holds replaces `description`. */
   descriptions?: Array<{ if: string; text: string }>;
+  /** A world script whose `say` lines (joined with newlines) are the description, ahead of `firstDescription` and `descriptions`. */
+  descriptionScript?: string;
   /** Label → a room ID, or an Exit for conditions, messages and doors. */
   exits: Record<string, string | Exit>;
   /**
@@ -33,6 +35,10 @@ export interface Room {
   tags?: string[];
   /** Water (Zork's NONLANDBIT): only a water vehicle goes here. A condition for rooms that change (a reservoir that drains). */
   water?: boolean | string;
+  /** Air (Zork II's balloon): only an air vehicle goes here. A condition for rooms that change. */
+  air?: boolean | string;
+  /** What kind of ground this is, for vehicles: `'land'` (the default), or any name the world uses (`'sand'`). `water` and `air` above are shorthand for `'water'` and `'air'`; a set `terrain` wins over them. */
+  terrain?: string;
   /** Takes input here before it's parsed, while `if` holds (Zork's Loud Room). See Capture. */
   capture?: Capture;
   /** Run at the end of every command here, after the action and before the clock (Zork's M-END). */
@@ -53,7 +59,7 @@ export interface Capture {
 export interface Rule {
   /** Condition string (see conditions.ts). */
   if?: string;
-  /** The other item, for two-object commands. Must be in reach. */
+  /** The other item, for two-object commands. Must be in reach. `'number'` matches a number typed as the second object (TURN DIAL TO 4). */
   with?: string;
   then?: string;
   say?: string[];
@@ -72,7 +78,8 @@ export type RuleTable = Record<string, Rule[]>;
 export interface WorldVerb {
   /** Words and phrases that mean it ("pray", "hit the snooze button"). */
   words: string[];
-  target: 'none' | 'optional' | 'required';
+  /** `text`: the rest of the line, typed words (SAY, INCANT, ANSWER), read by `said:`. */
+  target: 'none' | 'optional' | 'required' | 'text';
   /** Prepositions that introduce a second object ("with", "on"). */
   indirect?: string[];
   /** Printed when no rule applies. Defaults to “Nothing happens.” `{a target}` is the object with its article, `{target}` its name. */
@@ -81,6 +88,8 @@ export interface WorldVerb {
   held?: boolean;
   /** Treat it as GO: through the target exit, or the exit labeled with the verb's ID when bare. */
   go?: boolean;
+  /** Its words may be built-in words: it reads only lines no built-in verb reads (Zork's bare TURN X, where the engine's TURN wants TO or WITH). */
+  afterBuiltIns?: boolean;
 }
 
 /** An exit with conditions. Without `to`, it only prints `denial`. */
@@ -113,6 +122,10 @@ export interface Item {
   /** Other words the parser should accept for this item ("disk", "virus"). */
   aliases?: string[];
   description: string;
+  /** A world script whose `say` lines are EXAMINE's text, ahead of `description`. */
+  descriptionScript?: string;
+  /** A world script whose `say` lines are its sentence in a room's listing, ahead of its other sentences; it says it all, so no “(outside the boat)” follows (Zork's DESCFCN). */
+  roomDescriptionScript?: string;
   portable: boolean;
   tags: string[];
   /** Shown when the player tries to take a non-portable item. */
@@ -133,7 +146,19 @@ export interface Item {
   /** Something to fight with. */
   weapon?: boolean;
   /** Something the player can get into and travel in (Zork's VEHBIT; `travels` is VTYPE). */
-  vehicle?: { travels: 'water' };
+  vehicle?: {
+    /** The terrains it can enter. `'water'`, `'air'` and `'none'` (a chair: it never moves while you're in it) are the legacy spellings of `['water']`, `['air']` and `[]`. */
+    travels: string | string[];
+    /** Terrains it can come to rest on from one it travels (the boat reaching the shore, the balloon landing). Default `['land']` unless it travels on land. It can't cross from one of these to another. */
+    restsOn?: string[];
+    /** Said as it comes onto a `restsOn` terrain from a travelled one the player can't walk on (GOTO's line); the same forms as `leave`. Unset: a water vehicle says “The <name> comes to a rest on the shore.” and a blank line; others say nothing. */
+    landing?: VehicleLine;
+    /** Said as it leaves with you aboard (worked out in the room being left, before the move), and as it arrives (after). A list picks one line with the seeded generator; `{ script }` says the named script's `say` lines. */
+    leave?: VehicleLine;
+    arrive?: VehicleLine;
+    /** A world script whose `say` lines describe it from inside: after the room's description as you look around aboard, and after the name on a brief arrival, but not after a room its own `descriptionScript` described in full (Zork's vehicle M-LOOK in DESCRIBE-ROOM). */
+    lookScript?: string;
+  };
   /** A vehicle's end routines: while the player is aboard, they run instead of the room's (Zork's M-END). */
   onEnd?: Array<{ if: string; then: string | EventStep[] }>;
   /** BURN can set it alight (Zork's BURNBIT). */
@@ -202,6 +227,8 @@ export interface NPC {
   refuseGift?: string;
   /** Items it holds at the start. Things a character holds aren't visible or reachable. */
   holds?: string[];
+  /** A world script whose `say` lines are its description, ahead of `descriptions`. */
+  descriptionScript?: string;
   /** Descriptions that depend on the state of things; the first whose condition holds wins. */
   descriptions?: Array<{ if: string; text: string }>;
   /** Rules for verbs aimed at this character (THROW X AT it, GIVE, ATTACK…). */
@@ -217,6 +244,29 @@ export interface NPC {
   noTopic?: string;
   /** Its answer to an order (“thief, give me the bag”). Default: “Name ignores you.” */
   refuseOrder?: string;
+  /**
+   * Rules for orders, by the inner command's verb (“robot, push the button” runs `orders.push`,
+   * or `orders.use` if no `push` table): they see the inner command (`target:`, `number:`, …).
+   */
+  orders?: RuleTable;
+  /** Built-in orders it carries out (Zork II's robot): GO DIR, TAKE X, DROP X, GIVE X TO ME. */
+  obeys?: Array<'go' | 'take' | 'drop' | 'give'>;
+  /** Its reply when it obeys a built-in order. Default: “Okay.” */
+  obeyReplies?: Partial<Record<'go' | 'take' | 'drop' | 'give', string>>;
+  /**
+   * A condition under which it goes where the player goes (Zork II's dragon, Zork III's Dungeon Master).
+   * Checked after the move, so `in:ROOM` sees the new room. It must have been in the room the player left,
+   * be awake and unhidden. `{ follow: 'npc' }` / `{ unfollow: 'npc' }` set and clear its state's `following`,
+   * which `following:NPC` reads; that follows too, with or without this.
+   */
+  follows?: string;
+  /** What it says on arriving after you. Brass style: “<Name> follows you.” if unset; Infocom prints nothing if unset. */
+  followLine?: string;
+  /**
+   * Rooms from which the player can give it orders while it's elsewhere (Zork's local-global actor: MASTER
+   * in a room's GLOBAL list hands the order to the dungeon master). Its orders are carried out where it stands.
+   */
+  heardFrom?: string[];
   /** Present but not listed in the room: the room's own description mentions it (Zork's NDESCBIT). */
   scenery?: boolean;
   /** Starts hidden (in its room, unseen). Its state's `hidden` overrides this. */
@@ -299,18 +349,24 @@ export type Effect =
   | { say: string }
   | { set: string }
   | { clear: string }
+  /** A character follows the player (sets its state's `following`, which `following:NPC` reads). */
+  | { follow: string }
+  /** It stops following (clears that flag). */
+  | { unfollow: string }
   /** To a room, 'player', 'here' (the player's room), an item, a character, or null (offstage). */
   | { move: string; to: string | null }
   /** A character to a room, or null (gone). */
   | { moveNpc: string; to: string | null }
-  /** Sets a character's combat state. */
-  | { npcState: string; fighting?: boolean; staggered?: boolean; strength?: number; hidden?: boolean }
+  /** Sets a character's combat state; `scenery` takes it out of the room's list in play, or puts it back (Zork's NDESCBIT). */
+  | { npcState: string; fighting?: boolean; staggered?: boolean; strength?: number; hidden?: boolean; scenery?: boolean }
   /** Hides an item where it is, or reveals it again (Zork's INVISIBLE). */
   | { hide: string }
   | { reveal: string }
   /** Puts the player in a vehicle that's in the room, or takes them out. */
   | { board: string }
   | { disembark: true }
+  /** Moves a vehicle to a room, with the player if aboard (not a player move: followers stay). */
+  | { moveVehicle: string; to: string }
   /** Keeps an item where it is but out of listings, or lists it again (Zork's NDESCBIT, set in play: the tied rope). */
   | { unlist: string }
   /** Marks an item handled (Zork's TOUCHBIT): its first-seen sentence is over. */
@@ -325,6 +381,8 @@ export type Effect =
   | { switch: string; on: boolean }
   | { add: string; by: number }
   | { setVar: string; to: number }
+  /** Sets the variable to the number in the command (TURN DIAL TO 4); 0 when there is none. */
+  | { setVar: string; from: 'number' }
   /** Adds to the `score` variable. */
   | { score: number }
   /** Moves the player there and describes it; `quiet` moves without describing (Zork's mirror). */
@@ -382,6 +440,9 @@ export interface Carry {
   fumbled?: string;
 }
 
+/** A line a vehicle says: one line, one picked at random from several, or a script's `say` lines. */
+export type VehicleLine = string | string[] | { script: string };
+
 export interface World {
   rooms: Record<string, Room>;
   items: Record<string, Item>;
@@ -389,6 +450,8 @@ export interface World {
   events: EventScripts;
   dialogue: DialogueMap;
   startRoom: string;
+  /** Terrains the player can walk into, and get out of a vehicle in. Default `['land']`; a custom terrain (`'sand'`) is walkable only if listed. */
+  onFoot?: string[];
   /**
    * Friendly labels used in `[Flag set: …]` event lines, lowercased, mapped to
    * the flag IDs that conditions test.
@@ -410,6 +473,12 @@ export interface World {
   title?: string;
   /** Lines VERSION prints after the title (copyright, authors). */
   credits?: string[];
+  /** SCORE's line, replacing the style's own: `{score}`, `{max}`, `{moves}` (“3 moves”). */
+  scoreLine?: string;
+  /** SCORE's rank line, replacing the style's own: `{rank}`. */
+  rankLine?: string;
+  /** DIAGNOSE's own wording for being unhurt and for being wounded. */
+  diagnose?: { healthy?: string; wounded?: string };
   /** Highest `min` the score reaches wins. */
   ranks?: Rank[];
   /** Reply to QUIT. */
@@ -454,8 +523,10 @@ export interface World {
     resurrection?: string[];
     /** Rooms carried things are spread over, at random. Things with a `home` go there instead. */
     scatter?: string[];
-    /** `dark`: treasures go to an unlit land room instead, walking the rooms in order at even odds each (Zork's RANDOMIZE-OBJECTS). */
-    treasures?: 'dark';
+    /** `dark`: treasures go to an unlit land room instead, walking the rooms in order at even odds each (Zork's RANDOMIZE-OBJECTS). `{ to }`: treasures without a `home` all go to that room, item or character (a trophy case), drawing no randomness. */
+    treasures?: 'dark' | { to: string };
+    /** Timers (event names) a death leaves running with their counts; every other timer is cleared. */
+    keepTimers?: string[];
     /** Printed on the last death, which ends the game. */
     final?: string[];
     /** An event run after a resurrection (Zork's JIGS-UP resets things). */

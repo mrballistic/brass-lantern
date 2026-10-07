@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { buildContext } from '@/engine/intent-client';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { buildContext, parseIntentRemote } from '@/engine/intent-client';
 import type { World, WorldVerb } from '@/types/world';
 import { fixtureWorld } from '../fixtures/world';
 
@@ -21,5 +21,41 @@ describe('the intent context', () => {
     expect(ctx.verbs).not.toContain('hitSnooze');
     expect(ctx.verbs.length).toBe(50);
     expect(ctx.verbs.every((v) => /^[a-z0-9_]{1,48}$/.test(v))).toBe(true);
+  });
+});
+
+describe('the intent client reply', () => {
+  const reply = (body: unknown) =>
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(body), { status: 200 })));
+  const ctx = { roomName: 'x', exits: [], items: [], npcs: [], inventory: [], verbs: [] };
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('passes a number and a preposition through', async () => {
+    reply({ action: 'turn', target: 'dial', indirect: 'number', number: 4 });
+    expect(await parseIntentRemote('set dial to 4', ctx)).toEqual({ action: 'turn', target: 'dial', indirect: 'number', number: 4 });
+    reply({ action: 'put', target: 'mat', indirect: 'door', prep: 'under' });
+    expect(await parseIntentRemote('slide mat under door', ctx)).toEqual({ action: 'put', target: 'mat', indirect: 'door', prep: 'under' });
+  });
+
+  it('passes a push direction through and drops an invalid one', async () => {
+    reply({ action: 'push', target: 'box', direction: 'north' });
+    expect(await parseIntentRemote('push box north', ctx)).toEqual({ action: 'push', target: 'box', direction: 'north' });
+    reply({ action: 'push', target: 'box', direction: 'sideways' });
+    expect(await parseIntentRemote('x', ctx)).toEqual({ action: 'push', target: 'box' });
+  });
+
+  it('drops a preposition or number the engine would not know', async () => {
+    reply({ action: 'put', target: 'mat', prep: 'sideways', number: '4' });
+    expect(await parseIntentRemote('x', ctx)).toEqual({ action: 'put', target: 'mat' });
+    reply({ action: 'turn', number: 1001 });
+    expect(await parseIntentRemote('x', ctx)).toEqual({ action: 'turn' });
+  });
+
+  it('drops a number no slot reads', async () => {
+    reply({ action: 'take', target: 'lamp', number: 4 });
+    expect(await parseIntentRemote('x', ctx)).toEqual({ action: 'take', target: 'lamp' });
+    reply({ action: 'turn', target: '4', indirect: 'dial', number: 4 });
+    expect(await parseIntentRemote('x', ctx)).toEqual({ action: 'turn', target: '4', indirect: 'dial', number: 4 });
   });
 });

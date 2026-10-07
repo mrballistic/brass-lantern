@@ -1,6 +1,7 @@
 import type { GameState } from '@/types/game';
-import type { World } from '@/types/world';
+import type { World, WorldVerb } from '@/types/world';
 import { evaluateCondition } from '../conditions';
+import { BUILT_IN_WORDS } from '../parser';
 import { ok, type EngineResult } from '../result';
 
 /** The score so far: scoring entries earned, plus the `score` var. */
@@ -32,15 +33,23 @@ export function scoreLines(world: World, state: GameState): string[] {
   const max = world.maxScore ?? scoring.reduce((sum, s) => sum + Math.max(0, s.points), 0);
   const score = currentScore(world, state);
   const rank = [...(world.ranks ?? [])].sort((a, b) => b.min - a.min).find((r) => score >= r.min);
-  if (world.style === 'infocom') {
-    // Zork reports the turns before this one.
-    const moves = state.turns ?? 0;
-    const lines = [`Your score is ${score} (total of ${max} points), in ${moves} move${moves === 1 ? '' : 's'}.`];
-    if (rank) lines.push(`This gives you the rank of ${rank.title}.`);
-    return lines;
-  }
-  const lines = [`[Score: ${score} of ${max}, in ${state.moveCount} move${state.moveCount === 1 ? '' : 's'}.]`];
-  if (rank) lines.push(`[Rank: ${rank.title}]`);
+  const infocom = world.style === 'infocom';
+  // Zork reports the turns before this one.
+  const moves = infocom ? (state.turns ?? 0) : state.moveCount;
+  const fill = (template: string) =>
+    template
+      .replace(/\{score\}/g, String(score))
+      .replace(/\{max\}/g, String(max))
+      .replace(/\{moves\}/g, `${moves} move${moves === 1 ? '' : 's'}`)
+      .replace(/\{rank\}/g, rank?.title ?? '');
+  const lines = [
+    world.scoreLine
+      ? fill(world.scoreLine)
+      : infocom
+        ? `Your score is ${score} (total of ${max} points), in ${moves} move${moves === 1 ? '' : 's'}.`
+        : `[Score: ${score} of ${max}, in ${moves} move${moves === 1 ? '' : 's'}.]`,
+  ];
+  if (rank) lines.push(world.rankLine ? fill(world.rankLine) : infocom ? `This gives you the rank of ${rank.title}.` : `[Rank: ${rank.title}]`);
   return lines;
 }
 
@@ -55,9 +64,11 @@ export function handleScore(world: World, state: GameState): EngineResult {
 }
 
 export function handleHelp(world: World): EngineResult {
-  const own = Object.entries(world.verbs ?? {}).map(
-    ([id, v]) => `${id.toUpperCase().padEnd(25)}${v.words.filter((w) => w !== id).join(', ')}`.trimEnd(),
-  );
+  // An afterBuiltIns verb's built-in words are the built-in verb's to list; one with only those isn't listed.
+  const words = (v: WorldVerb) => (v.afterBuiltIns ? v.words.filter((w) => !BUILT_IN_WORDS.has(w.toLowerCase())) : v.words);
+  const own = Object.entries(world.verbs ?? {})
+    .filter(([, v]) => words(v).length > 0)
+    .map(([id, v]) => `${id.toUpperCase().padEnd(25)}${words(v).filter((w) => w !== id).join(', ')}`.trimEnd());
   return ok([
     '═══════ COMMANDS ═══════',
     'GO <direction|place>     N S E W NE NW SE SW U D also work',
@@ -66,14 +77,18 @@ export function handleHelp(world: World): EngineResult {
     'TAKE <item>              Pick up an item (synonyms: GET, GRAB; TAKE ALL)',
     'DROP <item>              Drop an item from your inventory',
     'EXAMINE <item|npc>       Inspect (synonyms: INSPECT, LOOK AT, X)',
-    'READ <thing>             Read what’s written on it',
+    'READ <thing>             Read what’s written on it (also READ … THROUGH <lens>)',
     'TURN ON / OFF <thing>    Lamps and the like (also LIGHT)',
+    'TURN <thing> TO <n>      Set a dial or the like (also SET … TO)',
     'BURN <thing> WITH <item> Set it alight (also LIGHT … WITH)',
     'BOARD / GET OUT <thing>  Get in or out of a vehicle (also DISEMBARK, EXIT)',
     'USE <item> [ON <thing>]  Use an item, or use it on something',
     'OPEN / CLOSE <thing>     Containers and doors',
     'LOCK / UNLOCK <thing> WITH <key>',
     'PUT <item> IN|ON <thing> Put something in a container or on a surface',
+    'PUT <item> UNDER|BEHIND <thing>',
+    'THROW <item> OFF|OVER <thing>',
+    'PUSH <thing> <direction> Or PUSH <thing> TO <place>',
     'TAKE <item> FROM <thing> Take something out',
     'LOOK IN <thing>          See what’s inside (also SEARCH)',
     'GIVE <item> TO <npc>     Hand something over',

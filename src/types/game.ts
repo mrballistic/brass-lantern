@@ -28,8 +28,12 @@ export interface NpcState {
   wake?: number;
   /** In the room but unseen: not listed, matched, reached or fought (Zork's INVISIBLE). */
   hidden?: boolean;
+  /** Present but not listed, set in play (Zork's NDESCBIT): overrides the character's `scenery`. */
+  scenery?: boolean;
   /** When it last moved rooms, on the same sequence as things' placings (`placed`): listed before anything placed earlier (Zork's object order). */
   seq?: number;
+  /** Set by the `{ follow }` effect, cleared by `{ unfollow }`: it goes where the player goes (read by `following:NPC`). */
+  following?: boolean;
 }
 
 /** The player's condition, once anything has hurt them. */
@@ -98,16 +102,20 @@ export interface ParsedAction {
   target?: string;
   /** Second object: the NPC in "give X to Y", the item in "use X on Y". */
   indirect?: string;
-  /** For PUT: in or on. */
-  prep?: 'in' | 'on';
+  /** The preposition: PUT in/on/under/behind, THROW off/over, READ through. */
+  prep?: 'in' | 'on' | 'under' | 'behind' | 'off' | 'over' | 'through';
   /** TAKE ALL BUT …: the words after BUT/EXCEPT. */
   except?: string[];
   /** DISEMBARK reached by STAND or a bare GET OUT/OFF: Zork guesses the vehicle only for DISEMBARK itself. */
   via?: 'stand' | 'out';
-  /** CLIMB UP / CLIMB DOWN a thing: the direction to climb it in. */
-  direction?: 'up' | 'down';
+  /** CLIMB UP / CLIMB DOWN a thing, or PUSH X north: the direction. */
+  direction?: 'north' | 'south' | 'east' | 'west' | 'northeast' | 'northwest' | 'southeast' | 'southwest' | 'up' | 'down';
   /** Bare EXIT (a direction, out), which aboard gets out of the vehicle (Zork's V-EXIT). */
   exit?: boolean;
+  /** TURN X TO 4, SET X TO 776: the number. The slot keeps the digits typed (the intent server sends the literal 'number'); rules see it as 'number'. */
+  number?: number;
+  /** SAY/INCANT/ANSWER: the rest of the line, outer quotes dropped, whitespace collapsed. */
+  text?: string;
   /** The targets are IDs (the intent server's answer), so they resolve by ID first. */
   byId?: boolean;
 }

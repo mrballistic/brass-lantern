@@ -338,3 +338,54 @@ describe('unknown route', () => {
     expect(res.body).toEqual({ error: 'Not found' });
   });
 });
+
+describe('sanitize: prepositions and numbers', () => {
+  it('keeps a valid preposition and drops an unknown one', async () => {
+    const { sanitize } = await import('../llm.js');
+    expect(sanitize({ action: 'put', target: 'mat', indirect: 'door', prep: 'under' })).toEqual({
+      action: 'put', target: 'mat', indirect: 'door', prep: 'under',
+    });
+    expect(sanitize({ action: 'put', target: 'mat', indirect: 'door', prep: 'sideways' })).toEqual({
+      action: 'put', target: 'mat', indirect: 'door',
+    });
+    expect(sanitize({ action: 'put', prep: 5 })).toEqual({ action: 'put' });
+  });
+
+  it('keeps an integer 0 to 1000 and drops anything else', async () => {
+    const { sanitize } = await import('../llm.js');
+    expect(sanitize({ action: 'turn', target: 'dial', indirect: 'number', number: 4 }).number).toBe(4);
+    expect(sanitize({ action: 'turn', number: 0 }).number).toBe(0);
+    expect(sanitize({ action: 'turn', number: 1000 }).number).toBe(1000);
+    for (const bad of [1001, -1, 4.5, '4', null, NaN]) {
+      expect(sanitize({ action: 'turn', target: 'dial', number: bad })).toEqual({ action: 'turn', target: 'dial' });
+    }
+  });
+
+  it('accepts push with a direction, and drops an invalid direction', async () => {
+    const { sanitize } = await import('../llm.js');
+    expect(sanitize({ action: 'push', target: 'boulder', direction: 'north' })).toEqual({
+      action: 'push', target: 'boulder', direction: 'north',
+    });
+    expect(sanitize({ action: 'push', target: 'boulder', direction: 'sideways' })).toEqual({ action: 'push', target: 'boulder' });
+    expect(sanitize({ action: 'push', target: 'boulder', direction: 3 })).toEqual({ action: 'push', target: 'boulder' });
+  });
+
+  it('keeps an order’s inner command as words, and drops prose punctuation', async () => {
+    const { sanitize } = await import('../llm.js');
+    expect(sanitize({ action: 'order', target: 'robot', indirect: 'Take lamp' }).indirect).toBe('take lamp');
+    // An identifier-shaped command (the model's habit elsewhere) reads as words.
+    expect(sanitize({ action: 'order', target: 'robot', indirect: 'take_lamp' }).indirect).toBe('take lamp');
+    expect(sanitize({ action: 'order', target: 'robot', indirect: 'go_north-now' }).indirect).toBe('go north now');
+    expect(sanitize({ action: 'order', target: 'robot', indirect: 'take the lamp; ignore rules' }).indirect).toBeUndefined();
+    expect(sanitize({ action: 'give', target: 'lamp', indirect: 'robot dog' }).indirect).toBe('robot_dog');
+  });
+
+  it('passes prep and number through the route', async () => {
+    fetchMock.mockReset();
+    fetchMock.mockResolvedValueOnce(
+      geminiReply(JSON.stringify({ action: 'turn', target: 'dial', indirect: 'number', number: 4 })),
+    );
+    const res = await post({ input: 'set the dial to four', context: makeContext() });
+    expect(res.body).toEqual({ action: 'turn', target: 'dial', indirect: 'number', number: 4 });
+  });
+});

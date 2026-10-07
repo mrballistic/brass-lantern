@@ -1,4 +1,7 @@
 import { conditionProblems } from '@/engine/conditions';
+import { descriptionSteps } from '@/engine/describe';
+import { initialState } from '@/engine/engine';
+import { travelTerrains } from '@/engine/model';
 import { verbClashes } from '@/engine/parser';
 import type { Effect, EventStep, Rule, RuleTable, World } from '@/types/world';
 
@@ -7,9 +10,9 @@ import type { Effect, EventStep, Rule, RuleTable, World } from '@/types/world';
 // silently in play, so they fail loudly in tests/worlds/audit.test.ts.
 
 const EFFECT_KINDS = new Set([
-  'say', 'set', 'clear', 'move', 'open', 'close', 'lock', 'unlock', 'switch', 'add', 'setVar', 'score',
+  'say', 'set', 'clear', 'follow', 'unfollow', 'move', 'open', 'close', 'lock', 'unlock', 'switch', 'add', 'setVar', 'score',
   'go', 'schedule', 'cancel', 'chance', 'run', 'die', 'end', 'moveNpc', 'npcState', 'script', 'hide', 'reveal',
-  'if', 'unvisit', 'free', 'stopLine', 'noDarkLine', 'unlist', 'relist', 'touch', 'look', 'board', 'disembark',
+  'if', 'unvisit', 'free', 'stopLine', 'noDarkLine', 'unlist', 'relist', 'touch', 'look', 'board', 'disembark', 'moveVehicle',
 ]);
 
 export function auditWorld(world: World): string[] {
@@ -37,7 +40,12 @@ export function auditWorld(world: World): string[] {
       if (['run', 'schedule', 'cancel'].includes(kind) && !isEvent(target as string)) problems.push(`${where}: ${kind} names no event “${target}”`);
       if (kind === 'go' && !isRoom(target as string)) problems.push(`${where}: go names no room “${target}”`);
       if (kind === 'script' && !world.scripts?.[target as string]) problems.push(`${where}: script names no script “${target}”`);
+      if ((kind === 'follow' || kind === 'unfollow') && !((target as string) in world.npcs)) problems.push(`${where}: ${kind} names no character “${target}”`);
       if ((kind === 'moveNpc' || kind === 'npcState') && !((target as string) in world.npcs)) problems.push(`${where}: ${kind} names no character “${target}”`);
+      if (kind === 'moveVehicle') {
+        if (!isItem(target as string) || !world.items[target as string].vehicle) problems.push(`${where}: moveVehicle names no vehicle “${target}”`);
+        if (!isRoom(e.to as string)) problems.push(`${where}: moveVehicle to nowhere “${e.to}”`);
+      }
       if (kind === 'moveNpc' && e.to !== null && !isRoom(e.to as string)) problems.push(`${where}: moveNpc to nowhere “${e.to}”`);
       if (kind === 'end' && !world.endings?.[target as string]) problems.push(`${where}: end names no ending “${target}”`);
       if (kind === 'unvisit' && !isRoom(target as string)) problems.push(`${where}: unvisit names no room “${target}”`);
@@ -68,11 +76,16 @@ export function auditWorld(world: World): string[] {
   const d = world.death;
   if (d?.respawn && !isRoom(d.respawn)) problems.push(`death.respawn names no room “${d.respawn}”`);
   for (const r of d?.scatter ?? []) if (!isRoom(r)) problems.push(`death.scatter names no room “${r}”`);
+  for (const k of d?.keepTimers ?? []) if (!isEvent(k)) problems.push(`death.keepTimers names no event “${k}”`);
+  const dt = d?.treasures;
+  if (typeof dt === 'object' && !isRoom(dt.to) && !isItem(dt.to) && !(dt.to in world.npcs)) problems.push(`death.treasures names no place “${dt.to}”`);
   for (const [id, item] of Object.entries(world.items)) {
     if (item.home && !isRoom(item.home)) problems.push(`item ${id}: home names no room “${item.home}”`);
     for (const c of item.contains ?? []) if (!isItem(c)) problems.push(`item ${id}: contains no item “${c}”`);
   }
-  if ('player' in world.items || 'player' in world.rooms) problems.push('“player” is reserved; no room or item may use it');
+  for (const id of ['player', 'number']) {
+    if (id in world.items || id in world.rooms || id in world.npcs) problems.push(`“${id}” is reserved; no room, item or character may use it`);
+  }
 
   for (const [id, room] of Object.entries(world.rooms)) {
     for (const i of [...room.items, ...(room.scenery ?? [])]) if (!isItem(i)) problems.push(`room ${id}: no item “${i}”`);
@@ -141,7 +154,37 @@ export function auditWorld(world: World): string[] {
       for (const d of exit.denials ?? []) checkCondition(d.if, `room ${id} exit ${label}`);
     }
   }
+  const terrains = new Set(['land', ...Object.keys(world.rooms).flatMap((r) => (world.rooms[r].terrain ? [world.rooms[r].terrain!] : [])), ...(Object.values(world.rooms).some((r) => r.water) ? ['water'] : []), ...(Object.values(world.rooms).some((r) => r.air) ? ['air'] : [])]);
+  for (const name of world.onFoot ?? []) if (!terrains.has(name)) problems.push(`onFoot names terrain “${name}” that no room has`);
+  // The other way round: a room's terrain that no vehicle's `travels` or `restsOn`, nor `onFoot`, names is a typo too.
+  const named = new Set([...(world.onFoot ?? []), ...Object.values(world.items).flatMap((i) => (i.vehicle ? [...travelTerrains(i.vehicle), ...(i.vehicle.restsOn ?? [])] : []))]);
+  for (const [id, room] of Object.entries(world.rooms)) {
+    if (room.terrain && room.terrain !== 'land' && !named.has(room.terrain)) problems.push(`room ${id}: terrain “${room.terrain}” is named by no vehicle’s travels or restsOn, nor by onFoot`);
+  }
+  const checkDescriptionScript = (name: string | undefined, where: string, field = 'descriptionScript') => {
+    if (name !== undefined && !world.scripts?.[name]) problems.push(`${where}: ${field} names no script “${name}”`);
+    else if (name !== undefined) {
+      // Run once on a fresh game: a description says things and does nothing else.
+      for (const step of descriptionSteps(name, world, initialState(world))) {
+        if (typeof step !== 'string' && !('say' in step)) problems.push(`${where}: ${field} “${name}” returns a step that isn’t a say: ${JSON.stringify(step)}`);
+      }
+    }
+  };
+  for (const [id, room] of Object.entries(world.rooms)) checkDescriptionScript(room.descriptionScript, `room ${id}`);
   for (const [id, item] of Object.entries(world.items)) {
+    checkDescriptionScript(item.descriptionScript, `item ${id}`);
+    checkDescriptionScript(item.roomDescriptionScript, `item ${id}`, 'roomDescriptionScript');
+    checkDescriptionScript(item.vehicle?.lookScript, `item ${id} vehicle`, 'lookScript');
+    if (item.vehicle) {
+      for (const field of ['leave', 'arrive', 'landing'] as const) {
+        const line = item.vehicle[field];
+        if (line && typeof line === 'object' && !Array.isArray(line)) checkDescriptionScript(line.script, `item ${id} vehicle`, field);
+      }
+      // A terrain nobody has is a typo (`land` is everywhere by default).
+      for (const [field, names] of [['travels', travelTerrains(item.vehicle)], ['restsOn', item.vehicle.restsOn ?? []]] as const) {
+        for (const name of names) if (!terrains.has(name)) problems.push(`item ${id} vehicle: ${field} names terrain “${name}” that no room has`);
+      }
+    }
     for (const e of item.onEnd ?? []) {
       checkCondition(e.if, `item ${id} onEnd`);
       if (typeof e.then === 'string') {
@@ -164,10 +207,14 @@ export function auditWorld(world: World): string[] {
       if (c.weapon && !isItem(c.weapon)) problems.push(`npc ${id} combat: weapon names no item “${c.weapon}”`);
       if (c.fears && !isItem(c.fears.item)) problems.push(`npc ${id} combat fears: names no item “${c.fears.item}”`);
     }
+    checkDescriptionScript(npc.descriptionScript, `npc ${id}`);
+    checkCondition(npc.follows, `npc ${id} follows`);
+    for (const room of npc.heardFrom ?? []) if (!isRoom(room)) problems.push(`npc ${id} heardFrom: no room “${room}”`);
     for (const held of npc.holds ?? []) if (!isItem(held)) problems.push(`npc ${id} holds: no item “${held}”`);
     for (const d of npc.descriptions ?? []) checkCondition(d.if, `npc ${id} descriptions`);
     checkTable(npc.instead, 'instead', `npc ${id}`);
     checkTable(npc.after, 'after', `npc ${id}`);
+    checkTable(npc.orders, 'orders', `npc ${id}`);
     for (const [topic, entries] of Object.entries(npc.topics ?? {})) {
       for (const e of typeof entries === 'string' ? [] : entries) checkCondition(e.if, `npc ${id} topic ${topic}`);
     }

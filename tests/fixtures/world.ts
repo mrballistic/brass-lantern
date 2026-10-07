@@ -185,6 +185,8 @@ export const fixtureWorld: World = {
       onGive: { wallet: 'give_wallet' },
       refuse: { key: '“Keep your key.”' },
       refuseGift: '“No thanks.”',
+      // Over the fence: an order from the living room's window still reaches the neighbor.
+      heardFrom: ['living'],
     },
   },
 
@@ -230,6 +232,8 @@ export const fixtureWorld: World = {
     },
     ring: { words: ['ring'], target: 'required' },
     wander: { words: ['wander', 'wander to'], target: 'optional', go: true },
+    // A built-in word, for what the built-in TURN (… TO, … WITH, ON, OFF) doesn't read.
+    twist: { words: ['twist', 'turn'], target: 'required', afterBuiltIns: true, reply: 'It won’t turn.' },
   },
 
   darkness: { look: 'It is pitch black.', blunder: [{ chance: 100, then: ['You trip in the dark.'] }] },

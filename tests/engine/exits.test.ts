@@ -39,6 +39,17 @@ describe('exits', () => {
     expect(s.currentRoom).toBe('shed');
   });
 
+  it('Infocom style: a door with no lines of its own opens and closes as Zork’s V-OPEN and V-CLOSE have a door do', () => {
+    const infocom = { ...world, style: 'infocom' as const };
+    const s = stateWith(infocom, { room: 'shed', carrying: ['key'] });
+    expect(execute({ action: 'open', target: 'hatch' }, { world: infocom, state: s }).lines).toEqual(['The hatch opens.']);
+    expect(s.itemState.hatch?.open).toBe(true);
+    // V-OPEN and V-CLOSE's own words for the rest.
+    expect(execute({ action: 'open', target: 'hatch' }, { world: infocom, state: s }).lines).toEqual(['It is already open.']);
+    expect(execute({ action: 'close', target: 'hatch' }, { world: infocom, state: s }).lines).toEqual(['The hatch is now closed.']);
+    expect(execute({ action: 'close', target: 'hatch' }, { world: infocom, state: s }).lines).toEqual(['It is already closed.']);
+  });
+
   it('enter and climb take a matching exit', () => {
     const s = stateWith(world, { room: 'yard' });
     expect(run(s, 'climb', 'fence').lines).toEqual(['The fence is too high to climb.']);

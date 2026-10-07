@@ -26,6 +26,9 @@ describe('conditionProblems', () => {
     expect(conditionProblems('visited:mars', fixtureWorld)).toEqual(['“visited:mars” names no room “mars”']);
     expect(conditionProblems('inside:wallet:mars', fixtureWorld)).toEqual(['“inside:wallet:mars” names no place “mars”']);
     expect(conditionProblems('wibble:x', fixtureWorld)).toEqual(['unknown condition “wibble:x”']);
+    expect(conditionProblems('number<=8', fixtureWorld)).toEqual([]);
+    expect(conditionProblems('number:4', fixtureWorld)).toEqual([]);
+    expect(conditionProblems('number<=x', fixtureWorld)).not.toEqual([]);
   });
 });
 
@@ -195,5 +198,28 @@ describe('score<op>N (5d)', () => {
   it('the audit knows the form and catches a malformed one', () => {
     expect(conditionProblems('score>=350', fixtureWorld)).toEqual([]);
     expect(conditionProblems('score>=x', fixtureWorld)).not.toEqual([]);
+  });
+});
+
+describe('held:ITEM', () => {
+  it('is true for a thing inside a carried closed box, where has: is false', () => {
+    const w: World = {
+      ...fixtureWorld,
+      items: {
+        ...fixtureWorld.items,
+        sock: { name: 'sock', description: 'A sock.', portable: true, tags: [] },
+        box: { name: 'box', description: 'A box.', portable: true, tags: [], container: { openable: true } },
+      },
+    };
+    const s = stateWith(w, { room: 'bedroom', carrying: ['box'] });
+    s.locations.sock = 'box';
+    expect(evaluateCondition('held:sock', s, w)).toBe(true);
+    expect(evaluateCondition('has:sock', s, w)).toBe(false);
+    expect(evaluateCondition('!held:sock', s, w)).toBe(false);
+    expect(evaluateCondition('held:box', s, w)).toBe(true);
+    s.locations.sock = 'bedroom';
+    expect(evaluateCondition('held:sock', s, w)).toBe(false);
+    expect(conditionProblems('held:sock', w)).toEqual([]);
+    expect(conditionProblems('held:unicorn', w)).toEqual(['“held:unicorn” names no item “unicorn”']);
   });
 });

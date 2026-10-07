@@ -36,6 +36,8 @@ The browser never talks to Google; only this server does, with the key in a requ
 
 Response: `{ "action": "give", "target": "mug", "indirect": "gary" }`, or `{ "action": "unknown" }` when there's no good reading or every model fails. Items whose name matches their ID are sent as the bare ID; others as `id (name)`.
 
+The reply can also carry a `prep` (`put … under`, `throw … off`, `read … through`), a `direction` (`push … north`), and a `number` (`turn dial to 4`, 0 to 1000; the client keeps it only when `target` or `indirect` is the word `number` or its digits). For an order (`tell robot to take lamp`), `indirect` is the command as a few plain lowercase words instead of an identifier; the engine parses it as it would typed text.
+
 Bad requests and rate limiting get an error status instead: 400 for a missing input or malformed context, 400 for input over 200 characters, 429 (with `Retry-After`) when rate limited, 500 if something unexpected breaks. All but the first carry `fallback: { "action": "unknown" }`. The bundled client treats any non-OK response as `unknown`, so the player just sees the literal reply.
 
 `GET /health` returns `{"ok":true}`.

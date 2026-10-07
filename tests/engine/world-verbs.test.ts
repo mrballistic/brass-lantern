@@ -57,9 +57,29 @@ describe('world verbs', () => {
     expect(splitCommands('snooze and ring bell', world.verbs)).toEqual(['snooze', 'ring bell']);
   });
 
+  it('an afterBuiltIns verb may use a built-in word, and reads only what no built-in verb reads (Zork’s bare TURN X)', () => {
+    expect(fallbackParse('turn bell', world.verbs)).toEqual({ action: 'twist', target: 'bell' });
+    expect(fallbackParse('twist the bell', world.verbs)).toEqual({ action: 'twist', target: 'bell' });
+    // TURN … TO, TURN ON and TURN … OFF stay the engine's.
+    expect(fallbackParse('turn dial to 4', world.verbs)).toEqual({ action: 'turn', target: 'dial', indirect: '4', number: 4 });
+    expect(fallbackParse('turn on lamp', world.verbs)).toEqual({ action: 'turn_on', target: 'lamp' });
+    expect(fallbackParse('turn lamp off', world.verbs)).toEqual({ action: 'turn_off', target: 'lamp' });
+    // Without the world's verbs a bare TURN is nothing the parser reads, as before.
+    expect(fallbackParse('turn bell')).toBeNull();
+    const s = stateWith(world, { room: 'bedroom' });
+    expect(execute(fallbackParse('turn alarm', world.verbs)!, { world, state: s }).lines).toEqual(['It won’t turn.']);
+  });
+
   it('reports a world verb word that clashes with a built-in', () => {
     expect(verbClashes({ shut: { words: ['take', 'shove'], target: 'required' } })).toEqual(['take']);
     expect(verbClashes(world.verbs)).toEqual([]);
+  });
+
+  it('HELP leaves out an afterBuiltIns verb’s built-in words, and a verb that has only those', () => {
+    const verbs = { ...world.verbs, turn_bare: { words: ['turn', 'set'], target: 'required' as const, afterBuiltIns: true } };
+    const lines = execute({ action: 'help' }, { world: { ...world, verbs }, state: stateWith(world) }).lines;
+    expect(lines.find((l) => l.startsWith('TWIST'))).toBe('TWIST');
+    expect(lines.some((l) => l.startsWith('TURN_BARE'))).toBe(false);
   });
 
   it('HELP lists the world’s verbs after the built-ins, and no longer lists SNOOZE as built in', () => {

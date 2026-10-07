@@ -361,7 +361,7 @@ export function diagnoseLines(world: World, state: GameState): string[] {
   const wounds = p?.cureIn !== undefined ? (p.wounds ?? 0) : 0;
   const style = (lines: string[]) => (world.style === 'infocom' ? lines : lines.map((l) => `[${l}]`));
   const moves = (world.combat?.cureWait ?? 30) * (wounds - 1) + (p?.cureIn ?? 0);
-  const lines = [wounds === 0 ? 'You are in perfect health.' : `You have ${WOUNDS[wounds] ?? 'serious wounds,'} which will be cured after ${moves} moves.`];
+  const lines = [wounds === 0 ? (world.diagnose?.healthy ?? 'You are in perfect health.') : (world.diagnose?.wounded ?? `You have ${WOUNDS[wounds] ?? 'serious wounds,'} which will be cured after ${moves} moves.`)];
   // A world without fights has nothing more to say than how you are.
   if (!world.combat) return style(lines);
   const rs = fightStrength(world, state, false) - (p?.wounds ?? 0);

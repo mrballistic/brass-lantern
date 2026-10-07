@@ -832,3 +832,60 @@ describe('a line stop left by a command that threw (1.12.5 review)', () => {
     }
   });
 });
+
+describe('text verb on a line (6a)', () => {
+  it('a text verb ends the line', async () => {
+    localStorage.clear();
+    const saved = { ...fixtureWorld.verbs };
+    const rooms = fixtureWorld.rooms;
+    const events = fixtureWorld.events;
+    const room = rooms.bedroom;
+    fixtureWorld.verbs = { ...saved, answer: { words: ['answer'], target: 'text', reply: 'Nobody seems to be awaiting your answer.' } };
+    rooms.bedroom = { ...room, instead: { answer: [{ if: 'said:a well', then: 'solved' }] } };
+    fixtureWorld.events = { ...events, solved: ['There is a clap of thunder.'] };
+    try {
+      const store = freshStore();
+      store.initialize();
+      const before = store.output.length;
+      await store.submit('answer "a well" then look');
+      const text = store.output.slice(before).map((l) => l.text).join('\n');
+      expect(text).toContain('There is a clap of thunder.');
+      expect(text).not.toContain('A small bedroom.');
+    } finally {
+      fixtureWorld.verbs = saved;
+      rooms.bedroom = room;
+      fixtureWorld.events = events;
+    }
+  });
+});
+
+describe('orders and the rest of the line (6a)', () => {
+  it('an order to a character who obeys drops the rest of the line; a refusal from one who doesn’t still runs it', async () => {
+    const room = fixtureWorld.rooms.bedroom;
+    const savedNpcs = room.npcs;
+    fixtureWorld.npcs.robot = { name: 'robot', description: 'A robot waits.', obeys: ['go'] };
+    room.npcs = [...room.npcs, 'robot'];
+    try {
+      const store = freshStore();
+      store.initialize();
+      store.game.currentRoom = 'bedroom';
+      const before = store.output.length;
+      await store.submit('robot, go west. look');
+      const said = store.output.slice(before).map((l) => l.text);
+      expect(said).toContain('Okay.');
+      expect(store.game.npcs?.robot?.room).toBe('living');
+      // LOOK was dropped: no room description after the order.
+      expect(said.some((t) => t.includes('A small bedroom.'))).toBe(false);
+
+      store.game.currentRoom = 'shed';
+      const mark = store.output.length;
+      await store.submit('guard, go north. look');
+      const heard = store.output.slice(mark).map((l) => l.text);
+      expect(heard).toContain('guard ignores you.');
+      expect(heard.some((t) => t.includes('dusty shed'))).toBe(true);
+    } finally {
+      room.npcs = savedNpcs;
+      delete fixtureWorld.npcs.robot;
+    }
+  });
+});

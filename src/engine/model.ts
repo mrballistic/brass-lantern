@@ -1,7 +1,7 @@
 import type { GameState, NpcState, Place } from '@/types/game';
-import type { World } from '@/types/world';
+import type { Item, World } from '@/types/world';
 import { evaluateCondition } from './conditions';
-import { fuzzyCandidates, fuzzyMatch } from './fuzzy';
+import { fuzzyCandidates, fuzzyMatch, isSelfWord, namesSelf } from './fuzzy';
 
 /** The place that means “carried by the player”. Reserved: no room or item may use it. */
 export const PLAYER = 'player';
@@ -107,10 +107,39 @@ export function isCarried(state: GameState, id: string): boolean {
   return state.locations[id] === PLAYER;
 }
 
+/** The kind of ground a room is: its `terrain`, else water or air where those shorthands hold, else land. */
+export function terrainOf(world: World, state: GameState, roomId: string = state.currentRoom): string {
+  const room = world.rooms[roomId];
+  if (!room) return 'land';
+  if (room.terrain) return room.terrain;
+  const holds = (v: boolean | string | undefined) => (typeof v === 'string' ? evaluateCondition(v, state, world) : Boolean(v));
+  return holds(room.water) ? 'water' : holds(room.air) ? 'air' : 'land';
+}
+
 /** Is the room water (Zork's NONLANDBIT)? A condition string decides for rooms that change. */
 export function isWater(world: World, state: GameState, roomId: string = state.currentRoom): boolean {
-  const w = world.rooms[roomId]?.water;
-  return typeof w === 'string' ? evaluateCondition(w, state, world) : Boolean(w);
+  return terrainOf(world, state, roomId) === 'water';
+}
+
+/** Is the room air (Zork II's balloon)? Same shape as `isWater`. */
+export function isAir(world: World, state: GameState, roomId: string = state.currentRoom): boolean {
+  return terrainOf(world, state, roomId) === 'air';
+}
+
+/** The terrains the player can walk into (and get out of a vehicle in). */
+export function onFootTerrains(world: World): string[] {
+  return world.onFoot ?? ['land'];
+}
+
+/** The terrains a vehicle enters: `'water'`, `'air'` and `'none'` are the legacy spellings. */
+export function travelTerrains(vehicle: NonNullable<Item['vehicle']>): string[] {
+  const t = vehicle.travels;
+  return t === 'none' ? [] : typeof t === 'string' ? [t] : t;
+}
+
+/** The terrains a vehicle comes to rest on from one it travels: `land`, unless it travels on land itself. */
+export function restTerrains(vehicle: NonNullable<Item['vehicle']>): string[] {
+  return vehicle.restsOn ?? (travelTerrains(vehicle).includes('land') ? [] : ['land']);
 }
 
 /** Carried, directly or inside something carried (Zork's HELD?). */
@@ -154,11 +183,11 @@ export function visibleItemsIn(roomId: string, world: World, state: GameState): 
 }
 
 /** Fuzzy candidates for items, with aliases folded into the matchable name. */
-function itemCandidates(ids: string[], world: World): Array<{ id: string; name: string }> {
+function itemCandidates(ids: string[], world: World): Array<{ id: string; name: string; aliases?: string[] }> {
   return ids.map((id) => {
     const item = world.items[id];
     const name = item ? [item.name, ...(item.aliases ?? [])].join(' ') : id;
-    return { id, name };
+    return { id, name, aliases: item?.aliases };
   });
 }
 
@@ -169,7 +198,7 @@ export function matchItem(target: string, ids: string[], world: World): string |
 export function matchNpc(target: string, world: World, state: GameState): string | null {
   const present = npcsSeen(world, state, state.currentRoom);
   // Names and aliases, through the one fuzzy matcher.
-  const [id = null] = fuzzyCandidates(target, present.map((id) => ({ id, name: world.npcs[id]?.name ?? id, aliases: world.npcs[id]?.aliases })));
+  const [id = null] = fuzzyCandidates(target, npcCandidates(present, world), { byId: byIdTurns.has(state) });
   if (id) noteActed(state, 'npc', id);
   return id;
 }
@@ -292,6 +321,27 @@ export function reachableItems(world: World, state: GameState): string[] {
   return findable(world, state, (id) => canReachInside(world, state, id));
 }
 
+/** The room a character is in: its state's room, else the player's room if it's there, else the first room listing it. */
+export function npcRoom(world: World, state: GameState, id: string): string | null {
+  const s = state.npcs?.[id];
+  if (s && s.room !== undefined) return s.room;
+  if (isNpcIn(world, state, id, state.currentRoom)) return state.currentRoom;
+  return Object.keys(world.rooms).find((r) => world.rooms[r].npcs.includes(id)) ?? null;
+}
+
+/**
+ * What a character can lay hands on (for orders): what the player could reach standing
+ * in its room (not what the player carries), and what it holds. In the dark, only what it holds.
+ */
+export function npcScope(world: World, state: GameState, id: string): string[] {
+  const room = npcRoom(world, state, id);
+  const into = (x: string) => canReachInside(world, state, x);
+  const held = childrenOf(world, state, id).filter(shown(state));
+  if (!room || !isLit(world, state, room)) return collect(world, state, held, into, shown(state));
+  const roomRoots = [...childrenOf(world, state, room), ...fixturesIn(world, state, room), ...(world.rooms[room]?.scenery ?? [])].filter(shown(state));
+  return collect(world, state, [...roomRoots, ...held], into, shown(state));
+}
+
 /** Is `id` inside `ancestor`, at any depth? */
 export function isInside(state: GameState, id: string, ancestor: string): boolean {
   const seen = new Set<string>();
@@ -345,6 +395,36 @@ export function pickItem(target: string, ids: string[], world: World, slot: 'tar
   }
   const word = target.trim().split(/\s+/).at(-1) ?? target;
   throw new AskSignal({ kind: 'which', slot, word, candidates: found });
+}
+
+/** Fuzzy candidates for characters: names and aliases. */
+function npcCandidates(ids: string[], world: World): Array<{ id: string; name: string; aliases?: string[] }> {
+  return ids.map((id) => ({ id, name: world.npcs[id]?.name ?? id, aliases: world.npcs[id]?.aliases }));
+}
+
+/**
+ * Does `word` name the player (ME)? ME and MYSELF always; SELF and YOURSELF unless something in
+ * sight or someone here is called that; the reserved ID 'player' only from the intent server.
+ */
+export function namesPlayer(word: string, world: World, state: GameState): boolean {
+  if (!isSelfWord(word) && !byIdTurns.has(state)) return false;
+  const seen = [...itemCandidates(visibleItems(world, state), world), ...npcCandidates(npcsSeen(world, state, state.currentRoom), world)];
+  return namesSelf(word, seen, { byId: byIdTurns.has(state) });
+}
+
+/**
+ * Do the digits typed where an object goes name something: a thing in sight or a character here?
+ * Then the slot is that thing (Zork's parser reads a word in its vocabulary before trying NUMBER?);
+ * only when nothing is called that are they the command's number.
+ */
+export function namesThing(word: string, world: World, state: GameState): boolean {
+  const seen = [...itemCandidates(visibleItems(world, state), world), ...npcCandidates(npcsSeen(world, state, state.currentRoom), world)];
+  return fuzzyCandidates(word, seen, { byId: byIdTurns.has(state) }).length > 0;
+}
+
+/** A second object: ME (see namesPlayer) is the player, else as pickItem. */
+export function pickSecond(target: string, ids: string[], world: World, state?: GameState): string | null {
+  return state && namesPlayer(target, world, state) ? PLAYER : pickItem(target, ids, world, 'indirect', state);
 }
 
 /** A verb is missing an object: ask for it. */

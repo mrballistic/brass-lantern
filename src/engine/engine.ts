@@ -2,7 +2,7 @@ import type { GameState, ParsedAction } from '@/types/game';
 import type { EventStep, World } from '@/types/world';
 import { evaluateCondition } from './conditions';
 import { describeRoom } from './describe';
-import { AskSignal, initialLocations, inventoryOf, isLit, matchItem, pickItem, restoreState, setResolveById, snapshotState, takeActed, visibleItems } from './model';
+import { AskSignal, initialLocations, inventoryOf, isLit, matchItem, matchNpc, needObject, pickItem, restoreState, setResolveById, snapshotState, takeActed, visibleItems } from './model';
 import { whatQuestion, whichQuestion } from './ask';
 import { darknessFalls, tooDark } from './light';
 import { beginTick, beginTurn, darkLineSaid, lineStop, runConditional, runSteps, setEffectHooks, turnFree, turnHalted } from './effects';
@@ -10,7 +10,7 @@ import { seedFor } from './rng';
 import { afterTurn, fuseFired } from './time';
 import { die } from './death';
 import { runEnding } from './endings';
-import { miss, ok, type EngineResult } from './result';
+import { miss, ok, zorkDefault, type EngineResult } from './result';
 import { enterRoom, handleClimb, handleEnter, handleGo, handleIdle, vehicleRefusal } from './verbs/movement';
 import {
   ALL, handleDrop, handleExamine, handleInventory, handleLook, handleRead, handleSmash, handleSwitch, handleTake, handleUse, handleWear, notHeld,
@@ -63,6 +63,7 @@ setEffectHooks({
     const refused = vehicleRefusal(room, world, state);
     return refused ? [refused] : enterRoom(room, world, state, opts);
   },
+  enter: (room, world, state) => enterRoom(room, world, state),
   die: (cause, world, state) => die(cause, world, state, enterRoom),
   end: (id, world, state) => runEnding(id, world, state),
   look: (world, state) => handleLook(world, state).lines,
@@ -182,6 +183,12 @@ function executeTurn(action: ParsedAction, deps: EngineDeps): EngineResult {
     result = { ...ok([tooDark(world)]), free: true };
   }
   if (result.understood === false || state.gameOver || result.free) return result;
+  // No clock, but M-END still runs (Zork's main loop: the end routine for every verb, CLOCKER not for these).
+  if (result.clockless) {
+    const before = stateKey(state);
+    const end = turnHalted(state) ? [] : roomEnd(world, state);
+    return end.length === 0 && before === stateKey(state) ? result : { ...result, lines: [...result.lines, ...end], mutated: true };
+  }
 
   // Misses don't count as turns: they must not mutate state (see EngineResult).
   state.turns = (state.turns ?? 0) + 1;
@@ -229,6 +236,12 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
       return withRules('go', action, world, state, () => handleGo(action.target, world, state));
     case 'read':
       return withRules('read', action, world, state, () => handleRead(action.target, world, state));
+    // PUSH X north, PUSH X TO Y (Zork's V-PUSH-TO); plain PUSH X is USE. With no rule, Zork's line in
+    // Infocom style; elsewhere a miss, so the intent server can read it (as before these forms parsed).
+    case 'push':
+      if (!action.target) needObject();
+      if (!pickItem(action.target, visibleItems(world, state), world, 'target', state) && !matchNpc(action.target, world, state)) return miss(`You don’t see a “${action.target}” here.`);
+      return withRules('push', action, world, state, () => zorkDefault(world, 'You can’t push things to that.'));
     case 'turn_on':
       return withRules('turn_on', action, world, state, () => handleSwitch(action.target, true, world, state));
     case 'board':
@@ -247,7 +260,7 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
     case 'enter':
       return withRules('enter', action, world, state, () => handleEnter(action.target, world, state));
     case 'climb':
-      return withRules('climb', action, world, state, () => handleClimb(action.target, world, state, action.direction));
+      return withRules('climb', action, world, state, () => handleClimb(action.target, world, state, action.direction === 'up' || action.direction === 'down' ? action.direction : undefined));
     case 'verbose':
     case 'brief':
     case 'superbrief':
@@ -306,6 +319,12 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
       if (action.prep === 'in' && world.style === 'infocom') return dispatch({ ...action, action: 'put' }, world, state);
       // Elsewhere THROW X IN Y with no rule is a miss, so the intent server can read it (as PUT, likely).
       if (action.prep === 'in') return withRules('throw', action, world, state, () => miss(`You can’t throw that in there.`));
+      // Zork's V-THROW-OFF: nothing here to throw things off of, unless a rule says so.
+      if (action.prep === 'off' || action.prep === 'over') {
+        if (!action.target) needObject();
+        if (!pickItem(action.target, inventoryOf(world, state), world, 'target', state)) return miss(`You aren’t carrying a “${action.target}”.`);
+        return withRules('throw', action, world, state, () => zorkDefault(world, 'You can’t throw anything off of that!'));
+      }
       return handleThrow(action, world, state);
     case 'ask':
       return handleAsk(action, world, state);
@@ -324,8 +343,11 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
       return ok(diagnoseLines(world, state));
     case 'hint':
       return handleHint(world, state);
-    case 'score':
-      return handleScore(world, state);
+    case 'score': {
+      // Zork's main loop runs no clock for SCORE: no move, no timers (the room's end routine still runs).
+      const scored = handleScore(world, state);
+      return world.style === 'infocom' ? { ...scored, clockless: true } : scored;
+    }
     case 'script':
     case 'unscript':
       return { lines: [], mutated: false, free: true, script: action.action === 'script' ? 'start' : 'stop' };
@@ -357,7 +379,9 @@ const VERBOSITY_REPLY = {
 
 function setVerbosity(mode: 'verbose' | 'brief' | 'superbrief', world: World, state: GameState): EngineResult {
   state.verbosity = mode;
-  return { ...ok([VERBOSITY_REPLY[world.style === 'infocom' ? 'infocom' : 'brass'][mode]], true), free: true };
+  const reply = ok([VERBOSITY_REPLY[world.style === 'infocom' ? 'infocom' : 'brass'][mode]], true);
+  // Infocom: no clock, but the room's end routine runs (Zork's main loop). Brass: no time at all.
+  return world.style === 'infocom' ? { ...reply, clockless: true } : { ...reply, free: true };
 }
 
 /** A question back to the player: understood, changes nothing, takes no time. */

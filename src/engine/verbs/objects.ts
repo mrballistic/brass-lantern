@@ -1,8 +1,9 @@
 import type { GameState } from '@/types/game';
 import type { Item, World } from '@/types/world';
 import { evaluateCondition } from '../conditions';
-import { contentsLines, describeRoom, lightNote, listedName, npcDescription } from '../describe';
-import { closedAround, inventoryOf, isCarried, isHeld, isOpen, matchItem, matchNpc, moveItem, needObject, pickItem, PLAYER, reachableItems, visibleItems } from '../model';
+import { contentsLines, describeRoom, lightNote, listedName, npcDescription, scriptDescription } from '../describe';
+import { expandTemplate } from '../text';
+import { closedAround, inventoryOf, isCarried, isHeld, isOpen, matchItem, matchNpc, moveItem, needObject, pickItem, pickSecond, PLAYER, reachableItems, visibleItems } from '../model';
 import { miss, ok, type EngineResult } from '../result';
 import { runEventKey } from '../effects';
 import { afterRuleLines, applyRule, findRule } from '../rules';
@@ -78,16 +79,22 @@ export function handleExamine(target: string | undefined, world: World, state: G
   if (matchedItem) {
     const item = world.items[matchedItem];
     const contents = contentsLines(world, state, matchedItem);
+    const scripted = scriptDescription(item?.descriptionScript, world, state);
+    if (scripted !== undefined) return ok([expandTemplate(scripted, world, state), ...contents]);
     // No description of its own: a container shows what's in it, as Zork's EXAMINE does.
     if (item && !item.description) {
       // Zork's EXAMINE reads what's written on it.
       if (item.text && world.style === 'infocom') return ok([item.text]);
+      // Zork's EXAMINE of a door (V-LOOK-INSIDE): open or closed, never what's beyond.
+      if (world.style === 'infocom' && item.door) {
+        return ok([isOpen(world, state, matchedItem) ? `The ${item.name} is open, but I can’t tell what’s beyond it.` : `The ${item.name} is closed.`]);
+      }
       // Zork's EXAMINE of a closed box: it says so, rather than calling it empty.
       if (world.style === 'infocom' && item.container && !item.container.transparent && !isOpen(world, state, matchedItem)) return ok([`The ${item.name} is closed.`]);
       if (contents.length > 0) return ok(contents);
       return ok([item.container ? `The ${item.name} is empty.` : `There’s nothing special about the ${item.name}.`]);
     }
-    return ok([item?.description ?? 'It’s nondescript.', ...contents]);
+    return ok([expandTemplate(item?.description ?? 'It’s nondescript.', world, state), ...contents]);
   }
 
   const matchedNpc = matchNpc(target, world, state);
@@ -106,13 +113,13 @@ export function handleUse(
   const reach = reachableItems(world, state);
   const itemId = pickItem(target, reach, world, 'target', state);
   if (!itemId) return miss(`There is no “${target}” here to use.`);
-  const otherId = indirect ? pickItem(indirect, reach, world, 'indirect', state) : null;
+  const otherId = indirect ? pickSecond(indirect, reach, world, state) : null;
   if (indirect && !otherId) return miss(`There is no “${indirect}” here.`);
 
   // "put the disk in the terminal" and "use the terminal with the disk" mean
   // the same thing, so check the rules on both sides.
   const rule =
-    findRule(world, state, 'instead', 'use', { target: itemId, indirect: otherId, room: state.currentRoom }, reach);
+    findRule(world, state, 'instead', 'use', { target: itemId, indirect: otherId, room: state.currentRoom }, otherId === PLAYER ? [...reach, PLAYER] : reach);
   if (rule) return applyRule(rule, world, state);
 
   if (world.items[itemId]?.onWear && isCarried(state, itemId)) {

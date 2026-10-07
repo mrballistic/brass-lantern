@@ -1,5 +1,6 @@
 import type { ParsedAction } from '@/types/game';
 import type { World, Room } from '@/types/world';
+import { readsNumber } from './parser';
 
 export interface IntentContext {
   roomName: string;
@@ -52,6 +53,10 @@ const ENDPOINT = '/api/parse-intent';
 // fallback answer arrives instead of the client giving up first.
 const TIMEOUT_MS = 6000;
 
+const PREPS: ReadonlySet<string> = new Set(['in', 'on', 'under', 'behind', 'off', 'over', 'through']);
+
+const DIRECTIONS: ReadonlySet<string> = new Set(['north', 'south', 'east', 'west', 'northeast', 'northwest', 'southeast', 'southwest', 'up', 'down']);
+
 export async function parseIntentRemote(
   input: string,
   context: IntentContext,
@@ -73,6 +78,13 @@ export async function parseIntentRemote(
     const out: ParsedAction = { action: json.action };
     if (typeof json.target === 'string') out.target = json.target;
     if (typeof json.indirect === 'string') out.indirect = json.indirect;
+    if (typeof json.prep === 'string' && PREPS.has(json.prep)) out.prep = json.prep;
+    if (typeof json.direction === 'string' && DIRECTIONS.has(json.direction)) out.direction = json.direction as ParsedAction['direction'];
+    // A number rides along only when a slot reads it (the literal 'number', or its digits).
+    const n = json.number;
+    if (typeof n === 'number' && Number.isInteger(n) && n >= 0 && n <= 1000 && (readsNumber({ number: n }, out.target) || readsNumber({ number: n }, out.indirect))) {
+      out.number = n;
+    }
     return out;
   } catch {
     return { action: 'unknown' };

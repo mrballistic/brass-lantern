@@ -1,5 +1,33 @@
 # Changelog
 
+## 1.13.0 (2026-10-07)
+
+Engine parity, stage 6a: the foundations for Zork II and Zork III, which later stages build natively. Most of it is new fields a world opts into, but some of it reaches every world:
+
+- **ME and numbers are parsed.** ME, MYSELF (and SELF or YOURSELF, when nothing here is called that) reach a world's rules as `target:player`; a number in an object slot rides along as `number` (digits that name something here, like a locker 12, are that thing, so its rules still fire). With no rule, the reply is the same miss as before, with the word typed (“You don’t see a “me” here.”, “You don’t see a “5” here.”).
+- **New forms parse:** PUT X UNDER/BEHIND Y, THROW X OFF/OVER Y, PUSH X *direction*, PUSH X TO Y, TURN/SET X TO N. In Infocom style they answer with Zork's replies; in brass style, with no rule, they are misses, so the intent server still gets its turn as it did before they parsed; when it can't read them either, the literal reply is now the form's own line (“You can’t push things to that.”, “This has no effect.”) where it used to be the old reading's miss or the world's “didn’t understand”. TURN X WITH Y is not one of them: it is understood with “This has no effect.” in every style, as before.
+- **READ X WITH (or THROUGH) Y** reads X.
+- **Digits typed alone match only whole words** of a thing's name, alias or ID: “examine 10” no longer finds Zork I's “pdp10”, and “1” no longer picks a “locker 12”.
+- **Infocom style:** SCORE and VERBOSE (and BRIEF, SUPERBRIEF) take no move; every openable says “It is already open.” or “It is already closed.” when it is.
+- **Quoted text no longer splits a line:** a “. ” or “, ” inside double quotes doesn't end the command.
+
+What's new for worlds that use it:
+
+- **Orders:** a character can carry out what it's told. `orders` rules, keyed by the inner verb, answer “robot, push the button”; `obeys` (`go`, `take`, `drop`, `give`) has it do those itself, with `obeyReplies`; `heardFrom` lets the player order a character who is elsewhere. An order to a character with `orders` or `obeys` ends the rest of the line (Zork's P-CONT), refusals included. The first typed word's table wins when it exists (“robot, push the button” runs `orders.push`), then the parsed verb's. In brass style, an obeyed order it can't carry out is a miss that says why (“The robot can’t take the dial.”); in an order, YOURSELF is the character. A character with neither keeps answering as before.
+- **Numbers:** `turn dial to 4` and `set year to 776` read the number (digits to 1000, or H:MM). Conditions `number:N` and `number<op>N`, a rule's `with: 'number'`, the effect `{ setVar, from: 'number' }`, `{number}` in text and `ctx.number` in scripts. With no rule: “This has no effect.” in Infocom style, a miss in brass style. `number`, like `player`, is a reserved ID; the intent client drops a number no slot reads.
+- **Typed words:** a world verb with `target: 'text'` (SAY, ANSWER, INCANT) takes the rest of the line, with `said:` to test it and `ctx.text` in scripts. Unquoted text counts too, which Zork's doesn't; that gap is in the backlog. Single quotes are apostrophes, not quoting.
+- **Prepositions and ME:** PUT or PUSH *X* UNDER *Y*, PUT *X* BEHIND *Y*, THROW *X* OFF or OVER *Y*, READ *X* THROUGH *Y*, PUSH *X* *direction* and PUSH *X* TO *Y* reach the rules, with Zork's own replies in Infocom style (misses in brass style). ME and MYSELF mean the player (`target:player`), SELF and YOURSELF too unless something here is called that, with `target:`, `indirect:` and `direction:` conditions. The reserved ID `player` is never matched against names (a “record player” is safe from TAKE ME). HELP and the intent server learn the new forms.
+- **Descriptions from state:** `{var:NAME}` and `{number}` fill in descriptions and event lines; `descriptionScript` on rooms, items and characters, `roomDescriptionScript` on items (Zork's DESCFCN) and `vehicle.lookScript` build them from the game. Describing never changes the game, seed included.
+- **Script helpers:** `ctx.test`, `ctx.exits`, `ctx.resolve`, `ctx.terrain`, `ctx.number` and `ctx.text`; the condition `held:ITEM` (carried at any depth); the effects `{ moveVehicle }`, `{ follow }` and `{ unfollow }`.
+- **Followers:** `follows` (a condition), `followLine`, and the `following:NPC` condition. The character goes where the player goes, in the engine's usual listing order. `{ follow }` sets the character's own state (`npcs.<id>.following`, optional, so saves stay format 2.0), not a flag.
+- **Vehicle terrains:** rooms have a `terrain` (`land`, `water`, `air`, or any name, such as `sand`); a vehicle `travels` on a list of them and `restsOn` others; `world.onFoot` says where the player walks. `leave`, `arrive` and `landing` lines (a string, a list, or a script), the condition `terrain:NAME`, and `air` rooms for Zork II's balloon. The older `travels: 'water'`, `'air'` and `'none'` still work.
+- **Death options:** `death.keepTimers` leaves named timers running, and `death.treasures: { to }` sends treasures to one place without drawing randomness.
+- **Score and diagnose text:** `scoreLine` and `rankLine` (`{score}`, `{max}`, `{moves}`, `{rank}`) and `diagnose.healthy` / `diagnose.wounded` replace the style's own lines (Zork II's “Your score would be…”, Zork III's “Your potential is…”).
+- **`afterBuiltIns`:** a world verb whose words may be built-in words, read only after the built-ins have passed (Zork III's bare TURN DIAL).
+- **Infocom style:** SCORE, VERBOSE, BRIEF and SUPERBRIEF take no turn and run no clock, though the room's end routine still runs; a door with no lines of its own “opens”, “is now closed”, and answers “It is already open.” and “It is already closed.”; an obeyed order walks, takes and refuses as the player's own would, with Zork's replies (“…seems confused. “I don’t see any … here!””); EXAMINE of a door says its state; a disembark in the air is fatal.
+- **Proof:** four slices of Zork II and III (the robot, the riddle and the door, the balloon, the endgame) are played against the story files, reply for reply, as the engine's test that the new features match the original.
+- **Docs:** orders, numbers, typed words, terrains and the rest in the schema, the recipes (a robot, a dial and a dune buggy) and “How it works”; the backlog lists what 6a left for later.
+
 ## 1.12.5 (2026-10-06)
 
 A fast follow that works through the backlog.

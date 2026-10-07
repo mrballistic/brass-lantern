@@ -7,6 +7,7 @@ Every field a world can use. The source of truth is [`src/types/world.ts`](https
 | Field | Type | |
 |---|---|---|
 | `startRoom` | room ID | Where a new game begins. |
+| `onFoot?` | string[] | Terrains the player can walk into and get out of a vehicle in. Default `['land']`; a custom terrain is walkable only if listed. See [Vehicles](#vehicles). |
 | `rooms` | `Record<id, Room>` | |
 | `items` | `Record<id, Item>` | |
 | `npcs` | `Record<id, NPC>` | |
@@ -17,6 +18,9 @@ Every field a world can use. The source of truth is [`src/types/world.ts`](https
 | `scoring?` | `{ flag, points }[]` or `{ if, points }[]` | SCORE sums points for set flags, plus conditions that hold right now (a treasure in the case), plus the `score` variable. |
 | `maxScore?` | number | The total SCORE reports. Default: the sum of `scoring`. |
 | `ranks?` | `{ min, title }[]` | The highest `min` the score reaches is the rank. |
+| `scoreLine?` | string | SCORE's first line, replacing the style's own. `{score}`, `{max}` and `{moves}` (“3 moves”) fill in: `'Your potential is {score} of a possible {max}, in {moves}.'` |
+| `rankLine?` | string | SCORE's rank line, replacing the style's own. `{rank}` fills in: `'This score gives you the rank of {rank}.'` |
+| `diagnose?` | `{ healthy?, wounded? }` | DIAGNOSE's own lines for being unhurt and for being wounded, as fixed text. Unset, the engine's wording stands. |
 | `idle?` | string | Reply to WAIT or SIT where they don't lead anywhere. Default: "Time passes." |
 | `quit?` | string | Reply to QUIT. |
 | `confused?` | string[] | Replies for input nothing understood, rotated. |
@@ -50,6 +54,7 @@ Every field a world can use. The source of truth is [`src/types/world.ts`](https
 | `firstDescription?` | string | Replaces `description` on the first visit only. |
 | `dark?` | boolean | Needs a light source to see in. |
 | `descriptions?` | `{ if, text }[]` | Descriptions that depend on the state of things (“a small window which is open”). The first whose condition holds replaces `description`. |
+| `descriptionScript?` | script name | A [script](#scripts) whose `say` lines (joined with newlines) are the description, ahead of `firstDescription` and `descriptions`. It runs on every look, so it describes the game as it is now. Any step that isn't a `say` is ignored (and the audit flags it), a script that says nothing falls back to the next description, and the engine restores the seed afterwards, so describing never changes the game. |
 | `exits` | `Record<label, room id or Exit>` | What the player can type, and where it goes. Several labels per destination is normal. A label of `wait` or `sit` is taken by WAIT/SIT. See [Exit](#exit). |
 | `listExits?` | label[] | What the exit line shows, in order; each gets the compass direction that leads the same way. Omit to list every label. |
 | `items` | item ID[] | Items in the room at the start. |
@@ -62,6 +67,8 @@ Every field a world can use. The source of truth is [`src/types/world.ts`](https
 | `tags?` | string[] | Free-form labels for scripts to read (`maze`, `sacred`). The engine doesn't. |
 | `capture?` | `Capture` | Takes input here before it's parsed. See [Capture](#capture). |
 | `water?` | boolean or condition | Water (Zork's NONLANDBIT): only a water vehicle goes here. A condition for a room that changes (a reservoir that drains: `'!flag:low_tide'`). See [Vehicles](#vehicles). |
+| `air?` | boolean or condition | Air (Zork II's balloon): shorthand for `terrain: 'air'`. Same shape as `water`. |
+| `terrain?` | string | What kind of ground this is, for vehicles. Default `'land'` (or `'water'` / `'air'` where those shorthands hold); a set `terrain` wins over them. Any name works (`'sand'`). See [Vehicles](#vehicles). |
 | `onEnd?` | `{ if, then }[]` | Run at the end of every command here, after the action and before the clock (Zork's M-END). After WAIT's turns when `wait` is set. |
 
 ### Exit
@@ -83,6 +90,7 @@ Message-only exits aren't listed unless `listExits` names them.
 |---|---|---|
 | `name` | string | Display name, and what event lines like `[Added to inventory: …]` match. Keep it unique. |
 | `aliases?` | string[] | Other words players might use. Matched, never shown. |
+| `descriptionScript?` | script name | A script whose `say` lines are EXAMINE's text, ahead of `description` (same rules as a room's). See [Descriptions from state](#descriptions-from-state). |
 | `description` | string | EXAMINE. Leave it empty (`''`) and EXAMINE does what Zork does for an object with no text: a container lists what's in it or says “The *name* is empty.”; anything else is “There’s nothing special about the *name*.” |
 | `portable` | boolean | Can it be taken? |
 | `refusal?` | string | Reply to taking a non-portable item. |
@@ -98,7 +106,7 @@ Message-only exits aren't listed unless `listExits` names them.
 | `door?` | boolean | A door between rooms; exits name it. Uses `container` for openable/open/locked/key. |
 | `size?` | number | Its weight, in worlds with `carry` (Zork's SIZE). Default 5. |
 | `weapon?` | boolean | Something to fight with. |
-| `vehicle?` | `{ travels: 'water' }` | Something the player can get into and travel in. See [Vehicles](#vehicles). |
+| `vehicle?` | `{ travels, restsOn?, landing?, leave?, arrive?, lookScript? }` | Something the player can get into and travel in. See [Vehicles](#vehicles). |
 | `onEnd?` | `{ if, then }[]` | A vehicle's end routines: while the player is aboard they run instead of the room's. |
 | `burnable?` | boolean | BURN can set it alight (Zork's BURNBIT). |
 | `flaming?` | boolean | It can set things alight: always, or while it's on if it switches (Zork's FLAMEBIT). |
@@ -106,6 +114,7 @@ Message-only exits aren't listed unless `listExits` names them.
 | `text?` | string | What READ shows. Default: the description. |
 | `initialDescription?` | string | Its own sentence in a room until first taken. |
 | `roomDescription?` | string | Its own sentence in a room after that. Items with neither are gathered into “You can see: …”. |
+| `roomDescriptionScript?` | script name | A world script whose `say` lines are its room sentence, ahead of both (Zork's DESCFCN). It says everything itself: no “(outside the raft)” follows, and its contents aren't listed. One that says nothing falls back to the others. |
 | `climbRefusal?` | `{ if?, text }` | Infocom style: climbing it up or down where there's no way that way says `text` (Zork's tree: “There are no climbable trees here.”). |
 | `switchable?` | boolean | TURN ON and TURN OFF work on it. |
 | `light?` | boolean | Gives light while on: it lights a dark room it's in, carried there, or inside something open or transparent there. |
@@ -138,7 +147,7 @@ Rules are tried in order and the **first** whose conditions hold runs. For two-o
 | Field | Type | |
 |---|---|---|
 | `if?` | condition | |
-| `with?` | item ID | Another item that must be in the room or carried. If the player names a second object, it must be this one. |
+| `with?` | item ID | Another item that must be in the room or carried. If the player names a second object, it must be this one. `'number'` matches a command whose second object is a number typed by the player (TURN DIAL TO 4); test which with `number:`. |
 | `then?` | event | |
 | `say?` | string[] | Lines printed without changing anything. |
 
@@ -179,15 +188,16 @@ verbs: {
 | Field | Type | |
 |---|---|---|
 | `words` | string[] | Words and phrases that mean it. Phrases are matched before built-in verbs, single words after. |
-| `target` | `'none'`, `'optional'` or `'required'` | |
+| `target` | `'none'`, `'optional'`, `'required'` or `'text'` | `'text'` takes the rest of the line as typed words (SAY, ANSWER), read by `said:`. |
 | `indirect?` | string[] | Prepositions that introduce a second object (`with`, `on`). |
 | `reply?` | string | When no rule applies. Default: “Nothing happens.” `{target}` is replaced by the object's name, `{a target}` by its name with an article. |
 | `held?` | boolean | The object must be something you hold, or can see inside something you hold (Zork's HELD): POUR WATER means the water in your bottle. |
 | `go?` | boolean | Treat it as GO: through the target exit, or the exit labeled with the verb's ID. |
+| `afterBuiltIns?` | boolean | Its words may be built-in words: it reads only lines no built-in verb reads, after them (Zork III's bare TURN DIAL, where the engine's TURN wants TO or WITH). |
 
 - A world verb does nothing by itself: give items or rooms `instead` rules for it.
 - With no target, it looks for a rule on the room, then on anything in reach (SNOOZE finds the alarm clock).
-- A word a built-in verb already uses (`take`, `open`, …) is ignored; `verbClashes(world.verbs)` lists any.
+- A word a built-in verb already uses (`take`, `open`, …) is ignored, unless the verb is `afterBuiltIns`; `verbClashes(world.verbs)` lists any.
 
 ## Style
 
@@ -197,12 +207,13 @@ verbs: {
   - no exit line;
   - a room you've visited shows just its name and contents unless you LOOK (SUPERBRIEF shows only the name, in either style);
   - lists newest first;
-  - SCORE says “Your score is 15 (total of 350 points), in 40 moves.”;
+  - SCORE says “Your score is 15 (total of 350 points), in 40 moves.”, and (like VERBOSE, BRIEF and SUPERBRIEF) runs no clock: no move, no timers, though the room’s end routine still runs;
   - the header shows the room, score and moves, like Zork's status line;
   - questions, TAKE ALL and transcripts use Zork's wording;
   - bookkeeping lines like `[Flag set: …]` act without being shown.
   - each thing's contents are listed right after it;
   - READ takes the thing first (“(Taken)”), EXAMINE of a thing with no description reads it, and opening a container whose one untouched thing has a first-seen sentence says “The coffin opens.” and that sentence;
+  - a door with no lines of its own “opens” and “is now closed”, and OPEN and CLOSE say “It is already open.” and “It is already closed.”;
   - PUT … ON something that isn't a surface says “There’s no good surface on the …”;
   - a room's `scenery` (Zork's local globals) only answers to a word when nothing else in reach does;
   - the second object's rules come before the first's;
@@ -256,13 +267,14 @@ In an unlit dark room you can only find what you're carrying. Trying to act on a
 | `respawn?` | room ID | Where the player wakes. |
 | `resurrection?` | string[] | |
 | `scatter?` | room ID[] | Carried things are spread over these, at random (seeded). Things with a `home` go there instead; with no scatter rooms, they stay where the player fell. |
-| `treasures?` | `'dark'` | Treasures go to an unlit land room instead, walking the rooms in order at even odds each (Zork's RANDOMIZE-OBJECTS). |
+| `treasures?` | `'dark'` or `{ to }` | `'dark'`: treasures go to an unlit land room instead, walking the rooms in order at even odds each (Zork's RANDOMIZE-OBJECTS). `{ to: 'case' }`: treasures without a `home` all go to that room, item or character (a trophy case), drawing no randomness. |
+| `keepTimers?` | event[] | Timers a death leaves running, with their counts. Every other timer is cleared. |
 | `final?` | string[] | The last death, which ends the game. |
 | `then?` | event | Runs after a resurrection, to reset things (Zork's trap door, unbarred). |
 | `variants?` | `{ if, resurrection?, respawn?, then?, before? }[]` | The first whose `if` holds (decided as you die) replaces those fields; `before` runs ahead of the respawn. Zork sends you to Hades as a spirit once you've seen the Altar. |
 | `instead?` | `{ if, lines }[]` | Checked first: the first that holds prints its lines (not the cause) and ends the game. Dying while already dead. |
 
-The `die` effect uses it. Without a `death` block, dying prints the cause and ends the game. Pending fuses are cancelled on death.
+The `die` effect uses it. Without a `death` block, dying prints the cause and ends the game. Pending fuses are cancelled on death, except those in `keepTimers`.
 
 ## Endings
 
@@ -279,21 +291,59 @@ The `die` effect uses it. Without a `death` block, dying prints the cause and en
 | `refuseGift?` | string | Declines anything else. |
 | `holds?` | item ID[] | What it carries at the start. Things a character holds can't be seen or taken. |
 | `descriptions?` | `{ if, text }[]` | Its line in the room and its EXAMINE reply, by state; the first whose condition holds wins. |
+| `descriptionScript?` | script name | A script whose `say` lines are that description, ahead of `descriptions`. |
 | `instead?`, `after?` | `Record<verb, Rule[]>` | Rules for verbs aimed at it: THROW X AT it, GIVE, TAKE, a world verb. |
 | `combat?` | `Combatant` | Makes it someone you can fight. See [Combat](#combat). |
 | `aliases?` | string[] | Other words for it (“robber”, “man”). |
-| `scenery?` | boolean | Present but not listed: the room's own description mentions it (Zork's cyclops). |
+| `scenery?` | boolean | Present but not listed: the room's own description mentions it (Zork's cyclops). `{ npcState, scenery }` changes it in play. |
 | `hidden?` | boolean | Starts hidden: in its room for scripts, but not seen, listed, matched or fought until revealed. |
 | `topics?` | `Record<topic, string or { if?, text }[]>` | ASK or TELL it ABOUT a topic. A list is tried in order; the first entry whose `if` holds answers. Text that names an event runs it. |
 | `topicAliases?` | `Record<topic, string[]>` | Other words for a topic. |
 | `noTopic?` | string | For a topic it has nothing on. Default: its TALK TO line. |
 | `refuseOrder?` | string | Its answer to an order. Default: “*Name* ignores you.” |
+| `orders?` | `Record<verb, Rule[]>` | Rules for orders, by the inner command's verb. See [Orders](#orders). |
+| `obeys?` | `('go' \| 'take' \| 'drop' \| 'give')[]` | Built-in orders it carries out itself when no order rule answers. |
+| `obeyReplies?` | `Record<verb, string>` | Its acknowledgement when it obeys one of those. Default: “Okay.” |
+| `follows?` | condition | While it holds, the character goes where the player goes. See [Followers](#followers). |
+| `followLine?` | string | What it says on arriving after you. Unset: brass style prints “*Name* follows you.”; Infocom style prints nothing. |
+| `heardFrom?` | room ID[] | Rooms from which the player can give it orders while it's elsewhere (Zork III's dungeon master on the parapet, ordered from the cell); its orders are carried out where it stands. |
 
 Characters' places and states live in the game state (`npcs`), starting from the rooms that list them. In brass style the room shows “Present: …”; in Infocom style each character prints its own line.
 
 **Hidden characters.** A character that's `hidden` (from the start, or by the `npcState` effect with `hidden: true`) is still in its room: `ctx.npcIn` and conditions like `with:` see it, but the player doesn't, and it doesn't fight. `{ npcState: 'thief', hidden: false }` reveals it. The `seen:` condition is true only when it's in the player's room and not hidden.
 
-**Orders.** “*name*, *command*” and “tell *name* to *command*” are orders. The character's `instead.order` rules answer first, then `refuseOrder`. Characters don't obey yet.
+### Orders
+
+“*name*, *command*”, “tell *name* to *command*” and a bare “tell *name*” are orders. What happens, in order:
+
+1. **`instead.order`** rules on the character answer first, as for any verb. In one, `ctx.command.words.indirect` is the order as typed. A character with only `instead.order` (no `orders`, no `obeys`) behaves as before: it answers, or says `refuseOrder`, and the rest of the line carries on.
+2. Otherwise the order is read as a command of its own, with its objects resolved among what the character can reach in **its** room (ME or MYSELF is the player, YOURSELF the character itself; a number typed as an object counts). A word that names nothing there is a miss that changes nothing, so the intent server may still read it; one that matches several things asks which, taking no time. A character can't refer to what the player carries.
+3. **`orders`** rules are keyed by the inner command's verb: `orders: { push: [...], take: [...] }`. They are the same shape as other [rules](#rules), and their conditions see the inner command (`target:`, `indirect:`, `number:`, `said:`, `direction:`). **The first word typed is tried first**, when it has a table (PUSH reads as USE, so “robot, push the button” runs `orders.push` even when `orders.use` exists); otherwise the parsed verb's table (“robot, press the button” runs `orders.use`). A rule with `continue: true` runs and then lets step 4 go on.
+4. If no rule answered and the verb is in `obeys`, the character performs it, saying `obeyReplies[verb]` (default “Okay.”):
+   - **`go`**: it walks that exit of its room. Nothing is printed but its reply: no leaving or arriving lines. No exit, or one that refuses, is a miss that says why (“The robot can’t go that way.”). In Infocom style it walks as the player does: no exit says “You can’t go that way.”, and an exit that refuses says its own refusal.
+   - **`take`** and **`drop`**: the thing moves to or from the character (weight limits apply only to the player). One it can't take or drop is a miss that says why, by name: “The robot can’t take the dial.”, “The robot doesn’t have the sock.” In Infocom style a take it can't do says the player's own take line.
+   - **`give`**: “give me the key” moves it from the character to the player (the second object is the player).
+5. Otherwise `refuseOrder`, or “*Name* ignores you.”
+
+**An order to a character with `orders` or `obeys` ends the rest of the line** (Zork clears the typed-ahead commands), unless it was a miss. That includes an obeying character's refusal, which takes a turn like any understood command. A character with neither keeps today's behaviour entirely.
+
+**`heardFrom`** lists rooms from which the player can give a character orders while it's somewhere else. Its orders are carried out where it stands (Zork III's dungeon master, ordered from the cell while he stands on the parapet).
+
+```ts
+robot: {
+  name: 'robot',
+  obeys: ['go', 'take'],
+  obeyReplies: { go: 'Whirr, buzz, click!' },
+  orders: {
+    push: [{ if: 'target:red_button', then: 'lift_cage' }],
+    use: [{ say: ['The robot ignores that.'] }], // “robot, press the button”; “robot, push the button” runs orders.push
+  },
+},
+```
+
+### Followers
+
+`follows` is a condition on the character; while it holds, after each move the **player** makes (GO, doors, ENTER, CLIMB; not a script's `goTo` or a `moveVehicle`), the character moves into the player's new room if it was in the room the player left, and is awake and not hidden. It's checked after the move, so `in:ROOM` sees the new room. Its `followLine` prints as it arrives. The `follow` and `unfollow` effects set and clear the character's `following` state (an optional field of its game state, not a flag), which `following:NPC` reads, for a switch rather than a condition. Characters who arrive take the engine's placing order, so room listings keep it.
 
 ## Weight
 
@@ -334,6 +384,45 @@ A character with `combat` can be fought: ATTACK *it* WITH *a weapon*. The engine
 
 **In Infocom style** ATTACK works the way Zork's parser does: with one weapon in hand, `kill troll` picks it (“(with the sword)”); otherwise it asks what to attack with; a weapon you aren't holding is refused without taking a turn. DIAGNOSE reports your wounds. A [recipe](../guide/building-worlds/recipes#a-guard-to-fight) shows a whole fight.
 
+## Numbers, typed words and prepositions
+
+**Numbers.** A number in an object slot is the player's typed number (Zork's INTNUM): `turn dial to 4`, `set year to 776`. It's digits up to 1000, or H:MM as minutes (hours under 8 count as afternoon); a bigger number is just an unknown word. Both forms are built-in and go through rules as the verb `turn` with the second object `number`. With no rule, Infocom style says Zork's “This has no effect.”; brass style misses, so the intent server may still read the input. A bare TURN X keeps its own meaning. The command keeps the digits as typed, so a number no rule wants misses with them (“take 5”: “You don’t see a “5” here.”); `number` is a reserved ID, like `player`. Digits that name a thing in sight or a character here (an item named “locker 12” or aliased `5`; whole words only, so “1” is not locker 12) are that thing, as Zork's parser reads a word it knows before trying a number: `turn dial to 12` with locker 12 present is TURN DIAL WITH the locker, its rules fire, and `number:12` still holds. Only when nothing is called that are the digits `number`. TURN X WITH a thing, with no rule, says “This has no effect.” in every style.
+
+```ts
+dial: {
+  instead: { turn: [
+    { with: 'number', if: 'number:4', then: 'door_opens' },
+    { with: 'number', say: ['The dial clicks and nothing happens.'] },
+  ] },
+},
+```
+
+- **`number:N`** and `number<op>N` read it in conditions; **`{ setVar: 'year', from: 'number' }`** stores it; **`{number}`** in a line prints it, and `ctx.number` has it in a script.
+- A rule with `with: 'number'` matches only a command whose second object is a number.
+- An order can carry one (“robot, turn the dial to 4” runs `orders.turn` with `number:4`).
+
+**Typed words.** A world verb with `target: 'text'` (SAY, INCANT, ANSWER) takes the rest of the line as typed words. They are never resolved to things, so naming nothing is no miss. Outer quotes are dropped and whitespace collapsed. **`said:WORDS`** matches them as lowercase whole words, with punctuation and quotes ignored (`said:a well` matches `answer “A well.”`), and `ctx.text` has them. The verb consumes the whole rest of the line, so it ends the line: `say "well". west` drops WEST, as in Zork. A quoted phrase isn't split at its full stops or commas. Only double quotes (straight or curly) quote; a single quote is an apostrophe (`answer 'don't know'` keeps every word). This applies to every world: a quoted “. ” no longer ends a command. Unlike Zork, where only a quoted phrase is typed words, **unquoted text counts too**: `answer well` solves a riddle that wants “a well”.
+
+**Prepositions.** These forms go through the ordinary rules. With no rule, Infocom style gives Zork's reply below; brass style misses with the same line (all but READ, which reads), so the intent server can still read the input, as it did before these forms parsed. A rule answers in both styles.
+
+| Form | Rule verb | Built-in reply |
+|---|---|---|
+| PUT/PUSH/SLIDE X UNDER Y | `put`, `prep: 'under'` | “You can’t do that.” |
+| PUT X BEHIND Y | `put`, `prep: 'behind'` | “That hiding place is too obvious.” |
+| THROW X OFF/OVER Y | `throw`, `prep: 'off'` or `'over'` | “You can’t throw anything off of that!” |
+| READ X THROUGH/WITH Y | `read`, with the second object | reads X |
+| PUSH X *direction*, PUSH X TO Y | `push`, `direction:DIR` / the second object | “You can’t push things to that.” |
+
+**ME.** ME and MYSELF in an object slot name the player; so do SELF and YOURSELF, unless something in sight (or someone here) is named or aliased that. Rules match them with `target:player` or `indirect:player` (and `with: 'player'`). The engine adds no replies of its own for ME: a verb aimed at it with no rule misses with the word typed (“You don’t see a “me” here.”), as before 6a, so a world says what Zork says (“You can’t tie anything to yourself.”) in a rule. The reserved ID `player` is never matched against a thing's or character's name (a “record player” is safe from TAKE ME); typed, “player” is an ordinary word. In an order, ME is the speaker (“robot, give me the key”) and YOURSELF the character (“robot, push yourself”).
+
+## Descriptions from state
+
+- **Templates.** `{var:NAME}` (0 when unset) and `{number}` fill in from the game in any room, item or character description, a `descriptions` entry and an event line. A `{number}` with no number typed stays as written. Expanding reads the game and changes nothing.
+- **`descriptionScript`** on a room, item or character names a [script](#scripts) that builds the description from the game: its `say` lines, joined with newlines. It comes first, ahead of `descriptions`, `firstDescription` and `description`. It's for descriptions a condition list can't say: a grid of cells, a dial's setting, a room that lists its own exits.
+- **`roomDescriptionScript`** on an item is its sentence in a room listing, ahead of its other sentences; it says everything itself, so no “(outside the boat)” follows and its contents aren't listed (Zork's DESCFCN).
+- **`vehicle.lookScript`** describes a vehicle from inside. See [Vehicles](#vehicles).
+- A description script may use `ctx.roll`, but the engine puts the seed back afterwards, so looking never changes the game. A script that says nothing falls back to the next description. The audit runs each description script once on a new game and flags a step that isn't a `say`, or a script name that doesn't exist.
+
 ## Scripts
 
 The code hatch, for behavior data can't express (a thief's mind, a sword that glows near monsters):
@@ -350,9 +439,13 @@ A script gets a read-only view of the game and returns ordinary steps, which the
 - `random()` and `roll(n)`, from the game's seeded generator, so saves and UNDO replay exactly;
 - `here(id)`, `carried(id)`, `holder(id)`, `room()`, `npc(id)`;
 - `npcIn(id, room)` (hidden or not), `hidden(id)`;
-- `aboard()`, the vehicle the player is in, and `water(room?)`;
+- `aboard()`, the vehicle the player is in, `water(room?)` and `terrain(room?)` (the room's terrain name);
 - `rooms()` in the world's order, `visited(room)`, `tags(room)`, `lit(room?)`;
 - `children(place)`, what's directly in a room, item or character, in listing order;
+- `test(condition)`, whether a [condition](./conditions-and-events#conditions) holds now, through the engine's own parser (scripts never parse conditions themselves);
+- `exits(room)`, the exits the player could take from that room now (`{ direction, to }[]`): the exit's `if` holds and its door is open;
+- `resolve(words, scope?)`, words read as an item the way the parser would: `'here'` (within reach, the default), `'held'` or `'all'`; null if none matches;
+- `number` and `text`, the number or the typed words in the command being run (TURN DIAL TO 4, SAY HELLO);
 - `treasure(id)`, an item's `treasure` value or 0;
 - `playerStrength()`, the player's fight strength now;
 - `line`, the raw input, and `action`, the parsed command, when a [capture](#capture) runs the script; `parse(text)`, which reads a command with the world's verbs as the parser would;
@@ -368,11 +461,14 @@ raft: { name: 'raft', vehicle: { travels: 'water' }, container: { open: true }, 
 pond: { name: 'Pond', water: true, … },
 ```
 
-- **BOARD** (GET IN, CLIMB IN) gets in a vehicle that's on the ground here; **DISEMBARK** (GET OUT, GET OFF, STAND) gets out, except on water: “You realize that getting out here would be fatal.” While aboard, EXIT on its own is DISEMBARK too (Zork's V-EXIT); otherwise it's the direction out. In Infocom style, DISEMBARK with no object names the one vehicle in sight: “(raft)”.
-- **Moving:** without a vehicle, water is out of reach (“You can’t go there without a vehicle.”); aboard, the vehicle won't go overland (“You can’t go there in a raft.”); coming from water onto land it rests on the shore (“The raft comes to a rest on the shore.”), and you stay aboard. The vehicle goes wherever you go, scripted moves included.
+- **BOARD** (GET IN, CLIMB IN) gets in a vehicle that's on the ground here; **DISEMBARK** (GET OUT, GET OFF, STAND) gets out, except where the room's terrain isn't one the player walks (water, air, sand unless `onFoot` lists it): “You realize that getting out here would be fatal.” While aboard, EXIT on its own is DISEMBARK too (Zork's V-EXIT); otherwise it's the direction out. In Infocom style, DISEMBARK with no object names the one vehicle in sight: “(raft)”.
+- **Terrains:** every room has one: `terrain`, or `'water'` / `'air'` from those shorthands, else `'land'`. The world's `onFoot` (default `['land']`) lists those the player walks on. A vehicle's `travels` is a terrain name or list (`['land', 'sand']`); the old `'water'`, `'air'` and `'none'` still work (`'none'` is `[]`: it never moves). Its `restsOn` (default `['land']`, unless it travels on land) are the terrains it comes to rest on from one it travels, and it can't cross from one to another.
+- **Moving:** on foot, a room's terrain must be in `onFoot`, else “You can’t go there without a vehicle.” Aboard, the destination's terrain must be in `travels`, or in `restsOn` while you're on a terrain in `travels`, else “You can’t go there in a raft.” (a vehicle won't go overland). The vehicle goes wherever you go, scripted moves included, and you stay aboard.
+- **Landing:** `landing` (the same forms as `leave`) is said as the vehicle comes onto a `restsOn` terrain from a travelled one you can't walk on (`landing: 'The balloon lands.'`). Unset, a water vehicle says Zork's “The raft comes to a rest on the shore.” and a blank line; others say nothing.
+- **`leave` / `arrive`:** said as it leaves with you aboard (before the new room) and as it arrives (after), and by `{ moveVehicle }`. `leave` is worked out in the room being left (a script's `ctx.room()` is the origin, and its draw comes before any grue draw), once the move is known to be allowed. `arrive` and `landing` are worked out in the new room. Each of the three is a string, a list (one line picked with the seeded generator; a plain string draws nothing), or `{ script: 'name' }` (that script's `say` lines print; its other steps don't run). A script's draws from the generator are kept, unlike a description script, which restores the seed. The audit runs each script once and flags any step that isn't a `say`. Example: a dune buggy over a sand maze is `vehicle: { travels: ['land', 'sand'], leave: ['The engine roars.', 'Sand sprays.'] }` with the maze rooms `terrain: 'sand'`.
 - **Aboard:** DROP puts things in the vehicle, TAKE *vehicle* says “You’re inside of it!”, and the room's things stay in reach. The vehicle's rules are asked before the room's (Zork's M-BEG): an `instead.go` on it can refuse directions. Its `onEnd` runs in place of the room's. GO goes through rules too, so a room can have `instead.go` rules.
-- **Looking:** the header names the vehicle (“Pond, in the raft”); the vehicle isn't listed, its contents are; in Infocom style the room's things are “(outside the raft)”, as Zork's PRINT-CONT does.
-- Dying takes you out of the vehicle, which stays where you died. Conditions `aboard`, `aboard:ITEM` and `water:here|ROOM`; effects `{ board }` and `{ disembark }`; script helpers `ctx.aboard()` and `ctx.water(room?)`.
+- **Looking:** the header names the vehicle (“Pond, in the raft”); the vehicle isn't listed, its contents are; in Infocom style the room's things are “(outside the raft)”, as Zork's PRINT-CONT does. A vehicle's `lookScript` (`vehicle: { travels: 'air', lookScript: 'basketLook' }`) describes it from inside: its `say` lines follow the room's description, and the name on a brief arrival, but not a room whose own `descriptionScript` described it in full (Zork's vehicle M-LOOK, which a room's M-LOOK cuts off).
+- Dying takes you out of the vehicle, which stays where you died. Conditions `aboard`, `aboard:ITEM`, `water:here|ROOM` and `terrain:NAME[:here|ROOM]`; effects `{ board }` and `{ disembark }`; script helpers `ctx.aboard()`, `ctx.water(room?)` and `ctx.terrain(room?)`.
 
 See the [raft recipe](../guide/building-worlds/recipes#a-raft-on-a-pond).
 

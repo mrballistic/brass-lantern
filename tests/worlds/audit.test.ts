@@ -89,7 +89,7 @@ describe('world audit', () => {
         expect.stringContaining('unknown effect'),
         'daemon 0: names no event “absent”',
         'item player: home names no room “mars”',
-        '“player” is reserved; no room or item may use it',
+        '“player” is reserved; no room, item or character may use it',
       ]),
     );
   });
@@ -97,5 +97,10 @@ describe('world audit', () => {
   it('a scoring condition can’t use the score (5d)', () => {
     const w: World = { ...fixtureWorld, scoring: [{ if: 'score>=1', points: 1 }] };
     expect(auditWorld(w).some((p) => p.includes('score'))).toBe(true);
+  });
+
+  it('“number” is reserved like “player” (6a)', () => {
+    const w: World = { ...fixtureWorld, items: { ...fixtureWorld.items, number: { name: 'n', description: '', portable: false, tags: [] } } };
+    expect(auditWorld(w)).toContain('“number” is reserved; no room, item or character may use it');
   });
 });

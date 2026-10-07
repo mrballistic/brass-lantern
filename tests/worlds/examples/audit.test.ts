@@ -9,6 +9,7 @@ import { fortune } from '@/worlds/examples/fortune';
 import { guard } from '@/worlds/examples/guard';
 import { timers } from '@/worlds/examples/timers';
 import { topics } from '@/worlds/examples/topics';
+import { workshop } from '@/worlds/examples/workshop';
 import { twoRooms } from '@/worlds/examples/two-rooms';
 import { wanderer } from '@/worlds/examples/wanderer';
 import { auditWorld } from '../../helpers/audit';
@@ -25,6 +26,7 @@ const examples: Array<[string, World]> = [
   ['the wanderer recipe', wanderer],
   ['the echo recipe', echo],
   ['the raft recipe', raft],
+  ['the workshop recipe', workshop],
 ];
 
 describe('the example worlds', () => {

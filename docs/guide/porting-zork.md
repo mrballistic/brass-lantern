@@ -28,7 +28,7 @@ Zork was written in ZIL, Infocom's language. Its source is MIT licensed ([histor
 | a verb only some objects understand (MOVE, COUNT) | a [world verb](../reference/world-schema#world-verbs) |
 | a room without `ONBIT` | `dark: true` |
 | `LIT?` | the engine's light check (a `light` item switched on, in sight) |
-| an interrupt (`QUEUE`, `ENABLE`) | a fuse (`schedule`) or a daemon |
+| an interrupt (`QUEUE`, `ENABLE`) | a fuse (`schedule`) or a daemon. Zork's clock counts a `QUEUE X n` from a command down that same turn and the engine's from the next, so it becomes `in: n-1`; an interrupt requeuing itself stays `in: n` |
 | `I-LANTERN` and `LAMP-TABLE` | a `lamp_fuel` variable and daemons that warn at its thresholds |
 | `JIGS-UP` | the `die` effect and `world.death` |
 | `PROB` | the `chance` effect |

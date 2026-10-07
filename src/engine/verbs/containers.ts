@@ -19,7 +19,7 @@ import {
   reachableItems,
   visibleItems,
 } from '../model';
-import { miss, ok, type EngineResult } from '../result';
+import { miss, ok, zorkDefault, type EngineResult } from '../result';
 import { applyRule, findRule } from '../rules';
 import { takeItem } from './objects';
 import { weightOf } from '../weight';
@@ -57,13 +57,15 @@ export function handleOpen(target: string | undefined, world: World, state: Game
   if (sealed) return sealed;
   const item = world.items[id];
   if (!item.container?.openable) return useFallback(id, null, world, state) ?? ok(['You can’t open that.']);
-  if (isOpen(world, state, id)) return ok(['It’s already open.']);
+  if (isOpen(world, state, id)) return ok([world.style === 'infocom' ? 'It is already open.' : 'It’s already open.']);
   if (isLocked(world, state, id)) return ok([`The ${item.name} is locked.`]);
   (state.itemState[id] ??= {}).open = true;
   // Zork's V-OPEN touches a container (not a door): its first-seen sentence is over.
   if (world.style === 'infocom' && !item.door) state.itemState[id].moved = true;
   const inside = childrenOf(world, state, id).filter((k) => !world.items[k]?.scenery && shown(state)(k));
   if (item.container.opened) return ok([item.container.opened], true);
+  // Zork's V-OPEN: a door (DOORBIT, no capacity) says it opens.
+  if (item.door && world.style === 'infocom') return ok([`The ${item.name} opens.`], true);
   if (item.door || inside.length === 0 || item.container.transparent) return ok(['Opened.'], true);
   // Zork's V-OPEN: one untouched thing with a first-seen sentence speaks for itself.
   const only = world.items[inside[0]];
@@ -80,9 +82,12 @@ export function handleClose(target: string | undefined, world: World, state: Gam
   const sealed = behindGlass(world, state, id);
   if (sealed) return sealed;
   if (!world.items[id].container?.openable) return ok(['You can’t close that.']);
-  if (!isOpen(world, state, id)) return ok(['It’s already closed.']);
+  if (!isOpen(world, state, id)) return ok([world.style === 'infocom' ? 'It is already closed.' : 'It’s already closed.']);
   (state.itemState[id] ??= {}).open = false;
-  return ok([world.items[id].container?.closed ?? 'Closed.'], true);
+  const item = world.items[id];
+  if (item.container?.closed) return ok([item.container.closed], true);
+  // Zork's V-CLOSE: a door (DOORBIT, no capacity) is now closed.
+  return ok([item.door && world.style === 'infocom' ? `The ${item.name} is now closed.` : 'Closed.'], true);
 }
 
 function handleLockState(
@@ -141,6 +146,9 @@ export function handlePut(
   if (!indirect) needObject('indirect');
   const dest = find(indirect, world, state, 'indirect');
   if (!dest) return miss(`You don’t see a “${indirect}” here.`);
+  // Zork's V-PUT-UNDER and V-PUT-BEHIND: no place to hide things, unless a rule says so.
+  if (prep === 'under') return zorkDefault(world, 'You can’t do that.');
+  if (prep === 'behind') return zorkDefault(world, 'That hiding place is too obvious.');
   const sealed = behindGlass(world, state, dest);
   if (sealed) return sealed;
   const d = world.items[dest];

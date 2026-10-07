@@ -1,7 +1,9 @@
 import type { GameState } from '@/types/game';
-import type { Exit, Room, World } from '@/types/world';
+import type { EventStep, Exit, Room, World } from '@/types/world';
 import { evaluateCondition } from './conditions';
 import { darknessLook } from './light';
+import { scriptSteps } from './scripts';
+import { expandTemplate } from './text';
 import { canSeeInside, childrenOf, isLit, listable, npcsSeen, visibleItemsIn } from './model';
 
 export const COMPASS = ['north', 'south', 'east', 'west', 'northeast', 'northwest', 'southeast', 'southwest', 'up', 'down'];
@@ -127,11 +129,17 @@ export function lightNote(world: World, state: GameState, id: string): string {
   return world.items[id]?.light && state.itemState[id]?.on ? ' (providing light)' : '';
 }
 
-/** An item's own sentence in a room listing: its first-seen one until it's moved, then its room one. */
+/** An item's own sentence in a room listing: its script's, else its first-seen one until it's moved, then its room one. */
 function itemSentence(world: World, state: GameState, id: string): string | undefined {
   const item = world.items[id];
   if (!item) return undefined;
   return firstSeen(world, state, id) ? item.initialDescription : item.roomDescription;
+}
+
+/** What an item's room-sentence script says now (Zork's DESCFCN), if it has one that says anything. */
+function scriptedSentence(world: World, state: GameState, id: string): string | undefined {
+  const text = scriptDescription(world.items[id]?.roomDescriptionScript, world, state);
+  return text === undefined ? undefined : expandTemplate(text, world, state);
 }
 
 /** Lines emitted when entering a room (description, items, NPCs, exits). */
@@ -155,10 +163,16 @@ export function describeRoom(
   // SUPERBRIEF: the name and nothing else, as Zork skips DESCRIBE-OBJECTS.
   if (opts.namesOnly) return lines;
   // BRIEF (Infocom's default) and SUPERBRIEF: just the name and contents.
+  let roomScripted = false;
   if (!opts.brief) {
     const varied = room.descriptions?.find((d) => evaluateCondition(d.if, state, world))?.text;
-    lines.push(opts.first && room.firstDescription ? room.firstDescription : (varied ?? room.description));
+    const scripted = scriptDescription(room.descriptionScript, world, state);
+    roomScripted = scripted !== undefined;
+    lines.push(expandTemplate(scripted ?? (opts.first && room.firstDescription ? room.firstDescription : (varied ?? room.description)), world, state));
   }
+  // DESCRIBE-ROOM: aboard, the vehicle's own M-LOOK, unless the room's M-LOOK described it in full.
+  const inside = vehicle?.vehicle?.lookScript && !roomScripted ? scriptDescription(vehicle.vehicle.lookScript, world, state) : undefined;
+  if (inside !== undefined) lines.push(expandTemplate(inside, world, state));
 
   // The vehicle you're in isn't listed; what's in it is, after the room's things.
   const told = (id: string) => firstSeen(world, state, id);
@@ -167,7 +181,7 @@ export function describeRoom(
   const visibleItems = infocom ? [...inRoom.filter(told), ...inRoom.filter((id) => !told(id))] : inRoom;
   const plain: string[] = [];
   // Zork lists a room's contents newest first: a character who moved in this turn comes before its things.
-  const people = npcsSeen(world, state, roomId).filter((id) => !world.npcs[id]?.scenery);
+  const people = npcsSeen(world, state, roomId).filter((id) => !(state.npcs?.[id]?.scenery ?? world.npcs[id]?.scenery));
   const newestThing = Math.max(0, ...inRoom.map((id) => state.placed?.[id] ?? 0));
   const justArrived = infocom ? people.filter((id) => (state.npcs?.[id]?.seq ?? -1) > newestThing) : [];
   for (const id of justArrived) lines.push(npcDescription(world, state, id));
@@ -175,17 +189,20 @@ export function describeRoom(
   const outside = infocom && vehicle ? ` (outside the ${vehicle.name})` : '';
   let listed = false;
   for (const id of visibleItems) {
-    const sentence = itemSentence(world, state, id);
+    // A DESCFCN says everything itself: no “(outside the boat)” after it.
+    const scripted = scriptedSentence(world, state, id);
+    const sentence = scripted ?? itemSentence(world, state, id);
     const isFirst = told(id);
     if (!isFirst && (sentence || infocom)) listed = true;
-    if (sentence) lines.push(isFirst ? sentence : sentence + outside);
+    if (scripted !== undefined) lines.push(scripted);
+    else if (sentence) lines.push(isFirst ? sentence : sentence + outside);
     else if (infocom) lines.push(`There is ${withArticle(world, id)} here${lightNote(world, state, id)}.${outside}`);
     else plain.push(world.items[id]?.name ?? id);
-    // Zork describes what's in each thing right after it.
-    if (infocom) lines.push(...contentsLines(world, state, id));
+    // Zork describes what's in each thing right after it (but a DESCFCN has said all there is).
+    if (infocom && scripted === undefined) lines.push(...contentsLines(world, state, id));
   }
   if (plain.length > 0) lines.push(`You can see: ${plain.join(', ')}.`);
-  if (!infocom) for (const id of visibleItems) lines.push(...contentsLines(world, state, id));
+  if (!infocom) for (const id of visibleItems) if (scriptedSentence(world, state, id) === undefined) lines.push(...contentsLines(world, state, id));
   // Scenery isn't listed, but what's on or in it is (the kitchen table's sack).
   for (const id of childrenOf(world, state, roomId).filter((k) => world.items[k]?.scenery)) {
     if (infocom && floorLike(world, id)) {
@@ -209,8 +226,28 @@ export function describeRoom(
   return lines;
 }
 
-/** A character's line: the first description whose condition holds, else its description. */
+/** The steps a description script returns. Describing never changes the game, so the seed is put back. */
+export function descriptionSteps(name: string, world: World, state: GameState): EventStep[] {
+  const rng = state.rng;
+  try {
+    return scriptSteps(name, undefined, world, state);
+  } finally {
+    state.rng = rng;
+  }
+}
+
+/** What a description script says: its `say` lines, a line each (undefined when there's no such script or it says nothing). */
+export function scriptDescription(name: string | undefined, world: World, state: GameState): string | undefined {
+  if (!name || !world.scripts?.[name]) return undefined;
+  const lines = descriptionSteps(name, world, state)
+    .map((step) => (typeof step === 'string' ? step : 'say' in step ? step.say : undefined))
+    .filter((s): s is string => s !== undefined);
+  return lines.length > 0 ? lines.join('\n') : undefined;
+}
+
+/** A character's line: its description script, else the first description whose condition holds, else its description. */
 export function npcDescription(world: World, state: GameState, id: string): string {
   const npc = world.npcs[id];
-  return npc?.descriptions?.find((d) => evaluateCondition(d.if, state, world))?.text ?? npc?.description ?? id;
+  const text = scriptDescription(npc?.descriptionScript, world, state) ?? npc?.descriptions?.find((d) => evaluateCondition(d.if, state, world))?.text ?? npc?.description ?? id;
+  return expandTemplate(text, world, state);
 }

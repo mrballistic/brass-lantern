@@ -29,12 +29,22 @@ const RE = {
   drop: /^(?:drop|put\s+down|leave)\s+(?:the\s+)?(.+)$/i,
   examine: /^(?:examine|inspect|look\s+at|x)\s+(?:the\s+)?(.+)$/i,
   read: /^read\s+(?:the\s+)?(.+)$/i,
+  // Zork's prepositions: PUT UNDER/BEHIND, THROW OFF/OVER, READ THROUGH, PUSH X dir / TO Y.
+  putUnder: /^(?:put|place|slide|push|stick)\s+(?:the\s+)?(.+?)\s+(?:under|underneath|beneath|below)\s+(?:the\s+)?(.+)$/i,
+  putBehind: /^(?:put|place|slide|push|stick)\s+(?:the\s+)?(.+?)\s+behind\s+(?:the\s+)?(.+)$/i,
+  throwOff: /^(?:throw|toss|hurl)\s+(?:the\s+)?(.+?)\s+off\s+(?:of\s+)?(?:the\s+)?(.+)$/i,
+  throwOver: /^(?:throw|toss|hurl)\s+(?:the\s+)?(.+?)\s+over\s+(?:of\s+)?(?:the\s+)?(.+)$/i,
+  readWith: /^read\s+(?:the\s+)?(.+?)\s+(?:through|with|using)\s+(?:the\s+)?(.+)$/i,
+  pushDir: /^(?:push|move|shove)\s+(?:the\s+)?(.+?)\s+(north|south|east|west|northeast|northwest|southeast|southwest|up|down|n|s|e|w|ne|nw|se|sw|u|d)$/i,
+  pushTo: /^(?:push|move|shove)\s+(?:the\s+)?(.+?)\s+to\s+(?:the\s+)?(.+)$/i,
   turnOn: /^(?:turn|switch)\s+on\s+(?:the\s+)?(.+)$/i,
   turnOnAfter: /^(?:turn|switch)\s+(?:the\s+)?(.+?)\s+on$/i,
   light: /^light\s+(?:the\s+)?(.+)$/i,
   burn: /^(?:burn(?:\s+down)?|ignite|incinerate|light)\s+(?:the\s+)?(.+?)\s+with\s+(?:the\s+|a\s+)?(.+)$/i,
   burnAlone: /^(?:burn(?:\s+down)?|ignite|incinerate)\s+(?:the\s+)?(.+)$/i,
   turnOnWith: /^(?:turn|switch)\s+on\s+(?:the\s+)?(.+?)\s+with\s+(?:the\s+|a\s+)?(.+)$/i,
+  // TURN X TO N, SET X TO N (and FOR): a dial. SET X ON Y stays PUT.
+  turnTo: /^(?:turn|set)\s+(?:the\s+)?(.+?)\s+(?:to|for)\s+(?:the\s+)?(.+)$/i,
   turnWith: /^turn\s+(?:the\s+)?(.+?)\s+with\s+(?:the\s+|a\s+)?(.+)$/i,
   plugWith: /^plug\s+(?:the\s+)?(.+?)\s+with\s+(?:the\s+|a\s+)?(.+)$/i,
   turnOff: /^(?:(?:turn|switch)\s+off|extinguish|douse|blow\s+out|put\s+out)\s+(?:the\s+)?(.+)$/i,
@@ -107,12 +117,19 @@ const SINGLE_WORD: Record<string, ParsedAction> = {
 // Each entry maps a verb-pattern regex to the canonical action. The first capture
 // group is the target; an optional second group is the indirect object. Order
 // matters — earlier entries win on ambiguous input.
-const VERB_PATTERNS: ReadonlyArray<readonly [RegExp, string, ('in' | 'on')?]> = [
+const VERB_PATTERNS: ReadonlyArray<readonly [RegExp, string, ParsedAction['prep']?]> = [
+  [RE.putUnder, 'put', 'under'],
+  [RE.putBehind, 'put', 'behind'],
+  [RE.throwOff, 'throw', 'off'],
+  [RE.throwOver, 'throw', 'over'],
+  [RE.readWith, 'read', 'through'],
   [RE.board, 'board'],
   [RE.disembark, 'disembark'],
   [RE.enter, 'enter'],
   [RE.moveTo, 'go'],
   [RE.movement, 'go'],
+  [RE.pushDir, 'push'],
+  [RE.pushTo, 'push'],
   [RE.takeFrom, 'take'],
   [RE.take, 'take'],
   [RE.drop, 'drop'],
@@ -129,6 +146,7 @@ const VERB_PATTERNS: ReadonlyArray<readonly [RegExp, string, ('in' | 'on')?]> = 
   [RE.light, 'turn_on'],
   [RE.turnOff, 'turn_off'],
   [RE.turnOffAfter, 'turn_off'],
+  [RE.turnTo, 'turn'],
   [RE.open, 'open'],
   [RE.close, 'close'],
   [RE.lock, 'lock'],
@@ -166,9 +184,9 @@ export const BUILT_IN_WORDS: ReadonlySet<string> = new Set([
   ...Object.keys(DIRECTIONS),
 ]);
 
-/** World verb words that a built-in verb already owns. */
+/** World verb words that a built-in verb already owns (an `afterBuiltIns` verb may share them). */
 export function verbClashes(verbs: World['verbs']): string[] {
-  return Object.values(verbs ?? {}).flatMap((v) => v.words.filter((w) => BUILT_IN_WORDS.has(w.toLowerCase())));
+  return Object.values(verbs ?? {}).flatMap((v) => (v.afterBuiltIns ? [] : v.words.filter((w) => BUILT_IN_WORDS.has(w.toLowerCase()))));
 }
 
 const escapeWord = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
@@ -185,12 +203,13 @@ function worldPatterns(verbs: World['verbs']): WorldPattern[] {
   const out: WorldPattern[] = [];
   for (const [id, verb] of Object.entries(verbs)) {
     for (const word of verb.words) {
-      if (BUILT_IN_WORDS.has(word.toLowerCase())) continue;
+      if (BUILT_IN_WORDS.has(word.toLowerCase()) && !verb.afterBuiltIns) continue;
       const preps = (verb.indirect ?? []).map(escapeWord).join('|');
       const obj =
-        verb.target === 'none' ? '' : `(?:\\s+(?:the\\s+)?(.+?))${verb.target === 'required' ? '' : '?'}`;
-      const ind = preps && verb.target !== 'none' ? `(?:\\s+(?:${preps})\\s+(?:the\\s+)?(.+))?` : '';
-      out.push({ re: new RegExp(`^${escapeWord(word)}${obj}${ind}$`, 'i'), id, verb, phrase: /\s/.test(word.trim()) });
+        verb.target === 'text' ? '(?:\\s+(.*))?' : verb.target === 'none' ? '' : `(?:\\s+(?:the\\s+)?(.+?))${verb.target === 'required' ? '' : '?'}`;
+      const ind = preps && verb.target !== 'none' && verb.target !== 'text' ? `(?:\\s+(?:${preps})\\s+(?:the\\s+)?(.+))?` : '';
+      // An afterBuiltIns verb's phrases wait for the built-ins too.
+      out.push({ re: new RegExp(`^${escapeWord(word)}${obj}${ind}$`, 'i'), id, verb, phrase: !verb.afterBuiltIns && /\s/.test(word.trim()) });
     }
   }
   out.sort((a, b) => b.re.source.length - a.re.source.length);
@@ -198,16 +217,74 @@ function worldPatterns(verbs: World['verbs']): WorldPattern[] {
   return out;
 }
 
+/**
+ * Typed words: the first quoted phrase if the text opens with a double quote, else the whole rest;
+ * whitespace collapsed. Single quotes are no quoting: an apostrophe (“don't”) must not cut it short.
+ */
+function typedText(raw: string): string {
+  const text = raw.trim();
+  const quoted = text.match(/^(?:"([^"]*)"|“([^”]*)”)/);
+  return (quoted ? (quoted[1] ?? quoted[2]) : text).replace(/\s+/g, ' ').trim();
+}
+
 function matchWorld(input: string, patterns: WorldPattern[]): ParsedAction | null {
-  for (const { re, id } of patterns) {
+  for (const { re, id, verb } of patterns) {
     const m = input.match(re);
     if (!m) continue;
     const parsed: ParsedAction = { action: id };
+    if (verb.target === 'text') {
+      const text = typedText(m[1] ?? '');
+      if (text) parsed.text = text;
+      return parsed;
+    }
     if (m[1]) parsed.target = m[1].trim();
     if (m[2]) parsed.indirect = m[2].trim();
     return parsed;
   }
   return null;
+}
+
+/**
+ * Zork's NUMBER?: digits make a number up to 1000, and H:MM is minutes (an hour
+ * under 8 is taken as the afternoon; over 23 is not a time). Anything else is a word.
+ */
+export function parseNumber(word: string): number | null {
+  let sum = 0;
+  let hours: number | null = null;
+  for (const ch of word) {
+    if (ch === ':') {
+      hours = sum;
+      sum = 0;
+    } else if (sum > 10000 || ch < '0' || ch > '9') {
+      return null;
+    } else {
+      sum = sum * 10 + (ch.charCodeAt(0) - 48);
+    }
+  }
+  if (word === '' || sum > 1000) return null;
+  if (hours !== null) {
+    if (hours < 8) hours += 12;
+    else if (hours > 23) return null;
+    sum += hours * 60;
+  }
+  return sum;
+}
+
+/** Does `word` (an object slot) hold the command's number: the typed digits, or the literal 'number' the intent server sends? */
+export function readsNumber(action: Pick<ParsedAction, 'number'>, word?: string): boolean {
+  return action.number !== undefined && word !== undefined && (word === 'number' || parseNumber(word.trim()) === action.number);
+}
+
+/**
+ * An object slot that holds a number (TURN DIAL TO 4): the value rides along, and the slot keeps the
+ * digits typed, so a verb with no rule for it misses with them (“You don’t see a “5” here.”).
+ */
+function withNumbers(parsed: ParsedAction): ParsedAction {
+  for (const slot of ['target', 'indirect'] as const) {
+    const n = parsed[slot] === undefined ? null : parseNumber(parsed[slot]!);
+    if (n !== null) return { ...parsed, number: n };
+  }
+  return parsed;
 }
 
 /**
@@ -250,10 +327,26 @@ const LIST_BREAK = /\s*(?:,\s*(?:and\s+)?|\s+and\s+)\s*/i;
 export function splitCommands(rawInput: string, verbs?: World['verbs']): string[] {
   const input = rawInput.trim().replace(/[.!]+$/, '');
   if (!input) return [];
-  return input
-    .split(CLAUSE_BREAK)
-    .filter(Boolean)
-    .flatMap((clause) => splitClause(clause, verbs));
+  // A quoted phrase never splits (its contents are masked, length for length), and a text verb
+  // takes everything after it: its words may hold full stops and “then”.
+  const masked = input.replace(/"[^"]*"|“[^”]*”/g, (q) => q[0] + '_'.repeat(q.length - 2) + q[q.length - 1]);
+  const textWords = Object.values(verbs ?? {})
+    .filter((v) => v.target === 'text')
+    .flatMap((v) => v.words.filter((w) => !BUILT_IN_WORDS.has(w.toLowerCase())).map(escapeWord));
+  const textVerb = textWords.length ? new RegExp(`^(?:${textWords.join('|')})(?:\\s|$)`, 'i') : null;
+  const out: string[] = [];
+  let start = 0;
+  const breaks = [...masked.matchAll(new RegExp(CLAUSE_BREAK.source, 'gi'))].map((m) => [m.index, m.index + m[0].length]);
+  for (const [breakAt, next] of [...breaks, [masked.length, masked.length]]) {
+    const clause = input.slice(start, breakAt);
+    if (textVerb?.test(clause)) {
+      out.push(input.slice(start));
+      return out;
+    }
+    if (clause) out.push(...splitClause(clause, verbs));
+    start = next;
+  }
+  return out;
 }
 
 /** “take all but the wallet and shirt” → { action: 'take', target: 'all', except: ['wallet', 'shirt'] }. */
@@ -349,7 +442,12 @@ function parse(rawInput: string, allowBareWord: boolean, verbs?: World['verbs'])
     const parsed: ParsedAction = m[1] ? { action, target: m[1].trim() } : { action };
     if (m[2]) parsed.indirect = m[2].trim();
     if (prep) parsed.prep = prep;
-    return parsed;
+    // PUSH X north: the second capture is a direction, not a second object.
+    if (action === 'push' && m[2] && re === RE.pushDir) {
+      delete parsed.indirect;
+      parsed.direction = DIRECTIONS[m[2].trim()] as ParsedAction['direction'];
+    }
+    return withNumbers(parsed);
   }
 
   if (RE.sit.test(input)) return { action: 'sit' };
