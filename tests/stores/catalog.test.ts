@@ -1,29 +1,24 @@
 // @vitest-environment happy-dom
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
-vi.mock('@/app.config', async () => {
-  const { fixtureWorld } = await import('./fixtures/world');
-  return {
-    appName: 'TEST TERMINAL',
-    storagePrefix: 'test',
-    cartridges: [
-      { kind: 'world', id: 'house', title: 'TEST HOUSE', world: fixtureWorld },
-      { kind: 'zcode', id: 'story', title: 'A STORY', story: 'stories/story.z3', format: 'Z-machine v3' },
-    ],
-  };
-});
+import { createCatalog } from '@/stores/catalog';
+import type { Cartridge } from '@/types/cartridge';
+import { fixtureWorld } from '../fixtures/world';
 
+const cartridges: Cartridge[] = [
+  { kind: 'world', id: 'house', title: 'TEST HOUSE', world: fixtureWorld },
+  { kind: 'zcode', id: 'story', title: 'A STORY', story: 'stories/story.z3', format: 'Z-machine v3' },
+];
 const {
   autoBootCartridge,
   defaultWorldCartridge,
   hasProgress,
-  LAST_CARTRIDGE_KEY,
+  lastCartridgeKey: LAST_CARTRIDGE_KEY,
   menuLines,
   saveKeyFor,
   transcriptKey,
   willResume,
-} = await import('@/cartridges');
-const { cartridges } = await import('@/app.config');
+} = createCatalog({ cartridges, storagePrefix: 'test' });
 
 describe('cartridges', () => {
   beforeEach(() => localStorage.clear());
@@ -54,6 +49,11 @@ describe('cartridges', () => {
 
   it('finds the first native world', () => {
     expect(defaultWorldCartridge()?.id).toBe('house');
+  });
+
+  it('a single cartridge always boots', () => {
+    const one = createCatalog({ cartridges: [cartridges[0]], storagePrefix: 'one' });
+    expect(one.autoBootCartridge()?.id).toBe('house');
   });
 
   it('lists the cartridges as a numbered menu', () => {

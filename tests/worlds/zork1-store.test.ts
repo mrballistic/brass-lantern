@@ -1,8 +1,10 @@
 // @vitest-environment happy-dom
 import { createPinia, setActivePinia } from 'pinia';
 import { describe, expect, it } from 'vitest';
-import { useGameStore } from '@/stores/game';
+import { createGameStore } from '@/stores/game';
 import { zork1 } from '@/worlds/zork1';
+
+const useGameStore = createGameStore({ cartridges: [], storagePrefix: 'test' });
 
 /** The game store on native Zork, in the East-West Passage with the egg and a lit lamp. */
 function store(seed: number) {

@@ -2,10 +2,11 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SessionEvents } from '@/zmachine/session';
+import { createLocalShelf } from '@/stores/cartridges';
+import { createZGameStore } from '@/stores/zgame';
+import { fixtureOptions } from '../fixtures/world';
 
-vi.mock('@/app.config', async () => (await import('../fixtures/world')).fixtureConfig);
-
-const { useZGameStore } = await import('@/stores/zgame');
+const useZGameStore = createZGameStore(fixtureOptions, createLocalShelf('test'));
 
 const CART = { kind: 'zcode' as const, id: 'story', title: 'A STORY', story: 'stories/story.z3', format: 'Z-machine v3' };
 
@@ -173,5 +174,19 @@ describe('zgame store', () => {
       { ...deps, loadLocal: async () => Promise.reject(new Error('Not on the shelf')) },
     );
     expect(texts(store).at(-1)).toBe('[This story isn’t in the browser any more. Type EJECT, then LOAD it again.]');
+  });
+
+  it('reports game_start, then session_resumed, with the cartridge, to analytics.onEvent', async () => {
+    const onEvent = vi.fn();
+    const useStore = createZGameStore({ ...fixtureOptions, analytics: { onEvent } }, createLocalShelf('test'));
+    const { deps, sessions } = fakeDeps();
+    const store = useStore();
+    await store.initialize(CART, deps);
+    expect(onEvent).toHaveBeenCalledWith('game_start', { cartridge: 'story' });
+    sessions[0].events.onLines(['West of House']);
+    sessions[0].events.onWaiting();
+    setActivePinia(createPinia());
+    await useStore().initialize(CART, fakeDeps().deps);
+    expect(onEvent).toHaveBeenLastCalledWith('session_resumed', { cartridge: 'story' });
   });
 });

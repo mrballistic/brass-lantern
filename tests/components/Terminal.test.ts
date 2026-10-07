@@ -4,8 +4,15 @@ import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import pkg from '../../package.json';
 import Terminal from '@/components/Terminal.vue';
+import { createGameContext, GAME_CONTEXT } from '@/stores/context';
+import type { GameOptions } from '@/options';
+import { fixtureOptions } from '../fixtures/world';
+
 // Plays the fixture world, so this file is the same in every repo using the engine.
-vi.mock('@/app.config', async () => (await import('../fixtures/world')).fixtureConfig);
+function mountTerminal(extra: Partial<GameOptions> = {}) {
+  const ctx = createGameContext({ ...fixtureOptions, version: pkg.version, ...extra });
+  return mount(Terminal, { global: { provide: { [GAME_CONTEXT as symbol]: ctx } } });
+}
 
 describe('Terminal.vue', () => {
   beforeEach(() => {
@@ -20,7 +27,7 @@ describe('Terminal.vue', () => {
   });
 
   it('renders header, output area, and input bar on mount', async () => {
-    const wrapper = mount(Terminal);
+    const wrapper = mountTerminal();
     await vi.runOnlyPendingTimersAsync();
 
     expect(wrapper.find('.terminal-header').exists()).toBe(true);
@@ -34,7 +41,7 @@ describe('Terminal.vue', () => {
   });
 
   it('draws the block cursor at the insertion point, not after the field', async () => {
-    const wrapper = mount(Terminal);
+    const wrapper = mountTerminal();
     await vi.runOnlyPendingTimersAsync();
     const input = wrapper.find<HTMLInputElement>('.terminal-input-bar input');
     // The cursor lives in the field, after a mirror of the text before the caret.
@@ -50,7 +57,7 @@ describe('Terminal.vue', () => {
   });
 
   it('renders opening output lines after initialize', async () => {
-    const wrapper = mount(Terminal);
+    const wrapper = mountTerminal();
     // Drain typewriter timers so lines commit.
     await vi.advanceTimersByTimeAsync(60_000);
     const text = wrapper.find('.terminal-output').text();
@@ -59,7 +66,7 @@ describe('Terminal.vue', () => {
   });
 
   it('submits input via the form and clears the field', async () => {
-    const wrapper = mount(Terminal);
+    const wrapper = mountTerminal();
     await vi.advanceTimersByTimeAsync(60_000); // drain intro typewriter
 
     const input = wrapper.find<HTMLInputElement>('.terminal-input-bar input');
@@ -76,7 +83,7 @@ describe('Terminal.vue', () => {
   });
 
   it('empty submit flushes the typewriter instead of submitting', async () => {
-    const wrapper = mount(Terminal);
+    const wrapper = mountTerminal();
     // Don't drain — leave typewriter mid-render.
     const input = wrapper.find<HTMLInputElement>('.terminal-input-bar input');
     await input.setValue('');
@@ -99,7 +106,7 @@ describe('Terminal.vue', () => {
     }
 
     it('arrow-up recalls the most recent command into the input', async () => {
-      const wrapper = mount(Terminal);
+      const wrapper = mountTerminal();
       await vi.advanceTimersByTimeAsync(60_000);
 
       await submit(wrapper, 'west');
@@ -116,7 +123,7 @@ describe('Terminal.vue', () => {
     });
 
     it('arrow-down walks forward and restores the in-progress draft past the newest entry', async () => {
-      const wrapper = mount(Terminal);
+      const wrapper = mountTerminal();
       await vi.advanceTimersByTimeAsync(60_000);
 
       await submit(wrapper, 'west');
@@ -139,7 +146,7 @@ describe('Terminal.vue', () => {
     });
 
     it('arrow-down does nothing when no history has been opened', async () => {
-      const wrapper = mount(Terminal);
+      const wrapper = mountTerminal();
       await vi.advanceTimersByTimeAsync(60_000);
 
       const input = wrapper.find<HTMLInputElement>('.terminal-input-bar input');
@@ -149,7 +156,7 @@ describe('Terminal.vue', () => {
     });
 
     it('does NOT flush the typewriter when arrow keys are pressed mid-type', async () => {
-      const wrapper = mount(Terminal);
+      const wrapper = mountTerminal();
       // Don't drain timers — typewriter is mid-render on the intro.
       const input = wrapper.find<HTMLInputElement>('.terminal-input-bar input');
       const outputLinesBefore = wrapper.findAll('.line').length;
@@ -166,7 +173,7 @@ describe('Terminal.vue', () => {
     });
 
     it('consecutive duplicate submissions are deduplicated in history', async () => {
-      const wrapper = mount(Terminal);
+      const wrapper = mountTerminal();
       await vi.advanceTimersByTimeAsync(60_000);
 
       await submit(wrapper, 'look');
@@ -182,7 +189,7 @@ describe('Terminal.vue', () => {
   });
 
   it('RESTART clears the screen and shows the opening again', async () => {
-    const wrapper = mount(Terminal);
+    const wrapper = mountTerminal();
     await vi.advanceTimersByTimeAsync(60_000);
     const input = wrapper.find<HTMLInputElement>('.terminal-input-bar input');
     for (const cmd of ['west', 'east', 'west', 'restart']) {
@@ -197,7 +204,7 @@ describe('Terminal.vue', () => {
   });
 
   it('UNDO keeps the lines still on screen instead of typing them all out again', async () => {
-    const wrapper = mount(Terminal);
+    const wrapper = mountTerminal();
     await vi.advanceTimersByTimeAsync(60_000);
     const input = wrapper.find<HTMLInputElement>('.terminal-input-bar input');
     await input.setValue('west');

@@ -1,8 +1,9 @@
 import type { World } from '@/types/world';
+import type { GameOptions } from '@/options';
 
 /**
  * A small world that touches every engine hook, for tests that should pass
- * against any game (they mock '@/app.config' to play this). Shared with the
+ * against any game (they pass fixtureOptions to play this). Shared with the
  * public brass-lantern repo, so keep it world-agnostic and complete: when the
  * engine grows a hook, give this world a use of it.
  */
@@ -286,9 +287,18 @@ export const fixtureWorld: World = {
   },
 };
 
-/** Drop-in replacement for src/app.config.ts in tests: vi.mock('@/app.config', () => fixtureConfig). */
+/** The fixture game's cartridges and names, the shape of src/app.config.ts. */
 export const fixtureConfig = {
   cartridges: [{ kind: 'world' as const, id: 'test', title: 'TEST HOUSE', world: fixtureWorld, saveKey: 'test:save' }],
   appName: 'TEST TERMINAL',
   storagePrefix: 'test',
+};
+
+/** The fixture game as library options: createGameStore(fixtureOptions), <BrassLantern :options>. */
+export const fixtureOptions: GameOptions = {
+  cartridges: fixtureConfig.cartridges,
+  terminalName: fixtureConfig.appName,
+  storagePrefix: fixtureConfig.storagePrefix,
+  intentEndpoint: '/api/parse-intent',
+  version: '1.2.3',
 };

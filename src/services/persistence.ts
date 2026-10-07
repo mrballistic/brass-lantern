@@ -1,8 +1,5 @@
 import type { GameState, OutputLine, SavedState } from '@/types/game';
-import { storagePrefix } from '@/app.config';
-import { saveKeyFor, SAVE_VERSION } from '@/types/game';
-
-export const SAVE_KEY = saveKeyFor(storagePrefix);
+import { SAVE_VERSION } from '@/types/game';
 
 const MAX_HISTORY_LINES = 500;
 
@@ -33,7 +30,8 @@ function detectStorage(): Storage | null {
   }
 }
 
-export function createPersistenceService(key: string = SAVE_KEY): PersistenceService {
+/** Saves under `key` (a cartridge's save key) in localStorage. */
+export function createPersistenceService(key: string): PersistenceService {
   const storage = detectStorage();
 
   function write(at: string, state: GameState, outputHistory: OutputLine[]): void {

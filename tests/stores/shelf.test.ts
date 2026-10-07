@@ -5,22 +5,23 @@ import { resolve } from 'node:path';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/app.config', async () => {
-  const { fixtureWorld } = await import('../fixtures/world');
-  return {
-    appName: 'TEST TERMINAL',
-    storagePrefix: 'test',
-    cartridges: [
-      { kind: 'world', id: 'house', title: 'TEST HOUSE', world: fixtureWorld, saveKey: 'test:save' },
-      { kind: 'zcode', id: 'story', title: 'A STORY', story: 'stories/story.z3', format: 'Z-machine v3' },
-    ],
-  };
-});
+import { createGameContext } from '@/stores/context';
+import { useSession } from '@/stores/session';
+import { IndexedDbShelf } from '@/zmachine/shelf';
+import { fixtureWorld } from '../fixtures/world';
 
-const { useSession } = await import('@/stores/session');
-const { useZGameStore } = await import('@/stores/zgame');
-const { useShelf } = await import('@/stores/cartridges');
-const { IndexedDbShelf } = await import('@/zmachine/shelf');
+const OPTIONS = {
+  terminalName: 'TEST TERMINAL',
+  storagePrefix: 'test',
+  cartridges: [
+    { kind: 'world' as const, id: 'house', title: 'TEST HOUSE', world: fixtureWorld, saveKey: 'test:save' },
+    { kind: 'zcode' as const, id: 'story', title: 'A STORY', story: 'stories/story.z3', format: 'Z-machine v3' },
+  ],
+};
+const ctx = createGameContext(OPTIONS);
+const session = () => useSession(ctx);
+const { useZGameStore } = ctx;
+const useShelf = (s: IndexedDbShelf) => ctx.shelf.use(s);
 
 const zork = new Uint8Array(readFileSync(resolve(import.meta.dirname, '../fixtures/zork1.z3')));
 const file = (bytes: Uint8Array, name: string) => new File([bytes], name);
@@ -40,7 +41,7 @@ describe('stories loaded from the player’s computer', () => {
   });
 
   it('the menu says how to load one', async () => {
-    const s = useSession();
+    const s = session();
     await s.boot();
     expect(texts(s.output.value)).toContain(
       '[LOAD plays a Z-machine story file from your computer. It stays in this browser; nothing is uploaded.]',
@@ -48,7 +49,7 @@ describe('stories loaded from the player’s computer', () => {
   });
 
   it('LOAD at the menu asks the terminal for a file', async () => {
-    const s = useSession();
+    const s = session();
     await s.boot();
     expect(s.wantsFile('load')).toBe(true);
     expect(s.wantsFile(' LOAD ')).toBe(true);
@@ -61,7 +62,7 @@ describe('stories loaded from the player’s computer', () => {
   });
 
   it('a loaded story joins the menu as a cartridge and starts', async () => {
-    const s = useSession();
+    const s = session();
     await s.boot();
     await s.loadFile(file(zork, 'zork1.z3'));
     expect(init).toHaveBeenCalledWith(expect.objectContaining({ id: ZORK_ID, title: 'ZORK1', local: true }));
@@ -73,21 +74,21 @@ describe('stories loaded from the player’s computer', () => {
   });
 
   it('it survives a reload, and resumes if it has a game in progress', async () => {
-    const s = useSession();
+    const s = session();
     await s.boot();
     await s.loadFile(file(zork, 'zork1.z3'));
     localStorage.setItem(`test:z:${ZORK_ID}:transcript`, '[]');
 
     setActivePinia(createPinia());
     const init2 = vi.spyOn(useZGameStore(), 'initialize').mockResolvedValue();
-    const again = useSession();
+    const again = session();
     await again.boot();
     expect(again.mode.value).toBe('zcode');
     expect(init2).toHaveBeenCalledWith(expect.objectContaining({ id: ZORK_ID }));
   });
 
   it('loading the same story twice keeps one copy', async () => {
-    const s = useSession();
+    const s = session();
     await s.boot();
     await s.loadFile(file(zork, 'zork1.z3'));
     await s.submit('eject');
@@ -98,7 +99,7 @@ describe('stories loaded from the player’s computer', () => {
   });
 
   it('REMOVE takes a loaded story off the shelf, and only a loaded one', async () => {
-    const s = useSession();
+    const s = session();
     await s.boot();
     await s.submit('remove 3');
     expect(texts(s.output.value).at(-1)).toBe('[There’s nothing on your shelf to remove.]');
@@ -114,7 +115,7 @@ describe('stories loaded from the player’s computer', () => {
   });
 
   it('explains files it can’t play, and stays at the menu', async () => {
-    const s = useSession();
+    const s = session();
     await s.boot();
     await s.loadFile(file(new TextEncoder().encode('just some notes, not a game'), 'notes.txt'));
     expect(texts(s.output.value).at(-1)).toBe('[notes.txt isn’t a Z-machine story file.]');
@@ -132,7 +133,7 @@ describe('stories loaded from the player’s computer', () => {
 
   it('still plays a story the browser won’t store, until the next reload', async () => {
     useShelf(new IndexedDbShelf('nowhere', null));
-    const s = useSession();
+    const s = session();
     await s.boot();
     await s.loadFile(file(zork, 'zork1.z3'));
     expect(init).toHaveBeenCalledWith(expect.objectContaining({ id: ZORK_ID }));

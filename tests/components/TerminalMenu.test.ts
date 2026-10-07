@@ -5,17 +5,20 @@ import 'fake-indexeddb/auto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Terminal from '@/components/Terminal.vue';
 
-vi.mock('@/app.config', async () => {
-  const { fixtureWorld } = await import('../fixtures/world');
-  return {
-    appName: 'TEST TERMINAL',
+import { createGameContext, GAME_CONTEXT } from '@/stores/context';
+import { fixtureWorld } from '../fixtures/world';
+
+function mountTerminal() {
+  const ctx = createGameContext({
+    terminalName: 'TEST TERMINAL',
     storagePrefix: 'test',
     cartridges: [
       { kind: 'world', id: 'house', title: 'TEST HOUSE', world: fixtureWorld, saveKey: 'test:save' },
       { kind: 'zcode', id: 'story', title: 'A STORY', story: 'stories/story.z3', format: 'Z-machine v3' },
     ],
-  };
-});
+  });
+  return mount(Terminal, { global: { provide: { [GAME_CONTEXT as symbol]: ctx } } });
+}
 
 async function type(wrapper: ReturnType<typeof mount>, text: string) {
   await wrapper.find<HTMLInputElement>('.terminal-input-bar input').setValue(text);
@@ -33,7 +36,7 @@ describe('Terminal with a cartridge menu', () => {
   afterEach(() => vi.useRealTimers());
 
   it('shows the menu, inserts a cartridge, and ejects back', async () => {
-    const wrapper = mount(Terminal);
+    const wrapper = mountTerminal();
     await flushPromises();
     await vi.runAllTimersAsync();
     expect(wrapper.find('.terminal-output').text()).toContain('INSTALLED CARTRIDGES');
@@ -50,7 +53,7 @@ describe('Terminal with a cartridge menu', () => {
   });
 
   it('LOAD opens the file picker, and a chosen file goes to the session', async () => {
-    const wrapper = mount(Terminal);
+    const wrapper = mountTerminal();
     await flushPromises();
     await vi.runAllTimersAsync();
     const picker = wrapper.find<HTMLInputElement>('input[type="file"]');
@@ -71,7 +74,7 @@ describe('Terminal with a cartridge menu', () => {
   });
 
   it('a story file dropped on the menu is loaded; elsewhere a drop does nothing', async () => {
-    const wrapper = mount(Terminal);
+    const wrapper = mountTerminal();
     await flushPromises();
     await vi.runAllTimersAsync();
     const dropped = new File([new Uint8Array([1])], 'notes.z5');

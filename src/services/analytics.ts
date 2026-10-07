@@ -16,16 +16,25 @@
 // - DNT honored — if navigator.doNotTrack === '1' we send nothing
 // - Silent fallback to <img> GET if sendBeacon fails or isn't available
 
-import { storagePrefix } from '@/app.config';
-import { hasConsent } from './consent';
+import { configureConsent, hasConsent } from './consent';
 
 const RAW_ID = import.meta.env.VITE_GA_MEASUREMENT_ID;
 const MEASUREMENT_ID =
   typeof RAW_ID === 'string' && RAW_ID && !RAW_ID.startsWith('G-XXX') ? RAW_ID : null;
 
 const ENDPOINT = 'https://www.google-analytics.com/g/collect';
-export const CLIENT_ID_KEY = `${storagePrefix}:ga-cid`;
-export const SESSION_ID_KEY = `${storagePrefix}:ga-sid`;
+export let CLIENT_ID_KEY = 'brass-lantern:ga-cid';
+export let SESSION_ID_KEY = 'brass-lantern:ga-sid';
+
+/**
+ * Namespaces the stored IDs, and the consent answer, under the site's storage
+ * prefix. main.ts calls this first, with src/app.config.ts's prefix.
+ */
+export function configureAnalytics(storagePrefix: string): void {
+  CLIENT_ID_KEY = `${storagePrefix}:ga-cid`;
+  SESSION_ID_KEY = `${storagePrefix}:ga-sid`;
+  configureConsent(storagePrefix);
+}
 
 let initialized = false;
 

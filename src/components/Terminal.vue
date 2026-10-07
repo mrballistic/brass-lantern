@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
-import { openConsent } from '@/services/consent';
-import { appName } from '@/app.config';
-import { analyticsConfigured } from '@/services/analytics';
+import { terminalTitle } from '@/options';
+import { useGameContext } from '@/stores/context';
 import { useSession } from '@/stores/session';
 import { useTypewriter } from '@/composables/useTypewriter';
 import type { OutputLine } from '@/types/game';
 
-const session = useSession();
+const game = useGameContext();
+const session = useSession(game);
 const { output, isParsing, restored, status, title, mode } = session;
 
 const typer = useTypewriter();
@@ -192,8 +192,9 @@ function decayClass(idx: number): string {
   return 'decay-old';
 }
 
-const version = __APP_VERSION__;
-const showCookies = analyticsConfigured();
+const heading = terminalTitle(game.options);
+// The app's consent settings, if it has any to open.
+const openConsent = game.options.analytics?.openConsent;
 
 const parsingLabel = computed(() => (isParsing.value ? '[parsing...]' : ''));
 const inputPlaceholder = computed(() =>
@@ -211,9 +212,9 @@ const inputPlaceholder = computed(() =>
     @drop.prevent="onDrop"
   >
     <header class="terminal-header">
-      <span>{{ appName }} v{{ version }}<template v-if="title"> · {{ title }}</template></span>
+      <span>{{ heading }}<template v-if="title"> · {{ title }}</template></span>
       <span class="header-right">
-        <button v-if="showCookies" type="button" class="consent-open" @click.stop="openConsent">[ COOKIES ]</button>
+        <button v-if="openConsent" type="button" class="consent-open" @click.stop="openConsent()">[ COOKIES ]</button>
         <span class="moves">{{ status }}</span>
       </span>
     </header>

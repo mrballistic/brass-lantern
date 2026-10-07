@@ -4,7 +4,7 @@ Guidance for AI coding agents working in this repo. Humans: see CONTRIBUTING.md 
 
 ## What this is
 
-Brass Lantern: a text-adventure engine (Vue 3 SPA with a CRT terminal) plus an optional intent server (`server/`, Express + Gemini). A native game is a `World` object in `src/worlds/`. `src/app.config.ts` lists the cartridges: native worlds and Z-machine story files (Zork I–III in `public/stories/`). With more than one, the terminal opens on a menu, where players can also LOAD their own story files (kept in IndexedDB). Snack Attack is the tutorial world. `src/stores/session.ts` routes input to the menu (`stores/cartridges.ts`), a native world (`stores/game.ts`) or a story (`stores/zgame.ts`).
+Brass Lantern: a text-adventure engine (Vue 3 SPA with a CRT terminal) plus an optional intent server (`server/`, Express + Gemini). A native game is a `World` object in `src/worlds/`. `src/app.config.ts` lists the cartridges: native worlds and Z-machine story files (Zork I–III in `public/stories/`). With more than one, the terminal opens on a menu, where players can also LOAD their own story files (kept in IndexedDB). Snack Attack is the tutorial world. `src/main.ts` mounts the site with `mountGame` (`src/mount.ts`), which renders `<BrassLantern>` (shell, boot, terminal) for one game. `src/stores/session.ts` routes input to the menu (`stores/cartridges.ts`), a native world (`stores/game.ts`) or a story (`stores/zgame.ts`).
 
 ## Invariants
 
@@ -28,7 +28,7 @@ npm run lint && npm run type-check && npm run test:coverage && npm run build
 cd server && npm run lint && npm run type-check && npm test
 ```
 
-Coverage thresholds: 80% lines/functions/statements, 75% branches. Shared tests play the fixture world by mocking the app config: `vi.mock('@/app.config', async () => (await import('../fixtures/world')).fixtureConfig)`.
+Coverage thresholds: 80% lines/functions/statements, 75% branches. Shared tests play the fixture world by passing its options: `createGameStore(fixtureOptions)`, or `<BrassLantern :options="fixtureOptions">` (`tests/fixtures/world.ts`). Only `src/app.config.ts` and `src/main.ts` read the site's config; the stores and components take a `GameOptions` (`src/options.ts`), one game per storage prefix.
 
 ## Docs
 

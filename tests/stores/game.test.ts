@@ -1,13 +1,14 @@
 // @vitest-environment happy-dom
 import { setActivePinia, createPinia } from 'pinia';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { setDownload, useGameStore } from '@/stores/game';
-import { SAVE_KEY } from '@/services/persistence';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createGameStore, setDownload } from '@/stores/game';
 import { inventoryOf } from '@/engine/model';
 import { carry } from '../helpers/state';
-import { fixtureWorld } from '../fixtures/world';
+import { fixtureOptions, fixtureWorld } from '../fixtures/world';
+
 // Plays the fixture world, so this file is the same in every repo using the engine.
-vi.mock('@/app.config', async () => (await import('../fixtures/world')).fixtureConfig);
+const useGameStore = createGameStore(fixtureOptions);
+const SAVE_KEY = 'test:save';
 
 function freshStore(): ReturnType<typeof useGameStore> {
   setActivePinia(createPinia());
@@ -556,25 +557,21 @@ describe('useGameStore', () => {
     });
 
     it('COOKIES says so when the build has no analytics', async () => {
-      const { consentOpen } = await import('@/services/consent');
-      consentOpen.value = false;
       const store = freshStore();
       store.initialize();
       await store.submit('cookies');
-      expect(consentOpen.value).toBe(false);
       expect(store.output.some((l) => l.text.includes('no analytics'))).toBe(true);
     });
 
     it('COOKIES reopens the consent banner without touching the game', async () => {
-      const analytics = await import('@/services/analytics');
-      vi.spyOn(analytics, 'analyticsConfigured').mockReturnValue(true);
-      const { consentOpen } = await import('@/services/consent');
-      consentOpen.value = false;
-      const store = freshStore();
+      const openConsent = vi.fn();
+      setActivePinia(createPinia());
+      const store = createGameStore({ ...fixtureOptions, analytics: { onEvent: vi.fn(), openConsent } })();
       store.initialize();
       const moves = store.game.moveCount;
       await store.submit('cookies');
-      expect(consentOpen.value).toBe(true);
+      expect(openConsent).toHaveBeenCalledOnce();
+      expect(store.output.at(-1)!.text).toBe('[Analytics settings opened]');
       expect(store.game.moveCount).toBe(moves);
     });
 
@@ -1015,3 +1012,125 @@ describe('theme commands', () => {
       expect(store.theme.base).toBe('crt-green');
     });
   });
+
+describe('createGameStore options', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    setActivePinia(createPinia());
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  const LITERAL = 'rephrase that';
+
+  it('gives each storage prefix its own store', () => {
+    const a = createGameStore({ ...fixtureOptions, storagePrefix: 'a' })();
+    const b = createGameStore({ ...fixtureOptions, storagePrefix: 'b' })();
+    expect(a.$id).not.toBe(b.$id);
+    a.initialize();
+    b.initialize({ kind: 'world', id: 'b', title: 'B', world: fixtureWorld });
+    a.game.currentRoom = 'living';
+    expect(b.game.currentRoom).toBe('bedroom');
+    expect(localStorage.getItem('b:save:b')).not.toBeNull();
+  });
+
+  it('intentEndpoint null: an unparseable line gets the engine’s own reply, and nothing is fetched', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const store = createGameStore({ ...fixtureOptions, intentEndpoint: null })();
+    store.initialize();
+    await store.submit('alright I guess I’ll head out west');
+    expect(store.output.at(-1)!.text).toContain(LITERAL);
+    expect(store.game.currentRoom).toBe('bedroom');
+    expect(store.isParsing).toBe(false);
+    // Parsed, but a miss: still the literal reply, still no fetch.
+    await store.submit('take the moon');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('intentEndpoint unset means null', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const unset = { ...fixtureOptions };
+    delete unset.intentEndpoint;
+    const store = createGameStore(unset)();
+    store.initialize();
+    await store.submit('do something strange and impossible');
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(store.output.at(-1)!.text).toContain(LITERAL);
+  });
+
+  it('an endpoint whose fetch rejects: the literal reply, no unhandled rejection', async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+    vi.stubGlobal('fetch', fetchMock);
+    const store = createGameStore({ ...fixtureOptions, intentEndpoint: '/somewhere' })();
+    store.initialize();
+    await store.submit('do something strange and impossible');
+    expect(fetchMock).toHaveBeenCalledWith('/somewhere', expect.anything());
+    expect(store.output.at(-1)!.text).toContain(LITERAL);
+    expect(store.isParsing).toBe(false);
+  });
+
+  it('an endpoint that never answers: the literal reply once the client gives up, no unhandled rejection', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn(
+      (_url: string, init: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init.signal!.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')));
+        }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const store = createGameStore(fixtureOptions)();
+    store.initialize();
+    const turn = store.submit('do something strange and impossible');
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(store.isParsing).toBe(true);
+    await vi.advanceTimersByTimeAsync(1_000);
+    await turn;
+    expect(store.isParsing).toBe(false);
+    expect(store.output.at(-1)!.text).toContain(LITERAL);
+  });
+
+  it('reports game_start, game_completed and session_resumed to analytics.onEvent', async () => {
+    const onEvent = vi.fn();
+    const useStore = createGameStore({ ...fixtureOptions, analytics: { onEvent } });
+    const store = useStore();
+    store.initialize();
+    expect(onEvent).toHaveBeenCalledWith('game_start');
+    store.game.currentRoom = 'shed';
+    carry(store.game, 'key', 'bat');
+    await store.submit('smash crate');
+    expect(store.game.gameOver).toBe(true);
+    expect(onEvent).toHaveBeenCalledWith('game_completed', { move_count: store.game.moveCount });
+    await store.submit('look');
+    expect(onEvent.mock.calls.filter(([n]) => n === 'game_completed')).toHaveLength(1);
+    setActivePinia(createPinia());
+    useStore().initialize();
+    expect(onEvent).toHaveBeenLastCalledWith('session_resumed');
+  });
+
+  it('VERSION names the terminal, with or without a version', async () => {
+    const store = createGameStore({ ...fixtureOptions, terminalName: undefined, version: undefined })();
+    store.initialize();
+    await store.submit('version');
+    expect(store.output.some((l) => l.text === '[BRASS LANTERN]')).toBe(true);
+  });
+
+  it('the author’s default theme is reactive, and custom themes are this game’s own', () => {
+    const parchment = { palette: 'light' as const };
+    const a = createGameStore({ ...fixtureOptions, storagePrefix: 'a', theme: 'crt-green', themes: { parchment } })();
+    const b = createGameStore({ ...fixtureOptions, storagePrefix: 'b' })();
+    a.initialize();
+    b.initialize();
+    expect(a.themeBase).toBe('crt-green');
+    expect(b.themeBase).toBe('crt-amber');
+    a.configureThemes('simple', { parchment });
+    expect(a.themeBase).toBe('simple');
+    a.themeCommand(undefined);
+    b.themeCommand(undefined);
+    expect(a.output.at(-1)!.text).toContain('parchment');
+    expect(b.output.at(-1)!.text).not.toContain('parchment');
+  });
+});

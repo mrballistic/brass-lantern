@@ -4,14 +4,20 @@
 // The choice lives in localStorage. The COOKIES command and the header link
 // reopen the banner so it can be changed later.
 //
-// The answer is per origin, namespaced by storagePrefix (src/app.config.ts).
+// The answer is per origin, namespaced by the site's storagePrefix, which
+// main.ts passes in (configureAnalytics) before anything reads it.
 
 import { ref } from 'vue';
-import { storagePrefix } from '@/app.config';
 
 export type Consent = 'granted' | 'denied';
 
-export const CONSENT_KEY = `${storagePrefix}:analytics-consent`;
+const consentKey = (prefix: string) => `${prefix}:analytics-consent`;
+export let CONSENT_KEY = consentKey('brass-lantern');
+
+/** Namespaces the stored answer under the site's storage prefix. */
+export function configureConsent(storagePrefix: string): void {
+  CONSENT_KEY = consentKey(storagePrefix);
+}
 
 /** Whether the banner is showing. Starts open when the visitor hasn't answered yet. */
 export const consentOpen = ref(false);

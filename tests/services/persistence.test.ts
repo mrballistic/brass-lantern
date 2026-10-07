@@ -1,12 +1,14 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { createPersistenceService, SAVE_KEY } from '@/services/persistence';
+import { createPersistenceService } from '@/services/persistence';
 import {
   SAVE_VERSION,
   type GameState,
   type OutputLine,
   type SavedState,
 } from '@/types/game';
+
+const SAVE_KEY = 'test:save';
 
 function makeGameState(overrides: Partial<GameState> = {}): GameState {
   return {
@@ -44,12 +46,12 @@ describe('persistence service', () => {
 
   describe('with localStorage available', () => {
     it('isAvailable() returns true under happy-dom', () => {
-      const svc = createPersistenceService();
+      const svc = createPersistenceService(SAVE_KEY);
       expect(svc.isAvailable()).toBe(true);
     });
 
     it('save() writes a SavedState payload under the canonical key', () => {
-      const svc = createPersistenceService();
+      const svc = createPersistenceService(SAVE_KEY);
       const state = makeGameState({ currentRoom: 'lobby', moveCount: 3 });
       const history: OutputLine[] = [makeOutputLine(0), makeOutputLine(1)];
 
@@ -65,7 +67,7 @@ describe('persistence service', () => {
     });
 
     it('save() caps output history to the most recent 500 lines', () => {
-      const svc = createPersistenceService();
+      const svc = createPersistenceService(SAVE_KEY);
       const state = makeGameState();
       const history: OutputLine[] = Array.from({ length: 600 }, (_, i) => makeOutputLine(i));
 
@@ -80,12 +82,12 @@ describe('persistence service', () => {
     });
 
     it('loadRaw() returns null when no save exists', () => {
-      const svc = createPersistenceService();
+      const svc = createPersistenceService(SAVE_KEY);
       expect(svc.loadRaw()).toBeNull();
     });
 
     it('loadRaw() round-trips a saved SavedState', () => {
-      const svc = createPersistenceService();
+      const svc = createPersistenceService(SAVE_KEY);
       const state = makeGameState({
         currentRoom: 'breakroom',
         locations: { stapler: 'player', report: null, memo: 'lobby' },
@@ -107,13 +109,13 @@ describe('persistence service', () => {
 
 
     it('loadRaw() returns null on malformed JSON', () => {
-      const svc = createPersistenceService();
+      const svc = createPersistenceService(SAVE_KEY);
       window.localStorage.setItem(SAVE_KEY, '{ not valid json');
       expect(svc.loadRaw()).toBeNull();
     });
 
     it('loadRaw() returns an older save as stored, for migrateSave to convert', () => {
-      const svc = createPersistenceService();
+      const svc = createPersistenceService(SAVE_KEY);
       window.localStorage.setItem(SAVE_KEY, JSON.stringify({ version: '1.0', gameState: { currentRoom: 'x' } }));
       expect(svc.loadRaw()).toEqual({ version: '1.0', gameState: { currentRoom: 'x' } });
     });
@@ -122,7 +124,7 @@ describe('persistence service', () => {
 
 
     it('named saves live beside the autosave, and list in order', () => {
-      const svc = createPersistenceService();
+      const svc = createPersistenceService(SAVE_KEY);
       svc.saveNamed('zeta', makeGameState(), []);
       svc.saveNamed('alpha', makeGameState({ currentRoom: 'lobby' }), []);
       svc.save(makeGameState(), []);
@@ -132,7 +134,7 @@ describe('persistence service', () => {
     });
 
     it('clear() removes the save key', () => {
-      const svc = createPersistenceService();
+      const svc = createPersistenceService(SAVE_KEY);
       svc.save(makeGameState(), []);
       expect(window.localStorage.getItem(SAVE_KEY)).not.toBeNull();
 
@@ -152,7 +154,7 @@ describe('persistence service', () => {
           realSetItem(key, value);
         });
 
-      const svc = createPersistenceService();
+      const svc = createPersistenceService(SAVE_KEY);
       // Probe ran during construction without throwing.
       expect(svc.isAvailable()).toBe(true);
 
@@ -163,7 +165,7 @@ describe('persistence service', () => {
     });
 
     it('clear() swallows errors thrown by removeItem', () => {
-      const svc = createPersistenceService();
+      const svc = createPersistenceService(SAVE_KEY);
       const spy = vi
         .spyOn(window.localStorage, 'removeItem')
         .mockImplementation(() => {
@@ -207,7 +209,7 @@ describe('persistence service', () => {
         }),
       );
 
-      const svc = createPersistenceService();
+      const svc = createPersistenceService(SAVE_KEY);
       expect(svc.isAvailable()).toBe(false);
 
       // save() is a no-op — no throw, no write.

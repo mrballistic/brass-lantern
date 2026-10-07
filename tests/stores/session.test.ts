@@ -2,21 +2,21 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/app.config', async () => {
-  const { fixtureWorld } = await import('../fixtures/world');
-  return {
-    appName: 'TEST TERMINAL',
-    storagePrefix: 'test',
-    cartridges: [
-      { kind: 'world', id: 'house', title: 'TEST HOUSE', world: fixtureWorld, saveKey: 'test:save' },
-      { kind: 'zcode', id: 'story', title: 'A STORY', story: 'stories/story.z3', format: 'Z-machine v3' },
-    ],
-  };
-});
+import { createGameContext } from '@/stores/context';
+import { useSession } from '@/stores/session';
+import { fixtureWorld } from '../fixtures/world';
 
-const { useSession } = await import('@/stores/session');
-const { useZGameStore } = await import('@/stores/zgame');
-const { useGameStore } = await import('@/stores/game');
+const OPTIONS = {
+  terminalName: 'TEST TERMINAL',
+  storagePrefix: 'test',
+  cartridges: [
+    { kind: 'world' as const, id: 'house', title: 'TEST HOUSE', world: fixtureWorld, saveKey: 'test:save' },
+    { kind: 'zcode' as const, id: 'story', title: 'A STORY', story: 'stories/story.z3', format: 'Z-machine v3' },
+  ],
+};
+const ctx = createGameContext(OPTIONS);
+const session = () => useSession(ctx);
+const { useZGameStore, useGameStore } = ctx;
 
 const texts = (lines: { text: string }[]) => lines.map((l) => l.text);
 
@@ -27,7 +27,7 @@ describe('session router', () => {
   });
 
   it('shows the menu on boot when there is nothing to resume', async () => {
-    const s = useSession();
+    const s = session();
     await s.boot();
     expect(s.mode.value).toBe('menu');
     expect(texts(s.output.value)).toContain('  1  TEST HOUSE   native');
@@ -36,7 +36,7 @@ describe('session router', () => {
   });
 
   it('a number inserts that cartridge', async () => {
-    const s = useSession();
+    const s = session();
     await s.boot();
     await s.submit('1');
     expect(s.mode.value).toBe('world');
@@ -47,7 +47,7 @@ describe('session router', () => {
   });
 
   it('a bad choice says how to choose', async () => {
-    const s = useSession();
+    const s = session();
     await s.boot();
     await s.submit('9');
     await s.submit('zork');
@@ -56,7 +56,7 @@ describe('session router', () => {
   });
 
   it('EJECT returns to the menu and forgets the last cartridge', async () => {
-    const s = useSession();
+    const s = session();
     await s.boot();
     await s.submit('1');
     await s.submit('eject');
@@ -67,7 +67,7 @@ describe('session router', () => {
   it('resumes the last cartridge with progress, instead of the menu', async () => {
     localStorage.setItem('test:cartridge', 'house');
     localStorage.setItem('test:save', JSON.stringify({ version: '2.0', savedAt: '', gameState: { ...useGameStore().game, currentRoom: 'living' }, outputHistory: [] }));
-    const s = useSession();
+    const s = session();
     await s.boot();
     expect(s.mode.value).toBe('world');
     expect(s.restored.value).toBe(true);
@@ -77,7 +77,7 @@ describe('session router', () => {
     const zgame = useZGameStore();
     const init = vi.spyOn(zgame, 'initialize').mockResolvedValue();
     const submit = vi.spyOn(zgame, 'submit').mockImplementation(() => {});
-    const s = useSession();
+    const s = session();
     await s.boot();
     await s.submit('2');
     expect(init).toHaveBeenCalledWith(expect.objectContaining({ id: 'story' }));
@@ -90,7 +90,7 @@ describe('session router', () => {
     const zgame = useZGameStore();
     vi.spyOn(zgame, 'initialize').mockResolvedValue();
     const stop = vi.spyOn(zgame, 'stop');
-    const s = useSession();
+    const s = session();
     await s.boot();
     await s.submit('2');
     stop.mockClear();
@@ -103,7 +103,7 @@ describe('session router', () => {
   it('shows the Z-machine status line in the header', async () => {
     const zgame = useZGameStore();
     vi.spyOn(zgame, 'initialize').mockResolvedValue();
-    const s = useSession();
+    const s = session();
     await s.boot();
     await s.submit('2');
     zgame.status = { location: 'Kitchen', detail: 'Score: 10  Turns: 7' };
@@ -113,7 +113,7 @@ describe('session router', () => {
   it('answers COOKIES in the menu and in story cartridges', async () => {
     const zgame = useZGameStore();
     vi.spyOn(zgame, 'initialize').mockResolvedValue();
-    const s = useSession();
+    const s = session();
     await s.boot();
     await s.submit('cookies');
     expect(texts(s.output.value)).toContain('[This build has no analytics. Nothing is collected.]');

@@ -1,12 +1,9 @@
 import { computed } from 'vue';
-import { autoBootCartridge } from '@/cartridges';
 import { makeLine } from '@/engine/output';
-import { cookiesCommand } from '@/services/cookies';
+import { cookiesReply } from '@/options';
 import type { Cartridge } from '@/types/cartridge';
 import { readStoryFile, type StoryFileResult } from '@/zmachine/storyfile';
-import { useCartridgeStore } from './cartridges';
-import { useGameStore } from './game';
-import { useZGameStore } from './zgame';
+import { useGameContext, type GameContext } from './context';
 
 export type SessionMode = 'menu' | 'world' | 'zcode';
 
@@ -27,12 +24,12 @@ function whyNot(name: string, r: Exclude<StoryFileResult, { ok: true }>): string
 
 /**
  * One interface for the terminal, whatever is running: the cartridge menu,
- * a native world, or a Z-machine story.
+ * a native world, or a Z-machine story. Outside a component, pass the game's context.
  */
-export function useSession() {
-  const carts = useCartridgeStore();
-  const game = useGameStore();
-  const zgame = useZGameStore();
+export function useSession(ctx: GameContext = useGameContext()) {
+  const carts = ctx.useCartridgeStore();
+  const game = ctx.useGameStore();
+  const zgame = ctx.useZGameStore();
 
   const mode = computed<SessionMode>(() => carts.active?.kind ?? 'menu');
   const output = computed(() =>
@@ -57,7 +54,7 @@ export function useSession() {
   /** After the boot animation: resume or boot the obvious cartridge, or show the menu. */
   async function boot(): Promise<void> {
     await carts.loadShelf();
-    const c = autoBootCartridge(carts.all);
+    const c = ctx.catalog.autoBootCartridge(carts.all);
     if (c) await start(c);
     else carts.showMenu();
   }
@@ -99,7 +96,7 @@ export function useSession() {
     }
     const lines = mode.value === 'zcode' ? zgame.output : carts.output;
     if (lower === 'cookies' || lower === 'privacy') {
-      lines.push(makeLine(`> ${input}`), makeLine(cookiesCommand()));
+      lines.push(makeLine(`> ${input}`), makeLine(cookiesReply(ctx.options)));
       return;
     }
     if (mode.value === 'zcode') {
