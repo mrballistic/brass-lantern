@@ -1,8 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { runSteps } from '@/engine/effects';
 import { execute } from '@/engine/engine';
 import { roll } from '@/engine/rng';
-import { setCommand } from '@/engine/scripts';
+import { setCommand, setScriptFreeze } from '@/engine/scripts';
 import type { World } from '@/types/world';
 import { stateWith } from '../helpers/state';
 import { fixtureWorld } from '../fixtures/world';
@@ -25,6 +25,8 @@ const world: World = {
 };
 
 describe('scripts', () => {
+  afterEach(() => setScriptFreeze(false));
+
   it('return steps the engine runs', () => {
     const s = stateWith(world);
     expect(runSteps([{ script: 'greet', arg: 'Bob' }], world, s)).toEqual(['Hello, Bob.']);
@@ -44,10 +46,21 @@ describe('scripts', () => {
     expect(a.rng).not.toBe(stateWith(world).rng);
   });
 
-  it('see the state read-only', () => {
-    const s = stateWith(world);
-    expect(() => runSteps([{ script: 'meddle' }], world, s)).toThrow();
-    expect(s.currentRoom).not.toBe('yard');
+  describe('the development freeze', () => {
+    afterEach(() => setScriptFreeze(false));
+
+    it('is off by default: a script that assigns runs on the real state', () => {
+      const s = stateWith(world);
+      expect(runSteps([{ script: 'meddle' }], world, s)).toEqual([]);
+      expect(s.currentRoom).toBe('yard');
+    });
+
+    it('when on, shows the state read-only', () => {
+      setScriptFreeze(true);
+      const s = stateWith(world);
+      expect(() => runSteps([{ script: 'meddle' }], world, s)).toThrow();
+      expect(s.currentRoom).not.toBe('yard');
+    });
   });
 
   it('a missing script, or one that returns nothing, does nothing', () => {
@@ -70,6 +83,7 @@ describe('scripts', () => {
   });
 
   it('a character’s state is read-only too', () => {
+    setScriptFreeze(true);
     const w: World = { ...world, scripts: { ...world.scripts, kill: (ctx) => { (ctx.npc('guard') as { strength: number }).strength = 0; return []; } } };
     const s = stateWith(w, { room: 'shed' });
     s.npcs = { guard: { strength: 2 } };

@@ -1,5 +1,8 @@
 import type { GameState, OutputLine, SavedState } from '@/types/game';
-import { SAVE_KEY, SAVE_VERSION } from '@/types/game';
+import { storagePrefix } from '@/app.config';
+import { saveKeyFor, SAVE_VERSION } from '@/types/game';
+
+export const SAVE_KEY = saveKeyFor(storagePrefix);
 
 const MAX_HISTORY_LINES = 500;
 

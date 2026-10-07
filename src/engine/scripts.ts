@@ -105,9 +105,14 @@ export function setCommand(state: GameState, command: Command | null): void {
 
 export type Script = (ctx: ScriptContext) => EventStep[] | void;
 
-// Development and tests hand scripts a frozen copy, so one that assigns throws.
-// Production passes the state as is: no copy per call.
-const FREEZE = import.meta.env.DEV;
+// With the freeze on (development and tests), scripts get a frozen copy, so one
+// that assigns throws. Off (the default), the state is passed as is: no copy
+// per call. The host turns it on; the engine doesn't read the environment.
+let FREEZE = false;
+
+export function setScriptFreeze(on: boolean): void {
+  FREEZE = on;
+}
 
 function deepFreeze<T>(value: T): T {
   if (value && typeof value === 'object') {

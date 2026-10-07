@@ -1,4 +1,3 @@
-import { storagePrefix } from '@/app.config';
 
 /** Where an item is: a room ID, 'player', another item's ID, or null (offstage). */
 export type Place = string | null;
@@ -127,5 +126,6 @@ export interface SavedState {
   outputHistory: OutputLine[];
 }
 
-export const SAVE_KEY = `${storagePrefix}:save`;
+/** The autosave key for a game whose storage is namespaced by `prefix`. */
+export const saveKeyFor = (prefix: string): string => `${prefix}:save`;
 export const SAVE_VERSION = '2.0' as const;

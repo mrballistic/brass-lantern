@@ -1,8 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { createPersistenceService } from '@/services/persistence';
+import { createPersistenceService, SAVE_KEY } from '@/services/persistence';
 import {
-  SAVE_KEY,
   SAVE_VERSION,
   type GameState,
   type OutputLine,

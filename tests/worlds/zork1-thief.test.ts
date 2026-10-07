@@ -6,6 +6,7 @@ import { execute, initialState, openingLines } from '@/engine/engine';
 import { fallbackParse } from '@/engine/parser';
 import { zork1 } from '@/worlds/zork1';
 import { LocalStorageDialog } from '@/zmachine/dialog';
+import { localStorageSaveStore } from '@/zmachine/save-store';
 import { ZMachineSession } from '@/zmachine/session';
 
 // The thief is random, and his route is three times shorter natively until the
@@ -26,7 +27,7 @@ const normalize = (text: string) =>
 async function originalWait(): Promise<string[]> {
   let lines: string[] = [];
   let waiting = false;
-  const session = new ZMachineSession(story, new LocalStorageDialog('thief'), {
+  const session = new ZMachineSession(story, new LocalStorageDialog(localStorageSaveStore('thief:')), {
     onLines: (l) => lines.push(...l),
     onStatus: () => {},
     onExit: () => {},

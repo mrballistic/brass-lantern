@@ -23,7 +23,7 @@ function request<T>(r: IDBRequest<T>): Promise<T> {
 
 /**
  * Story files the player loaded from their own computer, kept in IndexedDB
- * (they can be up to 512 KB, too big to share localStorage with saves). They
+ * (they can be up to 512 KB, too big to share browser key-value storage with saves). They
  * never leave the browser.
  */
 export class IndexedDbShelf {

@@ -21,9 +21,15 @@ import { fallbackParse, splitCommands } from '@/engine/parser';
 import { interpret, newConversation, remember, resolvePronouns } from '@/engine/conversation';
 import type { EngineResult } from '@/engine/engine';
 import { buildContext, parseIntentRemote } from '@/engine/intent-client';
+import { setScriptFreeze } from '@/engine/scripts';
 import { makeLine } from '@/engine/output';
 import { createPersistenceService } from '@/services/persistence';
 import { track } from '@/services/analytics';
+
+// Scripts see a frozen state in development and tests, so one that assigns throws.
+setScriptFreeze(import.meta.env.DEV);
+
+const INTENT_ENDPOINT = '/api/parse-intent';
 
 /** Used before any world cartridge is inserted, e.g. in a Z-machine-only build. */
 const EMPTY_WORLD: World = {
@@ -390,7 +396,7 @@ export const useGameStore = defineStore('game', {
           npcsSeen(world, this.game, this.game.currentRoom),
         );
         // The intent server names things by ID, so they resolve by ID first.
-        const action = { ...(await parseIntentRemote(input, ctx)), byId: true };
+        const action = { ...(await parseIntentRemote(input, ctx, { endpoint: INTENT_ENDPOINT })), byId: true };
         if (action.action === 'unknown') return null;
         // “Take that back”, “save this as cellar”: the store's own commands.
         if (['undo', 'load', 'restart'].includes(action.action)) {

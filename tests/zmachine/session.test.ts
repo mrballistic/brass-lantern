@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { LocalStorageDialog } from '@/zmachine/dialog';
+import { localStorageSaveStore } from '@/zmachine/save-store';
 import { ZMachineSession } from '@/zmachine/session';
 import type { StatusLine } from '@/zmachine/types';
 
@@ -17,7 +18,7 @@ async function waitFor(check: () => boolean, ms = 4000): Promise<void> {
 }
 
 /** A session plus a transcript, and type() to play a turn and get its output. */
-function harness(dialog = new LocalStorageDialog('test')) {
+function harness(dialog = new LocalStorageDialog(localStorageSaveStore('test:'))) {
   const lines: string[] = [];
   const state = { waiting: false, exited: false, status: null as StatusLine | null, errors: [] as string[] };
   const session = new ZMachineSession(story, dialog, {
@@ -101,7 +102,7 @@ describe('ZMachineSession with Zork I', () => {
   });
 
   it('refuses to save when storage is unavailable, and keeps playing', async () => {
-    const h = harness(new LocalStorageDialog('test', null));
+    const h = harness(new LocalStorageDialog(localStorageSaveStore('test:', null)));
     h.session.start();
     const out = await h.type('save');
     expect(out).toContain('[Saving isn’t available in this browser.]');
@@ -123,7 +124,7 @@ describe('ZMachineSession with Zork I', () => {
         real.setItem(k, v);
       },
     };
-    const h = harness(new LocalStorageDialog('test', tight));
+    const h = harness(new LocalStorageDialog(localStorageSaveStore('test:', tight)));
     h.session.start();
     await h.type('save');
     const out = await h.type('slot');
@@ -140,7 +141,7 @@ describe('ZMachineSession with Zork I', () => {
   });
 
   it('autosaves every turn, and a new session resumes without replaying', async () => {
-    const dialog = new LocalStorageDialog('test');
+    const dialog = new LocalStorageDialog(localStorageSaveStore('test:'));
     const first = harness(dialog);
     first.session.start();
     await first.type('open mailbox');

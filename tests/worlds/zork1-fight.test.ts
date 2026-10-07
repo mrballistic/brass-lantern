@@ -6,6 +6,7 @@ import { execute, initialState, openingLines } from '@/engine/engine';
 import { fallbackParse } from '@/engine/parser';
 import { zork1 } from '@/worlds/zork1';
 import { LocalStorageDialog } from '@/zmachine/dialog';
+import { localStorageSaveStore } from '@/zmachine/save-store';
 import { ZMachineSession } from '@/zmachine/session';
 
 // Fights are random, and our dice aren't Zork's, so the walkthrough can't
@@ -39,7 +40,7 @@ const over = (text: string) => /breathes his last breath|carcass disappears|you 
 async function originalFight(): Promise<string> {
   let lines: string[] = [];
   let waiting = false;
-  const session = new ZMachineSession(story, new LocalStorageDialog('fight'), {
+  const session = new ZMachineSession(story, new LocalStorageDialog(localStorageSaveStore('fight:')), {
     onLines: (l) => lines.push(...l),
     onStatus: () => {},
     onExit: () => {},

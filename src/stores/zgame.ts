@@ -7,6 +7,7 @@ import { transcriptKey } from '@/cartridges';
 import { makeLine } from '@/engine/output';
 import { track } from '@/services/analytics';
 import { LocalStorageDialog } from '@/zmachine/dialog';
+import { localStorageSaveStore } from '@/zmachine/save-store';
 import { localStoryBytes } from './cartridges';
 import type { SessionEvents } from '@/zmachine/session';
 
@@ -146,7 +147,7 @@ export const useZGameStore = defineStore('zgame', {
     /** Start (or restart) the story. Resumes from the autosave if there is one. */
     boot(): void {
       if (!story) return;
-      const dialog = new LocalStorageDialog(storagePrefix);
+      const dialog = new LocalStorageDialog(localStorageSaveStore(`${storagePrefix}:`));
       session = deps.createSession(story, dialog, {
         onLines: (lines) => {
           for (const line of lines) this.appendLine(line);

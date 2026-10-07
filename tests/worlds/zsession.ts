@@ -6,6 +6,7 @@ import { fallbackParse } from '@/engine/parser';
 import type { GameState, ParsedAction } from '@/types/game';
 import { zork1 } from '@/worlds/zork1';
 import { LocalStorageDialog } from '@/zmachine/dialog';
+import { localStorageSaveStore } from '@/zmachine/save-store';
 import { ZMachineSession } from '@/zmachine/session';
 import type { World } from '@/types/world';
 import { RANDOM_LINES as ZORK1_RANDOM } from './zork1-allowlist';
@@ -53,7 +54,7 @@ export async function openOriginal(seed?: number, which: StoryName = 'zork1'): P
   let waiting = false;
   const session = new ZMachineSession(
     storyFile(which),
-    new LocalStorageDialog('diff'),
+    new LocalStorageDialog(localStorageSaveStore('diff:')),
     {
       onLines: (l) => lines.push(...l),
       onStatus: () => {},

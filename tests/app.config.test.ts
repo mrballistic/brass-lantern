@@ -5,6 +5,7 @@ import { cartridges } from '@/app.config';
 import { saveKeyFor } from '@/cartridges';
 import type { WorldCartridge, ZCodeCartridge } from '@/types/cartridge';
 import { LocalStorageDialog } from '@/zmachine/dialog';
+import { localStorageSaveStore } from '@/zmachine/save-store';
 import { ZMachineSession } from '@/zmachine/session';
 
 const stories = cartridges.filter((c): c is ZCodeCartridge => c.kind === 'zcode');
@@ -30,7 +31,7 @@ describe('app config', () => {
 
     const lines: string[] = [];
     let waiting = false;
-    new ZMachineSession(bytes, new LocalStorageDialog(`boot-${cart.id}`), {
+    new ZMachineSession(bytes, new LocalStorageDialog(localStorageSaveStore(`boot-${cart.id}:`)), {
       onLines: (l) => lines.push(...l),
       onStatus: () => {},
       onWaiting: () => {

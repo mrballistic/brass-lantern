@@ -2,7 +2,7 @@
 import { setActivePinia, createPinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { setDownload, useGameStore } from '@/stores/game';
-import { SAVE_KEY } from '@/types/game';
+import { SAVE_KEY } from '@/services/persistence';
 import { inventoryOf } from '@/engine/model';
 import { carry } from '../helpers/state';
 import { fixtureWorld } from '../fixtures/world';

@@ -48,24 +48,33 @@ export function buildContext(
   };
 }
 
-const ENDPOINT = '/api/parse-intent';
 // A little over the server's own 5s Gemini deadline, so the server's
 // fallback answer arrives instead of the client giving up first.
-const TIMEOUT_MS = 6000;
+const DEFAULT_TIMEOUT_MS = 6000;
 
 const PREPS: ReadonlySet<string> = new Set(['in', 'on', 'under', 'behind', 'off', 'over', 'through']);
 
 const DIRECTIONS: ReadonlySet<string> = new Set(['north', 'south', 'east', 'west', 'northeast', 'northwest', 'southeast', 'southwest', 'up', 'down']);
 
+export interface IntentOptions {
+  /** Where the intent server lives, e.g. '/api/parse-intent'. */
+  endpoint: string;
+  /** Default 6000. */
+  timeoutMs?: number;
+  /** Default: the global fetch. */
+  fetch?: typeof fetch;
+}
+
 export async function parseIntentRemote(
   input: string,
   context: IntentContext,
+  options: IntentOptions,
 ): Promise<ParsedAction> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
 
   try {
-    const res = await fetch(ENDPOINT, {
+    const res = await (options.fetch ?? fetch)(options.endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ input, context }),

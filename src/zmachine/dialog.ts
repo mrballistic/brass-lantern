@@ -1,3 +1,5 @@
+import type { SaveStore } from './save-store';
+
 /** A file reference, as glkapi passes it back to us. */
 export interface FileRef {
   filename: string;
@@ -6,39 +8,28 @@ export interface FileRef {
   dirent: string;
 }
 
-function defaultStorage(): Storage | null {
-  try {
-    return window.localStorage;
-  } catch {
-    return null;
-  }
-}
-
 /**
- * Glk's file layer, kept in localStorage. Non-streaming: glkapi reads and
+ * Glk's file layer, kept in a SaveStore (browser storage in the app). Non-streaming: glkapi reads and
  * writes whole files, which we store as JSON byte arrays. Also holds
  * ifvms's per-turn autosave. Every method swallows storage errors: a full
- * or blocked localStorage costs persistence, never the game.
+ * or blocked store costs persistence, never the game.
  */
 export class LocalStorageDialog {
   readonly streaming = false;
   private writeFailed = false;
 
-  constructor(
-    private readonly prefix: string,
-    private readonly storage: Storage | null = defaultStorage(),
-  ) {}
+  constructor(private readonly store: SaveStore) {}
 
   /** Can we actually write? (False in some private modes, or when full.) */
   isAvailable(): boolean {
     const probe = this.key('probe');
-    if (!this.write(probe, '1')) return false;
     try {
-      this.storage?.removeItem(probe);
+      this.store.write(probe, new Uint8Array([1]));
+      this.store.remove(probe);
+      return true;
     } catch {
       return false;
     }
-    return true;
   }
 
   file_construct_ref(filename: string, usage = '', gameid = ''): FileRef {
@@ -59,28 +50,18 @@ export class LocalStorageDialog {
   }
 
   file_remove_ref(ref: FileRef): void {
-    try {
-      this.storage?.removeItem(ref.dirent);
-    } catch {
-      // Nothing to do.
-    }
+    this.remove(ref.dirent);
   }
 
   file_read(ref: FileRef): number[] | null {
-    const raw = this.read(ref.dirent);
-    if (raw === null) return null;
-    try {
-      const value: unknown = JSON.parse(raw);
-      return Array.isArray(value) ? (value as number[]) : null;
-    } catch {
-      return null;
-    }
+    const bytes = this.read(ref.dirent);
+    return bytes === null ? null : Array.from(bytes);
   }
 
   /** `israw` with a string means "create an empty file". Returns whether it was stored. */
   file_write(ref: FileRef, content: ArrayLike<number> | string, israw?: boolean): boolean {
     const bytes = israw || typeof content === 'string' ? [] : Array.from(content);
-    const ok = this.write(ref.dirent, JSON.stringify(bytes));
+    const ok = this.write(ref.dirent, Uint8Array.from(bytes));
     if (!ok) this.writeFailed = true;
     return ok;
   }
@@ -97,26 +78,21 @@ export class LocalStorageDialog {
 
   /** Names of this game's saved games, sorted. */
   listSaves(gameid: string): string[] {
-    const storage = this.storage;
-    if (!storage) return [];
     const start = this.key('file', 'save', gameid, '');
-    const names: string[] = [];
+    let names: string[];
     try {
-      for (let i = 0; i < storage.length; i++) {
-        const k = storage.key(i);
-        if (k?.startsWith(start)) names.push(k.slice(start.length));
-      }
+      names = this.store.list();
     } catch {
       return [];
     }
-    return names.sort();
+    return names.filter((n) => n.startsWith(start)).map((n) => n.slice(start.length)).sort();
   }
 
   autosave_read(signature: string): unknown {
-    const raw = this.read(this.key('auto', signature));
-    if (raw === null) return null;
+    const bytes = this.read(this.key('auto', signature));
+    if (bytes === null) return null;
     try {
-      return JSON.parse(raw);
+      return JSON.parse(new TextDecoder().decode(bytes));
     } catch {
       return null;
     }
@@ -125,35 +101,38 @@ export class LocalStorageDialog {
   autosave_write(signature: string, snapshot: unknown): void {
     const k = this.key('auto', signature);
     if (snapshot == null) {
-      try {
-        this.storage?.removeItem(k);
-      } catch {
-        // Nothing to do.
-      }
+      this.remove(k);
       return;
     }
-    this.write(k, JSON.stringify(snapshot));
+    this.write(k, new TextEncoder().encode(JSON.stringify(snapshot)));
   }
 
   private key(...parts: string[]): string {
-    return [this.prefix, 'z', ...parts].join(':');
+    return ['z', ...parts].join(':');
   }
 
-  private read(key: string): string | null {
+  private read(name: string): Uint8Array | null {
     try {
-      return this.storage?.getItem(key) ?? null;
+      return this.store.read(name);
     } catch {
       return null;
     }
   }
 
-  private write(key: string, value: string): boolean {
-    if (!this.storage) return false;
+  private write(name: string, data: Uint8Array): boolean {
     try {
-      this.storage.setItem(key, value);
+      this.store.write(name, data);
       return true;
     } catch {
       return false;
+    }
+  }
+
+  private remove(name: string): void {
+    try {
+      this.store.remove(name);
+    } catch {
+      // Nothing to do.
     }
   }
 }
