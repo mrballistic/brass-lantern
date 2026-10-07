@@ -53,7 +53,7 @@ export function fightStrength(world: World, state: GameState, adjusted = true): 
 }
 
 /** A character's strength now: its state, less what the player's weapon takes off (Zork's VILLAIN-STRENGTH). */
-export function villainStrength(world: World, state: GameState, npc: string, weapon?: string): number {
+function villainStrength(world: World, state: GameState, npc: string, weapon?: string): number {
   const combat = world.npcs[npc]?.combat;
   let od = state.npcs?.[npc]?.strength ?? combat?.strength ?? 0;
   if (od >= 0 && combat?.fears && weapon === combat.fears.item) od = Math.max(1, od - combat.fears.by);
@@ -134,7 +134,7 @@ export function combatText(world: World, key: CombatText, fields: Record<string,
 }
 
 /** One message for a blow, picked from the seed (Zork's RANDOM-ELEMENT). */
-export function blowMessage(
+function blowMessage(
   state: GameState,
   options: string[] | undefined,
   fallback: string[],
@@ -145,7 +145,7 @@ export function blowMessage(
 }
 
 /** A character dies: the fog line, gone from the room, and its onDeath. */
-export function killNpc(world: World, state: GameState, npc: string): string[] {
+function killNpc(world: World, state: GameState, npc: string): string[] {
   const s = npcStateOf(state, npc);
   s.strength = 0;
   s.fighting = false;

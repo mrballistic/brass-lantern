@@ -9,7 +9,7 @@ import { miss, ok, type EngineResult } from './result';
 /* Events and rules */
 
 /** An owner's rules for a verb, with the older hooks folded in: onUse is instead.use, onTake is after.take. */
-export function rulesFor(owner: Item | Room | NPC | undefined, phase: 'instead' | 'after', verb: string): Rule[] {
+function rulesFor(owner: Item | Room | NPC | undefined, phase: 'instead' | 'after', verb: string): Rule[] {
   if (!owner) return [];
   const own = owner[phase]?.[verb] ?? [];
   const item = owner as Item;

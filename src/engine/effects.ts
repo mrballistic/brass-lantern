@@ -82,7 +82,7 @@ export function turnHalted(state: GameState): boolean {
   return halted.has(state);
 }
 
-export function itemIdForName(label: string, world: World): string | null {
+function itemIdForName(label: string, world: World): string | null {
   const normalized = label.trim().toLowerCase();
   for (const [id, item] of Object.entries(world.items)) {
     if (item.name.toLowerCase() === normalized) return id;
@@ -93,7 +93,7 @@ export function itemIdForName(label: string, world: World): string | null {
 const EFFECT_LINE = /^\[(?:Flag set:\s*.+?|Added to inventory:\s*.+?|.+? consumed)\]$/i;
 
 /** A bracket line that changes the game (`[Flag set: …]` and friends). */
-export function isEffectLine(line: string): boolean {
+function isEffectLine(line: string): boolean {
   return EFFECT_LINE.test(line);
 }
 

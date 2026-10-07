@@ -131,7 +131,7 @@ export function handleWear(target: string | undefined, world: World, state: Game
   return ok(runEventKey(item.onWear, world, state), true);
 }
 
-export const PRONOUN = /^(?:it|that|this|them)$/i;
+const PRONOUN = /^(?:it|that|this|them)$/i;
 
 export function handleSmash(
   target: string | undefined,
@@ -177,14 +177,14 @@ export function handleSmash(
 }
 
 /** Items that started in this room and have since been smashed. */
-export function smashedHere(world: World, state: GameState): string[] {
+function smashedHere(world: World, state: GameState): string[] {
   return (world.rooms[state.currentRoom]?.items ?? []).filter((id) => {
     const hook = world.items[id]?.onSmash;
     return hook !== undefined && state.firedEvents.includes(hook);
   });
 }
 
-export function runFinale(world: World, state: GameState): EngineResult {
+function runFinale(world: World, state: GameState): EngineResult {
   const finale = world.finale!;
   // The finale is an ending: its event, the epilogues that now hold, the score, the footer.
   const lines = runEventKey(finale.event, world, state);

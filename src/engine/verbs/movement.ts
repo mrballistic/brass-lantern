@@ -10,7 +10,7 @@ import { nextRandom } from '../rng';
 import { miss, ok, type EngineResult } from '../result';
 
 /** Evaluate onEnter triggers and emit any event-script lines. */
-export function runOnEnter(roomId: string, world: World, state: GameState): string[] {
+function runOnEnter(roomId: string, world: World, state: GameState): string[] {
   const room = world.rooms[roomId];
   if (!room) return [];
   const out: string[] = [];
@@ -27,7 +27,7 @@ const DIRECTION_WORDS = new Set([...COMPASS, 'in', 'out', 'inside', 'outside']);
 /** Zork's YUKS: replies to an attempt that can't be taken seriously. */
 const YUKS = ['A valiant attempt.', 'You can’t be serious.', 'An interesting idea...', 'What a concept!'];
 
-export const GENERIC_DENIAL = 'Something stops you. The story isn’t ready for you to go there yet.';
+const GENERIC_DENIAL = 'Something stops you. The story isn’t ready for you to go there yet.';
 
 export function enterRoom(targetId: string, world: World, state: GameState, opts: { quiet?: boolean } = {}): string[] {
   const target = world.rooms[targetId];
@@ -74,7 +74,7 @@ export function enterRoom(targetId: string, world: World, state: GameState, opts
 const refuse = (line: string): EngineResult => ({ ...ok([line]), fatal: true });
 
 /** Follow one exit. Every refusal comes before the move, so it changes nothing. */
-export function followExit(exit: string | Exit, world: World, state: GameState): EngineResult {
+function followExit(exit: string | Exit, world: World, state: GameState): EngineResult {
   if (typeof exit !== 'string') {
     const refused = exit.denials?.find((d) => evaluateCondition(d.if, state, world));
     if (refused) return refuse(refused.text);

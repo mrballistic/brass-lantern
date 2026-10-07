@@ -32,7 +32,7 @@ export function exitList(room: Room): string {
 }
 
 /** "a", "an", "some" or "" for an item, from its `article` or its name. */
-export function articleFor(world: World, id: string): string {
+function articleFor(world: World, id: string): string {
   const item = world.items[id];
   if (!item) return 'a';
   if (item.article !== undefined) return item.article;

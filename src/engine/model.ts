@@ -154,7 +154,7 @@ export function visibleItemsIn(roomId: string, world: World, state: GameState): 
 }
 
 /** Fuzzy candidates for items, with aliases folded into the matchable name. */
-export function itemCandidates(ids: string[], world: World): Array<{ id: string; name: string }> {
+function itemCandidates(ids: string[], world: World): Array<{ id: string; name: string }> {
   return ids.map((id) => {
     const item = world.items[id];
     const name = item ? [item.name, ...(item.aliases ?? [])].join(' ') : id;
@@ -184,7 +184,7 @@ export interface Acted {
 
 const actedThisTurn = new WeakMap<GameState, Acted>();
 
-export function noteActed(state: GameState, slot: keyof Acted, id: string): void {
+function noteActed(state: GameState, slot: keyof Acted, id: string): void {
   const acted = actedThisTurn.get(state) ?? {};
   acted[slot] = id;
   actedThisTurn.set(state, acted);
