@@ -1,6 +1,6 @@
 import { appName, cartridges, storagePrefix } from './app.config';
-import ConsentBanner from './components/ConsentBanner.vue';
 import { mountGame } from './mount';
+import SiteConsent from './SiteConsent.vue';
 import { analyticsConfigured, configureAnalytics, initAnalytics, track } from './services/analytics';
 import { hasConsent, initConsent, openConsent } from './services/consent';
 import './styles/crt.css';
@@ -22,5 +22,5 @@ mountGame(
     analytics: { onEvent: track, ...(analyticsConfigured() ? { openConsent } : {}) },
     version: __APP_VERSION__,
   },
-  ConsentBanner,
+  { slot: SiteConsent },
 );

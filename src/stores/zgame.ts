@@ -3,7 +3,7 @@ import type { OutputLine } from '@/types/game';
 import type { ZCodeCartridge } from '@/types/cartridge';
 import type { StatusLine } from '@/zmachine/types';
 import { makeLine } from '@/engine/output';
-import type { GameOptions } from '@/options';
+import { reportEvent, type GameOptions } from '@/options';
 import { LocalStorageDialog } from '@/zmachine/dialog';
 import { localStorageSaveStore } from '@/zmachine/save-store';
 import { createCatalog } from './catalog';
@@ -144,7 +144,7 @@ export function createZGameStore(options: GameOptions, local: LocalShelf) {
         this.removeLine(loading);
         story = bytes;
         this.boot();
-        options.analytics?.onEvent(this.restored ? 'session_resumed' : 'game_start', { cartridge: cart.id });
+        reportEvent(options, this.restored ? 'session_resumed' : 'game_start', { cartridge: cart.id });
       },
 
       /** Start (or restart) the story. Resumes from the autosave if there is one. */

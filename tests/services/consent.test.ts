@@ -10,7 +10,7 @@ import {
   readConsent,
   saveConsent,
 } from '@/services/consent';
-import ConsentBanner from '@/components/ConsentBanner.vue';
+import SiteConsent from '@/SiteConsent.vue';
 
 
 describe('consent', () => {
@@ -48,9 +48,9 @@ describe('consent', () => {
     expect(localStorage.getItem(KEY)).toBe('granted');
   });
 
-  it('the banner buttons record the choice', async () => {
+  it('the site’s banner buttons record the choice', async () => {
     openConsent();
-    const wrapper = mount(ConsentBanner);
+    const wrapper = mount(SiteConsent);
     expect(wrapper.text()).toContain('Nothing is sent unless you accept');
     await wrapper.findAll('button')[0].trigger('click');
     expect(readConsent()).toBe('denied');

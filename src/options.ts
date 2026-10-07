@@ -47,6 +47,23 @@ export function terminalTitle(options: GameOptions): string {
   return options.version ? `${name} v${options.version}` : name;
 }
 
+/** Tells the app's analytics; a callback that throws is logged, never breaks the game. */
+export function reportEvent(options: GameOptions, name: GameEvent, params?: Record<string, unknown>): void {
+  const analytics = options.analytics;
+  if (!analytics) return;
+  try {
+    if (params) analytics.onEvent(name, params);
+    else analytics.onEvent(name);
+  } catch (error) {
+    console.error('Analytics callback failed:', error);
+  }
+}
+
+/** The intent server to ask, or null: an unset or empty endpoint means none. */
+export function intentEndpointOf(options: GameOptions): string | null {
+  return options.intentEndpoint || null;
+}
+
 /** The COOKIES command: open the app's consent settings, or say there's nothing to consent to. */
 export function cookiesReply(options: GameOptions): string {
   const open = options.analytics?.openConsent;

@@ -1050,6 +1050,33 @@ describe('createGameStore options', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it('an empty intentEndpoint means none', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const store = createGameStore({ ...fixtureOptions, intentEndpoint: '' })();
+    store.initialize();
+    await store.submit('do something strange and impossible');
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(store.output.at(-1)!.text).toContain(LITERAL);
+  });
+
+  it('a throwing analytics callback is logged and never breaks the game', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const onEvent = vi.fn(() => {
+      throw new Error('analytics down');
+    });
+    const store = createGameStore({ ...fixtureOptions, analytics: { onEvent } })();
+    expect(() => store.initialize()).not.toThrow();
+    expect(store.output.some((l) => l.text.includes('Bedroom'))).toBe(true);
+    store.game.currentRoom = 'shed';
+    carry(store.game, 'key', 'bat');
+    await store.submit('smash crate');
+    expect(store.game.gameOver).toBe(true);
+    expect(onEvent).toHaveBeenCalledTimes(2);
+    expect(error).toHaveBeenCalledWith('Analytics callback failed:', expect.any(Error));
+    error.mockRestore();
+  });
+
   it('intentEndpoint unset means null', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);

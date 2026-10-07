@@ -189,4 +189,17 @@ describe('zgame store', () => {
     await useStore().initialize(CART, fakeDeps().deps);
     expect(onEvent).toHaveBeenLastCalledWith('session_resumed', { cartridge: 'story' });
   });
+
+  it('a throwing analytics callback is logged and the story still boots', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const onEvent = vi.fn(() => {
+      throw new Error('analytics down');
+    });
+    const store = createZGameStore({ ...fixtureOptions, analytics: { onEvent } }, createLocalShelf('test'))();
+    const { deps, sessions } = fakeDeps();
+    await expect(store.initialize(CART, deps)).resolves.toBeUndefined();
+    expect(sessions[0].start).toHaveBeenCalled();
+    expect(error).toHaveBeenCalledWith('Analytics callback failed:', expect.any(Error));
+    error.mockRestore();
+  });
 });

@@ -4,7 +4,7 @@ import { saveKeyFor, type GameState, type OutputLine, type ParsedAction } from '
 import type { World } from '@/types/world';
 import type { WorldCartridge } from '@/types/cartridge';
 import { PRESETS, type Theme, type ThemeName, type ThemeOverrides } from '@/theme/themes';
-import { cookiesReply, terminalTitle, type GameEvent, type GameOptions } from '@/options';
+import { cookiesReply, intentEndpointOf, reportEvent, terminalTitle, type GameEvent, type GameOptions } from '@/options';
 import { createCatalog } from './catalog';
 import {
   captureLine,
@@ -110,9 +110,8 @@ function matchTheme(raw: string, names: string[]): string | null {
  */
 export function createGameStore(options: GameOptions) {
   const catalog = createCatalog(options);
-  const endpoint = options.intentEndpoint ?? null;
-  const report = (name: GameEvent, params?: Record<string, unknown>) =>
-    params ? options.analytics?.onEvent(name, params) : options.analytics?.onEvent(name);
+  const endpoint = intentEndpointOf(options);
+  const report = (name: GameEvent, params?: Record<string, unknown>) => reportEvent(options, name, params);
 
   // Live, non-serializable state stays out of Pinia: one store runs one game at a time.
   const initialCartridge = catalog.defaultWorldCartridge();

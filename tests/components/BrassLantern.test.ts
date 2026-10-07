@@ -90,7 +90,7 @@ describe('BrassLantern: two games on one page', () => {
     // A move in one doesn't move the other.
     await type(a, 'west');
     expect(a.find('.terminal-header').text()).toMatch(/MOVES:\s*1/);
-    expect(b.find('.terminal-header').text()).not.toMatch(/1/);
+    expect(b.find('.terminal-header').text()).toMatch(/MOVES:\s*0/);
   });
 
   it('boots fast only the game that has a session to resume', async () => {
@@ -109,6 +109,7 @@ describe('BrassLantern: two games on one page', () => {
     await settle();
     await type(b, 'I would like to interpretive-dance at the stapler please');
     expect(fetchMock).not.toHaveBeenCalled();
+    expect(screen(b)).toContain('The office hums, uncomprehending. (Type HELP.)');
     expect(b.find('.terminal-input-bar input').attributes('disabled')).toBeUndefined();
   });
 
@@ -156,7 +157,7 @@ describe('mountGame', () => {
   it('mounts a game by selector or element, each with its own Pinia, and unmounts', async () => {
     document.body.innerHTML = '<div id="one"></div><div id="two"></div>';
     const Extra = () => h('p', { class: 'extra' }, 'hi');
-    const one = mountGame('#one', A, Extra);
+    const one = mountGame('#one', A, { slot: Extra });
     const two = mountGame(document.getElementById('two')!, B);
     await settle();
     expect(document.querySelector('#one .crt-shell .terminal')).not.toBeNull();
