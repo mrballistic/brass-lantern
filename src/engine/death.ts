@@ -62,13 +62,16 @@ export function die(cause: string, world: World, state: GameState, goTo: GoTo): 
   };
   for (const id of inventoryOf(world, state)) {
     const home = world.items[id]?.home;
+    const treasure = (world.items[id]?.treasure ?? 0) > 0;
+    const to = typeof d.treasures === 'object' && treasure && !(home && world.rooms[home]) ? d.treasures.to : null;
     const dark = d.treasures === 'dark' && (world.items[id]?.treasure ?? 0) > 0 && !(home && world.rooms[home]) ? darkRoom() : null;
     if (home && world.rooms[home]) moveItem(state, id, home);
+    else if (to && (world.rooms[to] || world.items[to] || world.npcs[to])) moveItem(state, id, to);
     else if (dark) moveItem(state, id, dark);
     else if (scatter.length > 0) moveItem(state, id, scatter[Math.floor(nextRandom(state) * scatter.length)]);
     else moveItem(state, id, state.currentRoom);
   }
-  state.fuses = {};
+  state.fuses = Object.fromEntries(Object.entries(state.fuses ?? {}).filter(([k]) => d.keepTimers?.includes(k)));
   lines.push(...(variant?.resurrection ?? d.resurrection ?? []));
   if (variant?.before) lines.push(...runEventKey(variant.before, world, state));
   if (respawn && world.rooms[respawn]) lines.push(...goTo(respawn, world, state));

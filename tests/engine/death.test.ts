@@ -201,3 +201,66 @@ describe('the dark-room walk re-tests where the last treasure landed (backlog cl
     expect(s.locations.gem).toBe(s.locations.ruby);
   });
 });
+
+describe('death options', () => {
+  const base = (death: NonNullable<World['death']>): World => ({
+    ...world,
+    items: {
+      ...world.items,
+      case: { name: 'trophy case', aliases: ['case'], description: 'A case.', portable: false, tags: [], container: { openable: false } },
+      gem: { name: 'gem', aliases: ['gem'], description: 'A gem.', portable: true, tags: [], treasure: 5 },
+      ruby: { name: 'ruby', aliases: ['ruby'], description: 'A ruby.', portable: true, tags: [], treasure: 5, home: 'living' },
+      rock: { name: 'rock', aliases: ['rock'], description: 'A rock.', portable: true, tags: [] },
+    },
+    death: { ...world.death!, ...death },
+  });
+
+  it('keepTimers leaves the listed timers running and clears the rest', () => {
+    const w = base({ keepTimers: ['a'] });
+    const s = stateWith(w, { room: 'yard' });
+    s.fuses = { a: 4, b: 2 };
+    runSteps([{ die: 'x' }], w, s);
+    expect(s.fuses).toEqual({ a: 4 });
+  });
+
+  it('treasures: { to } sends carried treasures to that place, homes first, junk scatters', () => {
+    const w = base({ treasures: { to: 'case' }, scatter: ['yard', 'living'] });
+    const s = stateWith(w, { room: 'shed', carrying: ['gem', 'ruby', 'rock'] });
+    s.rng = 5;
+    runSteps([{ die: 'x' }], w, s);
+    expect(s.locations.gem).toBe('case');
+    expect(s.locations.ruby).toBe('living');
+    expect(['yard', 'living']).toContain(s.locations.rock);
+  });
+
+  it('{ to } draws no randomness for treasures', () => {
+    const w = base({ treasures: { to: 'case' }, scatter: ['yard'] });
+    const s = stateWith(w, { room: 'shed', carrying: ['gem', 'ruby'] });
+    s.rng = 5;
+    runSteps([{ die: 'x' }], w, s);
+    expect(s.rng).toBe(5);
+  });
+
+  it('a { to } that names nothing falls back to scatter', () => {
+    const w = base({ treasures: { to: 'nowhere' }, scatter: ['yard'] });
+    const s = stateWith(w, { room: 'shed', carrying: ['gem'] });
+    runSteps([{ die: 'x' }], w, s);
+    expect(s.locations.gem).toBe('yard');
+  });
+
+  it('dark still sends treasures to an unlit room', () => {
+    const w = base({ treasures: 'dark', scatter: ['yard'] });
+    const s = stateWith(w, { room: 'shed', carrying: ['gem'] });
+    s.rng = 7;
+    runSteps([{ die: 'x' }], w, s);
+    expect(s.locations.gem).toBe('cellar');
+  });
+
+  it('the audit flags an unknown timer or place', async () => {
+    const { auditWorld } = await import('../helpers/audit');
+    const problems = auditWorld(base({ keepTimers: ['ghost'], treasures: { to: 'void' } })).join('\n');
+    expect(problems).toMatch(/keepTimers.*ghost/);
+    expect(problems).toMatch(/treasures.*void/);
+    expect(auditWorld(base({ keepTimers: ['fall_down'], treasures: { to: 'case' } })).join('\n')).not.toMatch(/keepTimers|treasures/);
+  });
+});

@@ -501,8 +501,10 @@ export interface World {
     resurrection?: string[];
     /** Rooms carried things are spread over, at random. Things with a `home` go there instead. */
     scatter?: string[];
-    /** `dark`: treasures go to an unlit land room instead, walking the rooms in order at even odds each (Zork's RANDOMIZE-OBJECTS). */
-    treasures?: 'dark';
+    /** `dark`: treasures go to an unlit land room instead, walking the rooms in order at even odds each (Zork's RANDOMIZE-OBJECTS). `{ to }`: treasures without a `home` all go to that room, item or character (a trophy case), drawing no randomness. */
+    treasures?: 'dark' | { to: string };
+    /** Timers (event names) a death leaves running with their counts; every other timer is cleared. */
+    keepTimers?: string[];
     /** Printed on the last death, which ends the game. */
     final?: string[];
     /** An event run after a resurrection (Zork's JIGS-UP resets things). */

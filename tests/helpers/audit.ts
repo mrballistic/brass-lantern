@@ -75,6 +75,9 @@ export function auditWorld(world: World): string[] {
   const d = world.death;
   if (d?.respawn && !isRoom(d.respawn)) problems.push(`death.respawn names no room “${d.respawn}”`);
   for (const r of d?.scatter ?? []) if (!isRoom(r)) problems.push(`death.scatter names no room “${r}”`);
+  for (const k of d?.keepTimers ?? []) if (!isEvent(k)) problems.push(`death.keepTimers names no event “${k}”`);
+  const dt = d?.treasures;
+  if (typeof dt === 'object' && !isRoom(dt.to) && !isItem(dt.to) && !(dt.to in world.npcs)) problems.push(`death.treasures names no place “${dt.to}”`);
   for (const [id, item] of Object.entries(world.items)) {
     if (item.home && !isRoom(item.home)) problems.push(`item ${id}: home names no room “${item.home}”`);
     for (const c of item.contains ?? []) if (!isItem(c)) problems.push(`item ${id}: contains no item “${c}”`);
