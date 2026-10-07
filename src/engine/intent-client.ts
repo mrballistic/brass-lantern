@@ -54,6 +54,8 @@ const TIMEOUT_MS = 6000;
 
 const PREPS: ReadonlySet<string> = new Set(['in', 'on', 'under', 'behind', 'off', 'over', 'through']);
 
+const DIRECTIONS: ReadonlySet<string> = new Set(['north', 'south', 'east', 'west', 'northeast', 'northwest', 'southeast', 'southwest', 'up', 'down']);
+
 export async function parseIntentRemote(
   input: string,
   context: IntentContext,
@@ -76,6 +78,7 @@ export async function parseIntentRemote(
     if (typeof json.target === 'string') out.target = json.target;
     if (typeof json.indirect === 'string') out.indirect = json.indirect;
     if (typeof json.prep === 'string' && PREPS.has(json.prep)) out.prep = json.prep;
+    if (typeof json.direction === 'string' && DIRECTIONS.has(json.direction)) out.direction = json.direction as ParsedAction['direction'];
     if (typeof json.number === 'number' && Number.isInteger(json.number) && json.number >= 0 && json.number <= 1000) {
       out.number = json.number;
     }

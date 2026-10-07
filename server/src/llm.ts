@@ -13,11 +13,15 @@ export interface IntentContext {
 export const PREPS = ['in', 'on', 'under', 'behind', 'off', 'over', 'through'] as const;
 export type Prep = (typeof PREPS)[number];
 
+export const DIRECTIONS = ['north', 'south', 'east', 'west', 'northeast', 'northwest', 'southeast', 'southwest', 'up', 'down'] as const;
+export type Direction = (typeof DIRECTIONS)[number];
+
 export interface ParsedAction {
   action: string;
   target?: string;
   indirect?: string;
   prep?: Prep;
+  direction?: Direction;
   number?: number;
 }
 
@@ -67,6 +71,12 @@ const responseSchema = (ctx: IntentContext) => ({
       enum: [...PREPS],
       nullable: true,
     },
+    direction: {
+      type: 'STRING',
+      description: 'The direction of a push command (push box north). Omit otherwise.',
+      enum: [...DIRECTIONS],
+      nullable: true,
+    },
     number: {
       type: 'INTEGER',
       description: 'The number in a turn or set command (turn dial to 4). Omit otherwise.',
@@ -103,9 +113,9 @@ function buildSystemInstruction(ctx: IntentContext): string {
     '- Hitting or breaking a thing with an item is smash, with the item as indirect.',
     '- Fighting a person or creature is attack: target is the person, indirect is the weapon (omit it if none was named).',
     '- Throwing something is throw: target is the thing thrown, indirect is what it is thrown at. Throwing off or over something sets prep to off or over.',
-    '- Putting something under or behind another thing is put with prep under or behind; slide and push work the same way. In or on is put with prep in or on.',
+    '- Putting, sliding or pushing something under or behind another thing is put with prep under or behind. In or on is put with prep in or on.',
     '- Reading something through or with a thing is read: target is the text, indirect is the thing, prep is through.',
-    '- Pushing a thing in a direction is push: target is the thing, indirect is the direction (north, south, up, ...).',
+    '- Pushing a thing in a direction (push box north) is push: target is the thing, direction is the direction. Pushing a thing with no direction or place is use.',
     "- A number in the input is the integer in number, 0 to 1000. Setting or turning something to a number is turn: target is the thing, indirect is the word 'number'.",
     '- Setting fire to something is burn: target is what burns, indirect is what lights it (light candles with match).',
     '- Turning something with a tool is turn: target is the thing, indirect is the tool (turn bolt with wrench).',
@@ -187,6 +197,9 @@ export function sanitize(raw: unknown, ctx?: Pick<IntentContext, 'verbs'>): Pars
   const indirect = r.action === 'order' ? commandWords(r.indirect) : identifier(r.indirect);
   if (indirect) out.indirect = indirect;
   if (typeof r.prep === 'string' && (PREPS as readonly string[]).includes(r.prep)) out.prep = r.prep as Prep;
+  if (typeof r.direction === 'string' && (DIRECTIONS as readonly string[]).includes(r.direction)) {
+    out.direction = r.direction as Direction;
+  }
   if (typeof r.number === 'number' && Number.isInteger(r.number) && r.number >= 0 && r.number <= 1000) {
     out.number = r.number;
   }

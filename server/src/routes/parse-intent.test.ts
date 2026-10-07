@@ -361,11 +361,13 @@ describe('sanitize: prepositions and numbers', () => {
     }
   });
 
-  it('accepts push as a verb', async () => {
+  it('accepts push with a direction, and drops an invalid direction', async () => {
     const { sanitize } = await import('../llm.js');
-    expect(sanitize({ action: 'push', target: 'boulder', indirect: 'north' })).toEqual({
-      action: 'push', target: 'boulder', indirect: 'north',
+    expect(sanitize({ action: 'push', target: 'boulder', direction: 'north' })).toEqual({
+      action: 'push', target: 'boulder', direction: 'north',
     });
+    expect(sanitize({ action: 'push', target: 'boulder', direction: 'sideways' })).toEqual({ action: 'push', target: 'boulder' });
+    expect(sanitize({ action: 'push', target: 'boulder', direction: 3 })).toEqual({ action: 'push', target: 'boulder' });
   });
 
   it('keeps an order’s inner command as words, and drops prose punctuation', async () => {

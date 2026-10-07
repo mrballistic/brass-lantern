@@ -38,6 +38,13 @@ describe('the intent client reply', () => {
     expect(await parseIntentRemote('slide mat under door', ctx)).toEqual({ action: 'put', target: 'mat', indirect: 'door', prep: 'under' });
   });
 
+  it('passes a push direction through and drops an invalid one', async () => {
+    reply({ action: 'push', target: 'box', direction: 'north' });
+    expect(await parseIntentRemote('push box north', ctx)).toEqual({ action: 'push', target: 'box', direction: 'north' });
+    reply({ action: 'push', target: 'box', direction: 'sideways' });
+    expect(await parseIntentRemote('x', ctx)).toEqual({ action: 'push', target: 'box' });
+  });
+
   it('drops a preposition or number the engine would not know', async () => {
     reply({ action: 'put', target: 'mat', prep: 'sideways', number: '4' });
     expect(await parseIntentRemote('x', ctx)).toEqual({ action: 'put', target: 'mat' });
