@@ -1,5 +1,6 @@
 import type { ParsedAction } from '@/types/game';
 import type { World, Room } from '@/types/world';
+import { readsNumber } from './parser';
 
 export interface IntentContext {
   roomName: string;
@@ -79,8 +80,10 @@ export async function parseIntentRemote(
     if (typeof json.indirect === 'string') out.indirect = json.indirect;
     if (typeof json.prep === 'string' && PREPS.has(json.prep)) out.prep = json.prep;
     if (typeof json.direction === 'string' && DIRECTIONS.has(json.direction)) out.direction = json.direction as ParsedAction['direction'];
-    if (typeof json.number === 'number' && Number.isInteger(json.number) && json.number >= 0 && json.number <= 1000) {
-      out.number = json.number;
+    // A number rides along only when a slot reads it (the literal 'number', or its digits).
+    const n = json.number;
+    if (typeof n === 'number' && Number.isInteger(n) && n >= 0 && n <= 1000 && (readsNumber({ number: n }, out.target) || readsNumber({ number: n }, out.indirect))) {
+      out.number = n;
     }
     return out;
   } catch {

@@ -1,8 +1,8 @@
 import type { GameState, ParsedAction } from '@/types/game';
 import type { Item, NPC, Room, Rule, World } from '@/types/world';
 import { evaluateCondition } from './conditions';
-import { isSelfWord } from './fuzzy';
-import { heldItems, inventoryOf, matchNpc, pickItem, pickSecond, PLAYER, reachableItems, restoreState, snapshotState, visibleItems } from './model';
+import { readsNumber } from './parser';
+import { heldItems, inventoryOf, matchNpc, namesPlayer, pickItem, pickSecond, PLAYER, reachableItems, restoreState, snapshotState, visibleItems } from './model';
 import { setCommand } from './scripts';
 import { runEventKey, turnHalted } from './effects';
 import { miss, ok, type EngineResult } from './result';
@@ -126,13 +126,14 @@ export function withRules(
   state: GameState,
   run: () => EngineResult,
 ): EngineResult {
-  // ME names the player: a second object that is always at hand.
-  const reach = [...reachableItems(world, state), ...(action.number !== undefined ? ['number'] : []), ...([action.target, action.indirect].some((w) => w && isSelfWord(w)) ? [PLAYER] : [])];
+  // ME names the player: an object that is always at hand.
+  const me = (word?: string) => word !== undefined && namesPlayer(word, world, state);
+  const reach = [...reachableItems(world, state), ...(action.number !== undefined ? ['number'] : []), ...(me(action.target) || me(action.indirect) ? [PLAYER] : [])];
   // A number typed where an object goes (TURN DIAL TO 4) is no thing: the literal 'number' stands for it.
-  const typed = (word?: string) => action.number !== undefined && word === 'number';
+  const typed = (word?: string) => readsNumber(action, word);
   // Resolve the target the way the verb's handler will, so the rules that fire
   // belong to the item the verb actually acts on.
-  const target = typed(action.target) ? 'number' : action.target && isSelfWord(action.target) ? PLAYER : action.target ? pickItem(action.target, targetScope(verb, world, state), world, 'target', state) : null;
+  const target = typed(action.target) ? 'number' : me(action.target) ? PLAYER : action.target ? pickItem(action.target, targetScope(verb, world, state), world, 'target', state) : null;
   const indirect = typed(action.indirect) ? 'number' : action.indirect ? pickSecond(action.indirect, visibleItems(world, state), world, state) : null;
   // Words that aren't items may name characters, whose rules count too.
   const targetNpc = !target && action.target ? matchNpc(action.target, world, state) : null;

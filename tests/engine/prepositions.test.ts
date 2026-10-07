@@ -59,8 +59,9 @@ describe('prepositions (6a)', () => {
     });
     it('spray repellent on me', () => {
       const verbs = { spray: { words: ['spray'], target: 'required' as const, indirect: ['on'] } };
-      expect(fallbackParse('spray repellent on me', verbs)).toEqual({ action: 'spray', target: 'repellent', indirect: 'player' });
-      expect(fallbackParse('use key on myself')).toEqual({ action: 'use', target: 'key', indirect: 'player' });
+      // The word typed stays: the engine decides it names the player.
+      expect(fallbackParse('spray repellent on me', verbs)).toEqual({ action: 'spray', target: 'repellent', indirect: 'me' });
+      expect(fallbackParse('use key on myself')).toEqual({ action: 'use', target: 'key', indirect: 'myself' });
     });
     it('keeps the old forms', () => {
       expect(fallbackParse('push button')).toEqual({ action: 'use', target: 'button' });
@@ -124,7 +125,8 @@ describe('prepositions (6a)', () => {
         items: { ...world.items, key: { ...world.items.key, instead: { use: [{ with: 'player', say: ['You spray yourself.'] }] } } },
       };
       const state = stateWith(ruled, { room: 'living', carrying: ['key'] });
-      expect(execute({ action: 'use', target: 'brass key', indirect: 'player' }, { world: ruled, state }).lines).toEqual(['You spray yourself.']);
+      // The intent server's reserved ID for the player.
+      expect(execute({ action: 'use', target: 'brass key', indirect: 'player', byId: true }, { world: ruled, state }).lines).toEqual(['You spray yourself.']);
       const again = execute(fallbackParse('use brass key on me')!, { world: ruled, state });
       expect(again.lines).toEqual(['You spray yourself.']);
     });

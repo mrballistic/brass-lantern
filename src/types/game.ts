@@ -110,7 +110,7 @@ export interface ParsedAction {
   direction?: 'north' | 'south' | 'east' | 'west' | 'northeast' | 'northwest' | 'southeast' | 'southwest' | 'up' | 'down';
   /** Bare EXIT (a direction, out), which aboard gets out of the vehicle (Zork's V-EXIT). */
   exit?: boolean;
-  /** TURN X TO 4, SET X TO 776: the number, with `indirect` (or `target`) the literal 'number'. */
+  /** TURN X TO 4, SET X TO 776: the number. The slot keeps the digits typed (the intent server sends the literal 'number'); rules see it as 'number'. */
   number?: number;
   /** SAY/INCANT/ANSWER: the rest of the line, outer quotes dropped, whitespace collapsed. */
   text?: string;

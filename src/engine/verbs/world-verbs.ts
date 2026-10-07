@@ -1,6 +1,6 @@
 import type { GameState, ParsedAction } from '@/types/game';
 import type { World, WorldVerb } from '@/types/world';
-import { heldItems, matchNpc, needObject, pickItem, reachableItems } from '../model';
+import { heldItems, matchNpc, namesPlayer, needObject, pickItem, PLAYER, reachableItems } from '../model';
 import { setCommand } from '../scripts';
 import { stopLine } from '../effects';
 import { miss, ok, type EngineResult } from '../result';
@@ -33,17 +33,20 @@ export function handleWorldVerb(action: ParsedAction, world: World, state: GameS
   if (verb.target === 'text') return handleTextVerb(action, verb, world, state);
   const reach = reachableItems(world, state);
   const scope = verb.held ? heldItems(world, state) : reach;
-  const target = action.target ? pickItem(action.target, scope, world, 'target', state) : null;
+  // ME names the player, for the world's rules (target:player, with: player).
+  const me = (word?: string) => word !== undefined && namesPlayer(word, world, state);
+  const target = me(action.target) ? PLAYER : action.target ? pickItem(action.target, scope, world, 'target', state) : null;
   // A word that isn't a thing here may be a person here (CONSULT MADAME).
   const person = action.target && !target ? matchNpc(action.target, world, state) : null;
   if (action.target && !target && !person) return miss(`You don’t see a “${action.target}” here.`);
   if (verb.target === 'required' && !target && !person) needObject();
-  const indirect = action.indirect ? pickItem(action.indirect, reach, world, 'indirect', state) : null;
+  const indirect = me(action.indirect) ? PLAYER : action.indirect ? pickItem(action.indirect, reach, world, 'indirect', state) : null;
   if (action.indirect && !indirect) return miss(`You don’t see a “${action.indirect}” here.`);
   const room = state.currentRoom;
   const npcs = person ? [person] : [];
   setCommand(state, { verb: action.action, target: target ?? person ?? undefined, indirect: indirect ?? undefined });
-  let rule = findRule(world, state, 'instead', action.action, { target, indirect, room, npcs }, reach);
+  const ruleReach = target === PLAYER || indirect === PLAYER ? [...reach, PLAYER] : reach;
+  let rule = findRule(world, state, 'instead', action.action, { target, indirect, room, npcs }, ruleReach);
   // A verb with no target looks for a rule on anything in reach (SNOOZE finds the alarm clock).
   if (!rule && !target && !person) {
     for (const id of reach) {
@@ -52,6 +55,9 @@ export function handleWorldVerb(action: ParsedAction, world: World, state: GameS
     }
   }
   if (rule) return applyRule(rule, world, state);
+  // ME with no rule for it: the word typed names nothing here, as it always did.
+  if (target === PLAYER) return miss(`You don’t see a “${action.target}” here.`);
+  if (indirect === PLAYER) return miss(`You don’t see a “${action.indirect}” here.`);
   // `{a target}` names the object with its article, `{target}` without (Zork's V-SMELL: “It smells like a bat.”).
   const named = target ? world.items[target].name : person ? world.npcs[person].name : 'it';
   // A list is a random pick (Zork's PICK-ONE for HACK-HACK and V-SKIP), from the seeded generator;

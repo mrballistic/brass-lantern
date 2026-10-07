@@ -3,9 +3,9 @@ import type { World } from '@/types/world';
 import { whichQuestion } from '../ask';
 import { evaluateCondition } from '../conditions';
 import { exitTarget } from '../describe';
-import { fuzzyCandidates, fuzzyMatchExit, isSelfWord } from '../fuzzy';
+import { fuzzyCandidates, fuzzyMatchExit, isMeWord, isSelfWord, namesSelf } from '../fuzzy';
 import { AskSignal, isAwake, isInside, isNpcHidden, isOpen, matchNpc, moveItem, needObject, nextPlacing, npcRoom, npcScope, npcsSeen, npcStateOf, pickItem, PLAYER } from '../model';
-import { fallbackParse } from '../parser';
+import { fallbackParse, readsNumber } from '../parser';
 import { miss, ok, type EngineResult } from '../result';
 import { runEventKey, turnHalted } from '../effects';
 import { applyRule, findRule } from '../rules';
@@ -116,10 +116,14 @@ function order(npc: string, action: ParsedAction, world: World, state: GameState
 /** “give me the sock”: GIVE with ME as the second object, said first. */
 function giveMe(inner: ParsedAction): ParsedAction {
   const m = inner.action === 'give' && !inner.indirect ? inner.target?.match(/^(?:me|myself)\s+(?:(?:the|a|an)\s+)?(.+)$/i) : null;
-  return m ? { ...inner, target: m[1], indirect: PLAYER } : inner;
+  return m ? { ...inner, target: m[1], indirect: 'me' } : inner;
 }
 
-/** An inner object, in the character's reach: an item, a typed number, ME (the speaker), or someone in its room. Else a result to return. */
+/**
+ * An inner object, in the character's reach: an item, a typed number, ME (the speaker), YOURSELF (the
+ * character; SELF and YOURSELF only when nothing in its reach is called that), or someone in its room.
+ * Else a result to return.
+ */
 function orderObject(
   word: string,
   slot: 'target' | 'indirect',
@@ -130,8 +134,12 @@ function orderObject(
   world: World,
   state: GameState,
 ): string | EngineResult {
-  if (word === 'number' && inner.number !== undefined) return 'number';
-  if (isSelfWord(word)) return PLAYER;
+  if (readsNumber(inner, word)) return 'number';
+  if (isSelfWord(word)) {
+    if (isMeWord(word)) return PLAYER;
+    const reach = scope.map((id) => ({ id, name: world.items[id]?.name ?? id, aliases: world.items[id]?.aliases }));
+    if (namesSelf(word, reach)) return npc;
+  }
   try {
     const item = pickItem(word, scope, world, slot, state);
     if (item) return item;

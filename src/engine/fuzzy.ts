@@ -40,6 +40,8 @@ export function fuzzyMatch(
   if (!input) return null;
   const needle = normalize(input);
   if (!needle) return null;
+  const self = selfMatches(needle, candidates);
+  if (self) return self[0] ?? null;
 
   for (const c of candidates) {
     if (normalize(c.id) === needle) return c.id;
@@ -82,6 +84,8 @@ export function fuzzyCandidates(
 ): string[] {
   const needle = normalize(input);
   if (!needle) return [];
+  const self = selfMatches(needle, candidates, opts.byId);
+  if (self) return self;
   const exactId = candidates.filter((c) => normalize(c.id) === needle);
   if (exactId.length > 0 && (opts.byId || needle.includes('_'))) return [exactId[0].id];
   const words = (c: { id: string; name: string; aliases?: string[] }) => [c.name, ...(c.aliases ?? [])].map(normalize);
@@ -158,5 +162,43 @@ export function fuzzyMatchExit(
   return null;
 }
 
-/** ME, MYSELF, SELF, YOURSELF: the player as an object, whose reserved ID is 'player'. */
-export const isSelfWord = (word: string): boolean => /^(?:me|myself|self|yourself|player)$/i.test(word.trim());
+/** ME, MYSELF, SELF, YOURSELF: words that may name the player as an object (whose reserved ID is 'player'). */
+export const isSelfWord = (word: string): boolean => /^(?:me|myself|self|yourself)$/i.test(word.trim());
+
+/** ME and MYSELF always name the player; SELF and YOURSELF only when nothing at hand is called that. */
+const ALWAYS_SELF = /^(?:me|myself)$/;
+
+/** ME or MYSELF: the speaker, always (in an order, YOURSELF is the character ordered). */
+export const isMeWord = (word: string): boolean => ALWAYS_SELF.test(normalize(word));
+
+/** IDs the engine reserves: the player, and a number typed where an object goes. */
+const RESERVED = new Set(['player', 'number']);
+
+type Candidate = { id: string; name: string; aliases?: string[] };
+
+/** A candidate named or aliased exactly `needle` (or with that ID). */
+const namedExactly = (needle: string, c: Candidate): boolean =>
+  normalize(c.id) === needle || [c.name, ...(c.aliases ?? [])].some((w) => normalize(w) === needle);
+
+/**
+ * Does `word` name the player? ME and MYSELF always; SELF and YOURSELF unless one of
+ * `candidates` (what's in scope) is named or aliased that; and with `byId` (the intent
+ * server answers in IDs) the reserved ID 'player'.
+ */
+export function namesSelf(word: string, candidates: Candidate[], opts: { byId?: boolean } = {}): boolean {
+  const needle = normalize(word);
+  if (opts.byId && needle === 'player') return true;
+  if (!isSelfWord(needle)) return false;
+  return ALWAYS_SELF.test(needle) || !candidates.some((c) => namedExactly(needle, c));
+}
+
+/**
+ * Words that never fuzzy-match: ME and MYSELF match nothing, SELF and YOURSELF only a thing
+ * named exactly that, and the reserved IDs nothing when they come from the intent server.
+ * Null when the word matches as any other.
+ */
+function selfMatches(needle: string, candidates: Candidate[], byId?: boolean): string[] | null {
+  if (byId && RESERVED.has(needle)) return [];
+  if (!isSelfWord(needle)) return null;
+  return ALWAYS_SELF.test(needle) ? [] : candidates.filter((c) => namedExactly(needle, c)).map((c) => c.id);
+}

@@ -61,7 +61,7 @@ describe('world verbs', () => {
     expect(fallbackParse('turn bell', world.verbs)).toEqual({ action: 'twist', target: 'bell' });
     expect(fallbackParse('twist the bell', world.verbs)).toEqual({ action: 'twist', target: 'bell' });
     // TURN … TO, TURN ON and TURN … OFF stay the engine's.
-    expect(fallbackParse('turn dial to 4', world.verbs)).toEqual({ action: 'turn', target: 'dial', indirect: 'number', number: 4 });
+    expect(fallbackParse('turn dial to 4', world.verbs)).toEqual({ action: 'turn', target: 'dial', indirect: '4', number: 4 });
     expect(fallbackParse('turn on lamp', world.verbs)).toEqual({ action: 'turn_on', target: 'lamp' });
     expect(fallbackParse('turn lamp off', world.verbs)).toEqual({ action: 'turn_off', target: 'lamp' });
     // Without the world's verbs a bare TURN is nothing the parser reads, as before.

@@ -98,4 +98,9 @@ describe('world audit', () => {
     const w: World = { ...fixtureWorld, scoring: [{ if: 'score>=1', points: 1 }] };
     expect(auditWorld(w).some((p) => p.includes('score'))).toBe(true);
   });
+
+  it('“number” is reserved like “player” (6a)', () => {
+    const w: World = { ...fixtureWorld, items: { ...fixtureWorld.items, number: { name: 'n', description: '', portable: false, tags: [] } } };
+    expect(auditWorld(w)).toContain('“number” is reserved; no room, item or character may use it');
+  });
 });

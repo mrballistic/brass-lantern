@@ -1,5 +1,4 @@
 import type { ParsedAction } from '@/types/game';
-import { isSelfWord } from './fuzzy';
 import type { World, WorldVerb } from '@/types/world';
 
 const DIRECTIONS: Record<string, string> = {
@@ -225,14 +224,6 @@ function typedText(raw: string): string {
   return (quoted ? (quoted[1] ?? quoted[2] ?? quoted[3]) : text).replace(/\s+/g, ' ').trim();
 }
 
-/** ME, MYSELF, SELF in an object slot name the player: the reserved ID 'player'. */
-function selfIndirect(parsed: ParsedAction): ParsedAction {
-  const out = { ...parsed };
-  if (out.indirect && isSelfWord(out.indirect)) out.indirect = 'player';
-  if (out.target && isSelfWord(out.target)) out.target = 'player';
-  return out;
-}
-
 function matchWorld(input: string, patterns: WorldPattern[]): ParsedAction | null {
   for (const { re, id, verb } of patterns) {
     const m = input.match(re);
@@ -245,7 +236,7 @@ function matchWorld(input: string, patterns: WorldPattern[]): ParsedAction | nul
     }
     if (m[1]) parsed.target = m[1].trim();
     if (m[2]) parsed.indirect = m[2].trim();
-    return selfIndirect(parsed);
+    return parsed;
   }
   return null;
 }
@@ -276,11 +267,19 @@ export function parseNumber(word: string): number | null {
   return sum;
 }
 
-/** An object slot that holds a number (TURN DIAL TO 4) reads the literal 'number', and the value rides along. */
+/** Does `word` (an object slot) hold the command's number: the typed digits, or the literal 'number' the intent server sends? */
+export function readsNumber(action: Pick<ParsedAction, 'number'>, word?: string): boolean {
+  return action.number !== undefined && word !== undefined && (word === 'number' || parseNumber(word.trim()) === action.number);
+}
+
+/**
+ * An object slot that holds a number (TURN DIAL TO 4): the value rides along, and the slot keeps the
+ * digits typed, so a verb with no rule for it misses with them (“You don’t see a “5” here.”).
+ */
 function withNumbers(parsed: ParsedAction): ParsedAction {
   for (const slot of ['target', 'indirect'] as const) {
     const n = parsed[slot] === undefined ? null : parseNumber(parsed[slot]!);
-    if (n !== null) return { ...parsed, [slot]: 'number', number: n };
+    if (n !== null) return { ...parsed, number: n };
   }
   return parsed;
 }
@@ -445,7 +444,7 @@ function parse(rawInput: string, allowBareWord: boolean, verbs?: World['verbs'])
       delete parsed.indirect;
       parsed.direction = DIRECTIONS[m[2].trim()] as ParsedAction['direction'];
     }
-    return withNumbers(selfIndirect(parsed));
+    return withNumbers(parsed);
   }
 
   if (RE.sit.test(input)) return { action: 'sit' };

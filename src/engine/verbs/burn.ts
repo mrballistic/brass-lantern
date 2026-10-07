@@ -5,6 +5,7 @@ import { runSteps } from '../effects';
 import { isCarried, isOn, matchNpc, moveItem, needObject, pickItem, reachableItems, visibleItems } from '../model';
 import { miss, ok, type EngineResult } from '../result';
 import { notHeld } from './objects';
+import { readsNumber } from '../parser';
 
 /** Is it burning: a flaming thing, switched on if it switches. */
 function isFlaming(world: World, state: GameState, id: string): boolean {
@@ -16,7 +17,7 @@ function isFlaming(world: World, state: GameState, id: string): boolean {
 export function handleNoEffect(action: ParsedAction, world: World, state: GameState): EngineResult {
   if (!action.target) needObject();
   const scope = visibleItems(world, state);
-  const typed = (word?: string) => action.number !== undefined && word === 'number';
+  const typed = (word?: string) => readsNumber(action, word);
   if (!typed(action.target) && !pickItem(action.target, scope, world, 'target', state) && !matchNpc(action.target, world, state)) return miss(`You don’t see a “${action.target}” here.`);
   if (action.indirect && !typed(action.indirect) && !pickItem(action.indirect, scope, world, 'indirect', state)) return miss(`You don’t see a “${action.indirect}” here.`);
   return ok(['This has no effect.']);

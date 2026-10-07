@@ -170,6 +170,20 @@ describe('orders (6a)', () => {
     expect(s.locations.sock).toBe('robot');
   });
 
+  it('in an order, ME is the speaker and YOURSELF the character ordered', () => {
+    const pushy: World = {
+      ...w,
+      npcs: {
+        ...w.npcs,
+        robot: { ...w.npcs.robot, orders: { push: [{ if: 'target:robot', say: ['The robot pushes itself over.'] }, { if: 'target:player', say: ['The robot pushes you.'] }] } },
+      },
+    };
+    const s = stateWith(pushy, { room: 'bedroom' });
+    s.npcs = { robot: { room: 'bedroom' } };
+    expect(run(s, 'robot, push yourself', pushy).lines).toEqual(['The robot pushes itself over.']);
+    expect(run(s, 'robot, push me', pushy).lines).toEqual(['The robot pushes you.']);
+  });
+
   it('order rules see the inner command: target, number, and the actor', () => {
     const s = stateWith(w, { room: 'bedroom' });
     s.npcs = { robot: { room: 'bedroom' } };

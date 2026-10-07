@@ -51,4 +51,11 @@ describe('the intent client reply', () => {
     reply({ action: 'turn', number: 1001 });
     expect(await parseIntentRemote('x', ctx)).toEqual({ action: 'turn' });
   });
+
+  it('drops a number no slot reads', async () => {
+    reply({ action: 'take', target: 'lamp', number: 4 });
+    expect(await parseIntentRemote('x', ctx)).toEqual({ action: 'take', target: 'lamp' });
+    reply({ action: 'turn', target: '4', indirect: 'dial', number: 4 });
+    expect(await parseIntentRemote('x', ctx)).toEqual({ action: 'turn', target: '4', indirect: 'dial', number: 4 });
+  });
 });

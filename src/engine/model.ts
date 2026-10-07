@@ -1,7 +1,7 @@
 import type { GameState, NpcState, Place } from '@/types/game';
 import type { Item, World } from '@/types/world';
 import { evaluateCondition } from './conditions';
-import { fuzzyCandidates, fuzzyMatch, isSelfWord } from './fuzzy';
+import { fuzzyCandidates, fuzzyMatch, isSelfWord, namesSelf } from './fuzzy';
 
 /** The place that means “carried by the player”. Reserved: no room or item may use it. */
 export const PLAYER = 'player';
@@ -183,11 +183,11 @@ export function visibleItemsIn(roomId: string, world: World, state: GameState): 
 }
 
 /** Fuzzy candidates for items, with aliases folded into the matchable name. */
-function itemCandidates(ids: string[], world: World): Array<{ id: string; name: string }> {
+function itemCandidates(ids: string[], world: World): Array<{ id: string; name: string; aliases?: string[] }> {
   return ids.map((id) => {
     const item = world.items[id];
     const name = item ? [item.name, ...(item.aliases ?? [])].join(' ') : id;
-    return { id, name };
+    return { id, name, aliases: item?.aliases };
   });
 }
 
@@ -198,7 +198,7 @@ export function matchItem(target: string, ids: string[], world: World): string |
 export function matchNpc(target: string, world: World, state: GameState): string | null {
   const present = npcsSeen(world, state, state.currentRoom);
   // Names and aliases, through the one fuzzy matcher.
-  const [id = null] = fuzzyCandidates(target, present.map((id) => ({ id, name: world.npcs[id]?.name ?? id, aliases: world.npcs[id]?.aliases })));
+  const [id = null] = fuzzyCandidates(target, npcCandidates(present, world), { byId: byIdTurns.has(state) });
   if (id) noteActed(state, 'npc', id);
   return id;
 }
@@ -397,9 +397,24 @@ export function pickItem(target: string, ids: string[], world: World, slot: 'tar
   throw new AskSignal({ kind: 'which', slot, word, candidates: found });
 }
 
-/** A second object: ME, MYSELF, SELF (or 'player') is the player, else as pickItem. */
+/** Fuzzy candidates for characters: names and aliases. */
+function npcCandidates(ids: string[], world: World): Array<{ id: string; name: string; aliases?: string[] }> {
+  return ids.map((id) => ({ id, name: world.npcs[id]?.name ?? id, aliases: world.npcs[id]?.aliases }));
+}
+
+/**
+ * Does `word` name the player (ME)? ME and MYSELF always; SELF and YOURSELF unless something in
+ * sight or someone here is called that; the reserved ID 'player' only from the intent server.
+ */
+export function namesPlayer(word: string, world: World, state: GameState): boolean {
+  if (!isSelfWord(word) && !byIdTurns.has(state)) return false;
+  const seen = [...itemCandidates(visibleItems(world, state), world), ...npcCandidates(npcsSeen(world, state, state.currentRoom), world)];
+  return namesSelf(word, seen, { byId: byIdTurns.has(state) });
+}
+
+/** A second object: ME (see namesPlayer) is the player, else as pickItem. */
 export function pickSecond(target: string, ids: string[], world: World, state?: GameState): string | null {
-  return isSelfWord(target) ? PLAYER : pickItem(target, ids, world, 'indirect', state);
+  return state && namesPlayer(target, world, state) ? PLAYER : pickItem(target, ids, world, 'indirect', state);
 }
 
 /** A verb is missing an object: ask for it. */

@@ -31,8 +31,9 @@ describe('numbers (Zork’s INTNUM) (6a)', () => {
     expect(parseNumber('4a')).toBeNull();
   });
   it('TURN X TO N and SET X TO N carry the number', () => {
-    expect(fallbackParse('turn dial to 4')).toEqual({ action: 'turn', target: 'dial', indirect: 'number', number: 4 });
-    expect(fallbackParse('set the dial to 776')).toEqual({ action: 'turn', target: 'dial', indirect: 'number', number: 776 });
+    // The slot keeps the digits typed; the number rides along.
+    expect(fallbackParse('turn dial to 4')).toEqual({ action: 'turn', target: 'dial', indirect: '4', number: 4 });
+    expect(fallbackParse('set the dial to 776')).toEqual({ action: 'turn', target: 'dial', indirect: '776', number: 776 });
     expect(fallbackParse('turn dial to lamp')).toEqual({ action: 'turn', target: 'dial', indirect: 'lamp' });
     expect(fallbackParse('set lamp on table')).toEqual({ action: 'put', target: 'lamp', indirect: 'table', prep: 'on' });
     expect(fallbackParse('turn bolt with wrench')).toEqual({ action: 'turn', target: 'bolt', indirect: 'wrench' });
@@ -51,7 +52,7 @@ describe('numbers (Zork’s INTNUM) (6a)', () => {
     expect(JSON.stringify(missed)).toBe(before);
     const s = stateWith(fixtureWorld, { room: 'bedroom' });
     const beforeTake = JSON.stringify(s);
-    expect(execute({ action: 'take', target: 'number', number: 4 }, { world: fixtureWorld, state: s }).understood).toBe(false);
+    expect(execute({ action: 'take', target: 'number', number: 4, byId: true }, { world: fixtureWorld, state: s }).understood).toBe(false);
     expect(JSON.stringify(s)).toBe(beforeTake);
     // No rule answers: V-TURN's default.
     const plain: World = { ...dial, rooms: { ...dial.rooms, bedroom: { ...dial.rooms.bedroom, instead: undefined } } };
@@ -61,5 +62,40 @@ describe('numbers (Zork’s INTNUM) (6a)', () => {
     const s = stateWith(fixtureWorld, { room: 'bedroom' });
     expect(evaluateCondition('number:4', s, fixtureWorld)).toBe(false);
     expect(evaluateCondition('number<=8', s, fixtureWorld)).toBe(false);
+  });
+
+  it('a number no rule wants misses with the digits typed, as before 6a', () => {
+    const s = stateWith(fixtureWorld, { room: 'bedroom' });
+    const before = JSON.stringify(s);
+    const miss = (input: string, line: string) => {
+      const r = execute(fallbackParse(input)!, { world: fixtureWorld, state: s });
+      expect(r.understood, input).toBe(false);
+      expect(r.lines, input).toEqual([line]);
+    };
+    miss('take 5', 'You don’t see a “5” here.');
+    miss('examine 12', 'You see no “12” here worth examining.');
+    miss('go to 4', 'You can’t go that way. Exits: living room (west).');
+    expect(fallbackParse('go to 4')).toEqual({ action: 'go', target: '4', number: 4 });
+    expect(JSON.stringify(s)).toBe(before);
+  });
+  it('“number” is never fuzzy-matched: the intent server’s literal names no “number plate”', () => {
+    const plated: World = {
+      ...fixtureWorld,
+      items: { ...fixtureWorld.items, plate: { name: 'number plate', description: 'A number plate.', portable: true, tags: [] } },
+      rooms: { ...fixtureWorld.rooms, bedroom: { ...fixtureWorld.rooms.bedroom, items: [...fixtureWorld.rooms.bedroom.items, 'plate'] } },
+    };
+    const s = stateWith(plated, { room: 'bedroom' });
+    const before = JSON.stringify(s);
+    expect(execute({ action: 'take', target: 'number', byId: true }, { world: plated, state: s }).understood).toBe(false);
+    expect(execute({ action: 'take', target: 'number', number: 3, byId: true }, { world: plated, state: s }).understood).toBe(false);
+    expect(JSON.stringify(s)).toBe(before);
+    // Typed, it's an ordinary word.
+    execute(fallbackParse('take number')!, { world: plated, state: s });
+    expect(s.locations.plate).toBe('player');
+  });
+  it('the intent server’s TURN X TO N reaches the rules as the typed one does', () => {
+    const s = stateWith(dial, { room: 'bedroom' });
+    expect(execute({ action: 'turn', target: 'dial', indirect: 'number', number: 6, byId: true }, { world: dial, state: s }).lines).toEqual(['The dial clicks.']);
+    expect(s.vars?.cell).toBe(6);
   });
 });
