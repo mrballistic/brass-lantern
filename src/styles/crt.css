@@ -3,49 +3,52 @@
    ============================================================ */
 
 :root {
-  /* Core palette */
-  --crt-bg: #0a0a08;
-  --crt-amber: #ffb000;
-  --crt-amber-bright: #ffc833;
-  --crt-amber-dim: rgba(255, 176, 0, 0.6);
-  --crt-amber-glow: rgba(255, 176, 0, 0.3);
-  --crt-amber-glow-strong: rgba(255, 176, 0, 0.6);
-  --crt-green: #88ffaa;
-  --crt-orange: #ff8844;
-  --crt-gold: #ffd866;
-  --crt-border: #332800;
-  --crt-scanline: rgba(0, 0, 0, 0.15);
+  /* Palette roles (defaults: crt-amber). Glows elsewhere are color-mix()ed from these. */
+  --bl-bg: #0a0a08;
+  --bl-fg: #ffb000;
+  --bl-fg-bright: #ffc833;
+  --bl-fg-dim: rgba(255, 176, 0, 0.6);
+  --bl-glow: rgba(255, 176, 0, 0.3);
+  --bl-glow-strong: rgba(255, 176, 0, 0.6);
+  --bl-border: #332800;
+  --bl-input: #88ffaa;
+  --bl-location: #ffc833;
+  --bl-event: #ff8844;
+  --bl-decorative: #ffd866;
+  --bl-system: rgba(255, 176, 0, 0.6);
+  --bl-scanline: rgba(0, 0, 0, 0.15);
+  --bl-shade: #000000;
 
   /* Phosphor decay levels */
-  --crt-decay-fresh: 1;
-  --crt-decay-recent: 0.92;
-  --crt-decay-old: 0.85;
+  --bl-decay-fresh: 1;
+  --bl-decay-recent: 0.92;
+  --bl-decay-old: 0.85;
 
   /* Boot sequence */
-  --crt-boot-line: #ffd866;
-  --crt-boot-flash: #ffffff;
-  --crt-boot-duration: 2000ms;
+  --bl-boot-line: #ffd866;
+  --bl-boot-flash: #ffffff;
+  --bl-boot-duration: 2000ms;
 
   /* Typewriter timing */
-  --crt-type-fast: 10ms;
-  --crt-type-normal: 18ms;
-  --crt-type-medium: 12ms;
-  --crt-type-line-pause: 150ms;
+  --bl-type-fast: 10ms;
+  --bl-type-normal: 18ms;
+  --bl-type-medium: 12ms;
+  --bl-type-line-pause: 150ms;
 
   /* Flicker */
-  --crt-flicker-base: 3.7s;
-  --crt-flicker-secondary: 2.3s;
-  --crt-glitch-interval-min: 15s;
-  --crt-glitch-interval-max: 30s;
+  --bl-flicker-base: 3.7s;
+  --bl-flicker-secondary: 2.3s;
+  --bl-glitch-interval-min: 15s;
+  --bl-glitch-interval-max: 30s;
 }
 
 html, body, #app {
   margin: 0;
   padding: 0;
   height: 100%;
-  background: var(--crt-bg);
+  background: var(--bl-bg);
   font-family: 'VT323', 'Courier New', monospace;
-  color: var(--crt-amber);
+  color: var(--bl-fg);
   overflow: hidden;
 }
 
@@ -58,8 +61,8 @@ html, body, #app {
   position: relative;
   width: 100vw;
   height: 100vh;
-  background: var(--crt-bg);
-  color: var(--crt-amber);
+  background: var(--bl-bg);
+  color: var(--bl-fg);
   overflow: hidden;
 }
 
@@ -72,8 +75,8 @@ html, body, #app {
   z-index: 2;
   background: radial-gradient(
     ellipse at center,
-    rgba(255, 176, 0, 0.05) 0%,
-    rgba(255, 176, 0, 0.02) 40%,
+    color-mix(in srgb, var(--bl-fg) 5%, transparent) 0%,
+    color-mix(in srgb, var(--bl-fg) 2%, transparent) 40%,
     transparent 70%
   );
 }
@@ -89,8 +92,8 @@ html, body, #app {
     to bottom,
     transparent 0,
     transparent 2px,
-    var(--crt-scanline) 2px,
-    var(--crt-scanline) 4px
+    var(--bl-scanline) 2px,
+    var(--bl-scanline) 4px
   );
 }
 
@@ -121,20 +124,20 @@ html, body, #app {
   pointer-events: none;
   z-index: 11;
   background:
-    radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.45) 100%),
-    radial-gradient(ellipse at center, transparent 70%, rgba(0, 0, 0, 0.25) 100%);
+    radial-gradient(ellipse at center, transparent 55%, color-mix(in srgb, var(--bl-shade) 45%, transparent) 100%),
+    radial-gradient(ellipse at center, transparent 70%, color-mix(in srgb, var(--bl-shade) 25%, transparent) 100%);
 }
 
 /* ============================================================
    Multi-rate flicker (combined via nested containers)
    ============================================================ */
 .crt-flicker-base {
-  animation: crt-flicker-base var(--crt-flicker-base) ease-in-out infinite;
+  animation: crt-flicker-base var(--bl-flicker-base) ease-in-out infinite;
   width: 100%;
   height: 100%;
 }
 .crt-flicker-secondary {
-  animation: crt-flicker-secondary var(--crt-flicker-secondary) ease-in-out infinite;
+  animation: crt-flicker-secondary var(--bl-flicker-secondary) ease-in-out infinite;
   width: 100%;
   height: 100%;
 }
@@ -177,11 +180,11 @@ html, body, #app {
   justify-content: space-between;
   align-items: center;
   padding: 10px 20px;
-  border-bottom: 1px solid var(--crt-border);
+  border-bottom: 1px solid var(--bl-border);
   font-size: 14px;
   text-transform: uppercase;
   letter-spacing: 2px;
-  color: var(--crt-amber);
+  color: var(--bl-fg);
   opacity: 0.6;
 }
 .terminal-header .moves {
@@ -197,22 +200,22 @@ html, body, #app {
 }
 
 .terminal-output::-webkit-scrollbar { width: 6px; }
-.terminal-output::-webkit-scrollbar-track { background: var(--crt-bg); }
+.terminal-output::-webkit-scrollbar-track { background: var(--bl-bg); }
 .terminal-output::-webkit-scrollbar-thumb {
-  background: var(--crt-border);
+  background: var(--bl-border);
   border-radius: 3px;
 }
 
 .terminal-input-bar {
   display: flex;
   align-items: center;
-  border-top: 1px solid var(--crt-border);
+  border-top: 1px solid var(--bl-border);
   padding: 10px 20px;
   gap: 8px;
-  background: var(--crt-bg);
+  background: var(--bl-bg);
 }
 .terminal-input-bar .prompt {
-  color: var(--crt-amber);
+  color: var(--bl-fg);
   font-size: 20px;
   line-height: 1;
 }
@@ -229,15 +232,15 @@ html, body, #app {
   background: transparent;
   border: none;
   outline: none;
-  color: var(--crt-green);
+  color: var(--bl-input);
   font-family: 'VT323', 'Courier New', monospace;
   font-size: 20px;
   /* The block cursor below stands in for the caret. */
   caret-color: transparent;
-  text-shadow: 0 0 6px rgba(136, 255, 170, 0.5);
+  text-shadow: 0 0 6px color-mix(in srgb, var(--bl-input) 50%, transparent);
 }
 .terminal-input-bar input::placeholder {
-  color: var(--crt-amber);
+  color: var(--bl-fg);
   opacity: 0.3;
 }
 .terminal-input-bar input:disabled {
@@ -267,9 +270,9 @@ html, body, #app {
   display: inline-block;
   width: 0.5em;
   height: 22px;
-  background: var(--crt-amber);
+  background: var(--bl-fg);
   animation: crt-cursor-blink 1s steps(2, end) infinite;
-  box-shadow: 0 0 8px var(--crt-amber-glow-strong);
+  box-shadow: 0 0 8px var(--bl-glow-strong);
 }
 @keyframes crt-cursor-blink {
   0%, 50%  { opacity: 1; }
@@ -282,47 +285,47 @@ html, body, #app {
 .line {
   font-size: 18px;
   line-height: 1.5;
-  color: var(--crt-amber);
-  text-shadow: 0 0 8px rgba(255, 176, 0, 0.3);
+  color: var(--bl-fg);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--bl-fg) 30%, transparent);
   white-space: pre-wrap;
   word-break: break-word;
   margin: 0 0 2px 0;
 }
 
 .line.input {
-  color: var(--crt-green);
-  text-shadow: 0 0 6px rgba(136, 255, 170, 0.4);
+  color: var(--bl-input);
+  text-shadow: 0 0 6px color-mix(in srgb, var(--bl-input) 40%, transparent);
 }
 .line.location {
   font-size: 20px;
   font-weight: bold;
-  color: var(--crt-amber-bright);
+  color: var(--bl-location);
   text-shadow:
-    0 0 10px var(--crt-amber-glow-strong),
-    0 0 18px var(--crt-amber-glow);
+    0 0 10px var(--bl-glow-strong),
+    0 0 18px var(--bl-glow);
   margin-top: 14px;
 }
 .line.event {
-  color: var(--crt-orange);
+  color: var(--bl-event);
   font-style: italic;
-  text-shadow: 0 0 8px rgba(255, 136, 68, 0.5);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--bl-event) 50%, transparent);
 }
 .line.decorative {
-  color: var(--crt-gold);
-  text-shadow: 0 0 8px rgba(255, 216, 102, 0.5);
+  color: var(--bl-decorative);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--bl-decorative) 50%, transparent);
 }
 .line.system {
-  color: var(--crt-amber-dim);
+  color: var(--bl-system);
   font-size: 16px;
 }
 
 /* Phosphor decay applied by JS classes. */
-.line.decay-recent { opacity: var(--crt-decay-recent); text-shadow: 0 0 6px rgba(255, 176, 0, 0.2); }
-.line.decay-old    { opacity: var(--crt-decay-old);    text-shadow: 0 0 4px rgba(255, 176, 0, 0.1); }
+.line.decay-recent { opacity: var(--bl-decay-recent); text-shadow: 0 0 6px color-mix(in srgb, var(--bl-fg) 20%, transparent); }
+.line.decay-old    { opacity: var(--bl-decay-old);    text-shadow: 0 0 4px color-mix(in srgb, var(--bl-fg) 10%, transparent); }
 
 /* Parsing indicator */
 .parsing {
-  color: var(--crt-amber-dim);
+  color: var(--bl-fg-dim);
   font-size: 16px;
   animation: parsing-blink 1s steps(2, end) infinite;
 }
@@ -338,7 +341,7 @@ html, body, #app {
   position: fixed;
   inset: 0;
   z-index: 20;
-  background: #000;
+  background: var(--bl-shade);
   pointer-events: none;
   overflow: hidden;
 }
@@ -348,8 +351,8 @@ html, body, #app {
   left: 0;
   width: 100%;
   height: 1px;
-  background: var(--crt-boot-line);
-  box-shadow: 0 0 10px var(--crt-boot-line);
+  background: var(--bl-boot-line);
+  box-shadow: 0 0 10px var(--bl-boot-line);
   opacity: 0;
   transform: translateY(-0.5px);
 }
@@ -360,7 +363,7 @@ html, body, #app {
   animation: boot-expand 500ms ease-out forwards;
 }
 .crt-boot.phase-3 {
-  background: rgba(0, 0, 0, 0);
+  background: transparent;
   animation: boot-stabilize 600ms ease-out forwards;
 }
 
@@ -375,28 +378,28 @@ html, body, #app {
 @keyframes boot-expand {
   0% {
     height: 1px;
-    background: var(--crt-boot-line);
+    background: var(--bl-boot-line);
     opacity: 1;
   }
   60% {
     height: 100%;
     top: 0;
-    background: var(--crt-amber);
+    background: var(--bl-fg);
     opacity: 0.7;
   }
   100% {
     height: 100%;
     top: 0;
-    background: var(--crt-amber);
+    background: var(--bl-fg);
     opacity: 0;
   }
 }
 @keyframes boot-stabilize {
-  0%   { background: rgba(255, 176, 0, 0.4); filter: brightness(1.2); transform: translate(0, 0); }
+  0%   { background: color-mix(in srgb, var(--bl-fg) 40%, transparent); filter: brightness(1.2); transform: translate(0, 0); }
   20%  { transform: translate(-1px, 1px); }
   40%  { transform: translate(2px, -1px); }
   60%  { transform: translate(-1px, -1px); }
-  100% { background: rgba(0, 0, 0, 0); filter: brightness(1); transform: translate(0, 0); }
+  100% { background: transparent; filter: brightness(1); transform: translate(0, 0); }
 }
 
 /* ============================================================
@@ -432,21 +435,21 @@ html, body, #app {
   bottom: 72px;
   max-width: 420px;
   padding: 14px 18px 12px;
-  background: var(--crt-bg);
-  border: 1px solid var(--crt-amber-dim);
-  box-shadow: 0 0 12px var(--crt-amber-glow);
+  background: var(--bl-bg);
+  border: 1px solid var(--bl-fg-dim);
+  box-shadow: 0 0 12px var(--bl-glow);
   font-size: 18px;
   line-height: 1.25;
-  text-shadow: 0 0 4px var(--crt-amber-glow);
+  text-shadow: 0 0 4px var(--bl-glow);
 }
 .consent p { margin: 0 0 10px; }
-.consent .consent-title { color: var(--crt-gold); letter-spacing: 2px; }
+.consent .consent-title { color: var(--bl-decorative); letter-spacing: 2px; }
 .consent .consent-note { margin: 10px 0 0; opacity: 0.6; font-size: 16px; }
 .consent-actions { display: flex; gap: 12px; }
 .consent button,
 .terminal-header .consent-open {
   font: inherit;
-  color: var(--crt-amber);
+  color: var(--bl-fg);
   background: transparent;
   border: 0;
   cursor: pointer;
@@ -455,17 +458,17 @@ html, body, #app {
 .consent button {
   flex: 1 1 0;
   min-height: 40px;
-  border: 1px solid var(--crt-border);
+  border: 1px solid var(--bl-border);
 }
 .consent button:hover,
 .consent button:focus-visible {
-  color: var(--crt-bg);
-  background: var(--crt-amber);
+  color: var(--bl-bg);
+  background: var(--bl-fg);
   outline: none;
 }
 .terminal-header .consent-open { padding: 0; letter-spacing: inherit; text-transform: inherit; }
 .terminal-header .consent-open:hover,
-.terminal-header .consent-open:focus-visible { color: var(--crt-amber-bright); outline: none; }
+.terminal-header .consent-open:focus-visible { color: var(--bl-fg-bright); outline: none; }
 @media (max-width: 599px) {
   .consent { left: 12px; right: 12px; bottom: 64px; max-width: none; }
 }

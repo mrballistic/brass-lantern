@@ -125,7 +125,7 @@ The CRT is hand-written CSS (`src/styles/crt.css`), with no canvas and no UI fra
 - flicker at two rates, plus occasional glitches;
 - phosphor decay on older lines, and a block cursor with a square-wave blink.
 
-The amber-on-black contrast is deliberately period-accurate rather than WCAG-compliant. Change `--crt-amber` and friends if you need otherwise.
+The amber-on-black contrast is deliberately period-accurate rather than WCAG-compliant. Change `--bl-fg` and the other `--bl-*` variables if you need otherwise.
 
 Each output line is classified by its first characters (`src/engine/output.ts`). The class sets both its style and its typewriter speed:
 
