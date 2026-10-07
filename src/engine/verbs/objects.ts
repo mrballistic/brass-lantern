@@ -1,15 +1,13 @@
 import type { GameState } from '@/types/game';
 import type { Item, World } from '@/types/world';
 import { evaluateCondition } from '../conditions';
-import { contentsLines, describeRoom, lightNote, npcDescription, withArticle } from '../describe';
+import { contentsLines, describeRoom, lightNote, listedName, npcDescription } from '../describe';
 import { closedAround, inventoryOf, isCarried, isHeld, isOpen, matchItem, matchNpc, moveItem, needObject, pickItem, PLAYER, reachableItems, visibleItems } from '../model';
 import { miss, ok, type EngineResult } from '../result';
 import { runEventKey } from '../effects';
 import { afterRuleLines, applyRule, findRule } from '../rules';
 import { takeRefusal } from '../weight';
 import { finishEnding } from '../endings';
-
-const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export function handleLook(world: World, state: GameState): EngineResult {
   return ok(describeRoom(state.currentRoom, world, state));
@@ -21,7 +19,7 @@ export function handleInventory(world: World, state: GameState): EngineResult {
   const lines = ['You are carrying:'];
   for (const id of carried) {
     const name = world.items[id]?.name ?? id;
-    lines.push(world.style === 'infocom' ? `  ${capitalize(withArticle(world, id))}${lightNote(world, state, id)}` : `  - ${name}`);
+    lines.push(world.style === 'infocom' ? `  ${listedName(world, id)}${lightNote(world, state, id)}` : `  - ${name}`);
     lines.push(...contentsLines(world, state, id, 2));
   }
   return ok(lines);

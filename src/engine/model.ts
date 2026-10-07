@@ -55,6 +55,10 @@ export function isNpcHidden(world: World, state: GameState, id: string): boolean
 /** A filter for items that aren't hidden (the `hide` effect). */
 export const shown = (state: GameState) => (id: string) => !state.itemState[id]?.hidden;
 
+/** A filter for items a listing names: not scenery, not unlisted (the `unlist` effect), not hidden. */
+export const listable = (world: World, state: GameState) => (id: string) =>
+  !world.items[id]?.scenery && !state.itemState[id]?.unlisted && shown(state)(id);
+
 /** A character's state, created on first use. */
 export function npcStateOf(state: GameState, id: string): NpcState {
   return ((state.npcs ??= {})[id] ??= {});
@@ -146,7 +150,7 @@ function fixturesIn(world: World, state: GameState, roomId: string): string[] {
 
 /** What a room lists: its direct contents (and fixtures it shares), minus scenery. */
 export function visibleItemsIn(roomId: string, world: World, state: GameState): string[] {
-  return [...childrenOf(world, state, roomId), ...fixturesIn(world, state, roomId)].filter((id) => !world.items[id]?.scenery && !state.itemState[id]?.unlisted && shown(state)(id));
+  return [...childrenOf(world, state, roomId), ...fixturesIn(world, state, roomId)].filter(listable(world, state));
 }
 
 /** Fuzzy candidates for items, with aliases folded into the matchable name. */

@@ -2,7 +2,7 @@ import type { GameState } from '@/types/game';
 import type { Room, World } from '@/types/world';
 import { evaluateCondition } from './conditions';
 import { darknessLook } from './light';
-import { canSeeInside, childrenOf, isLit, npcsSeen, shown, visibleItemsIn } from './model';
+import { canSeeInside, childrenOf, isLit, listable, npcsSeen, visibleItemsIn } from './model';
 
 export const COMPASS = ['north', 'south', 'east', 'west', 'northeast', 'northwest', 'southeast', 'southwest', 'up', 'down'];
 
@@ -47,7 +47,7 @@ export function withArticle(world: World, id: string): string {
 }
 
 /** "A leaflet": Zork's style for listed items. */
-function listed(world: World, id: string): string {
+export function listedName(world: World, id: string): string {
   const s = withArticle(world, id);
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
@@ -67,16 +67,21 @@ function heading(world: World, id: string): string {
   return item?.surface ? `Sitting on the ${item.name} is:` : `The ${item?.name ?? id} contains:`;
 }
 
+/** Untouched, with a first-seen sentence of its own (“On the table is a brown sack.”). */
+function firstSeen(world: World, state: GameState, id: string): boolean {
+  return !state.itemState[id]?.moved && Boolean(world.items[id]?.initialDescription);
+}
+
 /**
  * Everything visible in or on `id`, in Zork's form: a heading at `depth`
  * (two spaces per level), then "A leaflet" lines one level in, nested.
  */
 export function contentsLines(world: World, state: GameState, id: string, depth = 0): string[] {
   if (!canSeeInside(world, state, id)) return [];
-  const kids = childrenOf(world, state, id).filter((k) => !world.items[k]?.scenery && !state.itemState[k]?.unlisted && shown(state)(k));
+  const kids = childrenOf(world, state, id).filter(listable(world, state));
   const lines: string[] = [];
-  // Untouched things with a first-seen sentence describe themselves (“On the table is a brown sack.”).
-  const told = kids.filter((k) => !state.itemState[k]?.moved && world.items[k]?.initialDescription);
+  // Untouched things with a first-seen sentence describe themselves.
+  const told = kids.filter((k) => firstSeen(world, state, k));
   for (const k of told) {
     lines.push(world.items[k].initialDescription!);
     lines.push(...contentsLines(world, state, k, depth));
@@ -86,7 +91,7 @@ export function contentsLines(world: World, state: GameState, id: string, depth 
   // FIRSTER prints a heading of the world's own (the trophy case's) unindented.
   lines.push(`${world.items[id]?.contentsHeading ? '' : '  '.repeat(depth)}${heading(world, id)}`);
   for (const k of rest) {
-    lines.push(`${'  '.repeat(depth + 1)}${listed(world, k)}${lightNote(world, state, k)}`);
+    lines.push(`${'  '.repeat(depth + 1)}${listedName(world, k)}${lightNote(world, state, k)}`);
     lines.push(...contentsLines(world, state, k, depth + 1));
   }
   return lines;
@@ -100,12 +105,12 @@ function floorLike(world: World, id: string): boolean {
 
 /** What's on a floor-like surface: first-seen sentences, then “There is a … here.” (and “(outside the boat)”) with each thing's contents; `listed` if any was the latter. */
 function surfaceAsFloor(world: World, state: GameState, id: string, outside: string): { lines: string[]; listed: boolean } {
-  const kids = childrenOf(world, state, id).filter((k) => !world.items[k]?.scenery && !state.itemState[k]?.unlisted && shown(state)(k));
-  const firstSeen = (k: string) => !state.itemState[k]?.moved && Boolean(world.items[k]?.initialDescription);
+  const kids = childrenOf(world, state, id).filter(listable(world, state));
+  const told = (k: string) => firstSeen(world, state, k);
   const lines: string[] = [];
   let listed = false;
-  for (const k of [...kids.filter(firstSeen), ...kids.filter((k) => !firstSeen(k))]) {
-    if (firstSeen(k)) lines.push(world.items[k].initialDescription!);
+  for (const k of [...kids.filter(told), ...kids.filter((k) => !told(k))]) {
+    if (told(k)) lines.push(world.items[k].initialDescription!);
     else {
       listed = true;
       lines.push((world.items[k].roomDescription ?? `There is ${withArticle(world, k)} here${lightNote(world, state, k)}.`) + outside);
@@ -124,8 +129,7 @@ export function lightNote(world: World, state: GameState, id: string): string {
 function itemSentence(world: World, state: GameState, id: string): string | undefined {
   const item = world.items[id];
   if (!item) return undefined;
-  if (!state.itemState[id]?.moved && item.initialDescription) return item.initialDescription;
-  return item.roomDescription;
+  return firstSeen(world, state, id) ? item.initialDescription : item.roomDescription;
 }
 
 /** Lines emitted when entering a room (description, items, NPCs, exits). */
@@ -155,10 +159,10 @@ export function describeRoom(
   }
 
   // The vehicle you're in isn't listed; what's in it is, after the room's things.
-  const seenFirst = (id: string) => !state.itemState[id]?.moved && Boolean(world.items[id]?.initialDescription);
+  const told = (id: string) => firstSeen(world, state, id);
   const inRoom = visibleItemsIn(roomId, world, state).filter((id) => id !== state.aboard);
   // Infocom lists untouched things' first-seen sentences before everything else (PRINT-CONT's first pass).
-  const visibleItems = infocom ? [...inRoom.filter(seenFirst), ...inRoom.filter((id) => !seenFirst(id))] : inRoom;
+  const visibleItems = infocom ? [...inRoom.filter(told), ...inRoom.filter((id) => !told(id))] : inRoom;
   const plain: string[] = [];
   // Zork lists a room's contents newest first: a character who moved in this turn comes before its things.
   const people = npcsSeen(world, state, roomId).filter((id) => !world.npcs[id]?.scenery);
@@ -170,9 +174,9 @@ export function describeRoom(
   let listed = false;
   for (const id of visibleItems) {
     const sentence = itemSentence(world, state, id);
-    const firstSeen = Boolean(sentence) && sentence === world.items[id]?.initialDescription && !state.itemState[id]?.moved;
-    if (!firstSeen && (sentence || infocom)) listed = true;
-    if (sentence) lines.push(firstSeen ? sentence : sentence + outside);
+    const isFirst = told(id);
+    if (!isFirst && (sentence || infocom)) listed = true;
+    if (sentence) lines.push(isFirst ? sentence : sentence + outside);
     else if (infocom) lines.push(`There is ${withArticle(world, id)} here${lightNote(world, state, id)}.${outside}`);
     else plain.push(world.items[id]?.name ?? id);
     // Zork describes what's in each thing right after it.
