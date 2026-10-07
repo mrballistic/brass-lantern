@@ -135,4 +135,28 @@ describe('descriptions from state', () => {
     expect(auditWorld(bad).some((p) => p.includes('nope'))).toBe(true);
     expect(auditWorld(w).some((p) => p.includes('descriptionScript'))).toBe(false);
   });
+
+  it('describing never changes the game, even when the script rolls dice', () => {
+    const w3: World = { ...w, scripts: { grid: (ctx) => [{ say: `###${ctx.random() > 2 ? 'x' : ''}` }] } };
+    const s = stateWith(w3, { room: 'living' });
+    const before = JSON.stringify(s);
+    const a = describeCurrentRoom(w3, s);
+    const b = describeCurrentRoom(w3, s);
+    expect(a).toEqual(b);
+    expect(JSON.stringify(s)).toBe(before);
+  });
+
+  it('a script that says nothing falls through to the plain description', () => {
+    const w3: World = { ...w, scripts: { grid: () => [] } };
+    const s = stateWith(w3, { room: 'living' });
+    s.visited = ['living'];
+    expect(describeCurrentRoom(w3, s)).toContain(w3.rooms.living.description);
+  });
+
+  it('the audit flags a description script that does more than say', () => {
+    const mk = (steps: World['scripts'] extends infer T ? T : never): World => ({ ...w, scripts: steps });
+    const bad = mk({ grid: () => [{ say: 'x' }, { set: 'f' }] });
+    expect(auditWorld(bad).some((p) => p.includes('grid') && p.includes('say'))).toBe(true);
+    expect(auditWorld(mk({ grid: () => [{ say: 'x' }, 'y'] })).some((p) => p.includes('descriptionScript'))).toBe(false);
+  });
 });

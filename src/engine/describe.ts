@@ -1,5 +1,5 @@
 import type { GameState } from '@/types/game';
-import type { Exit, Room, World } from '@/types/world';
+import type { EventStep, Exit, Room, World } from '@/types/world';
 import { evaluateCondition } from './conditions';
 import { darknessLook } from './light';
 import { scriptSteps } from './scripts';
@@ -212,13 +212,23 @@ export function describeRoom(
   return lines;
 }
 
-/** What a description script says: its `say` lines, a line each (undefined when there's no such script). */
+/** The steps a description script returns. Describing never changes the game, so the seed is put back. */
+export function descriptionSteps(name: string, world: World, state: GameState): EventStep[] {
+  const rng = state.rng;
+  try {
+    return scriptSteps(name, undefined, world, state);
+  } finally {
+    state.rng = rng;
+  }
+}
+
+/** What a description script says: its `say` lines, a line each (undefined when there's no such script or it says nothing). */
 export function scriptDescription(name: string | undefined, world: World, state: GameState): string | undefined {
   if (!name || !world.scripts?.[name]) return undefined;
-  return scriptSteps(name, undefined, world, state)
+  const lines = descriptionSteps(name, world, state)
     .map((step) => (typeof step === 'string' ? step : 'say' in step ? step.say : undefined))
-    .filter((s): s is string => s !== undefined)
-    .join('\n');
+    .filter((s): s is string => s !== undefined);
+  return lines.length > 0 ? lines.join('\n') : undefined;
 }
 
 /** A character's line: its description script, else the first description whose condition holds, else its description. */
