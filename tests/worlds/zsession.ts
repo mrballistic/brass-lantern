@@ -7,12 +7,31 @@ import type { GameState, ParsedAction } from '@/types/game';
 import { zork1 } from '@/worlds/zork1';
 import { LocalStorageDialog } from '@/zmachine/dialog';
 import { ZMachineSession } from '@/zmachine/session';
-import { RANDOM_LINES } from './zork1-allowlist';
+import type { World } from '@/types/world';
+import { RANDOM_LINES as ZORK1_RANDOM } from './zork1-allowlist';
+import { RANDOM_LINES as ZORK23_RANDOM } from './zork23-allowlist';
 
 // Runs commands through native Zork I and through the real story file, both seeded,
 // for the differential tests. Callers need the happy-dom environment (saves use localStorage).
 
 export const story = new Uint8Array(readFileSync(resolve(import.meta.dirname, '../fixtures/zork1.z3')));
+
+export type StoryName = 'zork1' | 'zork2' | 'zork3';
+
+/** Lines the original prints by chance, per story (dropped before comparing). */
+export const RANDOM_LINES: Record<StoryName, string[]> = { zork1: ZORK1_RANDOM, zork2: ZORK23_RANDOM.zork2, zork3: ZORK23_RANDOM.zork3 };
+
+const stories = new Map<StoryName, Uint8Array>([['zork1', story]]);
+
+/** A story's bytes: Zork I from the fixture, the others from public/stories. */
+export function storyFile(name: StoryName): Uint8Array {
+  let bytes = stories.get(name);
+  if (!bytes) {
+    bytes = new Uint8Array(readFileSync(resolve(import.meta.dirname, `../../public/stories/${name}.z3`)));
+    stories.set(name, bytes);
+  }
+  return bytes;
+}
 
 /** Same text, give or take case, spacing, quote style and the room marker. */
 export function normalize(lines: string[]): string {
@@ -29,11 +48,11 @@ export function normalize(lines: string[]): string {
 export const THIEF = /large bag|seedy-looking|\bthief\b|\brobber\b/i;
 
 /** A fresh session of the original, past its banner. `send` answers with the reply's lines. */
-export async function openOriginal(seed?: number): Promise<{ send: (command: string) => Promise<string[]> }> {
+export async function openOriginal(seed?: number, which: StoryName = 'zork1'): Promise<{ send: (command: string) => Promise<string[]> }> {
   let lines: string[] = [];
   let waiting = false;
   const session = new ZMachineSession(
-    story,
+    storyFile(which),
     new LocalStorageDialog('diff'),
     {
       onLines: (l) => lines.push(...l),
@@ -64,7 +83,7 @@ export async function openOriginal(seed?: number): Promise<{ send: (command: str
   return {
     send: async (c: string) => {
       session.submit(c);
-      return (await settle()).filter((l) => !RANDOM_LINES.includes(l));
+      return (await settle()).filter((l) => !RANDOM_LINES[which].includes(l));
     },
   };
 }
@@ -78,32 +97,32 @@ export async function originalRun(commands: string[], seed: number): Promise<str
 }
 
 /** The game store's turn, minus the LLM: questions, AGAIN and OOPS included. */
-export function nativeTurn(c: string, state: GameState, conv: ReturnType<typeof newConversation>): string[] {
+export function nativeTurn(c: string, state: GameState, conv: ReturnType<typeof newConversation>, world: World = zork1): string[] {
   const run = (action: ParsedAction): EngineResult => {
-    const result = execute(action, { world: zork1, state });
+    const result = execute(action, { world, state });
     remember(conv, action, result);
     return result;
   };
   if (!conv.pending) {
-    const captured = captureLine(zork1, state, c);
+    const captured = captureLine(world, state, c);
     if (captured) return captured.lines;
   }
-  const step = interpret(c, conv, zork1, state);
+  const step = interpret(c, conv, world, state);
   if ('reply' in step) return step.reply;
   if ('run' in step) return run(step.run).lines;
-  const parsed = fallbackParse(step.parse, zork1.verbs);
+  const parsed = fallbackParse(step.parse, world.verbs);
   const result = run(parsed ? resolvePronouns(parsed, conv) : { action: 'unknown' });
   conv.lastUnknown = result.understood === false ? step.parse : null;
   return [...(step.note ?? []), ...result.lines];
 }
 
 /** A fresh native game from a seed. */
-export function openNative(seed: number): { state: GameState; send: (command: string) => string[] } {
-  const state = initialState(zork1);
+export function openNative(seed: number, world: World = zork1): { state: GameState; send: (command: string) => string[] } {
+  const state = initialState(world);
   state.rng = seed;
-  openingLines(zork1, state);
+  openingLines(world, state);
   const conv = newConversation();
-  return { state, send: (c) => nativeTurn(c, state, conv) };
+  return { state, send: (c) => nativeTurn(c, state, conv, world) };
 }
 
 export function nativeRun(commands: string[], seed: number): string[][] {
