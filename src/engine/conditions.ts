@@ -20,10 +20,16 @@ import { isAlive, isAwake, isCarried, isLit, isLocked, isNpcIn, isOn, isOpen, is
  *   carrying<=N     how many things the player holds directly
  *   heaviest<=N     the heaviest thing the player holds, contents included
  *   score<=N        the score, as SCORE reports it
+ *   said:WORDS           the words typed after a text verb (SAY HELLO), case and punctuation ignored
  *   number:N, number<=N  the number in the command being run (TURN DIAL TO 4); false when it has none
  *   lit:here, lit:ROOM  the room has light (needs `world`)
  * Unrecognized strings evaluate to false.
  */
+/** Typed words compare as lowercase whole words, punctuation and quotes ignored. */
+function sayable(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean).join(' ');
+}
+
 const COMPARE: Record<string, (a: number, b: number) => boolean> = {
   '=': (a, b) => a === b,
   '<': (a, b) => a < b,
@@ -75,6 +81,11 @@ export function evaluateCondition(condition: string, state: GameState, world?: W
     case 'number':
       result = commandOf(state)?.number === Number(value);
       break;
+    case 'said': {
+      const typed = commandOf(state)?.text;
+      result = typed !== undefined && sayable(typed) === sayable(body.slice('said:'.length));
+      break;
+    }
     case 'has':
       result = isCarried(state, value);
       break;
@@ -145,6 +156,9 @@ export function conditionProblems(condition: string, world: World): string[] {
     const noRoom = () => problems.push(`“${body}” names no room “${value}”`);
     switch (kind) {
       case 'flag':
+        break;
+      case 'said':
+        if (!sayable(body.slice('said:'.length))) problems.push(`unknown condition “${body}”`);
         break;
       case 'number':
         if (!/^-?\d+$/.test(value)) problems.push(`unknown condition “${body}”`);

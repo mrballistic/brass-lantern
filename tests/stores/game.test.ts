@@ -832,3 +832,29 @@ describe('a line stop left by a command that threw (1.12.5 review)', () => {
     }
   });
 });
+
+describe('text verb on a line (6a)', () => {
+  it('a text verb ends the line', async () => {
+    localStorage.clear();
+    const saved = { ...fixtureWorld.verbs };
+    const rooms = fixtureWorld.rooms;
+    const events = fixtureWorld.events;
+    const room = rooms.bedroom;
+    fixtureWorld.verbs = { ...saved, answer: { words: ['answer'], target: 'text', reply: 'Nobody seems to be awaiting your answer.' } };
+    rooms.bedroom = { ...room, instead: { answer: [{ if: 'said:a well', then: 'solved' }] } };
+    fixtureWorld.events = { ...events, solved: ['There is a clap of thunder.'] };
+    try {
+      const store = freshStore();
+      store.initialize();
+      const before = store.output.length;
+      await store.submit('answer "a well" then look');
+      const text = store.output.slice(before).map((l) => l.text).join('\n');
+      expect(text).toContain('There is a clap of thunder.');
+      expect(text).not.toContain('A small bedroom.');
+    } finally {
+      fixtureWorld.verbs = saved;
+      rooms.bedroom = room;
+      fixtureWorld.events = events;
+    }
+  });
+});

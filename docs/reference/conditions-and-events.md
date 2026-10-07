@@ -18,6 +18,7 @@ Conditions are strings, used by `requires`, exits (`if`, `denials`), room `descr
 | `var:NAME<op>N` | a numeric variable compared with `=`, `<`, `>`, `<=` or `>=` (unset is 0) |
 | `carrying<op>N` | how many things the player holds directly |
 | `number:N`, `number<op>N` | the number typed in the command being run (`TURN DIAL TO 4`, `SET DIAL TO 776`); false when the command has none. A rule with `with: 'number'` matches that command |
+| `said:WORDS` | the words typed after a text verb (`target: 'text'`, e.g. `ANSWER A WELL`), compared as lowercase whole words with punctuation and quotes ignored; false when the command has none |
 | `heaviest<op>N` | the weight of the heaviest thing the player holds directly, counting what's inside it (Zork's narrow passage: `heaviest<=4`) |
 | `score<op>N` | the score, as SCORE reports it (Zork wins at `score>=350`); a `scoring` entry can't test it |
 | `lit:here`, `lit:ROOM` | the room has light |

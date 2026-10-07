@@ -191,8 +191,8 @@ function worldPatterns(verbs: World['verbs']): WorldPattern[] {
       if (BUILT_IN_WORDS.has(word.toLowerCase())) continue;
       const preps = (verb.indirect ?? []).map(escapeWord).join('|');
       const obj =
-        verb.target === 'none' ? '' : `(?:\\s+(?:the\\s+)?(.+?))${verb.target === 'required' ? '' : '?'}`;
-      const ind = preps && verb.target !== 'none' ? `(?:\\s+(?:${preps})\\s+(?:the\\s+)?(.+))?` : '';
+        verb.target === 'text' ? '(?:\\s+(.*))?' : verb.target === 'none' ? '' : `(?:\\s+(?:the\\s+)?(.+?))${verb.target === 'required' ? '' : '?'}`;
+      const ind = preps && verb.target !== 'none' && verb.target !== 'text' ? `(?:\\s+(?:${preps})\\s+(?:the\\s+)?(.+))?` : '';
       out.push({ re: new RegExp(`^${escapeWord(word)}${obj}${ind}$`, 'i'), id, verb, phrase: /\s/.test(word.trim()) });
     }
   }
@@ -201,11 +201,23 @@ function worldPatterns(verbs: World['verbs']): WorldPattern[] {
   return out;
 }
 
+/** Typed words: the first quoted phrase if the text opens with a quote, else the whole rest; whitespace collapsed. */
+function typedText(raw: string): string {
+  const text = raw.trim();
+  const quoted = text.match(/^(?:"([^"]*)"|“([^”]*)”|'([^']*)')/);
+  return (quoted ? (quoted[1] ?? quoted[2] ?? quoted[3]) : text).replace(/\s+/g, ' ').trim();
+}
+
 function matchWorld(input: string, patterns: WorldPattern[]): ParsedAction | null {
-  for (const { re, id } of patterns) {
+  for (const { re, id, verb } of patterns) {
     const m = input.match(re);
     if (!m) continue;
     const parsed: ParsedAction = { action: id };
+    if (verb.target === 'text') {
+      const text = typedText(m[1] ?? '');
+      if (text) parsed.text = text;
+      return parsed;
+    }
     if (m[1]) parsed.target = m[1].trim();
     if (m[2]) parsed.indirect = m[2].trim();
     return parsed;
@@ -288,10 +300,26 @@ const LIST_BREAK = /\s*(?:,\s*(?:and\s+)?|\s+and\s+)\s*/i;
 export function splitCommands(rawInput: string, verbs?: World['verbs']): string[] {
   const input = rawInput.trim().replace(/[.!]+$/, '');
   if (!input) return [];
-  return input
-    .split(CLAUSE_BREAK)
-    .filter(Boolean)
-    .flatMap((clause) => splitClause(clause, verbs));
+  // A quoted phrase never splits (its contents are masked, length for length), and a text verb
+  // takes everything after it: its words may hold full stops and “then”.
+  const masked = input.replace(/"[^"]*"|“[^”]*”/g, (q) => q[0] + '_'.repeat(q.length - 2) + q[q.length - 1]);
+  const textWords = Object.values(verbs ?? {})
+    .filter((v) => v.target === 'text')
+    .flatMap((v) => v.words.filter((w) => !BUILT_IN_WORDS.has(w.toLowerCase())).map(escapeWord));
+  const textVerb = textWords.length ? new RegExp(`^(?:${textWords.join('|')})(?:\\s|$)`, 'i') : null;
+  const out: string[] = [];
+  let start = 0;
+  const breaks = [...masked.matchAll(new RegExp(CLAUSE_BREAK.source, 'gi'))].map((m) => [m.index, m.index + m[0].length]);
+  for (const [breakAt, next] of [...breaks, [masked.length, masked.length]]) {
+    const clause = input.slice(start, breakAt);
+    if (textVerb?.test(clause)) {
+      out.push(input.slice(start));
+      return out;
+    }
+    if (clause) out.push(...splitClause(clause, verbs));
+    start = next;
+  }
+  return out;
 }
 
 /** “take all but the wallet and shirt” → { action: 'take', target: 'all', except: ['wallet', 'shirt'] }. */

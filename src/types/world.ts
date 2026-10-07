@@ -72,7 +72,8 @@ export type RuleTable = Record<string, Rule[]>;
 export interface WorldVerb {
   /** Words and phrases that mean it ("pray", "hit the snooze button"). */
   words: string[];
-  target: 'none' | 'optional' | 'required';
+  /** `text`: the rest of the line, typed words (SAY, INCANT, ANSWER), read by `said:`. */
+  target: 'none' | 'optional' | 'required' | 'text';
   /** Prepositions that introduce a second object ("with", "on"). */
   indirect?: string[];
   /** Printed when no rule applies. Defaults to “Nothing happens.” `{a target}` is the object with its article, `{target}` its name. */

@@ -110,6 +110,8 @@ export interface ParsedAction {
   exit?: boolean;
   /** TURN X TO 4, SET X TO 776: the number, with `indirect` (or `target`) the literal 'number'. */
   number?: number;
+  /** SAY/INCANT/ANSWER: the rest of the line, outer quotes dropped, whitespace collapsed. */
+  text?: string;
   /** The targets are IDs (the intent server's answer), so they resolve by ID first. */
   byId?: boolean;
 }

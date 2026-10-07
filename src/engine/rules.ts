@@ -136,6 +136,7 @@ export function withRules(
     target: target ?? targetNpc ?? undefined,
     indirect: indirect ?? indirectNpc ?? undefined,
     number: action.number,
+    text: action.text,
     words: { target: action.target, indirect: action.indirect },
   });
   const instead = findRule(world, state, 'instead', verb, ids, reach);
