@@ -109,13 +109,14 @@ export function isWater(world: World, state: GameState, roomId: string = state.c
   return typeof w === 'string' ? evaluateCondition(w, state, world) : Boolean(w);
 }
 
+/** Carried, directly or inside something carried (Zork's HELD?). */
+export function isHeld(state: GameState, id: string): boolean {
+  return isInside(state, id, PLAYER);
+}
+
 /** What the player holds, including things they can see inside what they hold (Zork's HELD). */
 export function heldItems(world: World, state: GameState): string[] {
-  const within = (id: string): boolean => {
-    for (let p = state.locations[id]; p; p = state.locations[p]) if (p === PLAYER) return true;
-    return false;
-  };
-  return visibleItems(world, state).filter(within);
+  return visibleItems(world, state).filter((id) => isHeld(state, id));
 }
 
 export function moveItem(state: GameState, id: string, place: Place): void {
@@ -239,14 +240,15 @@ function roots(world: World, state: GameState): string[] {
   ].filter(shown(state));
 }
 
-function collect(world: World, state: GameState, into: (id: string) => boolean): string[] {
+/** `roots` and, through every thing `into` lets you into, the children `keep` allows, at any depth. */
+function collect(world: World, state: GameState, roots: string[], into: (id: string) => boolean, keep: (id: string) => boolean): string[] {
   const out: string[] = [];
   const walk = (id: string) => {
     if (out.includes(id)) return;
     out.push(id);
-    if (into(id)) for (const child of childrenOf(world, state, id).filter(shown(state))) walk(child);
+    if (into(id)) for (const child of childrenOf(world, state, id).filter(keep)) walk(child);
   };
-  roots(world, state).forEach(walk);
+  roots.forEach(walk);
   return out;
 }
 
@@ -271,32 +273,20 @@ export function isLit(world: World, state: GameState, roomId: string = state.cur
   });
 }
 
-/** In the dark you can only find what you're carrying. */
-function inDark(world: World, state: GameState): boolean {
-  return !isLit(world, state);
-}
-
-function collectCarried(world: World, state: GameState, into: (id: string) => boolean): string[] {
-  const out: string[] = [];
-  const walk = (id: string) => {
-    if (out.includes(id)) return;
-    out.push(id);
-    if (into(id)) for (const child of childrenOf(world, state, id)) walk(child);
-  };
-  inventoryOf(world, state).forEach(walk);
-  return out;
+/** What the player can find, opening up what `into` allows. In the dark, only what they carry. */
+function findable(world: World, state: GameState, into: (id: string) => boolean): string[] {
+  if (!isLit(world, state)) return collect(world, state, inventoryOf(world, state), into, () => true);
+  return collect(world, state, roots(world, state), into, shown(state));
 }
 
 /** Everything the player can see: the room, its scenery, what they carry, and inside open or transparent things. */
 export function visibleItems(world: World, state: GameState): string[] {
-  const into = (id: string) => canSeeInside(world, state, id);
-  return inDark(world, state) ? collectCarried(world, state, into) : collect(world, state, into);
+  return findable(world, state, (id) => canSeeInside(world, state, id));
 }
 
 /** Everything the player can touch: like visibleItems, but not through closed glass. */
 export function reachableItems(world: World, state: GameState): string[] {
-  const into = (id: string) => canReachInside(world, state, id);
-  return inDark(world, state) ? collectCarried(world, state, into) : collect(world, state, into);
+  return findable(world, state, (id) => canReachInside(world, state, id));
 }
 
 /** Is `id` inside `ancestor`, at any depth? */

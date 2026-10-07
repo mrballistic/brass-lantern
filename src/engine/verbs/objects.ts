@@ -2,7 +2,7 @@ import type { GameState } from '@/types/game';
 import type { Item, World } from '@/types/world';
 import { evaluateCondition } from '../conditions';
 import { contentsLines, describeRoom, lightNote, npcDescription, withArticle } from '../describe';
-import { closedAround, inventoryOf, isCarried, isOpen, matchItem, matchNpc, moveItem, needObject, pickItem, PLAYER, reachableItems, visibleItems } from '../model';
+import { closedAround, inventoryOf, isCarried, isHeld, isOpen, matchItem, matchNpc, moveItem, needObject, pickItem, PLAYER, reachableItems, visibleItems } from '../model';
 import { miss, ok, type EngineResult } from '../result';
 import { runEventKey } from '../effects';
 import { afterRuleLines, applyRule, findRule } from '../rules';
@@ -197,12 +197,6 @@ export function runFinale(world: World, state: GameState): EngineResult {
   return ok(finishEnding(lines, true, world.events[finale.footer] ?? [], world, state), true);
 }
 
-/** Carried, directly or inside something carried. */
-function heldSomehow(state: GameState, id: string): boolean {
-  for (let p: string | null | undefined = id; p; p = state.locations[p]) if (state.locations[p] === PLAYER) return true;
-  return false;
-}
-
 export function handleRead(target: string | undefined, world: World, state: GameState): EngineResult {
   if (!target) needObject();
   const id = pickItem(target, visibleItems(world, state), world, 'target', state);
@@ -211,7 +205,7 @@ export function handleRead(target: string | undefined, world: World, state: Game
   const text = item.text ?? (item.description || `There’s nothing special about the ${item.name}.`);
   // Zork's READ takes the thing first (its syntax's TAKE flag).
   // Something inside a container you carry counts as held (HELD?): no take.
-  if (world.style === 'infocom' && item.portable && !heldSomehow(state, id)) {
+  if (world.style === 'infocom' && item.portable && !isHeld(state, id)) {
     const took = takeItem(id, world, state);
     // A take that fails is silent: READ reads anyway (ITAKE-CHECK; READ's syntax has TAKE, not HAVE).
     if (!took.mutated) return ok([text]);

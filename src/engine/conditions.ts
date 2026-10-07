@@ -2,7 +2,7 @@ import type { GameState } from '@/types/game';
 import type { World } from '@/types/world';
 import { currentScore } from './score';
 import { weightOf } from './weight';
-import { isAlive, isAwake, isLit, isLocked, isNpcIn, isOn, isOpen, isReachable, isWater, npcsSeen } from './model';
+import { isAlive, isAwake, isCarried, isLit, isLocked, isNpcIn, isOn, isOpen, isReachable, isWater, npcsSeen, PLAYER } from './model';
 
 /**
  * Evaluate a condition string against the current game state.
@@ -31,13 +31,13 @@ const COMPARE: Record<string, (a: number, b: number) => boolean> = {
 };
 
 function carrying(state: GameState): number {
-  return Object.values(state.locations).filter((p) => p === 'player').length;
+  return Object.values(state.locations).filter((p) => p === PLAYER).length;
 }
 
 /** The heaviest thing held directly, its contents included (Zork's EMPTY-HANDED check). */
 function heaviest(state: GameState, world?: World): number {
   if (!world) return 0;
-  const held = Object.keys(state.locations).filter((id) => state.locations[id] === 'player');
+  const held = Object.keys(state.locations).filter((id) => isCarried(state, id));
   return Math.max(0, ...held.map((id) => weightOf(world, state, id)));
 }
 
@@ -70,7 +70,7 @@ export function evaluateCondition(condition: string, state: GameState, world?: W
       result = Boolean(state.flags[value]);
       break;
     case 'has':
-      result = state.locations[value] === 'player';
+      result = isCarried(state, value);
       break;
     case 'in':
       result = state.currentRoom === value;
