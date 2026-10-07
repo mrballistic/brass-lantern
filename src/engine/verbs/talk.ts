@@ -4,7 +4,8 @@ import { evaluateCondition } from '../conditions';
 import { fuzzyCandidates } from '../fuzzy';
 import { matchNpc, needObject } from '../model';
 import { miss, ok, type EngineResult } from '../result';
-import { applyRule, findRule, runEvent } from '../rules';
+import { runEventKey } from '../effects';
+import { applyRule, findRule } from '../rules';
 import { setCommand } from '../scripts';
 import { handleTalk, talkLine } from './people';
 
@@ -25,7 +26,7 @@ export function handleAsk(action: ParsedAction, world: World, state: GameState):
   const entry = entries.find((e) => !('if' in e) || !e.if || evaluateCondition(e.if, state, world));
   if (!entry) return fallback();
   // An entry can name an event, which runs.
-  return world.events[entry.text] ? ok(runEvent(entry.text, world, state), true) : ok([entry.text]);
+  return world.events[entry.text] ? ok(runEventKey(entry.text, world, state), true) : ok([entry.text]);
 }
 
 /** “X, do this”: the character's order rules, its refuseOrder line, or “X ignores you.” No one obeys yet. */

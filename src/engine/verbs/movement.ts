@@ -5,10 +5,9 @@ import { COMPASS, describeRoom, exitList } from '../describe';
 import { fuzzyMatchExit } from '../fuzzy';
 import { isLit, isOpen, isWater, matchItem, pickItem, visibleItems } from '../model';
 import { handleBoard } from './vehicle';
-import { runSteps, turnHalted } from '../effects';
+import { runEventKey, runSteps, turnHalted } from '../effects';
 import { nextRandom } from '../rng';
 import { miss, ok, type EngineResult } from '../result';
-import { runEvent } from '../rules';
 
 /** Evaluate onEnter triggers and emit any event-script lines. */
 export function runOnEnter(roomId: string, world: World, state: GameState): string[] {
@@ -18,7 +17,7 @@ export function runOnEnter(roomId: string, world: World, state: GameState): stri
   for (const trigger of room.onEnter) {
     if (turnHalted(state)) break;
     if (!trigger.repeat && state.firedEvents.includes(trigger.then)) continue;
-    if (evaluateCondition(trigger.if, state, world)) out.push(...runEvent(trigger.then, world, state));
+    if (evaluateCondition(trigger.if, state, world)) out.push(...runEventKey(trigger.then, world, state));
   }
   return out;
 }
@@ -91,7 +90,7 @@ export function followExit(exit: string | Exit, world: World, state: GameState):
   // GOTO's own refusals aren't fatal (they RFALSE): the room's end routine still runs.
   const refused = vehicleRefusal(to, world, state);
   if (refused) return ok([refused]);
-  const passing = typeof exit !== 'string' && exit.then ? runEvent(exit.then, world, state) : [];
+  const passing = typeof exit !== 'string' && exit.then ? runEventKey(exit.then, world, state) : [];
   if (turnHalted(state) || state.gameOver) return ok(passing, true);
   const lines = [...passing, ...enterRoom(to, world, state)];
   return ok(lines, state.currentRoom === to || passing.length > 0);

@@ -4,7 +4,8 @@ import { evaluateCondition } from '../conditions';
 import { contentsLines, describeRoom, lightNote, npcDescription, withArticle } from '../describe';
 import { closedAround, inventoryOf, isCarried, isOpen, matchItem, matchNpc, moveItem, needObject, pickItem, PLAYER, reachableItems, visibleItems } from '../model';
 import { miss, ok, type EngineResult } from '../result';
-import { applyRule, findRule, runEvent } from '../rules';
+import { runEventKey } from '../effects';
+import { afterRuleLines, applyRule, findRule } from '../rules';
 import { takeRefusal } from '../weight';
 import { finishEnding } from '../endings';
 
@@ -129,7 +130,7 @@ export function handleWear(target: string | undefined, world: World, state: Game
   const item: Item = world.items[itemId];
   if (!item.onWear) return ok(['That is not really wearable.']);
   if (state.firedEvents.includes(item.onWear)) return ok([`You’re already wearing the ${item.name}.`]);
-  return ok(runEvent(item.onWear, world, state), true);
+  return ok(runEventKey(item.onWear, world, state), true);
 }
 
 export const PRONOUN = /^(?:it|that|this|them)$/i;
@@ -152,7 +153,7 @@ export function handleSmash(
       if (state.firedEvents.includes(finale.bareHanded)) {
         return ok([finale.bareHandedAgain ?? 'That still won’t work.']);
       }
-      return ok(runEvent(finale.bareHanded, world, state), true);
+      return ok(runEventKey(finale.bareHanded, world, state), true);
     }
   }
 
@@ -162,7 +163,7 @@ export function handleSmash(
     if (state.firedEvents.includes(item.onSmash)) {
       return ok([`The ${item.name} is already in pieces.`]);
     }
-    const lines = runEvent(item.onSmash, world, state);
+    const lines = runEventKey(item.onSmash, world, state);
     moveItem(state, itemId, null);
     return ok(lines, true);
   }
@@ -188,9 +189,9 @@ export function smashedHere(world: World, state: GameState): string[] {
 export function runFinale(world: World, state: GameState): EngineResult {
   const finale = world.finale!;
   // The finale is an ending: its event, the epilogues that now hold, the score, the footer.
-  const lines = runEvent(finale.event, world, state);
+  const lines = runEventKey(finale.event, world, state);
   for (const trigger of finale.epilogue) {
-    if (evaluateCondition(trigger.if, state, world)) lines.push(...runEvent(trigger.then, world, state));
+    if (evaluateCondition(trigger.if, state, world)) lines.push(...runEventKey(trigger.then, world, state));
   }
   if (!state.firedEvents.includes(finale.footer)) state.firedEvents.push(finale.footer);
   return ok(finishEnding(lines, true, world.events[finale.footer] ?? [], world, state), true);
@@ -215,10 +216,7 @@ export function handleRead(target: string | undefined, world: World, state: Game
     // A take that fails is silent: READ reads anyway (ITAKE-CHECK; READ's syntax has TAKE, not HAVE).
     if (!took.mutated) return ok([text]);
     // A take is a take: its after rules run (Zork's points for taking it).
-    const after = findRule(world, state, 'after', 'take', { target: id, indirect: null, room: state.currentRoom }, reachableItems(world, state));
-    // onTake (folded into after.take) fires only once, as through withRules.
-    const once = after?.then && typeof after.then === 'string' && state.firedEvents.includes(after.then);
-    const extra = after && !once ? applyRule(after, world, state).lines : [];
+    const extra = afterRuleLines('take', { target: id, indirect: null, room: state.currentRoom }, world, state);
     return ok(['(Taken)', ...extra, text], true);
   }
   return ok([text]);

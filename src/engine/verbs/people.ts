@@ -3,7 +3,7 @@ import type { World } from '@/types/world';
 import { evaluateCondition } from '../conditions';
 import { inventoryOf, matchNpc, moveItem, needObject, npcsSeen, pickItem } from '../model';
 import { miss, ok, type EngineResult } from '../result';
-import { runEvent } from '../rules';
+import { runEventKey } from '../effects';
 
 export function handleTalk(target: string | undefined, world: World, state: GameState): EngineResult {
   const present = npcsSeen(world, state, state.currentRoom);
@@ -58,5 +58,5 @@ export function handleGive(
     return ok([npc.refuseGift ?? `${npc.name} doesn’t want your ${item.name}.`]);
   }
   moveItem(state, itemId, null);
-  return ok(runEvent(event, world, state), true);
+  return ok(runEventKey(event, world, state), true);
 }
