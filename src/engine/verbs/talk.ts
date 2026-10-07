@@ -158,7 +158,7 @@ function orderObject(
   return miss(`You don’t see a “${word}” here.`);
 }
 
-/** A built-in order carried out, or a miss that changes nothing when it can't be. */
+/** A built-in order carried out, or a miss that changes nothing when it can't be (in brass style, saying why). */
 function obey(
   verb: 'go' | 'take' | 'drop' | 'give',
   npc: string,
@@ -174,6 +174,10 @@ function obey(
   const infocom = world.style === 'infocom';
   const item = ids.target && world.items[ids.target] ? ids.target : null;
   const holds = item !== null && isInside(state, item, npc);
+  // Why it can't, by name: “The robot can’t take the dial.”
+  const who = `The ${person.name}`;
+  const thing = item ? `the ${world.items[item].name}` : 'that';
+  const lacks = () => miss(item ? `${who} doesn’t have ${thing}.` : `${who} can’t ${verb} that.`);
   switch (verb) {
     case 'go': {
       const way = npcExit(inner.target, room, world, state);
@@ -181,7 +185,7 @@ function obey(
       // that refuses says its own refusal, understood and changing nothing.
       if (infocom && !way) return miss('You can’t go that way.');
       if (infocom && way && 'refused' in way) return ok([way.refused]);
-      if (!way || !('to' in way)) return miss(refusal);
+      if (!way || !('to' in way)) return miss(`${who} can’t go that way.`);
       const to = way.to;
       // Stamped on the sequence things' placings share, as the moveNpc effect does.
       Object.assign(npcStateOf(state, npc), { room: to, seq: nextPlacing(state) });
@@ -191,17 +195,19 @@ function obey(
       // Infocom's actor takes as the player does: PRE-TAKE, then ITAKE's refusal (understood, no change).
       if (infocom && item && holds) return ok(['You already have that!']);
       if (infocom && item && !world.items[item].portable) return ok([world.items[item].refusal ?? `You can’t take the ${world.items[item].name}.`]);
-      if (!item || holds || !world.items[item].portable) return miss(refusal);
+      if (infocom && (!item || holds || !world.items[item].portable)) return miss(refusal);
+      if (holds) return miss(`${who} already has ${thing}.`);
+      if (!item || !world.items[item].portable) return miss(`${who} can’t take ${thing}.`);
       moveItem(state, item, npc);
       return done();
     case 'drop':
-      if (!item || !holds) return miss(refusal);
+      if (!item || !holds) return infocom ? miss(refusal) : lacks();
       moveItem(state, item, room);
       return done();
     case 'give':
       // Only to the speaker: handing things to others is no built-in.
       if (ids.indirect !== PLAYER) return ok([refusal]);
-      if (!item || !holds) return miss(refusal);
+      if (!item || !holds) return infocom ? miss(refusal) : lacks();
       moveItem(state, item, PLAYER);
       return done();
   }

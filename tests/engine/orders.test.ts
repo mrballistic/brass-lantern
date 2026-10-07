@@ -85,20 +85,21 @@ describe('orders (6a)', () => {
     const north = execute(fallbackParse('robot, go north', w.verbs)!, { world: w, state: s });
     expect(north.understood).toBe(false);
     expect(north.stopLine).toBeUndefined();
-    expect(north.lines).toEqual(['robot ignores you.']);
+    // Brass style says why, still a miss with no change.
+    expect(north.lines).toEqual(['The robot can’t go that way.']);
     expect(JSON.stringify(s)).toBe(before);
   });
 
   it('built-in GO judges the exit as the player’s: a closed door or a failing condition refuses', () => {
     const s = stateWith(w, { room: 'shed' });
     s.npcs = { robot: { room: 'shed' } };
-    expectMiss(s, 'robot, go up', 'robot ignores you.');
+    expectMiss(s, 'robot, go up', 'The robot can’t go that way.');
     s.itemState.hatch = { open: true };
     expect(run(s, 'robot, go up').lines).toEqual(['Okay.']);
     expect(s.npcs.robot.room).toBe('loft');
     const t = stateWith(w, { room: 'living' });
     t.npcs = { robot: { room: 'living' } };
-    expectMiss(t, 'robot, go south', 'robot ignores you.');
+    expectMiss(t, 'robot, go south', 'The robot can’t go that way.');
     t.flags.paid = true;
     expect(run(t, 'robot, go south').lines).toEqual(['Okay.']);
     expect(t.npcs.robot.room).toBe('yard');
@@ -133,9 +134,13 @@ describe('orders (6a)', () => {
   it('an impossible built-in is a miss with no change', () => {
     const s = stateWith(w, { room: 'bedroom' });
     s.npcs = { robot: { room: 'bedroom' } };
-    expectMiss(s, 'robot, take alarm');
-    expectMiss(s, 'robot, drop sock');
-    expectMiss(s, 'robot, give me the sock');
+    // Brass style says why it can't, by name, and changes nothing.
+    expectMiss(s, 'robot, take alarm', 'The robot can’t take the alarm clock.');
+    expectMiss(s, 'robot, drop sock', 'The robot doesn’t have the sock.');
+    expectMiss(s, 'robot, give me the sock', 'The robot doesn’t have the sock.');
+    expectMiss(s, 'robot, take me', 'The robot can’t take that.');
+    s.locations.sock = 'robot';
+    expectMiss(s, 'robot, take sock', 'The robot already has the sock.');
   });
 
   it('an inner object it can’t reach is a miss with no change', () => {
@@ -240,7 +245,9 @@ describe('orders (6a)', () => {
     for (const input of ['robot, constructor', 'robot, tostring sock', 'robot, valueof', 'robot, hasownproperty me']) {
       const before = world(s);
       const r = run(s, input);
-      expect(r.lines).toEqual(['robot ignores you.']);
+      // A bare word is GO through no exit, which the robot can't do; the rest are refusals
+      // (CONSTRUCTOR is found on SINGLE_WORD's prototype by the parser's `in`: see the backlog).
+      expect(r.lines).toEqual([input === 'robot, valueof' ? 'The robot can’t go that way.' : 'robot ignores you.']);
       expect(world(s)).toBe(before);
     }
   });
@@ -260,7 +267,7 @@ describe('orders (6a)', () => {
     expect(s.npcs.robot.room).toBe(exitTarget(w.rooms.bedroom.exits.west));
     s.npcs.robot.room = 'bedroom';
     const north = run(s, 'robot, go north', acking);
-    expect(north.lines).toEqual(['“Whirr.”', 'robot ignores you.']);
+    expect(north.lines).toEqual(['“Whirr.”', 'The robot can’t go that way.']);
     expect(north.understood).not.toBe(false);
     expect(north.stopLine).toBe(true);
     expect(s.npcs.robot.room).toBe('bedroom');
