@@ -27,6 +27,7 @@ The store (`src/stores/game.ts`) runs every line through the same steps:
    - Clauses always split on `then`, `;` and full stops, except after `dr.`, `mr.` and the like.
    - Within a clause, `and` and commas split only when every piece is a recognized command, or an object after a list verb: `get key and wallet` becomes `get key` and `take wallet`.
    - A clause that isn't clearly a list ("could you grab my keys and wallet") stays whole.
+   - Anything inside quotes is masked first, so a quoted “. ” or “, ” never splits a line (`answer “a well. yes”` is one command). A text verb (SAY, ANSWER) takes the rest of the line, and ends it.
    Each command may be **captured** first: a room's or the world's `capture` (`captureLine` in `src/engine/engine.ts`) can take it before it's parsed, which ends the line. Captured input never reaches the intent server.
 3. **The conversation.** `interpret` (`src/engine/conversation.ts`) looks at the command in the light of the last one:
    - **an answer** to a question the engine just asked (“Which door do you mean?” → `trap`) fills in the waiting command and runs it, **without** asking the intent server;
@@ -34,7 +35,12 @@ The store (`src/stores/game.ts`) runs every line through the same steps:
    - **OOPS *word*** swaps the word nobody understood in the last line and runs that.
 
    Anything else is a fresh command, and drops any waiting question.
-4. **Parse.** `fallbackParse` maps each command to an action, with synonyms, a second object ("give X to Y", "put X in Y"), ALL and EXCEPT, and a bare word meaning GO.
+4. **Parse.** `fallbackParse` maps each command to an action, with synonyms, a second object ("give X to Y", "put X in Y"), ALL and EXCEPT, and a bare word meaning GO. Besides `target` and `indirect`, an action can carry:
+   - **`number`**: a number in an object slot (`turn dial to 4`, `set year to 776`) reads as the object `number` with the value alongside (`parseNumber`: digits to 1000, or H:MM as minutes);
+   - **`text`**: for a world verb with `target: 'text'`, the rest of the line, outer quotes dropped;
+   - **`prep`**: `in`, `on`, `under`, `behind`, `off`, `over` or `through`, for the forms that take one (PUT X UNDER Y, THROW X OFF Y, READ X THROUGH Y);
+   - **`direction`**: for PUSH X NORTH (and CLIMB UP/DOWN a thing);
+   - **ME, MYSELF and SELF** in an object slot become the reserved ID `player`.
 5. **Pronouns.** `it`, `them` and `that` become the last thing the engine acted on; `him` and `her`, the last person.
 6. **Execute.** `execute(action, { world, state })` returns the lines to print, whether anything changed, and `understood: false` if it couldn't make sense of the command (no such exit, no such item, no rule that applies). When a noun matches more than one thing, or a verb is missing its object, it returns a **question** (`ask`) instead, before touching anything. Before running a command that changes the game, the store keeps a snapshot for UNDO (the last 50, for this session only).
 7. **Retry on a miss.** If the regex couldn't parse the command, or the engine didn't understand it, the store asks the intent server how to read it. If the LLM's reading is different and the engine can act on it, that result is shown instead; otherwise the literal reply stands.
@@ -65,19 +71,20 @@ Inserting or ejecting a cartridge clears the screen.
 
 | Concept | Where in the world | Notes |
 |---|---|---|
-| Conditions | anywhere | `flag:`, `has:`, `in:`, `visited:`, `inside:`, `open:`, `locked:`, `on:`, `here:`, `var:`, `carrying`, `lit:`, `alive:`, `awake:`, `fighting:`, `with:`, `!`, `&`. One parser, `src/engine/conditions.ts`. |
+| Conditions | anywhere | `flag:`, `has:`, `held:`, `in:`, `visited:`, `inside:`, `open:`, `locked:`, `on:`, `here:`, `var:`, `number:`, `said:`, `target:`, `terrain:`, `following:`, `carrying`, `lit:`, `alive:`, `awake:`, `fighting:`, `with:`, `!`, `&`. One parser, `src/engine/conditions.ts`. |
 | Rules | `instead`, `after` on items and rooms | Replace a verb's default, or follow it. `src/engine/rules.ts`. |
 | Containers, doors | `item.container`, `item.surface`, `item.door` | Open, close, lock, put in, take from. |
 | Exits | `room.exits` | A room ID, or `{ to, if, denial, door, denials, then }`. GO runs through rules. |
-| Vehicles | `item.vehicle`, `room.water` | BOARD, DISEMBARK, and Zork's rules for water and land (`src/engine/verbs/vehicle.ts`, `movement.ts`). |
+| Vehicles | `item.vehicle`, `room.terrain` / `water` / `air`, `world.onFoot` | BOARD, DISEMBARK, and Zork's rules for water and land, generalised to named terrains: a vehicle `travels` on some, rests on others (`src/engine/verbs/vehicle.ts`, `movement.ts`). |
 | Effects | `events` | Lines and typed effects: flags, moves, variables, timers, chance, death, endings (`src/engine/effects.ts`). |
 | Darkness | `room.dark`, `item.light`, `world.darkness` | In an unlit dark room you can only find what you carry (`src/engine/model.ts` `isLit`). |
 | Death, endings | `world.death`, `world.endings` | `src/engine/death.ts`, `src/engine/endings.ts`. |
 | Characters | `npcs`, `room.npcs` | Places, held things, states, hiding and descriptions (`GameState.npcs`, read through `src/engine/model.ts`). |
-| Topics, orders | `npc.topics`, `npc.refuseOrder`, `instead.order` | ASK *X* ABOUT *Y* and “*X*, do this” (`src/engine/verbs/talk.ts`). |
+| Topics, orders | `npc.topics`, `npc.orders`, `npc.obeys`, `npc.refuseOrder`, `instead.order` | ASK *X* ABOUT *Y* and “*X*, do this” (`src/engine/verbs/talk.ts`; see [Orders](#orders) below). |
+| Followers | `npc.follows`, `{ follow }` | Characters who go where the player goes (`src/engine/verbs/movement.ts`). |
 | Combat, health | `npc.combat`, `world.combat` | Zork's blows, tables, wounds and healing (`src/engine/combat.ts`). |
 | Weight | `world.carry`, `item.size` | `src/engine/weight.ts`. |
-| Scripts | `world.scripts` | The code hatch: functions that return steps (`src/engine/scripts.ts`). |
+| Scripts | `world.scripts` | The code hatch: functions that return steps (`src/engine/scripts.ts`). `descriptionScript` also builds descriptions from state; `{var:NAME}` and `{number}` fill in text (`src/engine/text.ts`). |
 | Events | `events` | Line lists. `[Flag set: …]`, `[Added to inventory: …]` and `[… consumed]` lines change state. Events from `onEnter`, `onTake`, `onWear`, `onSmash` and `bareHanded` fire once; use-rule and gift events run every time. |
 | Flags | `flagLabels` | The friendly label in an event line, mapped to a flag ID. |
 | Use rules | `item.onUse` | The older form of `instead.use`. |
@@ -85,10 +92,22 @@ Inserting or ejecting a cartridge clears the screen.
 | Gated rooms | `room.requires`, `room.denial` | |
 | The ending | `finale` | Smash X in room Y holding Z: event, epilogue, score, footer. |
 | Timers | `ambient` | Lines every N turns while a condition holds. Turns count only commands the engine acted on. |
-| Score | `scoring`, `ranks`, `maxScore` | Summed from flags, conditions that hold, and the `score` variable. |
+| Score | `scoring`, `ranks`, `maxScore`, `scoreLine`, `rankLine` | Summed from flags, conditions that hold, and the `score` variable; the lines are templates. |
 | Status line | `style`, `statusLine` | Zork's room, score and moves in Infocom style; `MOVES: n` (or score and moves) otherwise. |
 
 When a world needs behavior the schema can't express, add a *generic* hook to `src/types/world.ts` and the engine. Never branch on a world's IDs.
+
+### Orders
+
+“*X*, *command*” (and TELL *X* TO *command*) is its own verb, `order`, handled by `handleOrder` in `src/engine/verbs/talk.ts`. The pipeline, in order:
+
+1. **Address.** The character is matched in the player's room, or among those whose `heardFrom` names it. No one matching is a miss.
+2. **`instead.order` rules** answer first, and the order's words stay words (they aren't resolved as things).
+3. **Parse the inner command** with `fallbackParse`, as the player would have typed it. A character with neither `orders` nor `obeys` stops here with `refuseOrder`.
+4. **Resolve its objects before anything changes**, among what the *character* can reach (its room's things and what it holds), plus ME (the player), a typed number, and other characters present. A name that matches nothing is a miss; one that matches several is a question, and neither takes time or changes state.
+5. **`orders` rules**, keyed by the inner verb (or the first typed word when the parsed verb has no table, so the parsed verb wins a clash). Their conditions see the inner command through the same command record rules use: `target:`, `indirect:`, `number:`, `said:`, `direction:`.
+6. **`obeys`**: if no rule answered, the engine performs GO, TAKE, DROP or GIVE ME itself, moving the character or its things. A refusal here is understood and takes a turn.
+7. **Ends the line.** A result for a character with `orders` or `obeys` carries `stopLine`, and the store drops the rest of the typed line (Zork's P-CONT). A miss never does, so the intent-server retry isn't affected.
 
 **Adding a verb** is usually a world change: declare it in `world.verbs` and give things `instead` rules for it. The parser learns its words from the world, and the browser tells the intent server which world verbs to accept, so neither needs editing.
 

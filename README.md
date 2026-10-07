@@ -26,7 +26,7 @@ There is a small mailbox here.
 
 **Write a world.** A game is one TypeScript object: rooms, items, people, events and the rules that join them. The engine runs it, with no game code to write. You get:
 - gated rooms, use rules, gifts, dialogue that changes with progress, timed interruptions, hints, a score with ranks, and endings that remember what you did;
-- a forgiving parser, with synonyms, chained commands (`take key and wallet`, `north then look`), pronouns and a second object (`put the disk in the drive`), all with zero latency;
+- a forgiving parser, with synonyms, chained commands (`take key and wallet`, `north then look`), pronouns and a second object (`put the disk in the drive`), all with zero latency. Players can give orders to characters (`robot, go east`), type numbers (`turn dial to 4`) and say or answer things in quotes (`answer “a well”`);
 - an optional LLM on a short leash. Input the parser can't handle goes to a small server that asks Gemini which of *your* verbs and IDs it means. The reply is reduced to a verb plus identifiers, so the model never writes the story, and the key stays on the server.
 
 **Load a story file.** Z-machine games (versions 3, 4, 5 and 8) run unmodified in the same terminal, through [ifvms](https://github.com/curiousdannii/ifvms.js), the interpreter inside Parchment. SAVE and RESTORE work, every turn autosaves, and the status line shows in the header. Zork I, II and III ship with the demo; Microsoft released them under the MIT License in 2025. Type LOAD at the menu to play your own story files, which stay in your browser.

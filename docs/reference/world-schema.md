@@ -18,6 +18,9 @@ Every field a world can use. The source of truth is [`src/types/world.ts`](https
 | `scoring?` | `{ flag, points }[]` or `{ if, points }[]` | SCORE sums points for set flags, plus conditions that hold right now (a treasure in the case), plus the `score` variable. |
 | `maxScore?` | number | The total SCORE reports. Default: the sum of `scoring`. |
 | `ranks?` | `{ min, title }[]` | The highest `min` the score reaches is the rank. |
+| `scoreLine?` | string | SCORE's first line, replacing the style's own. `{score}`, `{max}` and `{moves}` (“3 moves”) fill in: `'Your potential is {score} of a possible {max}, in {moves}.'` |
+| `rankLine?` | string | SCORE's rank line, replacing the style's own. `{rank}` fills in: `'This score gives you the rank of {rank}.'` |
+| `diagnose?` | `{ healthy?, wounded? }` | DIAGNOSE's own lines for being unhurt and for being wounded, as fixed text. Unset, the engine's wording stands. |
 | `idle?` | string | Reply to WAIT or SIT where they don't lead anywhere. Default: "Time passes." |
 | `quit?` | string | Reply to QUIT. |
 | `confused?` | string[] | Replies for input nothing understood, rotated. |
@@ -51,6 +54,7 @@ Every field a world can use. The source of truth is [`src/types/world.ts`](https
 | `firstDescription?` | string | Replaces `description` on the first visit only. |
 | `dark?` | boolean | Needs a light source to see in. |
 | `descriptions?` | `{ if, text }[]` | Descriptions that depend on the state of things (“a small window which is open”). The first whose condition holds replaces `description`. |
+| `descriptionScript?` | script name | A [script](#scripts) whose `say` lines (joined with newlines) are the description, ahead of `firstDescription` and `descriptions`. It runs on every look, so it describes the game as it is now. Any step that isn't a `say` is ignored (and the audit flags it), a script that says nothing falls back to the next description, and the engine restores the seed afterwards, so describing never changes the game. |
 | `exits` | `Record<label, room id or Exit>` | What the player can type, and where it goes. Several labels per destination is normal. A label of `wait` or `sit` is taken by WAIT/SIT. See [Exit](#exit). |
 | `listExits?` | label[] | What the exit line shows, in order; each gets the compass direction that leads the same way. Omit to list every label. |
 | `items` | item ID[] | Items in the room at the start. |
@@ -86,6 +90,7 @@ Message-only exits aren't listed unless `listExits` names them.
 |---|---|---|
 | `name` | string | Display name, and what event lines like `[Added to inventory: …]` match. Keep it unique. |
 | `aliases?` | string[] | Other words players might use. Matched, never shown. |
+| `descriptionScript?` | script name | A script whose `say` lines are EXAMINE's text, ahead of `description` (same rules as a room's). See [Descriptions from state](#descriptions-from-state). |
 | `description` | string | EXAMINE. Leave it empty (`''`) and EXAMINE does what Zork does for an object with no text: a container lists what's in it or says “The *name* is empty.”; anything else is “There’s nothing special about the *name*.” |
 | `portable` | boolean | Can it be taken? |
 | `refusal?` | string | Reply to taking a non-portable item. |
@@ -142,7 +147,7 @@ Rules are tried in order and the **first** whose conditions hold runs. For two-o
 | Field | Type | |
 |---|---|---|
 | `if?` | condition | |
-| `with?` | item ID | Another item that must be in the room or carried. If the player names a second object, it must be this one. |
+| `with?` | item ID | Another item that must be in the room or carried. If the player names a second object, it must be this one. `'number'` matches a command whose second object is a number typed by the player (TURN DIAL TO 4); test which with `number:`. |
 | `then?` | event | |
 | `say?` | string[] | Lines printed without changing anything. |
 
@@ -262,13 +267,14 @@ In an unlit dark room you can only find what you're carrying. Trying to act on a
 | `respawn?` | room ID | Where the player wakes. |
 | `resurrection?` | string[] | |
 | `scatter?` | room ID[] | Carried things are spread over these, at random (seeded). Things with a `home` go there instead; with no scatter rooms, they stay where the player fell. |
-| `treasures?` | `'dark'` | Treasures go to an unlit land room instead, walking the rooms in order at even odds each (Zork's RANDOMIZE-OBJECTS). |
+| `treasures?` | `'dark'` or `{ to }` | `'dark'`: treasures go to an unlit land room instead, walking the rooms in order at even odds each (Zork's RANDOMIZE-OBJECTS). `{ to: 'case' }`: treasures without a `home` all go to that room, item or character (a trophy case), drawing no randomness. |
+| `keepTimers?` | event[] | Timers a death leaves running, with their counts. Every other timer is cleared. |
 | `final?` | string[] | The last death, which ends the game. |
 | `then?` | event | Runs after a resurrection, to reset things (Zork's trap door, unbarred). |
 | `variants?` | `{ if, resurrection?, respawn?, then?, before? }[]` | The first whose `if` holds (decided as you die) replaces those fields; `before` runs ahead of the respawn. Zork sends you to Hades as a spirit once you've seen the Altar. |
 | `instead?` | `{ if, lines }[]` | Checked first: the first that holds prints its lines (not the cause) and ends the game. Dying while already dead. |
 
-The `die` effect uses it. Without a `death` block, dying prints the cause and ends the game. Pending fuses are cancelled on death.
+The `die` effect uses it. Without a `death` block, dying prints the cause and ends the game. Pending fuses are cancelled on death, except those in `keepTimers`.
 
 ## Endings
 
@@ -285,6 +291,7 @@ The `die` effect uses it. Without a `death` block, dying prints the cause and en
 | `refuseGift?` | string | Declines anything else. |
 | `holds?` | item ID[] | What it carries at the start. Things a character holds can't be seen or taken. |
 | `descriptions?` | `{ if, text }[]` | Its line in the room and its EXAMINE reply, by state; the first whose condition holds wins. |
+| `descriptionScript?` | script name | A script whose `say` lines are that description, ahead of `descriptions`. |
 | `instead?`, `after?` | `Record<verb, Rule[]>` | Rules for verbs aimed at it: THROW X AT it, GIVE, TAKE, a world verb. |
 | `combat?` | `Combatant` | Makes it someone you can fight. See [Combat](#combat). |
 | `aliases?` | string[] | Other words for it (“robber”, “man”). |
@@ -294,13 +301,49 @@ The `die` effect uses it. Without a `death` block, dying prints the cause and en
 | `topicAliases?` | `Record<topic, string[]>` | Other words for a topic. |
 | `noTopic?` | string | For a topic it has nothing on. Default: its TALK TO line. |
 | `refuseOrder?` | string | Its answer to an order. Default: “*Name* ignores you.” |
+| `orders?` | `Record<verb, Rule[]>` | Rules for orders, by the inner command's verb. See [Orders](#orders). |
+| `obeys?` | `('go' \| 'take' \| 'drop' \| 'give')[]` | Built-in orders it carries out itself when no order rule answers. |
+| `obeyReplies?` | `Record<verb, string>` | Its acknowledgement when it obeys one of those. Default: “Okay.” |
+| `follows?` | condition | While it holds, the character goes where the player goes. See [Followers](#followers). |
+| `followLine?` | string | What it says on arriving after you. Unset: brass style prints “*Name* follows you.”; Infocom style prints nothing. |
 | `heardFrom?` | room ID[] | Rooms from which the player can give it orders while it's elsewhere (Zork III's dungeon master on the parapet, ordered from the cell); its orders are carried out where it stands. |
 
 Characters' places and states live in the game state (`npcs`), starting from the rooms that list them. In brass style the room shows “Present: …”; in Infocom style each character prints its own line.
 
 **Hidden characters.** A character that's `hidden` (from the start, or by the `npcState` effect with `hidden: true`) is still in its room: `ctx.npcIn` and conditions like `with:` see it, but the player doesn't, and it doesn't fight. `{ npcState: 'thief', hidden: false }` reveals it. The `seen:` condition is true only when it's in the player's room and not hidden.
 
-**Orders.** “*name*, *command*” and “tell *name* to *command*” are orders. The character's `instead.order` rules answer first, then `refuseOrder`. Characters don't obey yet.
+### Orders
+
+“*name*, *command*”, “tell *name* to *command*” and a bare “tell *name*” are orders. What happens, in order:
+
+1. **`instead.order`** rules on the character answer first, as for any verb. In one, `ctx.command.words.indirect` is the order as typed. A character with only `instead.order` (no `orders`, no `obeys`) behaves as before: it answers, or says `refuseOrder`, and the rest of the line carries on.
+2. Otherwise the order is read as a command of its own, with its objects resolved among what the character can reach in **its** room (ME or MYSELF is the player; a number typed as an object counts). A word that names nothing there is a miss that changes nothing, so the intent server may still read it; one that matches several things asks which, taking no time. A character can't refer to what the player carries.
+3. **`orders`** rules are keyed by the inner command's verb: `orders: { push: [...], take: [...] }`. They are the same shape as other [rules](#rules), and their conditions see the inner command (`target:`, `indirect:`, `number:`, `said:`, `direction:`). If the parsed verb has no table, the first word typed is tried (PUSH reads as USE, so “robot, push the button” runs `orders.push`); if both exist, **the parsed verb's table wins**, so `orders.use` beats `orders.push`. A rule with `continue: true` runs and then lets step 4 go on.
+4. If no rule answered and the verb is in `obeys`, the character performs it, saying `obeyReplies[verb]` (default “Okay.”):
+   - **`go`**: it walks that exit of its room, with its usual leaving and arriving lines. A refused exit is a miss. In Infocom style it walks as the player does: no exit says “You can’t go that way.”, and an exit that refuses says its own refusal.
+   - **`take`** and **`drop`**: the thing moves to or from the character (weight limits apply only to the player). In Infocom style a take it can't do says the player's own take line.
+   - **`give`**: “give me the key” moves it from the character to the player (the second object is the player).
+5. Otherwise `refuseOrder`, or “*Name* ignores you.”
+
+**An order to a character with `orders` or `obeys` ends the rest of the line** (Zork clears the typed-ahead commands), unless it was a miss. That includes an obeying character's refusal, which takes a turn like any understood command. A character with neither keeps today's behaviour entirely.
+
+**`heardFrom`** lists rooms from which the player can give a character orders while it's somewhere else. Its orders are carried out where it stands (Zork III's dungeon master, ordered from the cell while he stands on the parapet).
+
+```ts
+robot: {
+  name: 'robot',
+  obeys: ['go', 'take'],
+  obeyReplies: { go: 'Whirr, buzz, click!' },
+  orders: {
+    push: [{ if: 'target:red_button', then: 'lift_cage' }],
+    use: [{ say: ['The robot ignores that.'] }], // “robot, push the button” stays with orders.push
+  },
+},
+```
+
+### Followers
+
+`follows` is a condition on the character; while it holds, after each move the **player** makes (GO, doors, ENTER, CLIMB; not a script's `goTo` or a `moveVehicle`), the character moves into the player's new room if it was in the room the player left, and is awake and not hidden. It's checked after the move, so `in:ROOM` sees the new room. Its `followLine` prints as it arrives. The `follow` and `unfollow` effects set and clear the flag `following_<npc>` that `following:NPC` reads, for a switch rather than a condition. Characters who arrive take the engine's placing order, so room listings keep it.
 
 ## Weight
 
@@ -341,6 +384,45 @@ A character with `combat` can be fought: ATTACK *it* WITH *a weapon*. The engine
 
 **In Infocom style** ATTACK works the way Zork's parser does: with one weapon in hand, `kill troll` picks it (“(with the sword)”); otherwise it asks what to attack with; a weapon you aren't holding is refused without taking a turn. DIAGNOSE reports your wounds. A [recipe](../guide/building-worlds/recipes#a-guard-to-fight) shows a whole fight.
 
+## Numbers, typed words and prepositions
+
+**Numbers.** A number in an object slot is the player's typed number (Zork's INTNUM): `turn dial to 4`, `set year to 776`. It's digits up to 1000, or H:MM as minutes (hours under 8 count as afternoon); a bigger number is just an unknown word. Both forms are built-in and go through rules as the verb `turn` with the second object `number`; with no rule the reply is “This has no effect.” A bare TURN X keeps its own meaning.
+
+```ts
+dial: {
+  instead: { turn: [
+    { with: 'number', if: 'number:4', then: 'door_opens' },
+    { with: 'number', say: ['The dial clicks and nothing happens.'] },
+  ] },
+},
+```
+
+- **`number:N`** and `number<op>N` read it in conditions; **`{ setVar: 'year', from: 'number' }`** stores it; **`{number}`** in a line prints it, and `ctx.number` has it in a script.
+- A rule with `with: 'number'` matches only a command whose second object is a number.
+- An order can carry one (“robot, turn the dial to 4” runs `orders.turn` with `number:4`).
+
+**Typed words.** A world verb with `target: 'text'` (SAY, INCANT, ANSWER) takes the rest of the line as typed words. They are never resolved to things, so naming nothing is no miss. Outer quotes are dropped and whitespace collapsed. **`said:WORDS`** matches them as lowercase whole words, with punctuation and quotes ignored (`said:a well` matches `answer “A well.”`), and `ctx.text` has them. The verb consumes the whole rest of the line, and a quoted phrase isn't split at its full stops or commas. This applies to every world: a quoted “. ” no longer ends a command. Unlike Zork, where only a quoted phrase is typed words, **unquoted text counts too**: `answer well` solves a riddle that wants “a well”.
+
+**Prepositions.** These forms go through the ordinary rules, and the built-in reply is Zork's:
+
+| Form | Rule verb | Built-in reply |
+|---|---|---|
+| PUT/PUSH/SLIDE X UNDER Y | `put`, `prep: 'under'` | “You can’t do that.” |
+| PUT X BEHIND Y | `put`, `prep: 'behind'` | “That hiding place is too obvious.” |
+| THROW X OFF/OVER Y | `throw`, `prep: 'off'` or `'over'` | “You can’t throw anything off of that!” |
+| READ X THROUGH/WITH Y | `read`, with the second object | reads X |
+| PUSH X *direction*, PUSH X TO Y | `push`, `direction:DIR` / the second object | “You can’t push things to that.” |
+
+**ME.** MYSELF, ME and SELF in an object slot name the player. Rules match them with `target:player` or `indirect:player` (and `with: 'player'`). The engine adds no replies of its own for ME: a built-in verb aimed at it with no rule is a miss, as before, so a world says what Zork says (“You can’t tie anything to yourself.”) in a rule. In an order, ME is the speaker: “robot, give me the key”.
+
+## Descriptions from state
+
+- **Templates.** `{var:NAME}` (0 when unset) and `{number}` fill in from the game in any room, item or character description, a `descriptions` entry and an event line. A `{number}` with no number typed stays as written. Expanding reads the game and changes nothing.
+- **`descriptionScript`** on a room, item or character names a [script](#scripts) that builds the description from the game: its `say` lines, joined with newlines. It comes first, ahead of `descriptions`, `firstDescription` and `description`. It's for descriptions a condition list can't say: a grid of cells, a dial's setting, a room that lists its own exits.
+- **`roomDescriptionScript`** on an item is its sentence in a room listing, ahead of its other sentences; it says everything itself, so no “(outside the boat)” follows and its contents aren't listed (Zork's DESCFCN).
+- **`vehicle.lookScript`** describes a vehicle from inside. See [Vehicles](#vehicles).
+- A description script may use `ctx.roll`, but the engine puts the seed back afterwards, so looking never changes the game. A script that says nothing falls back to the next description. The audit runs each description script once on a new game and flags a step that isn't a `say`, or a script name that doesn't exist.
+
 ## Scripts
 
 The code hatch, for behavior data can't express (a thief's mind, a sword that glows near monsters):
@@ -360,6 +442,10 @@ A script gets a read-only view of the game and returns ordinary steps, which the
 - `aboard()`, the vehicle the player is in, `water(room?)` and `terrain(room?)` (the room's terrain name);
 - `rooms()` in the world's order, `visited(room)`, `tags(room)`, `lit(room?)`;
 - `children(place)`, what's directly in a room, item or character, in listing order;
+- `test(condition)`, whether a [condition](./conditions-and-events#conditions) holds now, through the engine's own parser (scripts never parse conditions themselves);
+- `exits(room)`, the exits the player could take from that room now (`{ direction, to }[]`): the exit's `if` holds and its door is open;
+- `resolve(words, scope?)`, words read as an item the way the parser would: `'here'` (within reach, the default), `'held'` or `'all'`; null if none matches;
+- `number` and `text`, the number or the typed words in the command being run (TURN DIAL TO 4, SAY HELLO);
 - `treasure(id)`, an item's `treasure` value or 0;
 - `playerStrength()`, the player's fight strength now;
 - `line`, the raw input, and `action`, the parsed command, when a [capture](#capture) runs the script; `parse(text)`, which reads a command with the world's verbs as the parser would;

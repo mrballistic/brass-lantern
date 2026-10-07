@@ -8,6 +8,7 @@ Conditions are strings, used by `requires`, exits (`if`, `denials`), room `descr
 |---|---|
 | `flag:NAME` | the flag is set |
 | `has:ITEM` | the item is in the inventory |
+| `held:ITEM` | the item is carried at any depth: directly, or inside something carried (Zork's HELD?). `has:` means carried directly |
 | `in:ROOM` | the player is in that room |
 | `visited:ROOM` | the player has been there |
 | `inside:ITEM:PLACE` | the item is directly in PLACE: a room, another item, or `player` |
@@ -66,6 +67,8 @@ An event is a named list of steps, run in order. A string is printed. An object 
 | `{ schedule: 'event', in: n }`, `{ cancel: 'event' }` | Runs an event after `n` turns, or stops it. |
 | `{ chance: 80, then: [...], else: [...] }` | Picks a branch at random (from a seeded generator, so saves replay exactly). |
 | `{ if: 'condition', then: [...], else: [...] }` | Picks a branch by a [condition](#conditions). `else` is optional. |
+| `{ stopLine: true }`, `{ stopLine: 'text' }` | Drops the rest of the command line (Zork's P-CONT). The text, if any, is said only if commands were left. |
+| `{ moveVehicle: 'item', to: 'room' }` | Moves a vehicle to a room. If the player is aboard they arrive with it, as on any arrival; otherwise its `leave` and `arrive` lines are said when the player sees it go or come. It isn't a move the player makes, so followers stay behind. |
 | `{ free: true }` | The turn takes no time: no move, no timers or daemons (a capture's echo). |
 | `{ noDarkLine: true }` | A line already said the light went out, so the engine doesn't add its own. |
 | `{ run: 'event' }` | Runs another event here. |

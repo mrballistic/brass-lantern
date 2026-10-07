@@ -227,9 +227,9 @@ export interface NPC {
   refuseGift?: string;
   /** Items it holds at the start. Things a character holds aren't visible or reachable. */
   holds?: string[];
-  /** Descriptions that depend on the state of things; the first whose condition holds wins. */
   /** A world script whose `say` lines are its description, ahead of `descriptions`. */
   descriptionScript?: string;
+  /** Descriptions that depend on the state of things; the first whose condition holds wins. */
   descriptions?: Array<{ if: string; text: string }>;
   /** Rules for verbs aimed at this character (THROW X AT it, GIVE, ATTACK…). */
   instead?: RuleTable;

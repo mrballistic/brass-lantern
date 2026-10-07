@@ -230,7 +230,7 @@ A librarian who answers questions, and won't be bossed about.
 “You have the key. Go on, then.”
 ```
 
-Characters don't carry out orders yet; they answer them.
+A character with no `orders` or `obeys` only answers; see [Orders, numbers and a buggy](#orders-numbers-and-a-buggy) for one that carries them out.
 
 ## A wandering character
 
@@ -325,3 +325,42 @@ There is a pine cone here. (outside the raft)
 ```
 
 Native Zork I's magic boat is this recipe with Zork's rules on top: inflating it, the label, LAUNCH, punctures and the river's current.
+
+## Orders, numbers and a buggy
+
+A workshop with a robot that does as it's told, a dial you turn to a number, and a dune buggy for the sand beyond the yard.
+
+<<< ../../../src/worlds/examples/workshop.ts#robot{ts}
+
+- **`obeys`** lists the built-in orders the robot carries out itself: GO, TAKE, DROP and GIVE (“robot, give me the wrench”). `obeyReplies` is what it says; the default is “Okay.”
+- **`orders`** is a table of rules per verb, for anything else (“robot, push the button”). Its rules read the order as the player wrote it: `target:button` is what it was told to push. “Push” is also the word the parser files under USE; if both `orders.use` and `orders.push` exist, the verb the parser chose (`use`) wins.
+- **An order ends the rest of the line**, and the objects of an order are looked up in *its* room, not the player's.
+
+<<< ../../../src/worlds/examples/workshop.ts#dial{ts}
+
+- **A number** is a second object: `turn dial to 4`. A rule says `with: 'number'` and tests `number:4`; `{ setVar: 'dial', from: 'number' }` keeps it and `{number}` prints it. `{var:dial}` fills in a description from the game, so EXAMINE shows where the dial points now.
+
+<<< ../../../src/worlds/examples/workshop.ts#sand{ts}
+
+<<< ../../../src/worlds/examples/workshop.ts#buggy{ts}
+
+- **A terrain** is any name a room gives itself. On foot you can walk only where `onFoot` allows (default `['land']`), so the dunes need a vehicle that `travels` on `'sand'`. `leave` (and `arrive`, `landing`) are lines the vehicle says as it goes.
+
+```
+> robot, push the button
+The robot extends its clamp and presses the button. Somewhere, a bell rings.
+> robot, go east
+Whirr, click!
+> turn dial to 2
+The dial clicks round to 2. Nothing else happens.
+> examine dial
+The brass dial points at 2.
+> east
+> east
+You can’t go there without a vehicle.
+> board buggy
+You are now in the dune buggy.
+> east
+Sand sprays behind you.
+```
+

@@ -9,6 +9,7 @@ import { guard } from '@/worlds/examples/guard';
 import { timers } from '@/worlds/examples/timers';
 import { topics } from '@/worlds/examples/topics';
 import { wanderer } from '@/worlds/examples/wanderer';
+import { workshop } from '@/worlds/examples/workshop';
 import { play } from '../../helpers/play';
 
 // The recipes in docs/guide/building-worlds/recipes.md. If these break, that page is wrong.
@@ -311,6 +312,62 @@ describe('recipes', () => {
       > disembark
       (raft)
       You are on your own feet again."
+    `);
+  });
+
+  it('orders, numbers and a buggy', () => {
+    const orders = ['robot, push the button', 'robot, take wrench', 'robot, go east', 'turn dial to 2', 'examine dial', 'east', 'east', 'board buggy', 'east', 'east', 'west'];
+    expect(play(workshop, orders).text).toMatchInlineSnapshot(`
+      "📍 Workshop
+      Benches, a big brass dial on the wall and a red button. The yard is east.
+      You can see: dial, red button, wrench.
+      Present: robot.
+      Exits: east.
+      > robot, push the button
+      The robot extends its clamp and presses the button. Somewhere, a bell rings.
+      > robot, take wrench
+      Click!
+      > robot, go east
+      Whirr, click!
+      > turn dial to 2
+      The dial clicks round to 2. Nothing else happens.
+      > examine dial
+      The brass dial points at 2.
+      > east
+      📍 Yard
+      A gravel yard. The workshop is west, and dunes begin to the east.
+      You can see: dune buggy.
+      Present: robot.
+      Exits: west, east.
+      > east
+      You can’t go there without a vehicle.
+      > board buggy
+      You are now in the dune buggy.
+      > east
+      Sand sprays behind you.
+      📍 Dune (in the dune buggy)
+      Soft sand rolls away in every direction. The yard is west; a bigger dune lies east.
+      Exits: west, east.
+      > east
+      The engine roars.
+      📍 Crest (in the dune buggy)
+      The top of the biggest dune. You can see the whole desert, and it is all sand.
+      Exits: west.
+      > west
+      The engine roars.
+      📍 Dune (in the dune buggy)
+      Soft sand rolls away in every direction. The yard is west; a bigger dune lies east.
+      Exits: west, east."
+    `);
+    expect(play(workshop, ['turn dial to 4']).text).toMatchInlineSnapshot(`
+      "📍 Workshop
+      Benches, a big brass dial on the wall and a red button. The yard is east.
+      You can see: dial, red button, wrench.
+      Present: robot.
+      Exits: east.
+      > turn dial to 4
+      The dial clicks to 4, and a hatch in the floor swings open. Inside is a tin of biscuits.
+      A good day in the workshop."
     `);
   });
 });
