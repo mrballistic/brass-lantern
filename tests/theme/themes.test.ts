@@ -14,7 +14,8 @@ describe('resolveTheme', () => {
     expect(r.vars['--bl-fg-dim']).toBe('rgba(255, 176, 0, 0.6)');
     expect(r.vars['--bl-glow-strong']).toBe('rgba(255, 176, 0, 0.6)');
     expect(r.vars['--bl-bg']).toBe('#0a0a08');
-    expect(Object.keys(r.vars)).toHaveLength(12);
+    expect(r.vars['--bl-boot-line']).toBe('#ffd866');
+    expect(Object.keys(r.vars)).toHaveLength(13);
   });
 
   it('crt-green has its own glows and system colour', () => {
@@ -34,6 +35,10 @@ describe('resolveTheme', () => {
     expect(d.palette).toEqual(PALETTES.dark);
     expect(l.classes).toEqual(ALL_OFF);
     expect(d.classes).toEqual(ALL_OFF);
+  });
+
+  it('the boot line follows the palette', () => {
+    expect(resolveTheme('crt-green', {}, {}, light).vars['--bl-boot-line']).toBe(PALETTES.green.decorative);
   });
 
   it('simple flips with prefersDark', () => {

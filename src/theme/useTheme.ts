@@ -1,4 +1,4 @@
-import { onBeforeUnmount, onMounted, ref, toValue, watchEffect, type MaybeRefOrGetter, type Ref } from 'vue';
+import { onBeforeUnmount, ref, toValue, watchEffect, type MaybeRefOrGetter, type Ref } from 'vue';
 import { resolveTheme, type Theme, type ThemeName, type ThemeOverrides } from './themes';
 
 export interface UseThemeOptions {
@@ -32,6 +32,11 @@ export function useTheme(root: Ref<HTMLElement | null>, options: UseThemeOptions
     cleanups.push(() => mql.removeEventListener?.('change', onChange));
   }
 
+  // Read synchronously, before the first apply, so dark-mode and reduced-motion
+  // visitors never see a frame of the wrong theme.
+  watchQuery('(prefers-color-scheme: dark)', prefersDark);
+  watchQuery('(prefers-reduced-motion: reduce)', reducedMotion);
+
   const resolved = ref(resolveTheme('crt-amber', {}, {}, { prefersDark: false, reducedMotion: false }));
 
   watchEffect(() => {
@@ -49,12 +54,7 @@ export function useTheme(root: Ref<HTMLElement | null>, options: UseThemeOptions
     el.classList.add(...next.classes);
     for (const [k, v] of Object.entries(next.vars)) el.style.setProperty(k, v);
     applied = { classes: next.classes, vars: Object.keys(next.vars) };
-  });
-
-  onMounted(() => {
-    watchQuery('(prefers-color-scheme: dark)', prefersDark);
-    watchQuery('(prefers-reduced-motion: reduce)', reducedMotion);
-  });
+  }, { flush: 'post' });
   onBeforeUnmount(() => cleanups.forEach(fn => fn()));
 
   return { resolved };

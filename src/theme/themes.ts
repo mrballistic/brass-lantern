@@ -178,5 +178,8 @@ export function resolveTheme(
   const vars: Record<string, string> = {};
   for (const [role, value] of Object.entries(palette)) vars[`--bl-${kebab(role)}`] = value;
 
+  // The boot ignition line follows the palette (amber's decorative is today's #ffd866).
+  vars['--bl-boot-line'] = palette.decorative;
+
   return { palette: { ...palette }, effects, classes, vars };
 }

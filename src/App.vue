@@ -5,10 +5,13 @@ import Terminal from '@/components/Terminal.vue';
 import ConsentBanner from '@/components/ConsentBanner.vue';
 import { willResume } from '@/cartridges';
 import { useTheme } from '@/theme/useTheme';
+import type { Theme, ThemeName } from '@/theme/themes';
 
-// The shell carries the theme too, so the overlays (scanlines, noise, flicker) follow it.
+// The shell is the one theme root: it holds the overlays, the boot sequence and the
+// terminal, so its classes and variables reach all of them.
+const props = withDefaults(defineProps<{ theme?: ThemeName | Theme | string }>(), { theme: 'crt-amber' });
 const shellEl = ref<HTMLElement | null>(null);
-useTheme(shellEl, { theme: 'crt-amber' });
+useTheme(shellEl, { theme: () => props.theme });
 
 const bootComplete = ref(false);
 const fastBoot = ref(false);
