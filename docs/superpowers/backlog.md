@@ -2,9 +2,14 @@
 
 Known gaps the reviews found and deferred. Each stage's spec picks up the ones it touches; strike an item through (or delete it) when it ships. Newest first.
 
-## Open after the 1.12.5 clear-out
+## From the 1.12.5 clear-out review
 
-- **ROB-MAZE never fires in Release 119.** Its text (“You hear, off in the distance, someone saying …”) is in zork1.z3 (around byte 56032) and every condition in the source holds when the thief stands in a maze room with things while you wait in another, yet the original never says it (38 runs of 120–400 turns, lamp on or off); natively it does, so `tests/worlds/zork1-thief-maze.test.ts` lists it as a known difference. Finding the real condition means decompiling that routine from the story file.
+- ~~**ROB-MAZE never fires in Release 119.**~~ (1.12.5) Solved: DESCRIBE-ROOM clears a maze room's TOUCHBIT on every look, and I-THIEF only robs rooms with TOUCHBIT, so he never robs the maze and the distant voice is dead code. Native now skips maze rooms too.
+- **The Loud Room's “lost in the noise”** prints after the daemons' lines in a turn; check Zork's order (the room's M-ENTER runs before CLOCKER).
+- **The walls regex in the CLIMB rules** is redundant with the generic match, and a bare CLIMB WALL (no direction) isn't checked against the story file.
+- **V-LEAP:** it matches object names exactly (no fuzzy pass), lacks JUMP IN / JUMP FROM / JUMP OFF and WALK OVER, and objects with their own jump lines (the rainbow, the chasm) fall through to the generic reply.
+- **The once-only `onTake` guard** is now in two places (withRules and READ's automatic take); one helper would do.
+- **The thief-maze differential** is one-directional: it checks native's lines are a subset of the original's, not that native prints the original's rarer lines too.
 
 ## From the 1.12.5 fast follow
 

@@ -121,3 +121,14 @@ describe('a world verb’s reply can be a list, one picked at random (backlog cl
     expect(['Kicking the sock doesn’t seem to work.', 'Kicking the sock has no effect.']).toContain(execute({ action: 'kick', target: 'sock' }, { world: w, state: s }).lines[0]);
   });
 });
+
+describe('a list reply aimed at a character (1.12.5 review)', () => {
+  it('is a miss that leaves the seed alone', () => {
+    const w = { ...world, verbs: { ...world.verbs, kick: { words: ['kick'], target: 'required' as const, reply: ['A.', 'B.'] } } };
+    const s = stateWith(w, { room: 'shed' });
+    const rng = s.rng;
+    const r = execute({ action: 'kick', target: 'guard' }, { world: w, state: s });
+    expect(r.understood).toBe(false);
+    expect(s.rng).toBe(rng);
+  });
+});

@@ -801,3 +801,34 @@ describe('dropping the rest of a line (P-CONT) (backlog clear-out)', () => {
     }
   });
 });
+
+describe('a line stop left by a command that threw (1.12.5 review)', () => {
+  it('does not cut short the next line', async () => {
+    const room = fixtureWorld.rooms[fixtureWorld.startRoom];
+    const saved = room.instead;
+    fixtureWorld.verbs = { ...fixtureWorld.verbs, halt: { words: ['halt'], target: 'none' }, ping: { words: ['ping'], target: 'none' } };
+    fixtureWorld.events = { ...fixtureWorld.events, halted: ['Stop.', { stopLine: true }], pinged: ['Pong.'] };
+    room.instead = { ...room.instead, halt: [{ then: 'halted' }], ping: [{ then: 'pinged' }] };
+    localStorage.clear();
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const store = freshStore();
+      store.initialize();
+      store.game.currentRoom = fixtureWorld.startRoom;
+      // The turn ran and asked to stop the line, then rendering it threw.
+      const apply = vi.spyOn(store, 'applyResult').mockImplementationOnce(() => { throw new Error('render'); });
+      await store.submit('halt');
+      apply.mockRestore();
+      const n = store.output.length;
+      await store.submit('ping. ping');
+      expect(store.output.slice(n).map((l) => l.text)).toEqual(['> ping. ping', 'Pong.', 'Pong.']);
+    } finally {
+      room.instead = saved;
+      delete fixtureWorld.verbs?.halt;
+      delete fixtureWorld.verbs?.ping;
+      delete fixtureWorld.events.halted;
+      delete fixtureWorld.events.pinged;
+      errors.mockRestore();
+    }
+  });
+});

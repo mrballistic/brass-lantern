@@ -352,24 +352,17 @@ function thiefTurn(ctx: ScriptContext): EventStep[] {
       if (versus()) return steps;
     } else {
       if (seen) hideThief();
-      if (ctx.visited(rm)) {
+      // Only rooms you've seen; Zork clears a maze room's TOUCHBIT on every look (DESCRIBE-ROOM),
+      // so he never robs the maze, and ROB-MAZE's distant voice is never heard.
+      if (ctx.visited(rm) && !ctx.tags(rm).includes('maze')) {
         rob(rm, 75);
-        if (ctx.tags(rm).includes('maze') && ctx.tags(here).includes('maze')) {
-          for (const id of contents(rm)) {
-            if (!ctx.world.items[id]?.portable || ctx.state.itemState[id]?.hidden || !prob(ctx, 40)) continue;
-            steps.push(`You hear, off in the distance, someone saying “My, I wonder what this fine ${ctx.world.items[id].name} is doing here.”`);
-            if (prob(ctx, 60)) move(id, 'thief', true);
-            break;
-          }
-        } else {
-          for (const id of contents(rm)) {
-            const item = ctx.world.items[id];
-            if (!item?.portable || item.scenery || ctx.treasure(id) > 0 || untouchable(id)) continue;
-            if (id !== 'stiletto' && !prob(ctx, 10)) continue;
-            move(id, 'thief', true);
-            if (rm === here) steps.push(`You suddenly notice that the ${item.name} vanished.`);
-            break;
-          }
+        for (const id of contents(rm)) {
+          const item = ctx.world.items[id];
+          if (!item?.portable || item.scenery || ctx.treasure(id) > 0 || untouchable(id)) continue;
+          if (id !== 'stiletto' && !prob(ctx, 10)) continue;
+          move(id, 'thief', true);
+          if (rm === here) steps.push(`You suddenly notice that the ${item.name} vanished.`);
+          break;
         }
       }
     }
@@ -857,7 +850,8 @@ export const zork1: World = {
       onEnter: [],
       tags: ['sacred'],
       // V-PRAY: at the altar, back to the forest.
-      instead: { pray: [{ then: 'prayer_answered' }] },
+      // V-LEAP: the way down is shut while you hold the coffin (COFFIN-CURE), so a leap kills.
+      instead: { pray: [{ then: 'prayer_answered' }], jump: [{ if: 'has:coffin', then: 'jump_death' }] },
     },
     north_temple: {
       name: 'Temple',

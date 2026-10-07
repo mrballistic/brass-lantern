@@ -8,9 +8,9 @@ import { normalize, openNative, openOriginal, playPrefix } from './zsession';
 // checked by lines: over many seeds a side, every such line the native game prints must be one
 // the original prints. (Fight lines are the fight test's business.)
 //
-// Known difference: ROB-MAZE's “You hear, off in the distance, someone saying …”. Its text is in
-// zork1.z3 and every condition in the source holds here, yet the original never says it (38 runs
-// of 120–400 turns); natively it does. Finding Release 119's real condition is on the backlog.
+// ROB-MAZE's “You hear, off in the distance, someone saying …” is in zork1.z3 but never printed:
+// Release 119's DESCRIBE-ROOM clears a maze room's TOUCHBIT on every look, and I-THIEF only robs
+// rooms with it set, so he never robs the maze at all. Neither side may say it.
 
 const SEEDS = 30;
 const WAITS = 120;
@@ -43,8 +43,9 @@ describe('the thief in the maze, against the original (backlog clear-out)', () =
       for (const l of await lines('original', seed)) theirs.add(l);
       for (const l of await lines('native', seed)) ours.add(l);
     }
-    const strangers = [...ours].filter((l) => HIS.test(l) && !l.startsWith(DISTANT) && !theirs.has(l));
+    const strangers = [...ours].filter((l) => HIS.test(l) && !theirs.has(l));
     expect(strangers).toEqual([]);
+    expect([...theirs, ...ours].filter((l) => l.startsWith(DISTANT))).toEqual([]);
     // Both sides did meet him, so the comparison isn't empty.
     expect([...theirs].filter((l) => HIS.test(l)).length).toBeGreaterThan(2);
     expect([...ours].filter((l) => HIS.test(l)).length).toBeGreaterThan(2);

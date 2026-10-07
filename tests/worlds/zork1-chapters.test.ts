@@ -13,9 +13,9 @@ const CHAPTER_SEEDS: Record<string, { native: number; original: number } | 'line
   temple: { native: 1, original: 1 },
   maze: { native: 1, original: 1 },
   dam: { native: 3, original: 5 },
-  atlantis: { native: 3, original: 1 },
+  atlantis: { native: 4, original: 1 },
   river: { native: 1, original: 1 },
-  thief: { native: 13, original: 1 },
+  thief: { native: 15, original: 1 },
   mine: { native: 7, original: 1 },
   end: { native: 7, original: 1 },
 };

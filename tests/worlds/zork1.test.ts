@@ -865,5 +865,24 @@ describe('Zork I, natively: fast follow (C)', () => {
     expect(s.currentRoom).toBe('loud_room');
     expect(r.stopLine).toBe('The rest of your commands have been lost in the noise.');
   });
+  it('the thief never robs a maze room: Zork clears its TOUCHBIT on every look (DESCRIBE-ROOM)', () => {
+    const state = at('maze_3', ['lamp']);
+    state.itemState.lamp = { ...state.itemState.lamp, on: true };
+    state.visited.push('maze_1');
+    state.locations.rope = 'maze_1';
+    state.locations.bag_of_coins = 'maze_1';
+    const out: string[] = [];
+    for (let t = 0; t < 60; t++) {
+      state.npcs = { thief: { room: 'maze_1', hidden: true } };
+      out.push(...say(state, 'wait'));
+    }
+    expect(out.join(' ')).not.toContain('off in the distance');
+    expect(state.locations.rope).toBe('maze_1');
+    expect(state.locations.bag_of_coins).toBe('maze_1');
+  });
+  it('JUMP at the Altar with the coffin is deadly (V-LEAP and COFFIN-CURE)', () => {
+    const state = at('south_temple', ['coffin', 'lamp']);
+    expect(say(state, 'jump')[0]).toBe('This was not a very safe place to try jumping.');
+  });
 });
 

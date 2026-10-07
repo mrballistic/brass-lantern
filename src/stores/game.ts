@@ -254,6 +254,8 @@ export const useGameStore = defineStore('game', {
         }
         // Once the game is over, one command hears that it has ended; the rest of the line is dropped.
         if (this.game.gameOver && i > 0) break;
+        // A stop left by a command that threw belongs to that line, not this one.
+        conversation.stopLine = undefined;
         try {
           // A room or the world can take input before it's parsed; taking it ends the line.
           const captured = conversation.pending ? null : captureLine(world, this.game, command);
@@ -273,6 +275,7 @@ export const useGameStore = defineStore('game', {
         } catch (error) {
           // The engine rolled the turn back; say so, and drop the rest of the line.
           console.error('Command failed:', error);
+          conversation.stopLine = undefined;
           this.appendSystem('[Something went wrong with that command. Nothing changed.]');
           break;
         }
