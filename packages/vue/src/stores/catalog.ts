@@ -17,6 +17,12 @@ export interface Catalog {
   menuLines(all?: Cartridge[]): string[];
 }
 
+/** The menu's format column: native worlds, story files, and the player's own. */
+function formatLabel(c: Cartridge): string {
+  if (c.kind === 'world') return 'native';
+  return c.local ? `${c.format}   yours` : c.format;
+}
+
 export function createCatalog({ cartridges, storagePrefix }: { cartridges: Cartridge[]; storagePrefix: string }): Catalog {
   const lastCartridgeKey = `${storagePrefix}:cartridge`;
   const saveKeyFor = (c: WorldCartridge): string => c.saveKey ?? `${storagePrefix}:save:${c.id}`;
@@ -48,12 +54,11 @@ export function createCatalog({ cartridges, storagePrefix }: { cartridges: Cartr
 
     menuLines(all: Cartridge[] = cartridges) {
       const width = Math.max(...all.map((c) => c.title.length));
-      const format = (c: Cartridge) => (c.kind === 'world' ? 'native' : c.local ? `${c.format}   yours` : c.format);
       return [
         '═══════════════════════════════',
         'INSTALLED CARTRIDGES',
         '═══════════════════════════════',
-        ...all.map((c, i) => `  ${i + 1}  ${c.title.padEnd(width)}   ${format(c)}`),
+        ...all.map((c, i) => `  ${i + 1}  ${c.title.padEnd(width)}   ${formatLabel(c)}`),
         '[Type a number to insert a cartridge. EJECT brings you back here.]',
         '[LOAD plays a Z-machine story file from your computer. It stays in this browser; nothing is uploaded.]',
         ...(all.some((c) => c.kind === 'zcode' && c.local) ? ['[REMOVE and a number takes one of yours off the shelf.]'] : []),
