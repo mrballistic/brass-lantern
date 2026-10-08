@@ -2,6 +2,7 @@ import type { GameState } from '../types/game.ts';
 import { cureTick, fightTurn } from './combat.ts';
 import type { World } from '../types/world.ts';
 import { evaluateCondition } from './conditions.ts';
+import { isSafeKey } from './keys.ts';
 import { runConditional, runEventKey, scheduledThisTurn, turnHalted } from './effects.ts';
 
 const fired = new WeakSet<GameState>();
@@ -31,7 +32,7 @@ export function afterTurn(world: World, state: GameState, existing: Set<string>)
       fired.add(state);
       out.push(...runEventKey(key, world, state));
     } else {
-      state.fuses![key] = left - 1;
+      if (isSafeKey(key)) state.fuses![key] = left - 1;
     }
     if (state.gameOver || turnHalted(state)) return out;
   }

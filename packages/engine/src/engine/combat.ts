@@ -313,8 +313,9 @@ export function fightTurn(world: World, state: GameState): string[] {
       }
     } else {
       if (s?.fighting || s?.staggered) {
-        s.fighting = false;
-        s.staggered = false;
+        const st = npcStateOf(state, id);
+        st.fighting = false;
+        st.staggered = false;
         if (state.player) state.player.staggered = false;
       }
       lines.push(...awaken(world, state, id));

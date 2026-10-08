@@ -60,9 +60,10 @@ export function handleOpen(target: string | undefined, world: World, state: Game
   if (!item.container?.openable) return useFallback(id, null, world, state) ?? ok(['You can’t open that.']);
   if (isOpen(world, state, id)) return ok([world.style === 'infocom' ? 'It is already open.' : 'It’s already open.']);
   if (isLocked(world, state, id)) return ok([`The ${item.name} is locked.`]);
-  itemStateOf(state, id).open = true;
+  const st = itemStateOf(state, id);
+  st.open = true;
   // Zork's V-OPEN touches a container (not a door): its first-seen sentence is over.
-  if (world.style === 'infocom' && !item.door) state.itemState[id].moved = true;
+  if (world.style === 'infocom' && !item.door) st.moved = true;
   const inside = childrenOf(world, state, id).filter((k) => !world.items[k]?.scenery && shown(state)(k));
   if (item.container.opened) return ok([item.container.opened], true);
   // Zork's V-OPEN: a door (DOORBIT, no capacity) says it opens.

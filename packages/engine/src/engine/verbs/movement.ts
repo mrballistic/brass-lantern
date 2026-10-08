@@ -3,6 +3,7 @@ import type { Exit, World } from '../../types/world.ts';
 import { evaluateCondition } from '../conditions.ts';
 import { COMPASS, describeRoom, exitList, exitTarget } from '../describe.ts';
 import { fuzzyMatchExit } from '../fuzzy.ts';
+import { isSafeKey } from '../keys.ts';
 import { isAwake, isLit, isNpcHidden, isOpen, isWater, restTerrains, matchItem, nextPlacing, npcStateOf, npcsIn, onFootTerrains, pickItem, terrainOf, travelTerrains, visibleItems } from '../model.ts';
 import { handleBoard } from './vehicle.ts';
 import { runEventKey, runSteps, turnHalted, vehicleLine } from '../effects.ts';
@@ -87,7 +88,7 @@ function enterRoomInner(targetId: string, world: World, state: GameState, opts: 
   // The vehicle goes where you go; coming ashore it rests on the bank (GOTO).
   const landing: string[] = [];
   if (state.aboard) {
-    state.locations[state.aboard] = targetId;
+    if (isSafeKey(state.aboard)) state.locations[state.aboard] = targetId;
     landing.push(...landingLines(fromTerrain, targetId, world, state));
   }
   // Zork's GOTO: from one unlit room into another, the grue may be waiting.

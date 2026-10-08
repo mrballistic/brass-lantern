@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { auditWorld } from '../../src/engine/audit';
 import { interpret, newConversation } from '../../src/engine/conversation';
 import { runSteps } from '../../src/engine/effects';
-import { initialState } from '../../src/engine/engine';
+import { execute, initialState } from '../../src/engine/engine';
 import { createGame } from '../../src/engine/game';
 import { isSafeKey } from '../../src/engine/keys';
 import { moveItem, npcStateOf } from '../../src/engine/model';
@@ -131,12 +131,12 @@ describe('the input length cap', () => {
 
 describe('reserved keys never reach Object.prototype', () => {
   afterEach(() => {
-    for (const k of ['polluted', 'room', 'seq', 'open', 'locked', 'on', 'following']) delete (Object.prototype as Record<string, unknown>)[k];
+    for (const k of ['polluted', 'room', 'seq', 'open', 'locked', 'on', 'following', 'moved', 'fighting', 'staggered']) delete (Object.prototype as Record<string, unknown>)[k];
   });
 
   const clean = () => {
     const probe = {} as Record<string, unknown>;
-    for (const k of ['polluted', 'room', 'seq', 'open', 'locked', 'on', 'following']) expect(probe[k]).toBeUndefined();
+    for (const k of ['polluted', 'room', 'seq', 'open', 'locked', 'on', 'following', 'moved', 'fighting', 'staggered']) expect(probe[k]).toBeUndefined();
   };
 
   it('isSafeKey', () => {
@@ -200,6 +200,27 @@ describe('reserved keys never reach Object.prototype', () => {
     runSteps([{ npcState: '__proto__', polluted: 'yes' } as unknown as EventStep, { open: '__proto__' }, '[Flag set: Odd]'], w, s);
     clean();
     expect(Object.hasOwn(s.flags, 'constructor')).toBe(false);
+  });
+
+  it('OPEN on an item with a reserved ID (Infocom style) writes nothing to Object.prototype', () => {
+    for (const key of ['__proto__', 'constructor']) {
+      const items = JSON.parse(
+        `{"${key}": {"name": "crate", "description": "A crate.", "portable": false, "tags": [], "container": {"openable": true, "open": false}}}`,
+      );
+      const w: World = {
+        ...world,
+        style: 'infocom',
+        items: { ...world.items, ...items },
+        rooms: { ...world.rooms, bedroom: { ...world.rooms.bedroom, items: [...world.rooms.bedroom.items, key] } },
+      };
+      const s = stateWith(w, { room: 'bedroom' });
+      // A save or a JSON world can put an own "__proto__" key in the map; plain assignment can't.
+      Object.defineProperty(s.locations, key, { value: 'bedroom', enumerable: true, writable: true, configurable: true });
+      const r = execute({ action: 'open', target: 'crate' }, { world: w, state: s });
+      expect(r.lines.join(' ')).toMatch(/open/i);
+      clean();
+      expect(Object.hasOwn(s.itemState, key)).toBe(false);
+    }
   });
 
   it('the audit reports reserved IDs, flags and variables', () => {
