@@ -120,7 +120,7 @@ A *built-in* verb, with default behavior in the engine, still takes three edits:
 
 ## The terminal
 
-The CRT is hand-written CSS (`packages/vue/src/styles/crt.css`), with no canvas and no UI framework:
+The CRT is hand-written CSS (`packages/vue/src/styles/crt.css`), with no canvas and no UI framework. Every rule is scoped to the game’s shell, which fills its container, so the effects stay inside the game’s box on any page:
 - a boot sequence, scanlines, phosphor bloom and a barrel vignette;
 - flicker at two rates, plus occasional glitches;
 - phosphor decay on older lines, and a block cursor with a square-wave blink.

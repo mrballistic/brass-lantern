@@ -4,6 +4,7 @@ import SiteConsent from './SiteConsent.vue';
 import { analyticsConfigured, configureAnalytics, initAnalytics, track } from './services/analytics';
 import { hasConsent, initConsent, openConsent } from './services/consent';
 import '@brass-lantern/vue/style.css';
+import './site.css';
 
 configureAnalytics(storagePrefix);
 // Builds without a measurement ID collect nothing, so there's nothing to ask about.

@@ -78,7 +78,7 @@ jobs:
       - run: npm run build:packages
       - run: npm run build
       # Packs the three packages as `npm publish` would, installs the tarballs
-      # into a scratch project and uses them from Node and tsc.
+      # into a scratch project and uses them from Node, tsc, Vite and a browser.
       - run: npm run smoke
 
       # One package at a time, in dependency order (the engine first, vue

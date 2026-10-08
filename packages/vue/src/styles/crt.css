@@ -1,9 +1,12 @@
 /* ============================================================
-   CRT visual system
+   CRT visual system. Everything here is scoped to .crt-shell, the
+   game's root: the stylesheet styles the game and nothing else on
+   the page. The shell fills its container; a full-screen page
+   gives that container the viewport (the demo site's site.css).
    ============================================================ */
 
-:root {
-  /* Palette roles (defaults: crt-amber). Glows elsewhere are color-mix()ed from these. */
+.crt-shell {
+  /* Palette roles (defaults: crt-amber; a theme sets them inline on the shell). Glows elsewhere are color-mix()ed from these. */
   --bl-bg: #0a0a08;
   --bl-fg: #ffb000;
   --bl-fg-bright: #ffc833;
@@ -42,31 +45,26 @@
   --bl-glitch-interval-max: 30s;
 }
 
-html, body, #app {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  background: var(--bl-bg);
-  font-family: 'VT323', 'Courier New', monospace;
-  color: var(--bl-fg);
-  overflow: hidden;
-}
-
-* { box-sizing: border-box; }
+.crt-shell,
+.crt-shell * { box-sizing: border-box; }
 
 /* ============================================================
-   Full-viewport CRT shell — content layer
+   The CRT shell, sized by its container — content layer
    ============================================================ */
 .crt-shell {
   position: relative;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   background: var(--bl-bg);
   color: var(--bl-fg);
+  /* Its own type, whatever the host page's. */
+  font-family: 'VT323', 'Courier New', monospace;
+  font-size: 16px;
+  line-height: normal;
   overflow: hidden;
 }
 
-/* Phosphor bloom: radial amber glow centered on viewport. z=2. */
+/* Phosphor bloom: radial amber glow centered on the shell. z=2. */
 .crt-shell::before {
   content: '';
   position: absolute;
@@ -97,9 +95,9 @@ html, body, #app {
   );
 }
 
-/* Ambient noise + barrel vignette layered as standalone fixed overlays. */
+/* Ambient noise + barrel vignette layered as overlays over the whole shell. */
 .crt-noise {
-  position: fixed;
+  position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 1;
@@ -129,10 +127,11 @@ html, body, #app {
 }
 
 .crt-vignette {
-  position: fixed;
+  position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 11;
+  will-change: transform;
   background:
     radial-gradient(ellipse at center, transparent 55%, color-mix(in srgb, var(--bl-shade) 45%, transparent) 100%),
     radial-gradient(ellipse at center, transparent 70%, color-mix(in srgb, var(--bl-shade) 25%, transparent) 100%);
@@ -348,7 +347,7 @@ html, body, #app {
    Boot sequence overlay
    ============================================================ */
 .crt-boot {
-  position: fixed;
+  position: absolute;
   inset: 0;
   z-index: 20;
   background: var(--bl-shade);

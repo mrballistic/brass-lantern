@@ -183,3 +183,30 @@ export function resolveTheme(
 
   return { palette: { ...palette }, effects, classes, vars };
 }
+
+/**
+ * The author's theme options, checked once when a game is made: a custom
+ * theme named like a preset is dropped (THEME would list the name twice and
+ * the preset would win anyway), and an author theme that names nothing falls
+ * back to crt-amber. Each problem is one console warning, never an error.
+ */
+export function checkAuthorThemes(
+  theme: ThemeName | Theme | string | undefined,
+  themes: Record<string, Theme> | undefined,
+): { theme: ThemeName | Theme | string; themes: Record<string, Theme> } {
+  const custom: Record<string, Theme> = {};
+  const presetNames = Object.keys(PRESETS).map((n) => n.toLowerCase());
+  for (const [name, value] of Object.entries(themes ?? {})) {
+    if (presetNames.includes(name.toLowerCase())) {
+      console.warn(`Brass Lantern: the custom theme “${name}” has a preset’s name, so it is ignored. Give it another name.`);
+      continue;
+    }
+    custom[name] = value;
+  }
+  const author = theme ?? 'crt-amber';
+  if (typeof author === 'string' && !isPreset(author) && !Object.prototype.hasOwnProperty.call(custom, author)) {
+    console.warn(`Brass Lantern: there’s no theme called “${author}”, so the game uses crt-amber. Try one of: ${[...Object.keys(PRESETS), ...Object.keys(custom)].join(', ')}.`);
+    return { theme: 'crt-amber', themes: custom };
+  }
+  return { theme: author, themes: custom };
+}

@@ -21,9 +21,13 @@ export interface GameOptions {
   storagePrefix: string;
   /** Where misses go for the LLM's reading (POST, see the server package). null: misses get the engine's reply only. Default null. */
   intentEndpoint?: string | null;
-  /** The author's default theme; the player's THEME command wins over it. Default 'crt-amber'. */
+  /**
+   * The author's default theme: a preset, the name of one of `themes`, or a
+   * theme object. The player's THEME command wins over it. An unknown name
+   * falls back to 'crt-amber' with a console warning. Default 'crt-amber'.
+   */
   theme?: ThemeName | Theme;
-  /** Extra named themes, offered by THEME beside the presets. */
+  /** Extra named themes, offered by THEME beside the presets. One named like a preset is ignored, with a warning. */
   themes?: Record<string, Theme>;
   /** The app's (consent-gated) analytics. */
   analytics?: {
@@ -49,6 +53,12 @@ export interface GameOptions {
    * passes `import.meta.env.DEV`. Default false.
    */
   devChecks?: boolean;
+  /**
+   * Focus the game's input when it boots, which also scrolls the page to it.
+   * An embedded game on a longer page passes false; the input still takes
+   * focus when the player clicks the game. Default true.
+   */
+  autofocus?: boolean;
 }
 
 export const DEFAULT_TERMINAL_NAME = 'BRASS LANTERN';

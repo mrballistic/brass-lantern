@@ -68,7 +68,8 @@ onMounted(async () => {
   await session.boot();
   // A restored session renders instantly; anything new after it types out.
   enqueueNew(restored.value);
-  focusInput();
+  // An embedded game can leave the page's focus (and scroll) alone: autofocus: false.
+  if (game.options.autofocus !== false) focusInput();
 });
 
 onUnmounted(() => document.removeEventListener('selectionchange', syncCaret));

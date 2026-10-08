@@ -4,6 +4,7 @@ import CrtBootSequence from './CrtBootSequence.vue';
 import Terminal from './Terminal.vue';
 import type { GameOptions } from '../options.ts';
 import { createGameContext, GAME_CONTEXT } from '../stores/context.ts';
+import { checkAuthorThemes } from '../theme/themes.ts';
 import { useTheme } from '../theme/useTheme.ts';
 
 // One game: its shell (the one theme root, holding the overlays, the boot
@@ -20,9 +21,15 @@ const props = defineProps<{ options: GameOptions }>();
 const game = createGameContext(props.options);
 provide(GAME_CONTEXT, game);
 const store = game.useGameStore();
-const configureThemes = () => store.configureThemes(props.options.theme ?? 'crt-amber', props.options.themes ?? {});
-configureThemes();
-watch(() => [props.options.theme, props.options.themes], configureThemes);
+// The context has already checked the options' themes (one warning per problem); a later change is checked again.
+store.configureThemes(game.options.theme, game.options.themes);
+watch(
+  () => [props.options.theme, props.options.themes],
+  () => {
+    const checked = checkAuthorThemes(props.options.theme, props.options.themes);
+    store.configureThemes(checked.theme, checked.themes);
+  },
+);
 
 const shellEl = ref<HTMLElement | null>(null);
 useTheme(shellEl, {

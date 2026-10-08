@@ -2,16 +2,17 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const css = readFileSync(`${import.meta.dirname}/../../src/styles/crt.css`, 'utf8');
-const rootMatch = css.match(/:root\s*\{([\s\S]*?)\n\}/);
+// The tokens block: the first .crt-shell rule (the shell is the theme root; nothing is set on :root).
+const rootMatch = css.match(/^\.crt-shell\s*\{([\s\S]*?)\n\}/m);
 const rootBlock = rootMatch ? rootMatch[1] : '';
-const rest = css.replace(/:root\s*\{[\s\S]*?\n\}/, '');
+const rest = css.replace(/^\.crt-shell\s*\{[\s\S]*?\n\}/m, '');
 
 function rootValue(name: string): string | undefined {
   const m = rootBlock.match(new RegExp(`${name}:\\s*([^;]+);`));
   return m?.[1].trim();
 }
 
-// Today's amber values (the 1.13.0 :root block).
+// Today's amber values (the 1.13.0 :root block, now the shell's).
 const DEFAULTS: Record<string, string> = {
   '--bl-fg': '#ffb000',
   '--bl-fg-bright': '#ffc833',
@@ -48,7 +49,7 @@ describe('theme tokens in crt.css', () => {
     expect(css).not.toMatch(/--crt-/);
   });
 
-  it('has no rgba() literal outside :root', () => {
+  it('has no rgba() literal outside the tokens block', () => {
     expect(rootBlock).not.toBe('');
     expect(rest).not.toMatch(/rgba\(/);
   });
@@ -57,7 +58,7 @@ describe('theme tokens in crt.css', () => {
     expect(rootValue(name)).toBe(value);
   });
 
-  it('every var(--bl-*) used is defined in :root', () => {
+  it('every var(--bl-*) used is defined in the tokens block', () => {
     const used = new Set([...rest.matchAll(/var\((--bl-[a-z-]+)\)/g)].map(m => m[1]));
     for (const name of used) expect(rootValue(name), name).toBeDefined();
   });

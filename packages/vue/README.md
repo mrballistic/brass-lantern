@@ -2,7 +2,7 @@
 
 # Brass Lantern for Vue
 
-`@brass-lantern/vue`: the CRT terminal, the game store, five themes and `mountGame`, on top of `@brass-lantern/engine`.
+`@brass-lantern/vue`: the CRT terminal as a component and `mountGame`, with five themes, on top of `@brass-lantern/engine`.
 
 ## Install
 
@@ -26,7 +26,9 @@ mountGame('#app', {
 });
 ```
 
-Prefer a component? `<BrassLantern :options="options" />` takes the same options, and `createGameStore(options)` gives you the store without the terminal. Two games on one page need different `storagePrefix` values.
+The game fills its container and touches nothing else on the page, so give the container a size (for a full-screen game, `html, body, #app { height: 100%; margin: 0; overflow: hidden; }`). Pass `autofocus: false` to a game embedded in a longer page.
+
+Prefer a component? `<BrassLantern :options="options" />` takes the same options. The package exports `BrassLantern`, `mountGame`, `ConsentBanner`, the themes (`PRESETS`, `PALETTES`, `resolveTheme`), `useTypewriter` and the `GameOptions` type; the rest is internal. Two games on one page need different `storagePrefix` values.
 
 Players can type THEME, BLOOM ON|OFF and EFFECTS ON|OFF; the choice is remembered in the browser. Every option, custom themes and the intent server are in the guide.
 

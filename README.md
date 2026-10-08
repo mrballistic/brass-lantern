@@ -62,7 +62,7 @@ mountGame('#app', {
 });
 ```
 
-The terminal comes in five themes (amber and green CRT, and plain light and dark), and the engine also runs headless in Node. [Using the library](https://mrballistic.github.io/brass-lantern/guide/using-the-library) covers all of it. This repo is an npm-workspaces monorepo: `packages/` holds the libraries and `apps/site` is the demo.
+The game fills `#app`, so give it a size (`html, body, #app { height: 100%; margin: 0; overflow: hidden; }` for a full-screen game); the stylesheet styles nothing else on the page. The terminal comes in five themes (amber and green CRT, and plain light and dark), and the engine also runs headless in Node. [Using the library](https://mrballistic.github.io/brass-lantern/guide/using-the-library) covers all of it. This repo is an npm-workspaces monorepo: `packages/` holds the libraries and `apps/site` is the demo.
 
 ## Quick start
 

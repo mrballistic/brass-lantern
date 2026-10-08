@@ -8,7 +8,7 @@ Brass Lantern is three npm packages. Use them to put a game in your own app, run
 | `@brass-lantern/vue` | The CRT terminal, the game store, themes and `mountGame`. | `vue` 3.5+, `pinia` 4 |
 | `@brass-lantern/server` | The intent server as `parseIntent` and, for Express, `intentRoute`. | A Gemini key; `express` 5 for the route |
 
-All three are ESM with TypeScript declarations. The core entry points also load with `require()` on Node 24 and later (the engine’s `.` and `./worlds`, and the server’s `.` and `./express`); the Z-machine entries use top-level `await` and are ESM only.
+All three are ESM with TypeScript declarations. On Node 24 and later every entry also loads with `require()` except one: `@brass-lantern/engine/zmachine/session` uses top-level `await` (to check for `ifvms` first), so `require()` throws `ERR_REQUIRE_ASYNC_MODULE`; load it with `import()`, which is how a browser app wants it anyway.
 
 TypeScript 5.0 or later works with `moduleResolution` set to `bundler`, `node16` or `nodenext`. The engine’s public types mention `fetch` and `Storage`, so your project needs the DOM lib or `@types/node`.
 
@@ -39,7 +39,15 @@ mountGame('#app', {
 });
 ```
 
-The stylesheet is a separate import, so a bundler can see it. Already have a Vue app? Use the component, with a Pinia installed:
+The stylesheet is a separate import, so a bundler can see it. It styles the game and nothing else on your page: no `html`, `body` or `*` rules, nothing fixed to the viewport. The game fills its container, so give the container a size. For a full-screen game:
+
+```css
+html, body, #app { height: 100%; margin: 0; overflow: hidden; }
+```
+
+For a game inside a page, size its box (`#game { width: 640px; height: 400px; }`) and the terminal, its overlays and the boot sequence stay inside it. Pass `autofocus: false` to an embedded game so it doesn’t take the page’s focus, and scroll to itself, when it boots.
+
+Already have a Vue app? Use the component, with a Pinia installed:
 
 ```vue
 <script setup lang="ts">
@@ -57,7 +65,7 @@ const options: GameOptions = {
 </template>
 ```
 
-`createGameStore(options)` is there too, for a UI that wants the game’s state and not the terminal.
+That is most of the package: `BrassLantern`, `mountGame`, `ConsentBanner`, the themes (`PRESETS`, `PALETTES`, `resolveTheme` and their types), `useTypewriter` and the `GameOptions` type. The terminal’s parts (the terminal itself, the boot sequence, the stores) are internal, so they can change without a major version.
 
 ### Every option
 
@@ -70,11 +78,12 @@ const options: GameOptions = {
 | `terminalName` | Shown in the header. Default `BRASS LANTERN`. |
 | `version` | Shown after the name in the header. |
 | `intentEndpoint` | Where misses go for the LLM’s reading: a URL that accepts `POST`. `null`, `''` or unset means none, and a miss gets the engine’s reply. |
-| `theme` | The author’s default: a preset name, or a custom theme object. The player’s `THEME` command wins. Default `crt-amber`. |
-| `themes` | Extra named themes, offered by `THEME` beside the presets. |
+| `theme` | The author’s default: a preset name, or a custom theme object. The player’s `THEME` command wins. A name that isn’t a theme falls back to `crt-amber`, with a warning in the console. Default `crt-amber`. |
+| `themes` | Extra named themes, offered by `THEME` beside the presets. One named like a preset is ignored, with a warning. |
 | `analytics` | `{ onEvent(name, params?), openConsent?() }`. `onEvent` hears `game_start`, `game_completed` and `session_resumed`; a callback that throws is logged and never breaks the game. With `openConsent`, the header shows a COOKIES link and the command calls it; without it, COOKIES says nothing is collected. |
 | `storyBaseUrl` | Where a story cartridge’s relative `story` path is fetched from. A Vite app under a subpath passes `import.meta.env.BASE_URL`. Default `/`. |
 | `devChecks` | Turns on the engine’s script freeze, so a world script that assigns to game state throws instead of passing silently. Global to the page, and only ever turned on. A Vite app passes `import.meta.env.DEV`. Default `false`. |
+| `autofocus` | Focus the game’s input when it boots (which scrolls the page to it). An embedded game passes `false`; a click on the game still focuses it. Default `true`. |
 
 `mountGame(el, options, { slot })` takes a third argument for a component rendered inside the game’s shell once it has booted. The demo site uses it for its consent banner. `ConsentBanner` is exported, and it is presentational: it takes an `open` prop and emits `choose`, and your app decides what to store and what to send.
 
@@ -211,7 +220,21 @@ A story file is a cartridge too:
 
 The file is fetched from `storyBaseUrl` plus `story`, so host it with your app. See [Playing story files](./z-machine). The player can also LOAD one from their own computer, which stays in their browser.
 
-The interpreter is `ifvms`, an optional peer of the engine. `@brass-lantern/vue` depends on it, so a browser app needs nothing more. Using `@brass-lantern/engine/zmachine` directly in Node, install `ifvms` yourself; without it the import fails with an error that names the package. Saves go through a `SaveStore` (`list`, `read`, `write`, `remove`). In the browser that is `localStorageSaveStore(prefix)`; a Node host can pass a directory, a database or a `Map`.
+The interpreter is `ifvms`, an optional peer of the engine. `@brass-lantern/vue` depends on it, so a browser app needs nothing more, and it loads the interpreter only when a story starts: a bundler puts it in a chunk of its own, and a game with only native worlds never downloads it.
+
+Using the runtime yourself, the session is its own entry, so you can do the same:
+
+```ts
+import { SaveStoreDialog, localStorageSaveStore } from '@brass-lantern/engine/zmachine';
+
+const { ZMachineSession } = await import('@brass-lantern/engine/zmachine/session');
+const session = new ZMachineSession(storyBytes, new SaveStoreDialog(localStorageSaveStore('my-game:')), {
+  onLines: (lines) => print(lines), onStatus() {}, onWaiting() {}, onExit() {}, onError: (m) => print([m]),
+});
+session.start();
+```
+
+`@brass-lantern/engine/zmachine` holds everything but the interpreter (the story shelf, `readStoryFile`, the save stores and the types) and never needs `ifvms`. In Node, install `ifvms` yourself to use `./zmachine/session`; without it the import fails with an error that names the package. Saves go through a `SaveStore` (`list`, `read`, `write`, `remove`), wrapped in a `SaveStoreDialog`. In the browser that is `localStorageSaveStore(prefix)`; a Node host can pass a directory, a database or a `Map`.
 
 ## What stays in the repo
 
