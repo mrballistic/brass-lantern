@@ -1,10 +1,13 @@
 # Publishes @brass-lantern/engine, /vue and /server to npm when a v* tag is
 # pushed. The tag must be on main and must equal the version in every package.
 #
-# One-time setup (an owner step, not done by CI): create the "brass-lantern"
-# organization on npm, add an automation token as the NPM_TOKEN secret of the
-# "npm-publish" environment, and give that environment a required reviewer.
-# Then: bump versions, merge to main, `git tag v2.0.0 && git push --tags`.
+# Publishing uses npm trusted publishing: no token. GitHub's OIDC identity for
+# this workflow is what npm trusts. One-time setup (an owner step, not done by
+# CI): on npmjs.com, each package's Settings -> Trusted Publisher names this
+# repository, the workflow file release.yml and the "npm-publish" environment;
+# that environment has a required reviewer in the repo settings. Releases may
+# also wait for approval on npmjs.com if staged publishing is on.
+# Then: bump versions, merge to main, `git tag vX.Y.Z && git push --tags`.
 #
 # Re-runnable: a package whose version is already on npm is skipped, so after
 # a partial publish (say the engine went out and vue failed) re-running the
@@ -15,7 +18,8 @@ on:
   push:
     tags: ["v*"]
 
-# id-token lets npm attach a provenance statement to each package.
+# id-token is how trusted publishing proves this workflow to npm (and signs
+# each package's provenance statement).
 permissions:
   id-token: write
   contents: read
@@ -43,6 +47,15 @@ jobs:
           node-version: 24
           cache: npm
           registry-url: https://registry.npmjs.org
+
+      # Trusted publishing needs npm 11.5.1 or later.
+      - name: npm new enough for trusted publishing
+        run: |
+          npm --version
+          if ! npx --yes semver -r '>=11.5.1' "$(npm --version)" >/dev/null; then
+            npm install -g npm@latest
+            npm --version
+          fi
 
       - name: The tag is on main
         run: |
@@ -96,5 +109,3 @@ jobs:
             echo "Publishing $name@$version"
             npm publish -w "$name" --provenance --access public
           done
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
