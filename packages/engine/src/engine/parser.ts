@@ -16,67 +16,88 @@ const DIRECTIONS: Record<string, string> = {
   back: 'back',
 };
 
+/**
+ * The longest line the parser reads, counted after whitespace is collapsed (so padding can't push a command over
+ * it). Longer input is rejected, not cut short: `splitCommands` returns no commands, `fallbackParse` and
+ * `strictParse` return null, `interpret` replies TOO_LONG_REPLY, and `createGame().send` and the Vue store answer
+ * with that reply before anything runs, so nothing changes. It bounds the work any one line can cost.
+ */
+export const MAX_INPUT_LENGTH = 1000;
+
+/** What a line over MAX_INPUT_LENGTH hears. */
+export const TOO_LONG_REPLY = '[That’s too long for me to follow. Nothing happened.]';
+
+/**
+ * A line as the parser reads it: trimmed, every run of whitespace one space, or null if it's over
+ * MAX_INPUT_LENGTH. Every pattern below is written for this form (a single literal space between words), so no
+ * two neighbouring parts of a pattern can both match a run of spaces.
+ */
+export function cleanInput(raw: string): string | null {
+  const input = raw.trim().replace(/\s+/g, ' ');
+  return input.length > MAX_INPUT_LENGTH ? null : input;
+}
+
 const RE = {
-  movement: /^(?:go|walk|head|run|exit)\s+(?:to\s+(?:the\s+)?|toward\s+|over\s+to\s+(?:the\s+)?|out\s+to\s+(?:the\s+)?)?(.+)$/i,
-  enter: /^(?:enter|go\s+into|into)\s+(?:the\s+)?(.+)$/i,
-  board: /^(?:board|get\s+(?:in|into|on)|climb\s+(?:in|into|on)|sit\s+in)\s+(?:the\s+)?(.+)$/i,
+  movement: /^(?:go|walk|head|run|exit) (?:to (?:the )?|toward |over to (?:the )?|out to (?:the )?)?(.+)$/i,
+  enter: /^(?:enter|go into|into) (?:the )?(.+)$/i,
+  board: /^(?:board|get (?:in|into|on)|climb (?:in|into|on)|sit in) (?:the )?(.+)$/i,
   // Bare EXIT stays a direction (out), as it always was.
-  disembark: /^(?:disembark|get\s+out(?:\s+of)?|get\s+off|stand(?:\s+up)?)(?:\s+(?:the\s+)?(.+))?$/i,
+  disembark: /^(?:disembark|get out(?: of)?|get off|stand(?: up)?)(?: (?:the )?(.+))?$/i,
   // MOVE is GO only with a destination word; plain “move X” is left for worlds (MOVE RUG).
-  moveTo: /^move\s+(?:to|toward|towards|over\s+to)\s+(?:the\s+)?(.+)$/i,
-  climb: /^climb(?:\s+(up|down))?(?:\s+(?:the\s+)?(.+))?$/i,
-  take: /^(?:take|get|grab|pick\s+up)\s+(?:the\s+)?(.+)$/i,
-  drop: /^(?:drop|put\s+down|leave)\s+(?:the\s+)?(.+)$/i,
-  examine: /^(?:examine|inspect|look\s+at|x)\s+(?:the\s+)?(.+)$/i,
-  read: /^read\s+(?:the\s+)?(.+)$/i,
+  moveTo: /^move (?:to|toward|towards|over to) (?:the )?(.+)$/i,
+  climb: /^climb(?: (up|down))?(?: (?:the )?(.+))?$/i,
+  take: /^(?:take|get|grab|pick up) (?:the )?(.+)$/i,
+  drop: /^(?:drop|put down|leave) (?:the )?(.+)$/i,
+  examine: /^(?:examine|inspect|look at|x) (?:the )?(.+)$/i,
+  read: /^read (?:the )?(.+)$/i,
   // Zork's prepositions: PUT UNDER/BEHIND, THROW OFF/OVER, READ THROUGH, PUSH X dir / TO Y.
-  putUnder: /^(?:put|place|slide|push|stick)\s+(?:the\s+)?(.+?)\s+(?:under|underneath|beneath|below)\s+(?:the\s+)?(.+)$/i,
-  putBehind: /^(?:put|place|slide|push|stick)\s+(?:the\s+)?(.+?)\s+behind\s+(?:the\s+)?(.+)$/i,
-  throwOff: /^(?:throw|toss|hurl)\s+(?:the\s+)?(.+?)\s+off\s+(?:of\s+)?(?:the\s+)?(.+)$/i,
-  throwOver: /^(?:throw|toss|hurl)\s+(?:the\s+)?(.+?)\s+over\s+(?:of\s+)?(?:the\s+)?(.+)$/i,
-  readWith: /^read\s+(?:the\s+)?(.+?)\s+(?:through|with|using)\s+(?:the\s+)?(.+)$/i,
-  pushDir: /^(?:push|move|shove)\s+(?:the\s+)?(.+?)\s+(north|south|east|west|northeast|northwest|southeast|southwest|up|down|n|s|e|w|ne|nw|se|sw|u|d)$/i,
-  pushTo: /^(?:push|move|shove)\s+(?:the\s+)?(.+?)\s+to\s+(?:the\s+)?(.+)$/i,
-  turnOn: /^(?:turn|switch)\s+on\s+(?:the\s+)?(.+)$/i,
-  turnOnAfter: /^(?:turn|switch)\s+(?:the\s+)?(.+?)\s+on$/i,
-  light: /^light\s+(?:the\s+)?(.+)$/i,
-  burn: /^(?:burn(?:\s+down)?|ignite|incinerate|light)\s+(?:the\s+)?(.+?)\s+with\s+(?:the\s+|a\s+)?(.+)$/i,
-  burnAlone: /^(?:burn(?:\s+down)?|ignite|incinerate)\s+(?:the\s+)?(.+)$/i,
-  turnOnWith: /^(?:turn|switch)\s+on\s+(?:the\s+)?(.+?)\s+with\s+(?:the\s+|a\s+)?(.+)$/i,
+  putUnder: /^(?:put|place|slide|push|stick) (?:the )?(.+?) (?:under|underneath|beneath|below) (?:the )?(.+)$/i,
+  putBehind: /^(?:put|place|slide|push|stick) (?:the )?(.+?) behind (?:the )?(.+)$/i,
+  throwOff: /^(?:throw|toss|hurl) (?:the )?(.+?) off (?:of )?(?:the )?(.+)$/i,
+  throwOver: /^(?:throw|toss|hurl) (?:the )?(.+?) over (?:of )?(?:the )?(.+)$/i,
+  readWith: /^read (?:the )?(.+?) (?:through|with|using) (?:the )?(.+)$/i,
+  pushDir: /^(?:push|move|shove) (?:the )?(.+?) (north|south|east|west|northeast|northwest|southeast|southwest|up|down|n|s|e|w|ne|nw|se|sw|u|d)$/i,
+  pushTo: /^(?:push|move|shove) (?:the )?(.+?) to (?:the )?(.+)$/i,
+  turnOn: /^(?:turn|switch) on (?:the )?(.+)$/i,
+  turnOnAfter: /^(?:turn|switch) (?:the )?(.+?) on$/i,
+  light: /^light (?:the )?(.+)$/i,
+  burn: /^(?:burn(?: down)?|ignite|incinerate|light) (?:the )?(.+?) with (?:the |a )?(.+)$/i,
+  burnAlone: /^(?:burn(?: down)?|ignite|incinerate) (?:the )?(.+)$/i,
+  turnOnWith: /^(?:turn|switch) on (?:the )?(.+?) with (?:the |a )?(.+)$/i,
   // TURN X TO N, SET X TO N (and FOR): a dial. SET X ON Y stays PUT.
-  turnTo: /^(?:turn|set)\s+(?:the\s+)?(.+?)\s+(?:to|for)\s+(?:the\s+)?(.+)$/i,
-  turnWith: /^turn\s+(?:the\s+)?(.+?)\s+with\s+(?:the\s+|a\s+)?(.+)$/i,
-  plugWith: /^plug\s+(?:the\s+)?(.+?)\s+with\s+(?:the\s+|a\s+)?(.+)$/i,
-  turnOff: /^(?:(?:turn|switch)\s+off|extinguish|douse|blow\s+out|put\s+out)\s+(?:the\s+)?(.+)$/i,
-  turnOffAfter: /^(?:turn|switch)\s+(?:the\s+)?(.+?)\s+off$/i,
-  use: /^(?:use|operate|push|pull|press)\s+(?:the\s+)?(.+?)(?:\s+(?:on|in|into|with)\s+(?:the\s+)?(.+))?$/i,
-  open: /^open\s+(?:the\s+)?(.+)$/i,
-  close: /^(?:close|shut)\s+(?:the\s+)?(.+)$/i,
-  lock: /^lock\s+(?:the\s+)?(.+?)(?:\s+with\s+(?:the\s+)?(.+))?$/i,
-  unlock: /^unlock\s+(?:the\s+)?(.+?)(?:\s+with\s+(?:the\s+)?(.+))?$/i,
-  putIn: /^(?:put|insert|place|slide|stick|feed|plug)\s+(?:the\s+|a\s+)?(.+?)\s+(?:in|into|inside)\s+(?:the\s+|my\s+)?(.+)$/i,
-  putOn: /^(?:put|place|set)\s+(?:the\s+|a\s+)?(.+?)\s+(?:on|onto)\s+(?:the\s+)?(.+)$/i,
-  takeAll: /^(?:take|get|grab|pick\s+up)\s+(?:all|everything)(?:\s+(?:but|except)\s+(.+))?$/i,
-  dropAll: /^(?:drop|put\s+down)\s+(?:all|everything)(?:\s+(?:but|except)\s+(.+))?$/i,
-  putAll: /^(?:put|place)\s+(?:all|everything)(?:\s+(?:but|except)\s+(.+?))?\s+(in|into|inside|on|onto)\s+(?:the\s+)?(.+)$/i,
-  takeFrom: /^(?:take|get|remove)\s+(?:the\s+)?(.+?)\s+(?:from|out\s+of|off)\s+(?:the\s+)?(.+)$/i,
-  search: /^(?:search|look\s+in|look\s+inside)\s+(?:the\s+)?(.+)$/i,
+  turnTo: /^(?:turn|set) (?:the )?(.+?) (?:to|for) (?:the )?(.+)$/i,
+  turnWith: /^turn (?:the )?(.+?) with (?:the |a )?(.+)$/i,
+  plugWith: /^plug (?:the )?(.+?) with (?:the |a )?(.+)$/i,
+  turnOff: /^(?:(?:turn|switch) off|extinguish|douse|blow out|put out) (?:the )?(.+)$/i,
+  turnOffAfter: /^(?:turn|switch) (?:the )?(.+?) off$/i,
+  use: /^(?:use|operate|push|pull|press) (?:the )?(.+?)(?: (?:on|in|into|with) (?:the )?(.+))?$/i,
+  open: /^open (?:the )?(.+)$/i,
+  close: /^(?:close|shut) (?:the )?(.+)$/i,
+  lock: /^lock (?:the )?(.+?)(?: with (?:the )?(.+))?$/i,
+  unlock: /^unlock (?:the )?(.+?)(?: with (?:the )?(.+))?$/i,
+  putIn: /^(?:put|insert|place|slide|stick|feed|plug) (?:the |a )?(.+?) (?:in|into|inside) (?:the |my )?(.+)$/i,
+  putOn: /^(?:put|place|set) (?:the |a )?(.+?) (?:on|onto) (?:the )?(.+)$/i,
+  takeAll: /^(?:take|get|grab|pick up) (?:all|everything)(?: (?:but|except) (.+))?$/i,
+  dropAll: /^(?:drop|put down) (?:all|everything)(?: (?:but|except) (.+))?$/i,
+  putAll: /^(?:put|place) (?:all|everything)(?: (?:but|except) (.+?))? (in|into|inside|on|onto) (?:the )?(.+)$/i,
+  takeFrom: /^(?:take|get|remove) (?:the )?(.+?) (?:from|out of|off) (?:the )?(.+)$/i,
+  search: /^(?:search|look in|look inside) (?:the )?(.+)$/i,
   // "attach X to Y", "insert disk": USE. Runs after wear/drop/putIn/putOn so those win.
-  insert: /^(?:insert|put|slide|stick|feed|plug|attach)\s+(?:the\s+|a\s+)?(.+?)(?:\s+(?:in|into|on|onto|to)\s+(?:the\s+|my\s+)?(.+))?$/i,
-  give: /^(?:give|hand|offer|return)\s+(?:the\s+)?(.+?)(?:\s+(?:back\s+)?to\s+(?:the\s+)?(.+?))?(?:\s+back)?$/i,
-  wear: /^(?:wear|put\s+on)\s+(?:the\s+)?(.+)$/i,
-  talk: /^(?:talk|speak|chat)\s+(?:to|with)\s+(?:the\s+)?(.+)$/i,
-  askAbout: /^(?:ask|question|tell)\s+(?:the\s+)?(.+?)\s+about\s+(.+)$/i,
+  insert: /^(?:insert|put|slide|stick|feed|plug|attach) (?:the |a )?(.+?)(?: (?:in|into|on|onto|to) (?:the |my )?(.+))?$/i,
+  give: /^(?:give|hand|offer|return) (?:the )?(.+?)(?: (?:back )?to (?:the )?(.+?))?(?: back)?$/i,
+  wear: /^(?:wear|put on) (?:the )?(.+)$/i,
+  talk: /^(?:talk|speak|chat) (?:to|with) (?:the )?(.+)$/i,
+  askAbout: /^(?:ask|question|tell) (?:the )?(.+?) about (.+)$/i,
   // The person can't run past an ABOUT: “ask bob about going to the store” is ASK.
-  orderTo: /^(?:tell|order|ask)\s+(?:the\s+)?((?:(?!\s+about\s).)+?)\s+to\s+(.+)$/i,
-  tellAlone: /^tell\s+(?:the\s+)?(.+)$/i,
-  ask: /^(?:ask|question)\s+(?:the\s+)?(.+)$/i,
-  smash: /^(?:smash|destroy|break|wreck|whack|beat)\s+(?:up\s+)?(?:the\s+)?(.+?)(?:\s+with\s+(?:the\s+)?(.+))?$/i,
-  attack: /^(?:kill|hit|attack|fight|stab|murder|slay)\s+(?:the\s+)?(.+?)(?:\s+with\s+(?:the\s+|a\s+|my\s+)?(.+))?$/i,
+  orderTo: /^(?:tell|order|ask) (?:the )?((?:(?! about ).)+?) to (.+)$/i,
+  tellAlone: /^tell (?:the )?(.+)$/i,
+  ask: /^(?:ask|question) (?:the )?(.+)$/i,
+  smash: /^(?:smash|destroy|break|wreck|whack|beat) (?:up )?(?:the )?(.+?)(?: with (?:the )?(.+))?$/i,
+  attack: /^(?:kill|hit|attack|fight|stab|murder|slay) (?:the )?(.+?)(?: with (?:the |a |my )?(.+))?$/i,
   // THROW X IN Y: Zork's syntax makes it PUT.
-  throwIn: /^(?:throw|toss|hurl)\s+(?:the\s+)?(.+?)\s+(?:in|into)\s+(?:the\s+)?(.+)$/i,
-  throw: /^(?:throw|toss|hurl)\s+(?:the\s+)?(.+?)(?:\s+(?:at|to)\s+(?:the\s+)?(.+))?$/i,
-  sit: /^(?:sit(?:\s+down)?|relax)$/i,
+  throwIn: /^(?:throw|toss|hurl) (?:the )?(.+?) (?:in|into) (?:the )?(.+)$/i,
+  throw: /^(?:throw|toss|hurl) (?:the )?(.+?)(?: (?:at|to) (?:the )?(.+))?$/i,
+  sit: /^(?:sit(?: down)?|relax)$/i,
   wait: /^(?:wait|z)$/i,
 };
 
@@ -189,7 +210,8 @@ export function verbClashes(verbs: World['verbs']): string[] {
   return Object.values(verbs ?? {}).flatMap((v) => (v.afterBuiltIns ? [] : v.words.filter((w) => BUILT_IN_WORDS.has(w.toLowerCase()))));
 }
 
-const escapeWord = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+// Patterns match cleaned input (cleanInput), so a word's spaces are single literal spaces.
+const escapeWord = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, ' ');
 
 type WorldPattern = { re: RegExp; id: string; verb: WorldVerb; phrase: boolean };
 
@@ -206,8 +228,8 @@ function worldPatterns(verbs: World['verbs']): WorldPattern[] {
       if (BUILT_IN_WORDS.has(word.toLowerCase()) && !verb.afterBuiltIns) continue;
       const preps = (verb.indirect ?? []).map(escapeWord).join('|');
       const obj =
-        verb.target === 'text' ? '(?:\\s+(.*))?' : verb.target === 'none' ? '' : `(?:\\s+(?:the\\s+)?(.+?))${verb.target === 'required' ? '' : '?'}`;
-      const ind = preps && verb.target !== 'none' && verb.target !== 'text' ? `(?:\\s+(?:${preps})\\s+(?:the\\s+)?(.+))?` : '';
+        verb.target === 'text' ? '(?: (.*))?' : verb.target === 'none' ? '' : `(?: (?:the )?(.+?))${verb.target === 'required' ? '' : '?'}`;
+      const ind = preps && verb.target !== 'none' && verb.target !== 'text' ? `(?: (?:${preps}) (?:the )?(.+))?` : '';
       // An afterBuiltIns verb's phrases wait for the built-ins too.
       out.push({ re: new RegExp(`^${escapeWord(word)}${obj}${ind}$`, 'i'), id, verb, phrase: !verb.afterBuiltIns && /\s/.test(word.trim()) });
     }
@@ -310,8 +332,42 @@ const LIST_VERBS: Record<string, string> = {
 };
 
 // A full stop ends a clause, except after an abbreviation ("talk to dr. smith").
-const CLAUSE_BREAK = /\s*(?:;|(?<!\b(?:dr|mr|mrs|ms|st))\.\s+|,?\s+(?:and\s+)?then\s+)\s*/i;
-const LIST_BREAK = /\s*(?:,\s*(?:and\s+)?|\s+and\s+)\s*/i;
+// Both read cleaned input (cleanInput): one space between words.
+const CLAUSE_BREAK = / ?(?:;|(?<!\b(?:dr|mr|mrs|ms|st))\. |,? (?:and )?then ) ?/i;
+const LIST_BREAK = / ?(?:, ?(?:and )?| and ) ?/i;
+
+/** `s` without any full stops or exclamation marks at its end (a loop: a `[.!]+$` regex is quadratic on a long run). */
+function stripTrailingStops(s: string): string {
+  let end = s.length;
+  while (end > 0 && (s[end - 1] === '.' || s[end - 1] === '!')) end--;
+  return s.slice(0, end);
+}
+
+/**
+ * Every quoted phrase ("…" or “…”) with its contents masked, length for length, so nothing inside splits.
+ * A scan, not a regex: an unclosed quote is looked for once per kind, so a line of “s stays linear.
+ */
+function maskQuotes(s: string): string {
+  let out = '';
+  let i = 0;
+  const unclosed = new Set<string>();
+  while (i < s.length) {
+    const open = s[i];
+    const close = open === '"' ? '"' : open === '“' ? '”' : null;
+    if (close && !unclosed.has(open)) {
+      const end = s.indexOf(close, i + 1);
+      if (end >= 0) {
+        out += open + '_'.repeat(end - i - 1) + close;
+        i = end + 1;
+        continue;
+      }
+      unclosed.add(open);
+    }
+    out += open;
+    i++;
+  }
+  return out;
+}
 
 /**
  * Split one line of input into separate commands, classic text-adventure style:
@@ -325,11 +381,13 @@ const LIST_BREAK = /\s*(?:,\s*(?:and\s+)?|\s+and\s+)\s*/i;
  * whole ("could you grab my keys and wallet") for the LLM to read in one go.
  */
 export function splitCommands(rawInput: string, verbs?: World['verbs']): string[] {
-  const input = rawInput.trim().replace(/[.!]+$/, '');
+  const clean = cleanInput(rawInput);
+  if (clean === null) return [];
+  const input = stripTrailingStops(clean);
   if (!input) return [];
   // A quoted phrase never splits (its contents are masked, length for length), and a text verb
   // takes everything after it: its words may hold full stops and “then”.
-  const masked = input.replace(/"[^"]*"|“[^”]*”/g, (q) => q[0] + '_'.repeat(q.length - 2) + q[q.length - 1]);
+  const masked = maskQuotes(input);
   const textWords = Object.values(verbs ?? {})
     .filter((v) => v.target === 'text')
     .flatMap((v) => v.words.filter((w) => !BUILT_IN_WORDS.has(w.toLowerCase())).map(escapeWord));
@@ -349,30 +407,62 @@ export function splitCommands(rawInput: string, verbs?: World['verbs']): string[
   return out;
 }
 
+// TAKE/DROP/PUT ALL, read in steps rather than one backtracking pattern: the verb and ALL, then an optional
+// BUT/EXCEPT list, then (PUT) the place. Input is cleaned (one space between words).
+const ALL_HEAD = /^(take|get|grab|pick up|drop|put down|put|place) (?:all|everything)(?= |$)/;
+const ALL_VERB: Record<string, 'take' | 'drop' | 'put'> = {
+  take: 'take', get: 'take', grab: 'take', 'pick up': 'take', drop: 'drop', 'put down': 'drop', put: 'put', place: 'put',
+};
+const BUT = /^(?:but|except) /;
+/** The place after PUT ALL [BUT …]: “ in the box” (from `at`, a space). */
+const PUT_PLACE = / (in|into|inside|on|onto) (?:the )?(.+)$/y;
+
 /** “take all but the wallet and shirt” → { action: 'take', target: 'all', except: ['wallet', 'shirt'] }. */
 function parseAll(input: string): ParsedAction | null {
   const exceptList = (s?: string) =>
-    s ? s.split(/\s*(?:,|\band\b)\s*/).map((w) => w.replace(/^(?:the|a|an)\s+/, '').trim()).filter(Boolean) : undefined;
+    s ? s.split(/ ?(?:,|\band\b) ?/).map((w) => w.replace(/^(?:the|a|an) /, '').trim()).filter(Boolean) : undefined;
   const withExcept = (a: ParsedAction, list?: string[]) => (list?.length ? { ...a, except: list } : a);
-  let m = input.match(RE.takeAll);
-  if (m) return withExcept({ action: 'take', target: 'all' }, exceptList(m[1]));
-  m = input.match(RE.dropAll);
-  if (m) return withExcept({ action: 'drop', target: 'all' }, exceptList(m[1]));
-  m = input.match(RE.putAll);
-  if (m) {
-    const prep = /^on/.test(m[2]) ? 'on' : 'in';
-    const base: ParsedAction = { action: 'put', target: 'all' };
-    const a = withExcept(base, exceptList(m[1]));
-    return { ...a, indirect: m[3].trim(), prep };
+  const head = ALL_HEAD.exec(input);
+  if (!head) return null;
+  const verb = ALL_VERB[head[1]];
+  const rest = input.slice(head[0].length); // '' or ' …'
+  if (verb !== 'put') {
+    if (rest === '') return { action: verb, target: 'all' };
+    const but = BUT.exec(rest.slice(1));
+    const list = but ? rest.slice(1 + but[0].length) : '';
+    return list ? withExcept({ action: verb, target: 'all' }, exceptList(list)) : null;
   }
-  return null;
+  const place = (from: string, at: number) => {
+    PUT_PLACE.lastIndex = at;
+    return PUT_PLACE.exec(from);
+  };
+  const put = (m: RegExpExecArray, except?: string): ParsedAction => ({
+    ...withExcept({ action: 'put', target: 'all' }, exceptList(except)),
+    indirect: m[2].trim(),
+    prep: /^on/.test(m[1]) ? 'on' : 'in',
+  });
+  // PUT ALL BUT x y z IN box: the shortest list after which the place follows.
+  const but = BUT.exec(rest.slice(1));
+  if (but) {
+    const list = rest.slice(1 + but[0].length);
+    for (let at = list.indexOf(' ', 1); at >= 0; at = list.indexOf(' ', at + 1)) {
+      const m = place(list, at);
+      if (m) return put(m, list.slice(0, at));
+    }
+  }
+  const m = place(rest, 0);
+  return m ? put(m) : null;
 }
 
 /** “neighbor, give me the key”: an order, when the part before the comma isn't a command of its own. */
 function orderInLine(input: string, verbs?: World['verbs']): ParsedAction | null {
-  const m = input.match(/^(?:the\s+)?([^,]+?)\s*,\s*(.+)$/i);
-  if (!m || /\b(?:all|everything)\b/i.test(m[1])) return null;
-  const head = m[1].trim();
+  // Everything before the first comma (less a leading THE), and everything after it.
+  const m = /^([^,]+),(.+)$/.exec(input);
+  if (!m) return null;
+  const the = /^the /i.exec(m[1]);
+  const who = the && m[1].length > the[0].length ? m[1].slice(the[0].length) : m[1];
+  if (/\b(?:all|everything)\b/i.test(who)) return null;
+  const head = who.trim();
   const first = head.split(/\s+/)[0].toLowerCase();
   if (BUILT_IN_WORDS.has(first) || strictParse(head, verbs)) return null;
   if (Object.values(verbs ?? {}).some((v) => v.words.some((w) => w.toLowerCase() === first))) return null;
@@ -382,7 +472,8 @@ function orderInLine(input: string, verbs?: World['verbs']): ParsedAction | null
 function splitClause(clause: string, verbs?: World['verbs']): string[] {
   if (orderInLine(clause, verbs)) return [clause];
   // “take all but the wallet and shirt” is one command.
-  if (/\b(?:all|everything)\b.*\b(?:but|except)\b/i.test(clause)) return [clause];
+  const all = /\b(?:all|everything)\b/i.exec(clause);
+  if (all && /\b(?:but|except)\b/i.test(clause.slice(all.index + all[0].length))) return [clause];
   const pieces = clause.split(LIST_BREAK).filter(Boolean);
   if (pieces.length === 1) return [clause];
   const out: string[] = [];
@@ -402,7 +493,7 @@ function splitClause(clause: string, verbs?: World['verbs']): string[] {
 }
 
 function parse(rawInput: string, allowBareWord: boolean, verbs?: World['verbs']): ParsedAction | null {
-  const input = rawInput.trim().toLowerCase();
+  const input = cleanInput(rawInput)?.toLowerCase();
   if (!input) return null;
 
   if (input in SINGLE_WORD) return SINGLE_WORD[input];

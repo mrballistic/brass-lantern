@@ -16,6 +16,7 @@ Brass Lantern becomes a library. The repo is now an npm-workspaces monorepo that
 - **The intent server’s options:** an empty `models` list means the defaults, and `intentRoute` throws at construction unless `rateLimitPerMinute` is a positive number.
 - **Layout.** The engine, the Vue terminal and the server live in `packages/`, the demo in `apps/site`; CI packs and installs the three packages in a scratch project before every release, and releases publish them with provenance.
 - **The world format is 1.13.0’s.** Worlds written for 1.13.0 run unchanged, and saves are still format 2.0.
+- **Hardening.** Input is cleaned once (trimmed, whitespace collapsed) and capped at `MAX_INPUT_LENGTH` (1,000 characters); a longer line is refused with `TOO_LONG_REPLY` and changes nothing. The parser’s patterns and the bracket-line readers run in linear time on any input. State maps never take `__proto__`, `constructor` or `prototype` as a key (`isSafeKey`), and `auditWorld` reports worlds that use them.
 - **Docs.** A new guide, “Using the library”, package READMEs, and the brand’s lantern mark as the docs logo and site favicon.
 
 TypeScript 5 or later works with `bundler`, `node16` and `nodenext` resolution; the engine’s types mention `fetch` and `Storage`, so consumers need the DOM lib or `@types/node`.

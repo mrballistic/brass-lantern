@@ -1,7 +1,7 @@
 import type { GameState, ParsedAction } from '../types/game.ts';
 import type { World } from '../types/world.ts';
 import { fuzzyCandidates } from './fuzzy.ts';
-import { BUILT_IN_WORDS, strictParse } from './parser.ts';
+import { BUILT_IN_WORDS, TOO_LONG_REPLY, cleanInput, strictParse } from './parser.ts';
 import type { Ask, EngineResult } from './result.ts';
 
 /**
@@ -50,18 +50,20 @@ function fill(action: ParsedAction, slot: Ask['slot'], value: string, byId: bool
 
 /** Turns a line into a step, answering a pending question if it is an answer. */
 export function interpret(input: string, conv: Conversation, world: World, _state: GameState): Step {
-  const word = input.trim().toLowerCase();
+  // Cleaned (one space between words) and capped like every parser entry; a line over the cap changes nothing.
+  const clean = cleanInput(input);
+  if (clean === null) return { reply: [TOO_LONG_REPLY] };
+  const word = clean.toLowerCase();
   if (word === 'again' || word === 'g') {
     conv.pending = null;
     if (conv.lastAsked) return { reply: ['It’s difficult to repeat fragments.'] };
     if (!conv.lastAction) return { reply: ['Beg pardon?'] };
     return { run: conv.lastAction, viaAnswer: true };
   }
-  const oops = word.match(/^oops\s+(.+)$/);
-  if (oops) {
+  if (word.startsWith('oops ')) {
     conv.pending = null;
     if (!conv.lastUnknown) return { reply: ['There was no word to replace!'] };
-    const [replacement, ...extra] = oops[1].split(/\s+/);
+    const [replacement, ...extra] = word.slice('oops '.length).split(' ');
     const corrected = replaceUnknownWord(conv.lastUnknown, replacement, world);
     conv.lastUnknown = null;
     if (!corrected) return { reply: ['There was no word to replace!'] };

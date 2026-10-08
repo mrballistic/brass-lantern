@@ -48,7 +48,7 @@ With one cartridge the terminal boots straight into it; with several it shows a 
 
 1. **Write a little.** One room, one item, one rule.
 2. **Play it** in the browser, or in a test (below), which is faster.
-3. **Run the checks.** `auditWorld(myWorld)` lists effects naming things that don’t exist, exits to nowhere, unknown conditions and events. Those mistakes fail silently in play, so make them fail loudly in a test: expect it to return `[]`.
+3. **Run the checks.** `auditWorld(myWorld)` lists effects naming things that don’t exist, exits to nowhere, unknown conditions and events, and IDs, flags or variables named `__proto__`, `constructor` or `prototype` (the engine ignores those names, so they can’t reach `Object.prototype`). Those mistakes fail silently in play, so make them fail loudly in a test: expect it to return `[]`.
 
 A test that plays your world is a few lines:
 

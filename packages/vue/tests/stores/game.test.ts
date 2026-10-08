@@ -2,7 +2,8 @@
 import { setActivePinia, createPinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createGameStore, setDownload } from '../../src/stores/game';
-import { inventoryOf } from '@brass-lantern/engine';
+import { MAX_INPUT_LENGTH, TOO_LONG_REPLY, inventoryOf } from '@brass-lantern/engine';
+import { toRaw } from 'vue';
 import { carry } from '../helpers/state';
 import { fixtureOptions, fixtureWorld } from '../fixtures/world';
 
@@ -61,6 +62,20 @@ describe('useGameStore', () => {
       store.initialize();
       await store.submit('west');
       expect(store.output.some((l) => l.text === '> west')).toBe(true);
+    });
+
+    it('answers a line over the length cap without running anything; padding doesn’t count', async () => {
+      const store = freshStore();
+      store.initialize();
+      const fetchSpy = vi.spyOn(globalThis, 'fetch');
+      const before = structuredClone(toRaw(store.game));
+      await store.submit('west ' + 'x'.repeat(MAX_INPUT_LENGTH));
+      expect(store.output.at(-1)?.text).toBe(TOO_LONG_REPLY);
+      expect(store.output.at(-2)?.text).toBe(`> west ${'x'.repeat(MAX_INPUT_LENGTH - 5)}…`);
+      expect(toRaw(store.game)).toEqual(before);
+      expect(fetchSpy).not.toHaveBeenCalled();
+      await store.submit('west' + ' '.repeat(50_000));
+      expect(store.game.currentRoom).not.toBe(before.currentRoom);
     });
 
     it('ignores empty input', async () => {

@@ -12,6 +12,7 @@ import {
   isInside,
   isLocked,
   isOpen,
+  itemStateOf,
   matchItem,
   moveItem,
   needObject,
@@ -59,7 +60,7 @@ export function handleOpen(target: string | undefined, world: World, state: Game
   if (!item.container?.openable) return useFallback(id, null, world, state) ?? ok(['You can’t open that.']);
   if (isOpen(world, state, id)) return ok([world.style === 'infocom' ? 'It is already open.' : 'It’s already open.']);
   if (isLocked(world, state, id)) return ok([`The ${item.name} is locked.`]);
-  (state.itemState[id] ??= {}).open = true;
+  itemStateOf(state, id).open = true;
   // Zork's V-OPEN touches a container (not a door): its first-seen sentence is over.
   if (world.style === 'infocom' && !item.door) state.itemState[id].moved = true;
   const inside = childrenOf(world, state, id).filter((k) => !world.items[k]?.scenery && shown(state)(k));
@@ -83,7 +84,7 @@ export function handleClose(target: string | undefined, world: World, state: Gam
   if (sealed) return sealed;
   if (!world.items[id].container?.openable) return ok(['You can’t close that.']);
   if (!isOpen(world, state, id)) return ok([world.style === 'infocom' ? 'It is already closed.' : 'It’s already closed.']);
-  (state.itemState[id] ??= {}).open = false;
+  itemStateOf(state, id).open = false;
   const item = world.items[id];
   if (item.container?.closed) return ok([item.container.closed], true);
   // Zork's V-CLOSE: a door (DOORBIT, no capacity) is now closed.
@@ -112,7 +113,7 @@ function handleLockState(
   if (keyId !== c.key) return ok([`The ${name(world, keyId)} doesn’t fit the lock.`]);
   if (locking && isOpen(world, state, id)) return ok(['You’ll have to close it first.']);
   if (isLocked(world, state, id) === locking) return ok([`It’s already ${locking ? 'locked' : 'unlocked'}.`]);
-  (state.itemState[id] ??= {}).locked = locking;
+  itemStateOf(state, id).locked = locking;
   return ok([locking ? 'Locked.' : 'Unlocked.'], true);
 }
 

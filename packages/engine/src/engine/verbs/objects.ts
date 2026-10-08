@@ -3,7 +3,7 @@ import type { Item, World } from '../../types/world.ts';
 import { evaluateCondition } from '../conditions.ts';
 import { contentsLines, describeRoom, lightNote, listedName, npcDescription, scriptDescription } from '../describe.ts';
 import { expandTemplate } from '../text.ts';
-import { closedAround, inventoryOf, isCarried, isHeld, isOpen, matchItem, matchNpc, moveItem, needObject, pickItem, pickSecond, PLAYER, reachableItems, visibleItems } from '../model.ts';
+import { closedAround, inventoryOf, isCarried, isHeld, isOpen, itemStateOf, matchItem, matchNpc, moveItem, needObject, pickItem, pickSecond, PLAYER, reachableItems, visibleItems } from '../model.ts';
 import { miss, ok, type EngineResult } from '../result.ts';
 import { runEventKey } from '../effects.ts';
 import { afterRuleLines, applyRule, findRule } from '../rules.ts';
@@ -50,7 +50,7 @@ export function takeItem(itemId: string, world: World, state: GameState): Engine
   if (refusal) return ok([refusal]);
 
   moveItem(state, itemId, PLAYER);
-  (state.itemState[itemId] ??= {}).moved = true;
+  itemStateOf(state, itemId).moved = true;
   return ok([world.style === 'infocom' ? 'Taken.' : `Taken: ${item.name}.`], true);
 }
 
@@ -233,6 +233,6 @@ export function handleSwitch(target: string | undefined, on: boolean, world: Wor
     return ok([`You can’t turn that ${word}.`]);
   }
   if (Boolean(state.itemState[id]?.on) === on) return ok([`It’s already ${word}.`]);
-  (state.itemState[id] ??= {}).on = on;
+  itemStateOf(state, id).on = on;
   return ok([`The ${item.name} is now ${word}.`], true);
 }

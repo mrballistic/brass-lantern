@@ -1,7 +1,8 @@
 import type { GameState, Place } from '../types/game.ts';
 import type { Effect, EventStep, VehicleLine, World } from '../types/world.ts';
 import { evaluateCondition } from './conditions.ts';
-import { isCarried, moveItem, nextPlacing, npcStateOf, PLAYER } from './model.ts';
+import { isSafeKey } from './keys.ts';
+import { isCarried, itemStateOf, moveItem, nextPlacing, npcStateOf, PLAYER } from './model.ts';
 import { nextRandom } from './rng.ts';
 import { commandOf, scriptSteps } from './scripts.ts';
 import { expandTemplate } from './text.ts';
@@ -62,6 +63,7 @@ export function scheduledThisTurn(state: GameState, key: string): boolean {
 }
 
 function schedule(state: GameState, key: string, turns: number): void {
+  if (!isSafeKey(key)) return;
   (state.fuses ??= {})[key] = turns;
   const keys = scheduled.get(state) ?? new Set<string>();
   keys.add(key);
@@ -91,40 +93,67 @@ function itemIdForName(label: string, world: World): string | null {
   return null;
 }
 
-const EFFECT_LINE = /^\[(?:Flag set:\s*.+?|Added to inventory:\s*.+?|.+? consumed)\]$/i;
+type BracketEffect = { kind: 'flag' | 'added' | 'consumed'; label: string };
 
-/** A bracket line that changes the game (`[Flag set: …]` and friends). */
-function isEffectLine(line: string): boolean {
-  return EFFECT_LINE.test(line);
+const LINE_END = /[\n\r\u2028\u2029]/;
+
+/**
+ * What follows a `[Flag set:` or `[Added to inventory:` prefix, as `\s*(.+?)` before the closing bracket read it:
+ * leading whitespace dropped, and no line break in what's left. Null if nothing is left.
+ */
+function labelAfter(rest: string): string | null {
+  const label = rest.trimStart();
+  if (label) return LINE_END.test(label) ? null : label;
+  // Only whitespace: the pattern kept its last character.
+  const last = rest.slice(-1);
+  return last && !LINE_END.test(last) ? last : null;
 }
 
-function applyBracketLine(line: string, world: World, state: GameState): void {
-  const flagSet = line.match(/^\[Flag set:\s*(.+?)\]$/i);
-  if (flagSet) {
-    const flagId = world.flagLabels[flagSet[1].toLowerCase().trim()];
-    if (flagId) state.flags[flagId] = true;
+/**
+ * A bracket line that changes the game (`[Flag set: …]`, `[Added to inventory: …]`, `[… consumed]`), read with
+ * prefix and suffix tests rather than a backtracking pattern, so long world text costs linear time.
+ */
+function bracketEffect(line: string): BracketEffect | null {
+  if (line.length < 2 || line[0] !== '[' || line[line.length - 1] !== ']') return null;
+  const inner = line.slice(1, -1);
+  for (const [prefix, kind] of [[/^flag set:/i, 'flag'], [/^added to inventory:/i, 'added']] as const) {
+    const m = prefix.exec(inner);
+    if (!m) continue;
+    const label = labelAfter(inner.slice(m[0].length));
+    if (label !== null) return { kind, label };
+  }
+  const suffix = ' consumed';
+  const label = inner.slice(0, -suffix.length);
+  if (inner.length > suffix.length && inner.slice(-suffix.length).toLowerCase() === suffix && !LINE_END.test(label)) return { kind: 'consumed', label };
+  return null;
+}
+
+function applyBracketLine(effect: BracketEffect, world: World, state: GameState): void {
+  if (effect.kind === 'flag') {
+    const label = effect.label.toLowerCase().trim();
+    const flagId = Object.hasOwn(world.flagLabels, label) ? world.flagLabels[label] : undefined;
+    if (flagId && isSafeKey(flagId)) state.flags[flagId] = true;
     return;
   }
-  const added = line.match(/^\[Added to inventory:\s*(.+?)\]$/i);
-  if (added) {
-    const itemId = itemIdForName(added[1], world);
+  const itemId = itemIdForName(effect.label, world);
+  if (effect.kind === 'added') {
     if (itemId) moveItem(state, itemId, PLAYER);
-    return;
-  }
-  const consumed = line.match(/^\[(.+?) consumed\]$/i);
-  if (consumed) {
-    const itemId = itemIdForName(consumed[1], world);
-    if (itemId && isCarried(state, itemId)) moveItem(state, itemId, null);
-  }
+  } else if (itemId && isCarried(state, itemId)) moveItem(state, itemId, null);
 }
 
-function itemState(state: GameState, id: string) {
-  return (state.itemState[id] ??= {});
+const itemState = itemStateOf;
+
+// Flags, variables and timers are keyed by names from world data; a reserved name (keys.ts) is ignored.
+function setFlag(state: GameState, name: string, on: boolean): void {
+  if (isSafeKey(name)) state.flags[name] = on;
+}
+
+function setVar(state: GameState, name: string, value: number): void {
+  if (isSafeKey(name)) (state.vars ??= {})[name] = value;
 }
 
 function addVar(state: GameState, name: string, by: number): void {
-  const vars = (state.vars ??= {});
-  vars[name] = (vars[name] ?? 0) + by;
+  setVar(state, name, (state.vars?.[name] ?? 0) + by);
 }
 
 /** Effects that act on one item, by the key that names it. */
@@ -139,8 +168,8 @@ function itemOf(e: Effect): string | null {
 /** Runs one effect. Returns the lines it prints, and whether to stop the list (death, an ending). */
 function runEffect(e: Effect, world: World, state: GameState): { lines: string[]; stop?: boolean } {
   if ('say' in e) return { lines: [expandTemplate(e.say, world, state)] };
-  if ('set' in e) return void (state.flags[e.set] = true), { lines: [] };
-  if ('clear' in e) return void (state.flags[e.clear] = false), { lines: [] };
+  if ('set' in e) return void setFlag(state, e.set, true), { lines: [] };
+  if ('clear' in e) return void setFlag(state, e.clear, false), { lines: [] };
   if ('follow' in e) return void (world.npcs[e.follow] && (npcStateOf(state, e.follow).following = true)), { lines: [] };
   if ('unfollow' in e) return void (world.npcs[e.unfollow] && (npcStateOf(state, e.unfollow).following = false)), { lines: [] };
   // Naming a thing the world doesn't have does nothing (the audit reports it).
@@ -163,7 +192,7 @@ function runEffect(e: Effect, world: World, state: GameState): { lines: string[]
   if ('unlock' in e) return void (itemState(state, e.unlock).locked = false), { lines: [] };
   if ('switch' in e) return void (itemState(state, e.switch).on = e.on), { lines: [] };
   if ('add' in e) return void addVar(state, e.add, e.by), { lines: [] };
-  if ('setVar' in e) return void ((state.vars ??= {})[e.setVar] = 'from' in e ? (commandOf(state)?.number ?? 0) : e.to), { lines: [] };
+  if ('setVar' in e) return void setVar(state, e.setVar, 'from' in e ? (commandOf(state)?.number ?? 0) : e.to), { lines: [] };
   if ('score' in e) return void addVar(state, 'score', e.score), { lines: [] };
   if ('schedule' in e) return void (world.events[e.schedule] && schedule(state, e.schedule, e.in)), { lines: [] };
   if ('cancel' in e) {
@@ -232,8 +261,8 @@ export function runSteps(steps: EventStep[], world: World, state: GameState): st
   for (const step of steps) {
     if (halted.has(state)) break;
     if (typeof step === 'string') {
-      const effect = isEffectLine(step);
-      if (effect) applyBracketLine(step, world, state);
+      const effect = bracketEffect(step);
+      if (effect) applyBracketLine(effect, world, state);
       if (!(effect && world.style === 'infocom')) out.push(effect ? step : expandTemplate(step, world, state));
       continue;
     }

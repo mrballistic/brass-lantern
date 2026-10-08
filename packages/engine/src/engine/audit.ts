@@ -1,6 +1,7 @@
 import { conditionProblems } from './conditions.ts';
 import { descriptionSteps } from './describe.ts';
 import { initialState } from './engine.ts';
+import { isSafeKey, RESERVED_KEYS } from './keys.ts';
 import { travelTerrains } from './model.ts';
 import { verbClashes } from './parser.ts';
 import type { Effect, EventStep, Rule, RuleTable, World } from '../types/world.ts';
@@ -20,6 +21,10 @@ export function auditWorld(world: World): string[] {
   const isItem = (id: string) => id in world.items;
   const isRoom = (id: string) => id in world.rooms;
   const isEvent = (id: string) => id in world.events;
+  // __proto__, constructor and prototype can't key a state map (keys.ts); the engine ignores them.
+  const reserved = (what: string, id: unknown) => {
+    if (typeof id === 'string' && !isSafeKey(id)) problems.push(`${what} “${id}” uses a reserved name (${RESERVED_KEYS.join(', ')})`);
+  };
 
   const checkSteps = (steps: EventStep[], where: string) => {
     for (const step of steps) {
@@ -31,6 +36,8 @@ export function auditWorld(world: World): string[] {
       }
       const e = step as Effect & Record<string, unknown>;
       const target = e[kind] as unknown;
+      if (kind === 'set' || kind === 'clear') reserved(`${where}: flag`, target);
+      if (kind === 'add' || kind === 'setVar') reserved(`${where}: variable`, target);
       if (['open', 'close', 'lock', 'unlock', 'switch', 'unlist', 'relist', 'touch', 'board'].includes(kind) && !isItem(target as string)) problems.push(`${where}: ${kind} names no item “${target}”`);
       if (kind === 'move') {
         if (!isItem(e.move as string)) problems.push(`${where}: move names no item “${e.move}”`);
@@ -61,6 +68,10 @@ export function auditWorld(world: World): string[] {
     }
   };
 
+  for (const [what, map] of [['room', world.rooms], ['item', world.items], ['character', world.npcs], ['event', world.events], ['ending', world.endings ?? {}], ['script', world.scripts ?? {}]] as const) {
+    for (const id of Object.keys(map)) reserved(what, id);
+  }
+  for (const flag of Object.values(world.flagLabels)) reserved('flag', flag);
   for (const [key, steps] of Object.entries(world.events)) checkSteps(steps, `event ${key}`);
   for (const [i, d] of (world.daemons ?? []).entries()) {
     if (typeof d.then === 'string') {

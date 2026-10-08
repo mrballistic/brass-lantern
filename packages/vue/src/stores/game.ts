@@ -3,6 +3,7 @@ import { defineStore } from 'pinia';
 import {
   buildContext,
   captureLine,
+  cleanInput,
   describeCurrentRoom,
   execute,
   fallbackParse,
@@ -11,6 +12,7 @@ import {
   inventoryOf,
   isLit,
   makeLine,
+  MAX_INPUT_LENGTH,
   migrateSave,
   newConversation,
   npcsSeen,
@@ -22,6 +24,7 @@ import {
   setScriptFreeze,
   splitCommands,
   statusText,
+  TOO_LONG_REPLY,
   visibleItemsIn,
   type EngineResult,
   type GameState,
@@ -360,6 +363,12 @@ export function createGameStore(options: GameOptions, catalog: Catalog = createC
       async submit(rawInput: string): Promise<void> {
         const input = rawInput.trim();
         if (!input) return;
+        // Over the engine's length cap (counted with whitespace collapsed): echo the start, say so, change nothing.
+        if (cleanInput(input) === null) {
+          this.appendInput(`${input.slice(0, MAX_INPUT_LENGTH)}…`);
+          this.appendSystem(TOO_LONG_REPLY);
+          return;
+        }
 
         // Where the screen and the game stood before this line, for UNDO.
         beginLine(this.game, this.output.length);

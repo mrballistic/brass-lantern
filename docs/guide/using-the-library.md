@@ -146,7 +146,7 @@ while (!game.state.gameOver) {
 rl.close();
 ```
 
-`send(line)` takes whatever a player would type, including chained commands, and answers `{ lines, gameOver, awaiting }`. `awaiting` is true while the game waits for an answer to a question, such as “Which door do you mean?”, and that question is the last of `lines`. `seed` makes the game’s randomness repeatable. A command whose script throws is rolled back, and the reply is “[Something went wrong with that command. Nothing changed.]”.
+`send(line)` takes whatever a player would type, including chained commands, and answers `{ lines, gameOver, awaiting }`. `awaiting` is true while the game waits for an answer to a question, such as “Which door do you mean?”, and that question is the last of `lines`. `seed` makes the game’s randomness repeatable. A command whose script throws is rolled back, and the reply is “[Something went wrong with that command. Nothing changed.]”. A line over `MAX_INPUT_LENGTH` (1,000 characters once whitespace is collapsed) changes nothing and hears `TOO_LONG_REPLY`.
 
 `createGame` handles RESTART (a fresh game, with the same `seed`) and UNDO (one turn at a time, up to 50) itself; `game.state` is always the game now, so read it after `send` rather than keeping the object. VERSION names the engine (`ENGINE_VERSION`) and the world. There is nowhere to keep a save or a transcript in plain Node, so SAVE, RESTORE, LOAD, SCRIPT and UNSCRIPT say they aren’t available and change nothing; a host that can store them handles those words before calling `send`. HELP lists only the commands that work here.
 

@@ -1,7 +1,8 @@
-import type { GameState, NpcState, Place } from '../types/game.ts';
+import type { GameState, ItemState, NpcState, Place } from '../types/game.ts';
 import type { Item, World } from '../types/world.ts';
 import { evaluateCondition } from './conditions.ts';
 import { fuzzyCandidates, fuzzyMatch, isSelfWord, namesSelf } from './fuzzy.ts';
+import { isSafeKey } from './keys.ts';
 
 /** The place that means “carried by the player”. Reserved: no room or item may use it. */
 export const PLAYER = 'player';
@@ -9,16 +10,20 @@ export const PLAYER = 'player';
 /** Every item's starting parent: rooms' `items`, then items' `contains`. Unlisted items are offstage. */
 export function initialLocations(world: World): Record<string, Place> {
   const loc: Record<string, Place> = {};
-  for (const id of Object.keys(world.items)) loc[id] = null;
+  // A reserved ID (keys.ts) is never a key; the audit reports it.
+  const place = (id: string, at: Place) => {
+    if (isSafeKey(id)) loc[id] = at;
+  };
+  for (const id of Object.keys(world.items)) place(id, null);
   for (const [roomId, room] of Object.entries(world.rooms)) {
     // First listing wins; a fixed item listed again elsewhere is also present there (fixturesIn).
-    for (const id of room.items) if (loc[id] === null) loc[id] = roomId;
+    for (const id of room.items) if (loc[id] === null) place(id, roomId);
   }
   for (const [id, item] of Object.entries(world.items)) {
-    for (const child of item.contains ?? []) loc[child] = id;
+    for (const child of item.contains ?? []) place(child, id);
   }
   for (const [id, npc] of Object.entries(world.npcs)) {
-    for (const held of npc.holds ?? []) loc[held] = id;
+    for (const held of npc.holds ?? []) place(held, id);
   }
   return loc;
 }
@@ -60,8 +65,16 @@ export const listable = (world: World, state: GameState) => (id: string) =>
   !world.items[id]?.scenery && !state.itemState[id]?.unlisted && shown(state)(id);
 
 /** A character's state, created on first use. */
+/** A character's state, made on first use. A reserved ID (keys.ts) gets a detached object, so writes go nowhere. */
 export function npcStateOf(state: GameState, id: string): NpcState {
+  if (!isSafeKey(id)) return {};
   return ((state.npcs ??= {})[id] ??= {});
+}
+
+/** An item's state, made on first use. A reserved ID (keys.ts) gets a detached object, so writes go nowhere. */
+export function itemStateOf(state: GameState, id: string): ItemState {
+  if (!isSafeKey(id)) return {};
+  return (state.itemState[id] ??= {});
 }
 
 export function isAlive(_world: World, state: GameState, id: string): boolean {
@@ -153,6 +166,7 @@ export function heldItems(world: World, state: GameState): string[] {
 }
 
 export function moveItem(state: GameState, id: string, place: Place): void {
+  if (!isSafeKey(id)) return;
   state.locations[id] = place;
   // A vehicle taken away from the player's room leaves them aboard nothing.
   if (state.aboard === id && place !== state.currentRoom) state.aboard = undefined;

@@ -26,6 +26,7 @@ The store (`packages/vue/src/stores/game.ts`) runs every line through the same s
 
 1. **Meta commands** (SAVE, RESTORE, LOAD, UNDO, RESTART, SCRIPT, THEME, BLOOM, EFFECTS, EJECT, COOKIES) are handled by the store itself, and so is the answer to a SAVE or RESTORE prompt.
 2. **Split.** `splitCommands` (`packages/engine/src/engine/parser.ts`) breaks the line into commands:
+   - First the line is cleaned (`cleanInput`): trimmed, with every run of whitespace made one space. A line still longer than `MAX_INPUT_LENGTH` (1,000 characters) is refused whole: the parsers return nothing, and `createGame().send`, `interpret` and the Vue store answer “[That’s too long for me to follow. Nothing happened.]” (`TOO_LONG_REPLY`) before anything runs. Every pattern is written for the cleaned form, so no line costs more than linear time to read.
    - Clauses always split on `then`, `;` and full stops, except after `dr.`, `mr.` and the like.
    - Within a clause, `and` and commas split only when every piece is a recognized command, or an object after a list verb: `get key and wallet` becomes `get key` and `take wallet`.
    - A clause that isn’t clearly a list (“could you grab my keys and wallet”) stays whole.

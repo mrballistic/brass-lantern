@@ -1,7 +1,7 @@
 import type { GameState, ParsedAction } from '../../types/game.ts';
 import type { World } from '../../types/world.ts';
 import { combatText, heroBlow } from '../combat.ts';
-import { inventoryOf, isCarried, matchNpc, moveItem, needObject, pickItem, visibleItems } from '../model.ts';
+import { inventoryOf, isCarried, itemStateOf, matchNpc, moveItem, needObject, pickItem, visibleItems } from '../model.ts';
 import { miss, ok, type EngineResult } from '../result.ts';
 import { BARE_HANDS, withRules } from '../rules.ts';
 
@@ -63,7 +63,7 @@ export function handleThrow(action: ParsedAction, world: World, state: GameState
     // At a person with no rule for it: a miss, so the intent server can read it another way.
     if (action.indirect && matchNpc(action.indirect, world, state)) return miss(`The ${world.items[id].name} isn’t something you can throw at them.`);
     moveItem(state, id, state.currentRoom);
-    (state.itemState[id] ??= {}).moved = true;
+    itemStateOf(state, id).moved = true;
     return ok(['Thrown.'], true);
   });
 }
