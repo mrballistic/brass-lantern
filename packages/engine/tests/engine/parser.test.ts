@@ -383,7 +383,7 @@ describe('splitCommands with names that contain “and”', () => {
   it('a name containing “and” is one command', () => {
     expect(splitCommands('take flair from lost and found', undefined, names)).toEqual(['take flair from lost and found']);
     expect(splitCommands('open the lost and found box', undefined, names)).toEqual(['open the lost and found box']);
-    expect(splitCommands('open the Lost  And Found Box', undefined, names)).toEqual(['open the Lost  And Found Box'.replace('  ', ' ')]);
+    expect(splitCommands('open the Lost  And Found Box', undefined, names)).toEqual(['open the Lost And Found Box']);
   });
   it('even inside a longer compound line', () => {
     expect(splitCommands('open lost and found and take flair', undefined, names)).toEqual(['open lost and found', 'take flair']);

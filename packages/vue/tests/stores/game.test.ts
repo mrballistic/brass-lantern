@@ -71,8 +71,12 @@ describe('useGameStore', () => {
       setActivePinia(createPinia());
       const store = createGameStore({ ...fixtureOptions, cartridges: [{ ...fixtureOptions.cartridges[0], world }] })();
       store.initialize();
+      const before = store.output.length;
       await store.submit('take flair from lost and found');
       expect(store.game.locations.flair).toBe('player');
+      const replies = store.output.slice(before).filter((l) => l.type !== 'input');
+      expect(replies).toHaveLength(1);
+      expect(replies[0].text).not.toMatch(/can’t|don’t|not/i);
     });
   });
 

@@ -21,8 +21,10 @@ describe('createGame', () => {
       },
     };
     const game = createGame(world, { seed: 1 });
-    game.send('take flair from lost and found');
+    const reply = game.send('take flair from lost and found');
     expect(game.state.locations.flair).toBe('player');
+    expect(reply.lines).toHaveLength(1);
+    expect(reply.lines.join(' ')).not.toMatch(/can’t|don’t|not/i);
   });
 
   describe('hosted commands inside a compound line', () => {
