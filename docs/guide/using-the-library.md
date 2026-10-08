@@ -142,6 +142,8 @@ rl.close();
 
 `send(line)` takes whatever a player would type, including chained commands, and answers `{ lines, gameOver, awaiting }`. `awaiting` is true while the game waits for an answer to a question, such as “Which door do you mean?”, and that question is the last of `lines`. `seed` makes the game’s randomness repeatable. A command whose script throws is rolled back, and the reply is “[Something went wrong with that command. Nothing changed.]”.
 
+`createGame` handles RESTART (a fresh game, with the same `seed`) and UNDO (one turn at a time, up to 50) itself; `game.state` is always the game now, so read it after `send` rather than keeping the object. VERSION names the engine (`ENGINE_VERSION`) and the world. There is nowhere to keep a save or a transcript in plain Node, so SAVE, RESTORE, LOAD, SCRIPT and UNSCRIPT say they aren’t available and change nothing; a host that can store them handles those words before calling `send`. HELP lists only the commands that work here.
+
 `createGame` has no LLM: input the parser can’t read gets the engine’s own reply. To add the model, call the intent server yourself when `send` misses.
 
 ## The intent server

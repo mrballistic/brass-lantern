@@ -541,7 +541,8 @@ export function createGameStore(options: GameOptions) {
       },
 
       execute(action: ParsedAction): EngineResult {
-        const result = execute(action, { world, state: this.game });
+        // storeHelp: HELP lists this store's own commands (SAVE, THEME, …) and plain English.
+        const result = execute(action, { world, state: this.game, storeHelp: true });
         if (result.stopLine) conversation.stopLine = result.stopLine;
         // The line's snapshot is kept for UNDO if any piece changes something.
         if (result.mutated) line.changed = true;

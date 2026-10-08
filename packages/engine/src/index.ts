@@ -3,7 +3,8 @@
 // tutorial and the examples behind '@brass-lantern/engine/worlds'.
 
 // The headless turn loop and the world audit.
-export { createGame, runTurn, type EngineReply } from './engine/game.ts';
+export { createGame, runTurn, type EngineReply, type Game, type TurnResult } from './engine/game.ts';
+export { ENGINE_VERSION } from './version.ts';
 export { auditWorld } from './engine/audit.ts';
 
 // The lower-level engine, for UIs that run their own loop.

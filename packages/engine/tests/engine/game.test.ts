@@ -1,4 +1,7 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { execute, initialState } from '../../src/engine/engine';
+import { ENGINE_VERSION } from '../../src/version';
 import { createGame } from '../../src/engine/game';
 import { auditWorld } from '../../src/engine/audit';
 import { tutorial } from '../../src/worlds/tutorial';
@@ -126,5 +129,104 @@ describe('auditWorld', () => {
       events: { ...fixtureWorld.events, bad: [{ teleport: 'x' } as unknown as Effect] },
     };
     expect(auditWorld(broken).length).toBeGreaterThan(0);
+  });
+});
+
+describe('createGame: the commands a UI would handle', () => {
+  const winning = ['open drawer', 'take stapler', 'north', 'take mug and give mug to gary', 'talk to gary', 'north', 'smash machine with stapler'];
+
+  it('RESTART starts over: fresh state, the opening lines, the same seed', () => {
+    const game = createGame(tutorial, { seed: 7 });
+    game.send('open drawer');
+    game.send('take stapler');
+    const reply = game.send('restart');
+    expect(reply.lines).toEqual(game.opening);
+    expect(reply).toMatchObject({ gameOver: false, awaiting: false });
+    expect(game.state.moveCount).toBe(0);
+    expect(game.state.locations.stapler).not.toBe('player');
+    expect(game.state.rng).toBe(7);
+    expect(game.state).toEqual(createGame(tutorial, { seed: 7 }).state);
+  });
+
+  it('RESTART is the way out once the game has ended', () => {
+    const game = createGame(tutorial, { seed: 1 });
+    for (const c of winning) game.send(c);
+    expect(game.state.gameOver).toBe(true);
+    expect(game.send('look').lines).toEqual(['The game has ended. Type RESTART to play again.']);
+    const reply = game.send('restart');
+    expect(reply.gameOver).toBe(false);
+    expect(game.state.gameOver).toBe(false);
+    expect(game.send('look').lines.some((l) => l.startsWith('📍'))).toBe(true);
+  });
+
+  it('UNDO takes back the last turn that changed something, one step at a time', () => {
+    const game = createGame(tutorial, { seed: 1 });
+    const fresh = structuredClone(game.state);
+    game.send('open drawer');
+    const opened = structuredClone(game.state);
+    game.send('take stapler');
+    game.send('look');
+    expect(game.send('undo').lines).toEqual(['[Previous turn undone.]']);
+    expect(game.state).toEqual(opened);
+    expect(game.send('undo').lines).toEqual(['[Previous turn undone.]']);
+    expect(game.state).toEqual(fresh);
+    expect(game.send('undo').lines).toEqual(['[Nothing to undo.]']);
+    expect(game.state).toEqual(fresh);
+  });
+
+  it('UNDO says Undone. in an Infocom-style world, and works after the game has ended', () => {
+    const game = createGame(zork1, { seed: 1 });
+    game.send('open mailbox');
+    expect(game.send('undo').lines).toEqual(['Undone.']);
+    const tut = createGame(tutorial, { seed: 1 });
+    for (const c of winning) tut.send(c);
+    tut.send('undo');
+    expect(tut.state.gameOver).toBe(false);
+  });
+
+  it('SAVE, RESTORE and LOAD say they aren’t available and change nothing; AGAIN skips them', () => {
+    const game = createGame(tutorial, { seed: 1 });
+    const looked = game.send('look');
+    const before = structuredClone(game.state);
+    expect(game.send('save').lines).toEqual(['[Saving isn’t available here.]']);
+    expect(game.send('save my game').lines).toEqual(['[Saving isn’t available here.]']);
+    expect(game.send('restore').lines).toEqual(['[Restoring isn’t available here.]']);
+    expect(game.send('restore my game').lines).toEqual(['[Restoring isn’t available here.]']);
+    expect(game.send('load').lines).toEqual(['[Restoring isn’t available here.]']);
+    expect(game.state).toEqual(before);
+    expect(game.send('again').lines).toEqual(looked.lines);
+  });
+
+  it('SCRIPT and UNSCRIPT say transcripts aren’t available', () => {
+    const game = createGame(tutorial, { seed: 1 });
+    expect(game.send('script').lines).toEqual(['[Transcripts aren’t available here.]']);
+    expect(game.send('unscript').lines).toEqual(['[Transcripts aren’t available here.]']);
+    expect(game.state.moveCount).toBe(0);
+  });
+
+  it('VERSION names the engine and the world', () => {
+    const game = createGame(zork1, { seed: 1 });
+    const lines = game.send('version').lines;
+    expect(lines[0]).toBe(`[Brass Lantern ${ENGINE_VERSION}]`);
+    expect(lines).toContain(zork1.title);
+    expect(lines.every((l) => l.length > 0)).toBe(true);
+    expect(createGame(tutorial).send('version').lines.every((l) => l.length > 0)).toBe(true);
+  });
+
+  it('ENGINE_VERSION is the package’s version', () => {
+    const manifest = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')) as { version: string };
+    expect(ENGINE_VERSION).toBe(manifest.version);
+  });
+
+  it('HELP lists only what works headless; storeHelp adds the store’s commands', () => {
+    const help = createGame(tutorial).send('help').lines.join('\n');
+    for (const word of ['UNDO', 'RESTART', 'VERSION', 'AGAIN']) expect(help).toContain(word);
+    for (const word of ['SAVE', 'RESTORE', 'LOAD ', 'SCRIPT', 'THEME', 'BLOOM', 'EFFECTS', 'COOKIES', 'plain English']) {
+      expect(help).not.toContain(word);
+    }
+    const store = execute({ action: 'help' }, { world: tutorial, state: initialState(tutorial), storeHelp: true }).lines.join('\n');
+    for (const word of ['UNDO', 'SAVE', 'RESTORE', 'LOAD ', 'SCRIPT', 'THEME', 'BLOOM', 'EFFECTS', 'COOKIES', 'plain English', 'Wipe save']) {
+      expect(store).toContain(word);
+    }
   });
 });

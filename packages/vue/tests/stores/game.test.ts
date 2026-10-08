@@ -1002,6 +1002,10 @@ describe('theme commands', () => {
       expect(text).toMatch(/THEME/);
       expect(text).toMatch(/BLOOM/);
       expect(text).toMatch(/EFFECTS/);
+      // The store's own commands, and plain English (the engine lists them only when asked: storeHelp).
+      for (const word of ['SAVE <name>', 'RESTORE <name>', 'LOAD ', 'SCRIPT / UNSCRIPT', 'COOKIES', 'Wipe save and start over', 'plain English']) {
+        expect(text).toContain(word);
+      }
     });
 
     it('the LLM can map “make it green” to THEME', async () => {

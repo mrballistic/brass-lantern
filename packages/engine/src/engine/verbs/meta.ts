@@ -63,7 +63,8 @@ export function handleScore(world: World, state: GameState): EngineResult {
   return ok(lines.length > 0 ? lines : [`[Moves: ${state.moveCount}]`]);
 }
 
-export function handleHelp(world: World): EngineResult {
+/** HELP. `storeHelp`: the host (the Vue store) handles saves, transcripts, themes and plain English, so list them. */
+export function handleHelp(world: World, storeHelp = false): EngineResult {
   // An afterBuiltIns verb's built-in words are the built-in verb's to list; one with only those isn't listed.
   const words = (v: WorldVerb) => (v.afterBuiltIns ? v.words.filter((w) => !BUILT_IN_WORDS.has(w.toLowerCase())) : v.words);
   const own = Object.entries(world.verbs ?? {})
@@ -108,21 +109,25 @@ export function handleHelp(world: World): EngineResult {
     'AGAIN / G                Do the last thing again',
     'OOPS <word>              Fix a mistyped word in the last line',
     'UNDO                     Take back the last move',
-    'SCRIPT / UNSCRIPT        Start, then download, a transcript',
-    'VERSION                  What you’re playing, and its credits',
-    'SAVE <name>              Save the game under a name',
-    'RESTORE <name>           Go back to a named save',
-    'LOAD                     Go back to the autosave',
-    'RESTART                  Wipe save and start over',
-    'THEME [name]             List or change the colour theme',
-    'BLOOM ON|OFF             Screen glow',
-    'EFFECTS ON|OFF           All screen effects',
-    'COOKIES                  Analytics settings',
+    ...(storeHelp
+      ? [
+          'SCRIPT / UNSCRIPT        Start, then download, a transcript',
+          'VERSION                  What you’re playing, and its credits',
+          'SAVE <name>              Save the game under a name',
+          'RESTORE <name>           Go back to a named save',
+          'LOAD                     Go back to the autosave',
+          'RESTART                  Wipe save and start over',
+          'THEME [name]             List or change the colour theme',
+          'BLOOM ON|OFF             Screen glow',
+          'EFFECTS ON|OFF           All screen effects',
+          'COOKIES                  Analytics settings',
+        ]
+      : ['VERSION                  What you’re playing, and its credits', 'RESTART                  Start over']),
     'HELP / ?                 This screen',
     ...own,
     '════════════════════════',
     'Chain commands: TAKE KEY AND WALLET, WEST THEN LOOK.',
-    'You can also just type what you want to do in plain English.',
+    ...(storeHelp ? ['You can also just type what you want to do in plain English.'] : []),
   ]);
 }
 

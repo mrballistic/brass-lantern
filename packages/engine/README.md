@@ -26,6 +26,8 @@ const reply = game.send('open drawer then take stapler');
 console.log(reply.lines.join('\n'));          // reply: { lines, gameOver, awaiting }
 ```
 
+RESTART and UNDO work headless; SAVE, RESTORE, LOAD and SCRIPT say they aren’t available here and change nothing.
+
 ## Entry points
 
 | Import | What |

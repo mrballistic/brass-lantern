@@ -34,6 +34,13 @@ export { visibleItemsIn } from './model.ts';
 export interface EngineDeps {
   world: World;
   state: GameState;
+  /**
+   * HELP lists the commands a store handles itself (SAVE, RESTORE, LOAD,
+   * SCRIPT, THEME, BLOOM, EFFECTS, COOKIES) and plain-English input. The Vue
+   * store sets it; headless `createGame` doesn't, so its HELP lists only what
+   * works there.
+   */
+  storeHelp?: boolean;
 }
 
 export function initialState(world: World): GameState {
@@ -167,7 +174,7 @@ function executeTurn(action: ParsedAction, deps: EngineDeps): EngineResult {
   takeActed(state);
   setResolveById(state, Boolean(action.byId));
   try {
-    result = dispatch(action, world, state);
+    result = dispatch(action, world, state, deps.storeHelp);
   } catch (e) {
     if (!(e instanceof AskSignal)) throw e;
     result = askResult(e.ask, action, world, state);
@@ -230,7 +237,7 @@ function executeTurn(action: ParsedAction, deps: EngineDeps): EngineResult {
   return { ...result, lines: [...result.lines, ...later], mutated: true };
 }
 
-function dispatch(action: ParsedAction, world: World, state: GameState): EngineResult {
+function dispatch(action: ParsedAction, world: World, state: GameState, storeHelp = false): EngineResult {
   switch (action.action) {
     case 'go':
       return withRules('go', action, world, state, () => handleGo(action.target, world, state));
@@ -354,7 +361,7 @@ function dispatch(action: ParsedAction, world: World, state: GameState): EngineR
     case 'version':
       return { lines: [], mutated: false, free: true, version: true };
     case 'help':
-      return handleHelp(world);
+      return handleHelp(world, storeHelp);
     case 'sit':
     case 'wait':
       return handleIdle(action.action, world, state);
