@@ -43,6 +43,10 @@ The core, `./worlds` and `./zmachine` also load with `require()` on Node 24 and 
 
 The Z-machine session uses [ifvms](https://github.com/curiousdannii/ifvms.js), an optional peer dependency: install it (`npm i ifvms`) to use `./zmachine/session` in Node. Without it the import fails with an error that names the package. `./zmachine` never needs it.
 
+## Credits
+
+Zork I (`zork1`), text adapted from Infocom’s source, © 2025 Microsoft, MIT; the Glk library (glkapi.js) © Andrew Plotkin, MIT. See THIRD_PARTY_NOTICES.md, in this package and in the [repo](https://github.com/mrballistic/brass-lantern/blob/main/THIRD_PARTY_NOTICES.md).
+
 ## Docs
 
 [Using the library](https://mrballistic.github.io/brass-lantern/guide/using-the-library) is the guide for all three packages; the [docs](https://mrballistic.github.io/brass-lantern/) cover worlds, story files and the intent server. Source and issues: [github.com/mrballistic/brass-lantern](https://github.com/mrballistic/brass-lantern). MIT licensed.

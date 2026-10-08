@@ -10,7 +10,7 @@
 npm i @brass-lantern/server express
 ```
 
-Node 24 or later. `express` 5 is an optional peer, needed only for the router.
+Node 24 or later. `express` 5 is an optional peer, needed only for the router; TypeScript users of `@brass-lantern/server/express` also want `@types/express` (`npm i -D @types/express`).
 
 ## Use
 
@@ -19,13 +19,14 @@ import express from 'express';
 import { intentRoute } from '@brass-lantern/server/express';
 
 const app = express();
+app.set('trust proxy', 'loopback'); // behind a reverse proxy on the same machine
 app.use(express.json({ limit: '32kb' }));
 app.use('/api', intentRoute({ apiKey: process.env.GEMINI_KEY! }));   // POST /api/parse-intent
 ```
 
 Then give the game `intentEndpoint: '/api/parse-intent'`. Not on Express? `parseIntent(input, context, { apiKey })` from `@brass-lantern/server` is the same thing as a function. Both accept `models` (empty means the defaults), `timeoutMs` and, for the route, `rateLimitPerMinute` (a positive number; anything else throws when the route is built).
 
-The package reads no environment variables: you pass the key in. Keep it on the server, and never give it a `VITE_` name, which Vite would inline into the public bundle. The route sets no CORS headers, on purpose.
+The package reads no environment variables: you pass the key in. Keep it on the server, and never give it a `VITE_` name, which Vite would inline into the public bundle. Behind Apache or nginx, set `trust proxy` as above; otherwise every request seems to come from the proxy and all your players share one rate-limit bucket. The route sets no CORS headers, on purpose.
 
 ## Docs
 

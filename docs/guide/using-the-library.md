@@ -10,7 +10,7 @@ Brass Lantern is three npm packages. Use them to put a game in your own app, run
 
 All three are ESM with TypeScript declarations. On Node 24 and later every entry also loads with `require()` except one: `@brass-lantern/engine/zmachine/session` uses top-level `await` (to check for `ifvms` first), so `require()` throws `ERR_REQUIRE_ASYNC_MODULE`; load it with `import()`, which is how a browser app wants it anyway.
 
-TypeScript 5.0 or later works with `moduleResolution` set to `bundler`, `node16` or `nodenext`. The engine’s public types mention `fetch` and `Storage`, so your project needs the DOM lib or `@types/node`.
+TypeScript 5.0 or later works with `moduleResolution` set to `bundler`, `node16` or `nodenext`. The engine’s public types mention `fetch` and `Storage`, so your project needs the DOM lib or `@types/node`. Vue 3.5’s own type declarations need TypeScript 5.4 or later unless you set `skipLibCheck`, so a project using `@brass-lantern/vue` wants 5.4 or later anyway.
 
 ## Install
 
@@ -35,7 +35,7 @@ mountGame('#app', {
 });
 ```
 
-The stylesheet is a separate import, so a bundler can see it. It styles the game and nothing else on your page: no `html`, `body` or `*` rules, nothing fixed to the viewport. The game fills its container, so give the container a size. For a full-screen game:
+The stylesheet is a separate import, so a bundler can see it. TypeScript 6 checks side-effect imports (`noUncheckedSideEffectImports`), so it needs to know what a `.css` import is: a Vite app gets that from `vite/client` in its `types`, and anything else can declare it in a `.d.ts` file with `declare module '*.css';`. It styles the game and nothing else on your page: no `html`, `body` or `*` rules, nothing fixed to the viewport. The game fills its container, so give the container a size. For a full-screen game:
 
 ```css
 html, body, #app { height: 100%; margin: 0; overflow: hidden; }
@@ -61,7 +61,7 @@ const options: GameOptions = {
 </template>
 ```
 
-That is most of the package: `BrassLantern`, `mountGame`, `ConsentBanner`, the themes (`PRESETS`, `PALETTES`, `resolveTheme` and their types), `useTypewriter` and the `GameOptions` type. The terminal’s parts (the terminal itself, the boot sequence, the stores) are internal, so they can change without a major version.
+That is most of the package: `BrassLantern`, `mountGame`, `ConsentBanner`, the themes (`PRESETS`, `PALETTES`, `resolveTheme`, the `UnknownTheme` error and their types), `useTypewriter`, and the `GameOptions` and `GameEvent` types, plus the cartridge types (`Cartridge`, `WorldCartridge`, `ZCodeCartridge`) re-exported from the engine so a Vue app can type its options from this package alone. The terminal’s parts (the terminal itself, the boot sequence, the stores) are internal, so they can change without a major version.
 
 ### Every option
 
@@ -74,14 +74,14 @@ That is most of the package: `BrassLantern`, `mountGame`, `ConsentBanner`, the t
 | `terminalName` | Shown in the header. Default `BRASS LANTERN`. |
 | `version` | Shown after the name in the header. |
 | `intentEndpoint` | Where misses go for the LLM’s reading: a URL that accepts `POST`. `null`, `''` or unset means none, and a miss gets the engine’s reply. |
-| `theme` | The author’s default: a preset name, or a custom theme object. The player’s `THEME` command wins. A name that isn’t a theme falls back to `crt-amber`, with a warning in the console. Default `crt-amber`. |
+| `theme` | The author’s default: a preset name, the name of one of `themes`, or a custom theme object (TypeScript types the option as a preset name or a theme object, so for a custom theme pass the object itself). The player’s `THEME` command wins. A name that isn’t a theme falls back to `crt-amber`, with a warning in the console. Default `crt-amber`. |
 | `themes` | Extra named themes, offered by `THEME` beside the presets. One named like a preset is ignored, with a warning. |
 | `analytics` | `{ onEvent(name, params?), openConsent?() }`. `onEvent` hears `game_start`, `game_completed` and `session_resumed`; a callback that throws is logged and never breaks the game. With `openConsent`, the header shows a COOKIES link and the command calls it; without it, COOKIES says nothing is collected. |
 | `storyBaseUrl` | Where a story cartridge’s relative `story` path is fetched from. A Vite app under a subpath passes `import.meta.env.BASE_URL`. Default `/`. |
 | `devChecks` | Turns on the engine’s script freeze, so a world script that assigns to game state throws instead of passing silently. Global to the page, and only ever turned on. A Vite app passes `import.meta.env.DEV`. Default `false`. |
 | `autofocus` | Focus the game’s input when it boots (which scrolls the page to it). An embedded game passes `false`; a click on the game still focuses it. Default `true`. |
 
-`mountGame(el, options, { slot })` takes a third argument for a component rendered inside the game’s shell once it has booted. The demo site uses it for its consent banner. `ConsentBanner` is exported, and it is presentational: it takes an `open` prop and emits `choose`, and your app decides what to store and what to send.
+`mountGame(el, options, { slot })` takes a third argument for a component rendered inside the game’s shell once it has booted. The demo site uses it for its consent banner. `ConsentBanner` is exported, and it is presentational: it takes an `open` prop and emits `choose` with `'granted'` or `'denied'`, and your app decides what to store and what to send. Its wording is yours too: `title`, `body`, `note` and `label` (the section’s accessible name) are props, and the defaults are neutral and name no analytics provider, so pass your own to say what you collect and where it goes.
 
 ### Two games on one page
 
@@ -99,10 +99,11 @@ The terminal ships five presets:
 | `simple-light` | The plain look, light. |
 | `simple-dark` | The plain look, dark. |
 
-A theme is a palette (twelve colour roles) plus seven effect switches (`bloom`, `scanlines`, `flicker`, `vignette`, `noise`, `glitch`, `decay`). Write your own and offer it by name:
+A theme is a palette (twelve color roles) plus seven effect switches (`bloom`, `scanlines`, `flicker`, `vignette`, `noise`, `glitch`, `decay`). Write your own and offer it by name:
 
 ```ts
-import type { Theme } from '@brass-lantern/vue';
+import { mountGame, type Theme } from '@brass-lantern/vue';
+// `cartridges` as in “Put a game on a page” above.
 
 const paper: Theme = {
   palette: {
@@ -119,9 +120,9 @@ mountGame('#app', { cartridges, storagePrefix: 'my-game', theme: paper, themes: 
 
 `palette` can also be a name (`amber`, `green`, `light` or `dark`) to borrow a built-in one. `PALETTES`, `PRESETS` and `resolveTheme` are exported for tools that want the data.
 
-**Player commands.** `THEME` lists the themes; `THEME <name>` switches. `BLOOM ON|OFF` and `EFFECTS ON|OFF` turn the glow and all the effects on or off. The choice is remembered in the browser at `<storagePrefix>:theme`.
+**Player commands.** `THEME` lists the themes; `THEME <name>` switches (a custom theme’s name can have spaces or underscores; the player types it as listed). `BLOOM ON|OFF` and `EFFECTS ON|OFF` turn the glow and all the effects on or off. They work everywhere: at the cartridge menu, in a native world and in a story file. The choice is remembered in the browser at `<storagePrefix>:theme`.
 
-`theme`, `bloom` and `effects` are reserved words in the store, like SAVE: they are read as the command, and they shadow a world item with one of those names.
+`theme`, `bloom` and `effects` are reserved player commands, like SAVE: they are read as the command, and they shadow a world item with one of those names.
 
 **Reduced motion.** When the player’s system asks for reduced motion, flicker, glitch and noise are off whatever the theme says.
 
@@ -149,7 +150,7 @@ rl.close();
 
 `createGame` handles RESTART (a fresh game, with the same `seed`) and UNDO (one turn at a time, up to 50) itself; `game.state` is always the game now, so read it after `send` rather than keeping the object. VERSION names the engine (`ENGINE_VERSION`) and the world. There is nowhere to keep a save or a transcript in plain Node, so SAVE, RESTORE, LOAD, SCRIPT and UNSCRIPT say they aren’t available and change nothing; a host that can store them handles those words before calling `send`. HELP lists only the commands that work here.
 
-`createGame` has no LLM: input the parser can’t read gets the engine’s own reply. To add the model, call the intent server yourself when `send` misses.
+`createGame` has no LLM: input the parser can’t read gets the engine’s own reply.
 
 ## The intent server
 
@@ -162,12 +163,13 @@ import express from 'express';
 import { intentRoute } from '@brass-lantern/server/express';
 
 const app = express();
+app.set('trust proxy', 'loopback'); // behind a reverse proxy on the same machine
 app.use(express.json({ limit: '32kb' }));
 app.use('/api', intentRoute({ apiKey: process.env.GEMINI_KEY! }));
 app.listen(3001);
 ```
 
-That serves `POST /api/parse-intent`, with a per-client rate limit. Pass `models`, `timeoutMs` or `rateLimitPerMinute` to change the defaults. An empty `models` list means the defaults, here and in `parseIntent`; `rateLimitPerMinute` must be a positive number, or `intentRoute` throws when it is built, as it does for an empty key. You own `express.json()` and `trust proxy`, and the route sets no CORS headers, on purpose: other sites should not be able to spend your quota from their visitors’ browsers.
+That serves `POST /api/parse-intent`, with a per-client rate limit. Pass `models`, `timeoutMs` or `rateLimitPerMinute` to change the defaults. An empty `models` list means the defaults, here and in `parseIntent`; `rateLimitPerMinute` must be a positive number, or `intentRoute` throws when it is built, as it does for an empty key. You own `express.json()` and `trust proxy`. Behind Apache or nginx, set `trust proxy` as above, or the rate limit sees every request coming from the proxy and all your players share one bucket; with nothing in front, leave it unset. The route sets no CORS headers, on purpose: other sites should not be able to spend your quota from their visitors’ browsers.
 
 In the browser:
 
@@ -184,6 +186,8 @@ const action = await parseIntent('hand gary his mug', context, { apiKey, timeout
 // { action: 'give', target: 'mug', indirect: 'gary' }, or { action: 'unknown' }
 ```
 
+`context` is an `IntentContext`: what the player can see, by ID and name (the room’s name, its exits, the items and people in view, the inventory, and the world’s own verbs). The model answers only with IDs from it. [The intent server](./intent-server#the-api) shows its shape. The Vue terminal builds and sends it for you. A UI that runs its own loop on the lower-level engine (`execute`, which reports `understood: false` on a miss) can build it with `buildContext` from `@brass-lantern/engine` and post it with `parseIntentRemote`.
+
 Neither reads the environment: you pass the key in. Keep it on the server. Never give it a `VITE_` name, because Vite inlines those into the public bundle; the browser talks to your route and never to Google.
 
 ## Write a world and check it
@@ -195,7 +199,7 @@ import { auditWorld, createGame, type World } from '@brass-lantern/engine';
 
 const world: World = { /* rooms, items, events … */ } as World;
 
-const problems = auditWorld(world);   // string[]: dead ends, broken exits, missing events
+const problems = auditWorld(world);   // string[]: broken references: exits to nowhere, missing events, unknown items
 if (problems.length) throw new Error(problems.join('\n'));
 
 const game = createGame(world, { seed: 1 });
@@ -204,7 +208,7 @@ game.send('look');
 
 `auditWorld` finds the mistakes that only show up when someone walks into them: exits that go nowhere, events nothing defines, references to items that do not exist. Put it in your test suite beside a test that plays the winning route.
 
-The format is the one 1.13.0 had. Worlds written then work unchanged.
+The world format hasn’t changed since 1.13.0; worlds written for it run unchanged.
 
 ## Story files (Z-machine)
 
@@ -232,6 +236,6 @@ session.start();
 
 `@brass-lantern/engine/zmachine` holds everything but the interpreter (the story shelf, `readStoryFile`, the save stores and the types) and never needs `ifvms`. In Node, install `ifvms` yourself to use `./zmachine/session`; without it the import fails with an error that names the package. Saves go through a `SaveStore` (`list`, `read`, `write`, `remove`), wrapped in a `SaveStoreDialog`. In the browser that is `localStorageSaveStore(prefix)`; a Node host can pass a directory, a database or a `Map`.
 
-## What stays in the repo
+## Examples
 
-The demo site (`apps/site`) is the library’s first user: it lists the cartridges, mounts the game and wires analytics. It is not published. [Office Space: The Text Adventure](https://initech.mrballistic.com), a private game, still runs on the engine as of 1.13.0 and moves onto these packages on its own schedule.
+The [demo](https://mrballistic.github.io/brass-lantern/demo/) is built from these packages: in the repo, `apps/site` lists the cartridges, mounts the game and wires its analytics to `ConsentBanner`. It isn’t published to npm. [Office Space: The Text Adventure](https://initech.mrballistic.com) is a full-length game built on the engine.

@@ -25,9 +25,9 @@ npm install
 npm run dev        # http://localhost:5173
 ```
 
-The terminal boots to the cartridge menu; type `1` for Snack Attack, `2`–`4` for Zork I–III, or `5` for the native Zork I. All are fully playable offline: the regex parser handles every command the engine knows, and Zork has its own parser. Loose phrasing ("make that thing stop beeping") needs the optional [intent server](./intent-server).
+The terminal boots to the cartridge menu; type `1` for Snack Attack, `2`–`4` for Zork I–III, or `5` for the native Zork I. All are fully playable offline: the regex parser handles every command the engine knows, and Zork has its own parser. Loose phrasing (“make that thing stop beeping”) needs the optional [intent server](./intent-server).
 
-## What's in the box
+## What’s in the box
 
 ```
 packages/
@@ -49,7 +49,7 @@ Each package has its own tests; `packages/engine/src/types/world.ts` is the worl
 
 ## Make it yours
 
-Everything that makes the demo *a particular game collection* is in `apps/site/src/app.config.ts`:
+In your own app, the cartridges are just the `cartridges` you pass to `mountGame` ([Using the library](./using-the-library)). In the repo, everything that makes the demo *a particular game collection* is in `apps/site/src/app.config.ts`:
 
 ```ts
 export const cartridges: Cartridge[] = [
@@ -65,11 +65,4 @@ export const storagePrefix = 'brass-lantern';
 
 Add your own world as a cartridge (and remove the others if you like: with one cartridge there’s no menu). [Building worlds](./building-worlds/) walks through writing one, from two rooms up; [Playing story files](./z-machine) covers Z-machine cartridges.
 
-## Checks
-
-```bash
-npm run lint && npm run type-check && npm run test:coverage
-npm run build:packages && npm run build && npm run smoke
-```
-
-`npm run smoke` packs the three packages, installs them into a scratch project and uses them from Node and `tsc`. CI runs the same on every push and PR, and also checks the built site for anything shaped like an API key.
+Working on Brass Lantern itself? [CONTRIBUTING.md](https://github.com/mrballistic/brass-lantern/blob/main/CONTRIBUTING.md) has the checks to run before a pull request.
