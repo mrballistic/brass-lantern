@@ -120,3 +120,14 @@ From the 6a final review:
 
 - ~~**PUT ALL IN X**~~ (1.8.0) compares the typed indirect word to item IDs, so “put all in brown sack” may try to put the sack into itself.
 - ~~**`conditionProblems`**~~ (1.8.0) accepts a character's ID for `has:` and `on:`, not only `here:`, so a typo naming a person slips past the audit.
+
+## From Office Space 2.1.0 (found consuming 2.0.0)
+
+- **`auditWorld` rejects a non-compass `direction:`** (e.g. `direction:basement`) that the engine honours inside character `orders`, so a world must route such an order through a script.
+- **ASK X ABOUT ME / MYSELF** never reaches a topic, even with `me` as an exact alias.
+- **FOLLOW isn't a built-in verb**, so `orders.follow` only parses once the world declares a `follow` world verb.
+- **Compound splitting breaks item names containing “and”** (“take flair from lost and found” splits into two commands).
+- **The fuzzy matcher's token-overlap tier** can send a name the player typed to a different item that shares a word with it (“give smiley flair” falls through to another flair once the smiley one is gone).
+- **EXAMINE a character works in pitch black**, while GIVE says it's too dark.
+- **`migrateSave` could fill `locations`** for item ids a save doesn't have from the world's initial placement, so items added in a later world version appear in older saves without a world-side repair.
+- **LIGHT MATCH says “You can’t turn that on.”**, and a `flaming` item gives no light.
