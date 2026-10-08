@@ -1,28 +1,39 @@
 import { toRaw } from 'vue';
 import { defineStore } from 'pinia';
-import { saveKeyFor, type GameState, type OutputLine, type ParsedAction } from '@brass-lantern/engine';
-import type { World } from '@brass-lantern/engine';
-import type { WorldCartridge } from '@brass-lantern/engine';
+import {
+  buildContext,
+  captureLine,
+  describeCurrentRoom,
+  execute,
+  fallbackParse,
+  initialState,
+  interpret,
+  inventoryOf,
+  isLit,
+  makeLine,
+  migrateSave,
+  newConversation,
+  npcsSeen,
+  openingLines,
+  parseIntentRemote,
+  remember,
+  resolvePronouns,
+  saveKeyFor,
+  scriptLines,
+  setScriptFreeze,
+  splitCommands,
+  statusText,
+  visibleItemsIn,
+  type EngineResult,
+  type GameState,
+  type OutputLine,
+  type ParsedAction,
+  type World,
+  type WorldCartridge,
+} from '@brass-lantern/engine';
 import { PRESETS, type Theme, type ThemeName, type ThemeOverrides } from '../theme/themes.ts';
 import { cookiesReply, intentEndpointOf, reportEvent, terminalTitle, type GameEvent, type GameOptions } from '../options.ts';
 import { createCatalog } from './catalog.ts';
-import {
-  captureLine,
-  execute,
-  initialState,
-  openingLines,
-  describeCurrentRoom,
-  visibleItemsIn,
-} from '@brass-lantern/engine';
-import { inventoryOf, isLit, npcsSeen } from '@brass-lantern/engine';
-import { scriptLines, statusText } from '@brass-lantern/engine';
-import { migrateSave } from '@brass-lantern/engine';
-import { fallbackParse, splitCommands } from '@brass-lantern/engine';
-import { interpret, newConversation, remember, resolvePronouns } from '@brass-lantern/engine';
-import type { EngineResult } from '@brass-lantern/engine';
-import { buildContext, parseIntentRemote } from '@brass-lantern/engine';
-import { setScriptFreeze } from '@brass-lantern/engine';
-import { makeLine } from '@brass-lantern/engine';
 import { createPersistenceService } from '../services/persistence.ts';
 
 /** Used before any world cartridge is inserted, e.g. in a Z-machine-only build. */

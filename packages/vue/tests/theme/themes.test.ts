@@ -1,5 +1,4 @@
-import { describe, expect, it } from 'vitest';
-import { vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { checkAuthorThemes, PALETTES, PRESETS, resolveTheme, UnknownTheme, type Theme } from '../../src/theme/themes';
 
 const light = { prefersDark: false, reducedMotion: false };

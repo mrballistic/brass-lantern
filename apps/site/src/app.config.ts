@@ -1,8 +1,7 @@
 // Everything that makes this build *this* game collection rather than the
 // engine. The rest of src/ is world-agnostic.
 import type { Cartridge } from '@brass-lantern/engine';
-import { tutorial } from '@brass-lantern/engine/worlds';
-import { zork1 } from '@brass-lantern/engine/worlds';
+import { tutorial, zork1 } from '@brass-lantern/engine/worlds';
 
 /** What the cartridge menu offers. With one cartridge, the terminal boots straight into it. */
 export const cartridges: Cartridge[] = [

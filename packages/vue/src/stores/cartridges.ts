@@ -1,10 +1,7 @@
 import { defineStore } from 'pinia';
-import { makeLine } from '@brass-lantern/engine';
+import { makeLine, type Cartridge, type OutputLine, type ZCodeCartridge } from '@brass-lantern/engine';
+import { IndexedDbShelf, type LoadedStory } from '@brass-lantern/engine/zmachine';
 import type { GameOptions } from '../options.ts';
-import type { Cartridge, ZCodeCartridge } from '@brass-lantern/engine';
-import type { OutputLine } from '@brass-lantern/engine';
-import { IndexedDbShelf } from '@brass-lantern/engine/zmachine';
-import type { LoadedStory } from '@brass-lantern/engine/zmachine';
 import { createCatalog } from './catalog.ts';
 
 /**

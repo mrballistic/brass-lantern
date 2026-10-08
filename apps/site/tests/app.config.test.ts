@@ -3,8 +3,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { cartridges, storagePrefix } from '../src/app.config.ts';
 import type { WorldCartridge, ZCodeCartridge } from '@brass-lantern/engine';
-import { SaveStoreDialog } from '@brass-lantern/engine/zmachine';
-import { localStorageSaveStore } from '@brass-lantern/engine/zmachine';
+import { localStorageSaveStore, SaveStoreDialog } from '@brass-lantern/engine/zmachine';
 import { ZMachineSession } from '@brass-lantern/engine/zmachine/session';
 
 const stories = cartridges.filter((c): c is ZCodeCartridge => c.kind === 'zcode');

@@ -1,5 +1,4 @@
-import type { GameState, OutputLine, SavedState } from '@brass-lantern/engine';
-import { SAVE_VERSION } from '@brass-lantern/engine';
+import { SAVE_VERSION, type GameState, type OutputLine, type SavedState } from '@brass-lantern/engine';
 
 const MAX_HISTORY_LINES = 500;
 
