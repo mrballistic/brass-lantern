@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitest/config';
+import { coverageThresholds } from '../../vite.shared.ts';
 
 export default defineConfig({
   test: {
@@ -14,12 +15,7 @@ export default defineConfig({
       provider: 'v8',
       include: ['src/**/*.ts'],
       exclude: ['src/**/*.d.ts', 'src/worlds/**', 'src/zmachine/vendor/**'],
-      thresholds: {
-        lines: 80,
-        functions: 80,
-        statements: 80,
-        branches: 75,
-      },
+      thresholds: coverageThresholds,
     },
   },
 });

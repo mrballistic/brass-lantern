@@ -9,6 +9,9 @@ import { defaultClientConditions, defaultServerConditions, type UserConfig } fro
  */
 export const SOURCE_CONDITION = '@brass-lantern/source';
 
+/** Every workspace's coverage floor (CI fails below it). */
+export const coverageThresholds = { lines: 80, functions: 80, statements: 80, branches: 75 };
+
 export const resolveSources: Pick<UserConfig, 'resolve' | 'ssr'> = {
   resolve: { conditions: [SOURCE_CONDITION, ...defaultClientConditions] },
   ssr: { resolve: { conditions: [SOURCE_CONDITION, ...defaultServerConditions] } },

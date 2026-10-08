@@ -1,6 +1,6 @@
 import { defineConfig } from 'vitest/config';
 import vue from '@vitejs/plugin-vue';
-import { resolveSources } from '../../vite.shared.ts';
+import { coverageThresholds, resolveSources } from '../../vite.shared.ts';
 
 export default defineConfig({
   plugins: [vue()],
@@ -19,12 +19,7 @@ export default defineConfig({
       provider: 'v8',
       include: ['src/**/*.{ts,vue}'],
       exclude: ['src/**/*.d.ts'],
-      thresholds: {
-        lines: 80,
-        functions: 80,
-        statements: 80,
-        branches: 75,
-      },
+      thresholds: coverageThresholds,
     },
   },
 });
