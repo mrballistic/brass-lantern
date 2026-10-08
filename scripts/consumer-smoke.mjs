@@ -75,6 +75,8 @@ for (const pkg of PACKAGES) {
   check(`${short}: ${files.length} files, ${(report.unpackedSize / 1024).toFixed(0)} kB unpacked`, files.length > 0);
   check(`${short}: ships dist/`, files.some((f) => f.startsWith('dist/')));
   check(`${short}: ships package.json and LICENSE`, files.includes('package.json') && files.includes('LICENSE'));
+  // The engine bundles third-party text (Zork I, glkapi.js), so its notices ship with it.
+  if (short === 'engine') check('engine: ships THIRD_PARTY_NOTICES.md', files.includes('THIRD_PARTY_NOTICES.md'));
   const strays = files.filter((f) => /(^|\/)tests?\/|\.test\.|\.spec\.|test-setup|^src\/|coverage\/|\.env/.test(f));
   check(`${short}: no tests, sources, coverage or env files`, strays.length === 0, strays.join(', '));
   const maps = files.filter((f) => f.endsWith('.map'));

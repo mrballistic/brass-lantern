@@ -2,11 +2,10 @@ import type { ScriptContext } from '../engine/scripts.ts';
 import type { EventStep, World } from '../types/world.ts';
 
 /**
- * Zork I, rebuilt as a native Brass Lantern world: the house and the forest
- * above ground (engine-parity stage 1), and the cellar, the gallery and the
- * studio below (stage 2). Text adapted from Infocom's
- * source (historicalsource/zork1, MIT License, Copyright (c) 2025 Microsoft);
- * tests/worlds/zork1-diff.test.ts plays it against the original story file.
+ * Zork I, rebuilt as a native Brass Lantern world. Text adapted from Infocom's
+ * source (historicalsource/zork1, MIT License, Copyright (c) 2025 Microsoft;
+ * see THIRD_PARTY_NOTICES.md); tests/worlds/zork1-diff.test.ts plays it
+ * against the original story file.
  *
  * Rooms' `items` and items' `contains` list things in the reverse of the order
  * Zork prints them: Infocom style lists newest first, as Zork does.

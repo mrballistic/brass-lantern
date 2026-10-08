@@ -23,15 +23,28 @@ function defaultStorage(): Storage | null {
 }
 
 const BRACE = 0x7b; // '{'
-const decoder = new TextDecoder();
+const strictDecoder = new TextDecoder('utf-8', { fatal: true });
 const encoder = new TextEncoder();
+
+/** The bytes as text, if they are a JSON object in strict UTF-8 (the autosave); otherwise null. */
+function jsonObjectText(data: Uint8Array): string | null {
+  if (data[0] !== BRACE) return null;
+  try {
+    const text = strictDecoder.decode(data);
+    const value: unknown = JSON.parse(text);
+    return value !== null && typeof value === 'object' && !Array.isArray(value) ? text : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * A SaveStore over localStorage, every key starting with `prefix`. It keeps
  * the layout earlier versions wrote, so existing saves still load: a binary
  * entry (a save file) is stored as a JSON array of byte values, and a JSON
- * text entry (the autosave, which starts with "{"; a Quetzal save never
- * does) is stored as the text itself.
+ * object in strict UTF-8 (the autosave) is stored as the text itself. Only
+ * bytes that decode and parse that way are stored as text, so any other file,
+ * even one starting with "{", round-trips byte for byte.
  */
 export function localStorageSaveStore(prefix: string, storage: Storage | null = defaultStorage()): SaveStore {
   return {
@@ -66,7 +79,7 @@ export function localStorageSaveStore(prefix: string, storage: Storage | null = 
     },
     write(name, data) {
       if (!storage) throw new Error('No storage is available');
-      const text = data[0] === BRACE ? decoder.decode(data) : JSON.stringify(Array.from(data));
+      const text = jsonObjectText(data) ?? JSON.stringify(Array.from(data));
       storage.setItem(prefix + name, text);
     },
     remove(name) {

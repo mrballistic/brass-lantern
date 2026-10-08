@@ -34,6 +34,20 @@ describe('localStorageSaveStore', () => {
     expect(store.read('auto')).toEqual(json);
   });
 
+  it('round-trips a binary file that starts with “{” byte for byte', () => {
+    const store = localStorageSaveStore('p:');
+    // 0x7B is “{”; 0xFF and 0xC3 0x28 are invalid UTF-8.
+    const invalid = new Uint8Array([0x7b, 0xff, 0x00, 0xc3, 0x28, 0x7d]);
+    store.write('bin', invalid);
+    expect(localStorage.getItem('p:bin')).toBe(JSON.stringify(Array.from(invalid)));
+    expect(store.read('bin')).toEqual(invalid);
+    // Valid UTF-8 but not a JSON object: still bytes.
+    const notJson = new TextEncoder().encode('{not json');
+    store.write('text', notJson);
+    expect(localStorage.getItem('p:text')!.startsWith('[')).toBe(true);
+    expect(store.read('text')).toEqual(notJson);
+  });
+
   it('treats unreadable contents as missing', () => {
     localStorage.setItem('p:bad', 'not json');
     expect(localStorageSaveStore('p:').read('bad')).toBeNull();

@@ -52,7 +52,7 @@
   },
   "dependencies": {
     "@brass-lantern/engine": "^2.0.0",
-    "ifvms": "^1.1.6"
+    "ifvms": "1.1.6"
   },
   "peerDependencies": {
     "pinia": "^4.0.0",
