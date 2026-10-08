@@ -34,7 +34,7 @@ npm run lint && npm run type-check && npm run test:coverage   # every workspace
 npm run build:packages && npm run build && npm run smoke       # packages, site, consumer smoke test
 ```
 
-`ZORK_LONG=1 npm test` also runs the long Zork tests. One workspace: `npm run test -w @brass-lantern/engine`.
+The long Zork tests always run. One workspace: `npm run test -w @brass-lantern/engine`.
 
 Coverage thresholds: 80% lines/functions/statements, 75% branches. Shared tests play the fixture world by passing its options: `createGameStore(fixtureOptions)` (internal: tests import it by relative path; the Vue barrel exports only `BrassLantern`, `mountGame`, `ConsentBanner`, the themes, `useTypewriter` and the types), or `<BrassLantern :options="fixtureOptions">` (`packages/engine/tests/fixtures/world.ts`). Only `apps/site/src/app.config.ts` and `apps/site/src/main.ts` read the site's config; the stores and components take a `GameOptions` (`packages/vue/src/options.ts`), one game per storage prefix.
 

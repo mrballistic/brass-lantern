@@ -99,6 +99,8 @@ export function createGame(world: World, options: { seed?: number } = {}): Game 
   /** The words a UI handles itself. Returns their reply, or null for anything else. */
   function hostCommand(command: string): string[] | null {
     const lower = command.trim().toLowerCase();
+    // Like the Vue store, save the line so far first: UNDO then undoes it, RESTART discards it.
+    if (lower === 'restart' || lower === 'undo') endLine();
     if (lower === 'restart') {
       state = fresh();
       conv = newConversation();

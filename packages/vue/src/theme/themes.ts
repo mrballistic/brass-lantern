@@ -37,7 +37,7 @@ export type ThemeName = 'crt-amber' | 'crt-green' | 'simple' | 'simple-light' | 
 
 /** Every role is set explicitly: glows and the dim/system colours are not derived from fg. */
 export const PALETTES: Record<PaletteName, Palette> = {
-  // Equals the :root block in src/styles/crt.css.
+  // Equals the amber custom properties on .crt-shell in src/styles/crt.css.
   amber: {
     fg: '#ffb000',
     fgBright: '#ffc833',
@@ -143,6 +143,17 @@ function isPreset(name: string): name is ThemeName {
   return Object.prototype.hasOwnProperty.call(PRESETS, name);
 }
 
+function isPaletteName(name: string): name is PaletteName {
+  return Object.prototype.hasOwnProperty.call(PALETTES, name);
+}
+
+/** A theme whose palette names nothing gets amber, with one warning. */
+function repairTheme(theme: Theme, label: string): Theme {
+  if (typeof theme.palette !== 'string' || isPaletteName(theme.palette)) return theme;
+  console.warn(`Brass Lantern: ${label} names the palette “${theme.palette}”, which doesn’t exist, so it uses amber.`);
+  return { ...theme, palette: 'amber' };
+}
+
 export function resolveTheme(
   base: ThemeName | Theme | string,
   custom: Record<string, Theme>,
@@ -163,7 +174,13 @@ export function resolveTheme(
   }
 
   const chosen = paletteOverride ?? theme.palette;
-  const palette = typeof chosen === 'string' ? PALETTES[chosen] : chosen;
+  let palette: Palette;
+  if (typeof chosen !== 'string') palette = chosen;
+  else if (isPaletteName(chosen)) palette = PALETTES[chosen];
+  else {
+    console.warn(`Brass Lantern: there’s no palette called “${chosen}”, so the theme uses amber.`);
+    palette = PALETTES.amber;
+  }
 
   const effects: Effects = { ...theme.effects };
   if (env.reducedMotion) {
@@ -201,9 +218,9 @@ export function checkAuthorThemes(
       console.warn(`Brass Lantern: the custom theme “${name}” has a preset’s name, so it is ignored. Give it another name.`);
       continue;
     }
-    custom[name] = value;
+    custom[name] = repairTheme(value, `the custom theme “${name}”`);
   }
-  const author = theme ?? 'crt-amber';
+  const author = typeof theme === 'object' && theme !== null ? repairTheme(theme, 'the theme') : (theme ?? 'crt-amber');
   if (typeof author === 'string' && !isPreset(author) && !Object.prototype.hasOwnProperty.call(custom, author)) {
     console.warn(`Brass Lantern: there’s no theme called “${author}”, so the game uses crt-amber. Try one of: ${[...Object.keys(PRESETS), ...Object.keys(custom)].join(', ')}.`);
     return { theme: 'crt-amber', themes: custom };

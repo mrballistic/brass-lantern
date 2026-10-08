@@ -10,6 +10,35 @@ import type { Effect, World } from '../../src/types/world';
 import { fixtureWorld } from '../fixtures/world';
 
 describe('createGame', () => {
+  describe('hosted commands inside a compound line', () => {
+    const room = (g: ReturnType<typeof createGame>) => g.state.currentRoom;
+
+    it('“<move> then undo” undoes exactly that move, and a second undo goes back one more line', () => {
+      const game = createGame(tutorial, { seed: 1 });
+      const start = room(game);
+      game.send('open drawer');
+      game.send('north');
+      const hallway = room(game);
+      expect(hallway).not.toBe(start);
+      game.send('south then undo');
+      expect(room(game)).toBe(hallway);
+      game.send('undo');
+      expect(room(game)).toBe(start);
+      expect(game.send('undo').lines).toEqual(['[Previous turn undone.]']);
+      expect(game.send('undo').lines).toEqual(['[Nothing to undo.]']);
+    });
+
+    it('“<move> then restart” leaves nothing to undo', () => {
+      const game = createGame(tutorial, { seed: 1 });
+      game.send('open drawer');
+      game.send('north');
+      game.send('south then restart');
+      const after = structuredClone(game.state);
+      expect(game.send('undo').lines).toEqual(['[Nothing to undo.]']);
+      expect(game.state).toEqual(after);
+    });
+  });
+
   it('opens with its opening lines and plays the tutorial to the best ending', () => {
     const game = createGame(tutorial, { seed: 1 });
     expect(game.opening.length).toBeGreaterThan(0);

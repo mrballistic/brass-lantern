@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { PALETTES, PRESETS, resolveTheme, UnknownTheme, type Theme } from '../../src/theme/themes';
+import { vi } from 'vitest';
+import { checkAuthorThemes, PALETTES, PRESETS, resolveTheme, UnknownTheme, type Theme } from '../../src/theme/themes';
 
 const light = { prefersDark: false, reducedMotion: false };
 const dark = { prefersDark: true, reducedMotion: false };
@@ -80,5 +81,29 @@ describe('resolveTheme', () => {
   it('throws UnknownTheme for an unknown name', () => {
     expect(() => resolveTheme('purple', {}, {}, light)).toThrow(UnknownTheme);
     expect(() => resolveTheme('toString', {}, {}, light)).toThrow(UnknownTheme);
+  });
+});
+
+describe('an unknown palette name', () => {
+  const bad = { palette: 'mauve', effects: { ...PRESETS['crt-amber'].effects } } as unknown as Theme;
+
+  it('resolveTheme falls back to amber with one warning', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const r = resolveTheme(bad, {}, {}, light);
+    expect(r.palette).toEqual(PALETTES.amber);
+    expect(warn).toHaveBeenCalledTimes(1);
+    warn.mockRestore();
+  });
+
+  it('checkAuthorThemes repairs a theme object and a custom theme, so resolving never warns again', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const checked = checkAuthorThemes(bad, { mine: bad });
+    expect(warn).toHaveBeenCalledTimes(2);
+    warn.mockClear();
+    expect((checked.theme as Theme).palette).toBe('amber');
+    expect(checked.themes.mine.palette).toBe('amber');
+    expect(resolveTheme(checked.theme, checked.themes, {}, light).palette).toEqual(PALETTES.amber);
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
   });
 });
