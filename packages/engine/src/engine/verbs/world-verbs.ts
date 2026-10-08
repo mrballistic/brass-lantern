@@ -27,7 +27,7 @@ function handleTextVerb(action: ParsedAction, verb: WorldVerb, world: World, sta
 
 /** A verb the world declared. Null if the world has no such verb. */
 export function handleWorldVerb(action: ParsedAction, world: World, state: GameState): EngineResult | null {
-  const verb = world.verbs?.[action.action];
+  const verb = world.verbs && Object.hasOwn(world.verbs, action.action) ? world.verbs[action.action] : undefined;
   if (!verb) return null;
   if (verb.go) return handleGo(action.target ?? action.action, world, state);
   if (verb.target === 'text') return handleTextVerb(action, verb, world, state);

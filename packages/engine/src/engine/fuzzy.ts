@@ -93,16 +93,17 @@ export function fuzzyMatch(
  *  1) exact name or alias (and exact ID, which counts as one more name)
  *  2) substring of the ID, name or an alias
  *  3) the best token-prefix score, among candidates that match every typed word of 3+ letters
- * With `byId` (the intent server answers in IDs) an exact ID wins alone.
+ * With `byId` (the intent server answers in IDs) an exact ID wins alone. With `selfWords`
+ * (ASK X ABOUT ME) ME, MYSELF, SELF and YOURSELF match only a candidate named exactly that.
  */
 export function fuzzyCandidates(
   input: string,
   candidates: Array<{ id: string; name: string; aliases?: string[] }>,
-  opts: { byId?: boolean } = {},
+  opts: { byId?: boolean; selfWords?: boolean } = {},
 ): string[] {
   const needle = normalize(input);
   if (!needle) return [];
-  const self = selfMatches(needle, candidates, opts.byId);
+  const self = selfMatches(needle, candidates, opts.byId, opts.selfWords);
   if (self) return self;
   if (DIGITS.test(needle)) return byWholeNumber(needle, candidates);
   const exactId = candidates.filter((c) => normalize(c.id) === needle);
@@ -153,7 +154,7 @@ export function fuzzyMatchExit(
     se: ['southeast'],
     sw: ['southwest'],
   };
-  const expanded = synonyms[needle] ?? [needle];
+  const expanded = Object.hasOwn(synonyms, needle) ? synonyms[needle] : [needle];
   for (const label of Object.keys(exits)) {
     const n = normalize(label);
     if (expanded.includes(n) || n === needle) return label;
@@ -221,8 +222,8 @@ export function namesSelf(word: string, candidates: Candidate[], opts: { byId?: 
  * named exactly that, and the reserved IDs nothing when they come from the intent server.
  * Null when the word matches as any other.
  */
-function selfMatches(needle: string, candidates: Candidate[], byId?: boolean): string[] | null {
+function selfMatches(needle: string, candidates: Candidate[], byId?: boolean, selfWords?: boolean): string[] | null {
   if (byId && RESERVED.has(needle)) return [];
   if (!isSelfWord(needle)) return null;
-  return ALWAYS_SELF.test(needle) ? [] : candidates.filter((c) => namedExactly(needle, c)).map((c) => c.id);
+  return ALWAYS_SELF.test(needle) && !selfWords ? [] : candidates.filter((c) => namedExactly(needle, c)).map((c) => c.id);
 }

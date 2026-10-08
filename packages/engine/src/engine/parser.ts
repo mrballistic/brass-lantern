@@ -482,7 +482,7 @@ function splitClause(clause: string, verbs?: World['verbs']): string[] {
     const parsed = strictParse(piece, verbs);
     if (parsed) {
       out.push(piece);
-      listVerb = LIST_VERBS[parsed.action] ?? null;
+      listVerb = Object.hasOwn(LIST_VERBS, parsed.action) ? LIST_VERBS[parsed.action] : null;
     } else if (listVerb) {
       out.push(`${listVerb} ${piece}`);
     } else {
@@ -496,14 +496,14 @@ function parse(rawInput: string, allowBareWord: boolean, verbs?: World['verbs'])
   const input = cleanInput(rawInput)?.toLowerCase();
   if (!input) return null;
 
-  if (input in SINGLE_WORD) return SINGLE_WORD[input];
+  if (Object.hasOwn(SINGLE_WORD, input)) return SINGLE_WORD[input];
   // A verb on its own (“take”): the engine asks what for.
-  if (input in BARE_VERBS) return { action: BARE_VERBS[input] };
+  if (Object.hasOwn(BARE_VERBS, input)) return { action: BARE_VERBS[input] };
   if (input === 'exit') return { action: 'go', target: 'out', exit: true };
   // STAND and a bare GET OUT are DISEMBARK by another road (Zork's V-STAND, TAKE OUT): no vehicle guess.
   if (/^stand(?:\s+up)?$/.test(input)) return { action: 'disembark', via: 'stand' };
   if (/^get\s+(?:out|off)$/.test(input)) return { action: 'disembark', via: 'out' };
-  if (input in DIRECTIONS) return { action: 'go', target: DIRECTIONS[input] };
+  if (Object.hasOwn(DIRECTIONS, input)) return { action: 'go', target: DIRECTIONS[input] };
   if (input === 'enter') return { action: 'enter' };
   {
     const m = RE.board.test(input) ? null : input.match(RE.climb);

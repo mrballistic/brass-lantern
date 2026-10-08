@@ -21,7 +21,9 @@ export function handleAsk(action: ParsedAction, world: World, state: GameState):
   if (!person.topics || !action.indirect) return handleTalk(action.target, world, state);
   const word = action.indirect.replace(/^(?:the|my|your|his|her|a|an)\s+/i, '');
   const candidates = Object.keys(person.topics).map((k) => ({ id: k, name: k, aliases: person.topicAliases?.[k] }));
-  const [key] = fuzzyCandidates(word, candidates);
+  // ME and MYSELF are one word here: a topic keyed or aliased either way answers both.
+  const askWords = isMeWord(word) ? [word, word.toLowerCase() === 'me' ? 'myself' : 'me'] : [word];
+  const key = askWords.map((w) => fuzzyCandidates(w, candidates, { selfWords: true })[0]).find(Boolean);
   const fallback = () => ok([person.noTopic ?? talkLine(world, state, npc)]);
   if (!key) return fallback();
   const topic = person.topics[key];
