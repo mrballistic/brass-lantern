@@ -11,8 +11,13 @@ function choose(choice: Consent): void {
   if (choice === 'granted') initAnalytics();
   else if (previous === 'granted') forgetAnalytics();
 }
+
+// The site's own wording: it runs Google Analytics, so it says so.
+const TITLE = 'MEMO: RE: ANALYTICS';
+const BODY =
+  'This terminal can report visits and game completions to Google Analytics. It stores an anonymous ID in your browser to do that. Nothing is sent unless you accept. Your save game stays on this machine either way.';
 </script>
 
 <template>
-  <ConsentBanner :open="consentOpen" @choose="choose" />
+  <ConsentBanner :open="consentOpen" :title="TITLE" :body="BODY" @choose="choose" />
 </template>

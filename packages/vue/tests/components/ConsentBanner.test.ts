@@ -26,4 +26,21 @@ describe('ConsentBanner', () => {
     // Closing is the owner's call.
     expect(w.find('section').exists()).toBe(true);
   });
+
+  it('names no analytics vendor by default', () => {
+    const w = mount(ConsentBanner, { props: { open: true } });
+    expect(w.text()).not.toMatch(/google/i);
+    expect(w.find('.consent-title').text()).toBe('ANALYTICS');
+    expect(w.text()).toContain('Nothing is sent unless you accept.');
+    expect(w.find('.consent-note').text()).toBe('Change this any time: type COOKIES.');
+    expect(w.find('section').attributes('aria-label')).toBe('Analytics cookies');
+  });
+
+  it('takes the app’s own wording as props', () => {
+    const w = mount(ConsentBanner, {
+      props: { open: true, title: 'MEMO', body: 'We count visits with Acme Stats.', note: 'Type COOKIES to change it.', label: 'Acme cookies' },
+    });
+    expect(w.findAll('p').map((p) => p.text())).toEqual(['MEMO', 'We count visits with Acme Stats.', 'Type COOKIES to change it.']);
+    expect(w.find('section').attributes('aria-label')).toBe('Acme cookies');
+  });
 });
