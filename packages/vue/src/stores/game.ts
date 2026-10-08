@@ -35,6 +35,7 @@ import { PRESET_NAMES, type Theme, type ThemeName, type ThemeOverrides } from '.
 import { cookiesReply, intentEndpointOf, reportEvent, terminalTitle, type GameEvent, type GameOptions } from '../options.ts';
 import { createCatalog } from './catalog.ts';
 import { createPersistenceService } from '../services/persistence.ts';
+import { readItem, writeItem } from '../services/storage.ts';
 
 /** Used before any world cartridge is inserted, e.g. in a Z-machine-only build. */
 const EMPTY_WORLD: World = {
@@ -154,7 +155,7 @@ export function createGameStore(options: GameOptions) {
 
   function readStoredTheme(names: string[]): { base: string | null; overrides: ThemeOverrides } {
     try {
-      const raw = window.localStorage.getItem(THEME_KEY);
+      const raw = readItem(THEME_KEY);
       const v = raw ? (JSON.parse(raw) as { base?: unknown; overrides?: Record<string, unknown> }) : null;
       const base = typeof v?.base === 'string' ? matchTheme(v.base, names) : null;
       const overrides: ThemeOverrides = {};
@@ -214,14 +215,7 @@ export function createGameStore(options: GameOptions) {
       },
 
       saveTheme(): void {
-        try {
-          window.localStorage.setItem(
-            THEME_KEY,
-            JSON.stringify({ base: this.themeChosen ? this.theme.base : '', overrides: this.theme.overrides }),
-          );
-        } catch {
-          // Silent: storage may be unavailable or full.
-        }
+        writeItem(THEME_KEY, JSON.stringify({ base: this.themeChosen ? this.theme.base : '', overrides: this.theme.overrides }));
       },
 
       /** THEME [name]. */

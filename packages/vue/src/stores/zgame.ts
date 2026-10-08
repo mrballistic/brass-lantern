@@ -7,6 +7,7 @@ import {
   type StatusLine,
 } from '@brass-lantern/engine/zmachine';
 import { reportEvent, storyUrl, type GameOptions } from '../options.ts';
+import { readItem, removeItem, writeItem } from '../services/storage.ts';
 import { createCatalog } from './catalog.ts';
 import type { LocalShelf } from './cartridges.ts';
 
@@ -70,7 +71,7 @@ export function createZGameStore(options: GameOptions, local: LocalShelf) {
 
   function loadTranscript(id: string): OutputLine[] {
     try {
-      const value: unknown = JSON.parse(window.localStorage.getItem(catalog.transcriptKey(id)) ?? '[]');
+      const value: unknown = JSON.parse(readItem(catalog.transcriptKey(id)) ?? '[]');
       return Array.isArray(value) ? (value as OutputLine[]) : [];
     } catch {
       return [];
@@ -78,19 +79,11 @@ export function createZGameStore(options: GameOptions, local: LocalShelf) {
   }
 
   function saveTranscript(id: string, lines: OutputLine[]): void {
-    try {
-      window.localStorage.setItem(catalog.transcriptKey(id), JSON.stringify(lines.slice(-MAX_TRANSCRIPT)));
-    } catch {
-      // A full or blocked localStorage costs the transcript, not the game.
-    }
+    writeItem(catalog.transcriptKey(id), JSON.stringify(lines.slice(-MAX_TRANSCRIPT)));
   }
 
   function clearTranscript(id: string): void {
-    try {
-      window.localStorage.removeItem(catalog.transcriptKey(id));
-    } catch {
-      // Nothing to do.
-    }
+    removeItem(catalog.transcriptKey(id));
   }
 
   return defineStore(`${options.storagePrefix}:zgame`, {

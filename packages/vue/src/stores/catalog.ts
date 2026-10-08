@@ -1,4 +1,5 @@
 import type { Cartridge, WorldCartridge } from '@brass-lantern/engine';
+import { readItem } from '../services/storage.ts';
 
 /** One game's cartridges and the browser keys derived from its storage prefix. */
 export interface Catalog {
@@ -16,24 +17,16 @@ export interface Catalog {
   menuLines(all?: Cartridge[]): string[];
 }
 
-function stored(key: string): string | null {
-  try {
-    return window.localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
 export function createCatalog({ cartridges, storagePrefix }: { cartridges: Cartridge[]; storagePrefix: string }): Catalog {
   const lastCartridgeKey = `${storagePrefix}:cartridge`;
   const saveKeyFor = (c: WorldCartridge): string => c.saveKey ?? `${storagePrefix}:save:${c.id}`;
   const transcriptKey = (id: string): string => `${storagePrefix}:z:${id}:transcript`;
   const hasProgress = (c: Cartridge): boolean =>
-    stored(c.kind === 'world' ? saveKeyFor(c) : transcriptKey(c.id)) !== null;
+    readItem(c.kind === 'world' ? saveKeyFor(c) : transcriptKey(c.id)) !== null;
 
   function autoBootCartridge(all: Cartridge[] = cartridges): Cartridge | null {
     if (cartridges.length === 1) return cartridges[0];
-    const last = all.find((c) => c.id === stored(lastCartridgeKey));
+    const last = all.find((c) => c.id === readItem(lastCartridgeKey));
     return last && hasProgress(last) ? last : null;
   }
 
@@ -47,8 +40,8 @@ export function createCatalog({ cartridges, storagePrefix }: { cartridges: Cartr
     willResume() {
       const c = autoBootCartridge();
       if (c) return hasProgress(c);
-      const last = stored(lastCartridgeKey);
-      return last !== null && last.startsWith('local-') && stored(transcriptKey(last)) !== null;
+      const last = readItem(lastCartridgeKey);
+      return last !== null && last.startsWith('local-') && readItem(transcriptKey(last)) !== null;
     },
 
     defaultWorldCartridge: () => cartridges.find((c): c is WorldCartridge => c.kind === 'world'),

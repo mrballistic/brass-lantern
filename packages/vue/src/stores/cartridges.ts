@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { makeLine, type Cartridge, type OutputLine, type ZCodeCartridge } from '@brass-lantern/engine';
 import { IndexedDbShelf, type LoadedStory } from '@brass-lantern/engine/zmachine';
 import type { GameOptions } from '../options.ts';
+import { removeItem, writeItem } from '../services/storage.ts';
 import { createCatalog } from './catalog.ts';
 
 /**
@@ -80,11 +81,7 @@ export function createCartridgeStore(options: GameOptions, local: LocalShelf) {
 
       insert(c: Cartridge): void {
         this.activeId = c.id;
-        try {
-          window.localStorage.setItem(catalog.lastCartridgeKey, c.id);
-        } catch {
-          // Only costs the resume-on-reload.
-        }
+        writeItem(catalog.lastCartridgeKey, c.id);
       },
 
       /** Puts a story the player loaded on the shelf. Returns its cartridge, and whether the browser kept it. */
@@ -134,11 +131,7 @@ export function createCartridgeStore(options: GameOptions, local: LocalShelf) {
       },
 
       eject(): void {
-        try {
-          window.localStorage.removeItem(catalog.lastCartridgeKey);
-        } catch {
-          // Nothing to do.
-        }
+        removeItem(catalog.lastCartridgeKey);
         this.showMenu();
       },
     },
