@@ -23,8 +23,8 @@ export function createGameContext(given: GameOptions): GameContext {
   if (!given.storagePrefix) throw new Error('A game needs a storagePrefix.');
   // Checked once, here: an unknown theme or a custom theme named like a preset is a warning, never a broken game.
   const checked = checkAuthorThemes(given.theme, given.themes);
-  // A custom theme's name is kept as is (untyped JS callers use it); the store accepts any name it can resolve.
-  const options: GameOptions = { ...given, theme: checked.theme as GameOptions['theme'], themes: checked.themes };
+  // A custom theme's name is kept as is; the store accepts any name it can resolve.
+  const options: GameOptions = { ...given, theme: checked.theme, themes: checked.themes };
   const shelf = createLocalShelf(options.storagePrefix);
   // One catalog per game, shared by its stores.
   const catalog = createCatalog(options);

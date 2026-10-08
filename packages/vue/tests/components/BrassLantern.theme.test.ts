@@ -46,6 +46,17 @@ describe('the shell is the one theme root', () => {
     expect(css).not.toMatch(/\.terminal\.bl-/);
   });
 
+  it('applies a custom theme named by the theme option', async () => {
+    const parchment = { palette: 'dark' as const, effects: { bloom: false, scanlines: false, flicker: false, vignette: false, noise: false, glitch: false, decay: false } };
+    // Typed: a custom theme's name is a valid GameOptions theme.
+    const options: Partial<GameOptions> = { theme: 'parchment', themes: { parchment } };
+    const w = mount(BrassLantern, game(options));
+    await nextTick();
+    const shell = w.find('.crt-shell');
+    expect(shell.classes()).toEqual(expect.arrayContaining(ALL_OFF));
+    expect((shell.element as HTMLElement).style.getPropertyValue('--bl-bg')).toBe('#121212');
+  });
+
   it('crt-amber carries no -off classes by default', async () => {
     const w = mount(BrassLantern, game());
     await nextTick();

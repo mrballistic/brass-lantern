@@ -25,8 +25,9 @@ export interface GameOptions {
    * The author's default theme: a preset, the name of one of `themes`, or a
    * theme object. The player's THEME command wins over it. An unknown name
    * falls back to 'crt-amber' with a console warning. Default 'crt-amber'.
+   * (`string & {}` takes a custom theme's name and keeps the presets' autocompletion.)
    */
-  theme?: ThemeName | Theme;
+  theme?: ThemeName | (string & {}) | Theme;
   /** Extra named themes, offered by THEME beside the presets. One named like a preset is ignored, with a warning. */
   themes?: Record<string, Theme>;
   /** The app's (consent-gated) analytics. */
