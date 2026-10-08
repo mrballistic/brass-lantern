@@ -1,11 +1,11 @@
 import { defineStore } from 'pinia';
 import { makeLine } from '@brass-lantern/engine';
-import type { GameOptions } from '../options';
+import type { GameOptions } from '../options.ts';
 import type { Cartridge, ZCodeCartridge } from '@brass-lantern/engine';
 import type { OutputLine } from '@brass-lantern/engine';
 import { IndexedDbShelf } from '@brass-lantern/engine/zmachine';
 import type { LoadedStory } from '@brass-lantern/engine/zmachine';
-import { createCatalog } from './catalog';
+import { createCatalog } from './catalog.ts';
 
 /**
  * One game's shelf: the stories the player loaded, in IndexedDB. One the browser

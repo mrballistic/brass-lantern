@@ -1,5 +1,5 @@
 import type { Cartridge } from '@brass-lantern/engine';
-import type { Theme, ThemeName } from './theme/themes';
+import type { Theme, ThemeName } from './theme/themes.ts';
 
 /** What a game reports to the app's analytics. */
 export type GameEvent = 'game_start' | 'game_completed' | 'session_resumed';

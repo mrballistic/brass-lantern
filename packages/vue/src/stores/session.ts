@@ -1,9 +1,9 @@
 import { computed } from 'vue';
 import { makeLine } from '@brass-lantern/engine';
-import { cookiesReply } from '../options';
+import { cookiesReply } from '../options.ts';
 import type { Cartridge } from '@brass-lantern/engine';
 import { readStoryFile, type StoryFileResult } from '@brass-lantern/engine/zmachine';
-import { useGameContext, type GameContext } from './context';
+import { useGameContext, type GameContext } from './context.ts';
 
 export type SessionMode = 'menu' | 'world' | 'zcode';
 

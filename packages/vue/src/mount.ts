@@ -1,7 +1,7 @@
 import { createApp, h, type Component } from 'vue';
 import { createPinia } from 'pinia';
 import BrassLantern from './components/BrassLantern.vue';
-import type { GameOptions } from './options';
+import type { GameOptions } from './options.ts';
 
 /**
  * Mounts one game on `el` (an element or a selector), in its own Vue app with

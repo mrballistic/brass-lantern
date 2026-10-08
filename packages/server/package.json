@@ -24,12 +24,12 @@
     ".": {
       "@brass-lantern/source": "./src/lib.ts",
       "types": "./dist/lib.d.ts",
-      "import": "./dist/lib.js"
+      "default": "./dist/lib.js"
     },
     "./express": {
       "@brass-lantern/source": "./src/express.ts",
       "types": "./dist/express.d.ts",
-      "import": "./dist/express.js"
+      "default": "./dist/express.js"
     },
     "./package.json": "./package.json"
   },

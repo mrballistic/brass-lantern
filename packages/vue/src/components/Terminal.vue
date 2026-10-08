@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
-import { terminalTitle } from '../options';
-import { useGameContext } from '../stores/context';
-import { useSession } from '../stores/session';
-import { useTypewriter } from '../composables/useTypewriter';
+import { terminalTitle } from '../options.ts';
+import { useGameContext } from '../stores/context.ts';
+import { useSession } from '../stores/session.ts';
+import { useTypewriter } from '../composables/useTypewriter.ts';
 import type { OutputLine } from '@brass-lantern/engine';
 
 const game = useGameContext();

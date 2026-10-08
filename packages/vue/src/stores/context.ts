@@ -1,9 +1,9 @@
 import { inject, type InjectionKey } from 'vue';
-import type { GameOptions } from '../options';
-import { createCatalog, type Catalog } from './catalog';
-import { createCartridgeStore, createLocalShelf, type LocalShelf } from './cartridges';
-import { createGameStore } from './game';
-import { createZGameStore } from './zgame';
+import type { GameOptions } from '../options.ts';
+import { createCatalog, type Catalog } from './catalog.ts';
+import { createCartridgeStore, createLocalShelf, type LocalShelf } from './cartridges.ts';
+import { createGameStore } from './game.ts';
+import { createZGameStore } from './zgame.ts';
 
 /** Everything one game on the page needs: its options, keys, shelf and stores. */
 export interface GameContext {

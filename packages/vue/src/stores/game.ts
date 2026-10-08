@@ -3,9 +3,9 @@ import { defineStore } from 'pinia';
 import { saveKeyFor, type GameState, type OutputLine, type ParsedAction } from '@brass-lantern/engine';
 import type { World } from '@brass-lantern/engine';
 import type { WorldCartridge } from '@brass-lantern/engine';
-import { PRESETS, type Theme, type ThemeName, type ThemeOverrides } from '../theme/themes';
-import { cookiesReply, intentEndpointOf, reportEvent, terminalTitle, type GameEvent, type GameOptions } from '../options';
-import { createCatalog } from './catalog';
+import { PRESETS, type Theme, type ThemeName, type ThemeOverrides } from '../theme/themes.ts';
+import { cookiesReply, intentEndpointOf, reportEvent, terminalTitle, type GameEvent, type GameOptions } from '../options.ts';
+import { createCatalog } from './catalog.ts';
 import {
   captureLine,
   execute,
@@ -23,7 +23,7 @@ import type { EngineResult } from '@brass-lantern/engine';
 import { buildContext, parseIntentRemote } from '@brass-lantern/engine';
 import { setScriptFreeze } from '@brass-lantern/engine';
 import { makeLine } from '@brass-lantern/engine';
-import { createPersistenceService } from '../services/persistence';
+import { createPersistenceService } from '../services/persistence.ts';
 
 /** Used before any world cartridge is inserted, e.g. in a Z-machine-only build. */
 const EMPTY_WORLD: World = {

@@ -3,11 +3,11 @@ import type { OutputLine } from '@brass-lantern/engine';
 import type { ZCodeCartridge } from '@brass-lantern/engine';
 import type { StatusLine } from '@brass-lantern/engine/zmachine';
 import { makeLine } from '@brass-lantern/engine';
-import { reportEvent, storyUrl, type GameOptions } from '../options';
+import { reportEvent, storyUrl, type GameOptions } from '../options.ts';
 import { LocalStorageDialog } from '@brass-lantern/engine/zmachine';
 import { localStorageSaveStore } from '@brass-lantern/engine/zmachine';
-import { createCatalog } from './catalog';
-import type { LocalShelf } from './cartridges';
+import { createCatalog } from './catalog.ts';
+import type { LocalShelf } from './cartridges.ts';
 import type { SessionEvents } from '@brass-lantern/engine/zmachine';
 
 const MAX_TRANSCRIPT = 500;

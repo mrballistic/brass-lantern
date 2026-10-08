@@ -2,9 +2,9 @@
 import { ref, onMounted, onBeforeUnmount, provide, watch } from 'vue';
 import CrtBootSequence from './CrtBootSequence.vue';
 import Terminal from './Terminal.vue';
-import type { GameOptions } from '../options';
-import { createGameContext, GAME_CONTEXT } from '../stores/context';
-import { useTheme } from '../theme/useTheme';
+import type { GameOptions } from '../options.ts';
+import { createGameContext, GAME_CONTEXT } from '../stores/context.ts';
+import { useTheme } from '../theme/useTheme.ts';
 
 // One game: its shell (the one theme root, holding the overlays, the boot
 // sequence and the terminal, so its classes and variables reach all of them),

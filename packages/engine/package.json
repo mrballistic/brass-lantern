@@ -24,24 +24,24 @@
     ".": {
       "@brass-lantern/source": "./src/index.ts",
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "default": "./dist/index.js"
     },
     "./zmachine": {
       "@brass-lantern/source": "./src/zmachine/index.ts",
       "types": "./dist/zmachine/index.d.ts",
       "node": "./dist/zmachine/node.js",
-      "import": "./dist/zmachine/index.js"
+      "default": "./dist/zmachine/index.js"
     },
     "./zmachine/session": {
       "@brass-lantern/source": "./src/zmachine/session.ts",
       "types": "./dist/zmachine/session.d.ts",
       "node": "./dist/zmachine/session-node.js",
-      "import": "./dist/zmachine/session.js"
+      "default": "./dist/zmachine/session.js"
     },
     "./worlds": {
       "@brass-lantern/source": "./src/worlds/index.ts",
       "types": "./dist/worlds/index.d.ts",
-      "import": "./dist/worlds/index.js"
+      "default": "./dist/worlds/index.js"
     },
     "./package.json": "./package.json"
   },

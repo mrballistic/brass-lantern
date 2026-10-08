@@ -1,5 +1,5 @@
 import { onBeforeUnmount, ref, toValue, watchEffect, type MaybeRefOrGetter, type Ref } from 'vue';
-import { resolveTheme, type Theme, type ThemeName, type ThemeOverrides } from './themes';
+import { resolveTheme, type Theme, type ThemeName, type ThemeOverrides } from './themes.ts';
 
 export interface UseThemeOptions {
   theme: MaybeRefOrGetter<ThemeName | Theme | string>;

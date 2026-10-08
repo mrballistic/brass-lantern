@@ -153,6 +153,23 @@ try {
     check('server: imports in Node without express', false, error.stderr || String(error));
   }
 
+  // CommonJS consumers (an Express app, say): require() of an ES module, Node >= 22.12.
+  writeFileSync(
+    join(app, 'consumer.cjs'),
+    `const engine = require('@brass-lantern/engine');
+const { tutorial } = require('@brass-lantern/engine/worlds');
+const server = require('@brass-lantern/server');
+console.log(JSON.stringify({ createGame: typeof engine.createGame, gameOver: engine.createGame(tutorial).send('look').gameOver, parseIntent: typeof server.parseIntent }));
+`,
+  );
+  try {
+    const out = run(process.execPath, ['consumer.cjs'], app).trim();
+    const result = JSON.parse(out);
+    check("cjs: require('@brass-lantern/engine') and require('@brass-lantern/server') work", result.createGame === 'function' && result.gameOver === false && result.parseIntent === 'function', out);
+  } catch (error) {
+    check('cjs: require() of the engine and the server', false, error.stderr || String(error));
+  }
+
   writeFileSync(
     join(app, 'consumer.ts'),
     `import { createGame, auditWorld, type EngineReply, type World, type GameState } from '@brass-lantern/engine';
@@ -208,6 +225,14 @@ export const summary: [boolean, number] = [reply.gameOver, problems.length];
     check('server/express: exposes intentRoute, which builds a router', result.intentRoute === 'function' && result.router === 'function', out);
   } catch (error) {
     check('server/express: imports with express installed', false, error.stderr || String(error));
+  }
+
+  try {
+    writeFileSync(join(app, 'consumer-express.cjs'), "const { intentRoute } = require('@brass-lantern/server/express');\nconsole.log(typeof intentRoute({ apiKey: 'k' }));\n");
+    const out = run(process.execPath, ['consumer-express.cjs'], app).trim();
+    check("cjs: require('@brass-lantern/server/express') builds a router", out === 'function', out);
+  } catch (error) {
+    check("cjs: require('@brass-lantern/server/express')", false, error.stderr || String(error));
   }
 
   try {
@@ -307,6 +332,33 @@ void router;
   writeFileSync(join(app, 'tsconfig.bundler.json'), JSON.stringify(bundler, null, 2));
   const bundlerErrors = tsc(app, 'tsconfig.bundler.json');
   check('types: all three packages resolve under Bundler (strict, no skipLibCheck)', bundlerErrors === '', bundlerErrors);
+
+  // Under NodeNext, unresolvable relative specifiers in the vue package's
+  // .d.ts would make its types silently `any`; the expected errors catch that.
+  writeFileSync(
+    join(app, 'consumer-vue-nodenext.ts'),
+    `import { BrassLantern, createGameStore, mountGame, type GameOptions } from '@brass-lantern/vue';
+import type { ResolvedTheme } from '@brass-lantern/vue';
+
+// @ts-expect-error not an option
+export const o: GameOptions = { cartridges: [], storagePrefix: 'x', bogus: 1 };
+// @ts-expect-error a store factory isn't a number
+export const n: number = createGameStore;
+// @ts-expect-error mountGame needs options
+mountGame('#app');
+// @ts-expect-error a component isn't a number (the .vue declarations resolve)
+export const b: number = BrassLantern;
+export const ok: GameOptions = { cartridges: [], storagePrefix: 'x', storyBaseUrl: '/', devChecks: true };
+export type T = ResolvedTheme;
+`,
+  );
+  const vueNodeNext = {
+    compilerOptions: { ...nodeNext.compilerOptions, lib: ['ES2022', 'DOM', 'DOM.Iterable'], skipLibCheck: true },
+    files: ['consumer-vue-nodenext.ts'],
+  };
+  writeFileSync(join(app, 'tsconfig.vue-nodenext.json'), JSON.stringify(vueNodeNext, null, 2));
+  const vueNodeNextErrors = tsc(app, 'tsconfig.vue-nodenext.json');
+  check('types: the vue package resolves under NodeNext (its types aren’t any)', vueNodeNextErrors === '', vueNodeNextErrors);
 } catch (error) {
   check('the scratch project', false, error.stderr || error.stack || String(error));
 } finally {
