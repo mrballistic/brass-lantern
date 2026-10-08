@@ -186,7 +186,7 @@ export function conditionProblems(condition: string, world: World): string[] {
         if (value !== 'player' && value !== 'number' && !item(value)) noItem();
         break;
       case 'direction':
-        if (!/^(?:north|south|east|west|northeast|northwest|southeast|southwest|up|down)$/.test(value)) problems.push(`unknown condition “${body}”`);
+        if (!/^[a-z][a-z _-]*$/.test(value)) problems.push(`unknown condition “${body}”`);
         break;
       case 'number':
         if (!/^-?\d+$/.test(value)) problems.push(`unknown condition “${body}”`);

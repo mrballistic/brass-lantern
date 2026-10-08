@@ -2,9 +2,10 @@ import type { GameState, ParsedAction } from '../../types/game.ts';
 import type { World } from '../../types/world.ts';
 import { whichQuestion } from '../ask.ts';
 import { evaluateCondition } from '../conditions.ts';
-import { exitTarget } from '../describe.ts';
+import { exitTarget, npcThe } from '../describe.ts';
+import { exitRefusal } from './movement.ts';
 import { fuzzyCandidates, fuzzyMatchExit, isMeWord, isSelfWord, namesSelf } from '../fuzzy.ts';
-import { AskSignal, isAwake, isInside, isNpcHidden, isOpen, matchNpc, moveItem, needObject, nextPlacing, npcRoom, npcScope, npcsSeen, npcStateOf, pickItem, PLAYER } from '../model.ts';
+import { AskSignal, isAwake, isInside, isNpcHidden, matchNpc, moveItem, needObject, nextPlacing, npcRoom, npcScope, npcsSeen, npcStateOf, pickItem, PLAYER } from '../model.ts';
 import { fallbackParse, readsNumber } from '../parser.ts';
 import { miss, ok, type EngineResult } from '../result.ts';
 import { runEventKey, turnHalted } from '../effects.ts';
@@ -180,7 +181,7 @@ function obey(
   const item = ids.target && world.items[ids.target] ? ids.target : null;
   const holds = item !== null && isInside(state, item, npc);
   // Why it can't, by name: “The robot can’t take the dial.”
-  const who = `The ${person.name}`;
+  const who = npcThe(world, npc);
   const thing = item ? `the ${world.items[item].name}` : 'that';
   const lacks = () => miss(item ? `${who} doesn’t have ${thing}.` : `${who} can’t ${verb} that.`);
   switch (verb) {
@@ -227,12 +228,8 @@ function npcExit(dir: string | undefined, room: string, world: World, state: Gam
   const label = dir ? fuzzyMatchExit(dir, exits) : null;
   if (!label) return null;
   const exit = exits[label];
-  if (typeof exit !== 'string') {
-    const denied = exit.denials?.find((d) => evaluateCondition(d.if, state, world));
-    if (denied) return { refused: denied.text };
-    if (exit.if && !evaluateCondition(exit.if, state, world)) return { refused: exit.denial ?? 'You can’t go that way.' };
-    if (exit.door && !isOpen(world, state, exit.door)) return { refused: `The ${world.items[exit.door]?.name ?? exit.door} is closed.` };
-  }
+  const why = exitRefusal(exit, world, state);
+  if (why !== null) return { refused: why };
   const to = exitTarget(exit);
   return to && world.rooms[to] ? { to } : { refused: (typeof exit !== 'string' && exit.denial) || 'You can’t go that way.' };
 }

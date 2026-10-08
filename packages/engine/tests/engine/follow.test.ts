@@ -28,6 +28,9 @@ describe('FOLLOW (2.1.0)', () => {
   it('FOLLOW a character with no rule points at the order form', () => {
     expect(text(world, 'follow samir')).toBe('You’d rather The Samir came to you. Try SAMIR, FOLLOW ME.');
   });
+  it('FOLLOW a character with article "" uses the bare name', () => {
+    expect(text(withNpc(world, 'samir', { article: '' }), 'follow samir')).toBe('You’d rather Samir came to you. Try SAMIR, FOLLOW ME.');
+  });
   it('FOLLOW a thing', () => {
     expect(text(world, 'follow lamp')).toBe('You can’t follow that.');
   });

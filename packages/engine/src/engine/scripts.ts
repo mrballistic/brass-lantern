@@ -4,8 +4,9 @@ import { fightStrength } from './combat.ts';
 import { fallbackParse } from './parser.ts';
 import { evaluateCondition } from './conditions.ts';
 import { exitTarget } from './describe.ts';
+import { exitRefusal } from './verbs/movement.ts';
 import { fuzzyCandidates } from './fuzzy.ts';
-import { childrenOf, isCarried, isHeld, isLit, isNpcHidden, isNpcIn, isOpen, isReachable, isWater, parentOf, terrainOf } from './model.ts';
+import { childrenOf, isCarried, isHeld, isLit, isNpcHidden, isNpcIn, isReachable, isWater, parentOf, terrainOf } from './model.ts';
 import { nextRandom, roll } from './rng.ts';
 
 // The code hatch: a world's own functions for behavior its data can't express.
@@ -55,7 +56,7 @@ export interface ScriptContext {
   terrain(room?: string): string;
   /** Does the condition hold now? (The engine's own parser; scripts never parse conditions.) */
   test(condition: string): boolean;
-  /** The room's exits the player could take now: the exit's `if` holds and its door is open. */
+  /** The room's exits the player could take now: no denial holds, the exit's `if` holds and its door is open. */
   exits(room: string): Array<{ direction: string; to: string }>;
   /** Reads words as an item, as the parser would (`here`: within reach, the default; `held`; `all`). Null if none matches. */
   resolve(words: string, scope?: 'here' | 'held' | 'all'): string | null;
@@ -167,16 +168,13 @@ export function scriptSteps(name: string, arg: string | undefined, world: World,
   return steps ?? [];
 }
 
-/** A room's exits that lead somewhere and could be taken now: `if` holds, door open. */
+/** A room's exits that lead somewhere and could be taken now (`exitRefusal` is null). */
 function passableExits(world: World, state: GameState, room: string): Array<{ direction: string; to: string }> {
   const out: Array<{ direction: string; to: string }> = [];
   for (const [direction, exit] of Object.entries(world.rooms[room]?.exits ?? {})) {
     const to = exitTarget(exit);
     if (to === undefined) continue;
-    if (typeof exit !== 'string') {
-      if (exit.if && !evaluateCondition(exit.if, state, world)) continue;
-      if (exit.door && !isOpen(world, state, exit.door)) continue;
-    }
+    if (exitRefusal(exit, world, state) !== null) continue;
     out.push({ direction, to });
   }
   return out;

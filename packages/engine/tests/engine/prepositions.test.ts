@@ -223,7 +223,8 @@ describe('prepositions (6a)', () => {
     });
     it('conditionProblems accepts the command conditions', () => {
       expect(conditionProblems('target:player & indirect:lamp & direction:north', fixtureWorld)).toEqual([]);
-      expect(conditionProblems('direction:sideways', fixtureWorld)).toHaveLength(1);
+      expect(conditionProblems('direction:basement', fixtureWorld)).toEqual([]);
+      expect(conditionProblems('direction:North9', fixtureWorld)).toHaveLength(1);
     });
   });
 });

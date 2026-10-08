@@ -119,15 +119,24 @@ function enterRoomInner(targetId: string, world: World, state: GameState, opts: 
 /** An exit's own refusal (V-WALK's RFATAL): it changes nothing, and skips the room's end routine. */
 const refuse = (line: string): EngineResult => ({ ...ok([line]), fatal: true });
 
+/**
+ * Why an exit can't be taken now, in the words the player hears: a denial that holds, a failing `if`, a closed
+ * door, in that order. Null when it's passable. The one check the player, characters and `ctx.exits` share.
+ */
+export function exitRefusal(exit: string | Exit, world: World, state: GameState): string | null {
+  if (typeof exit === 'string') return null;
+  const refused = exit.denials?.find((d) => evaluateCondition(d.if, state, world));
+  if (refused) return refused.text;
+  if (exit.if && !evaluateCondition(exit.if, state, world)) return exit.denial ?? 'You can’t go that way.';
+  if (exit.door && !isOpen(world, state, exit.door)) return `The ${world.items[exit.door]?.name ?? exit.door} is closed.`;
+  return null;
+}
+
 /** Follow one exit. Every refusal comes before the move, so it changes nothing. */
 function followExit(exit: string | Exit, world: World, state: GameState): EngineResult {
-  if (typeof exit !== 'string') {
-    const refused = exit.denials?.find((d) => evaluateCondition(d.if, state, world));
-    if (refused) return refuse(refused.text);
-    if (exit.if && !evaluateCondition(exit.if, state, world)) return refuse(exit.denial ?? 'You can’t go that way.');
-    if (exit.door && !isOpen(world, state, exit.door)) return refuse(`The ${world.items[exit.door]?.name ?? exit.door} is closed.`);
-    if (!exit.to) return refuse(exit.denial ?? 'You can’t go that way.');
-  }
+  const why = exitRefusal(exit, world, state);
+  if (why !== null) return refuse(why);
+  if (typeof exit !== 'string' && !exit.to) return refuse(exit.denial ?? 'You can’t go that way.');
   const to = exitTarget(exit)!;
   // GOTO's own refusals aren't fatal (they RFALSE): the room's end routine still runs.
   const refused = vehicleRefusal(to, world, state);

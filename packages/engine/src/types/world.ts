@@ -219,6 +219,8 @@ export interface Container {
 export interface NPC {
   name: string;
   description: string;
+  /** Brass style: the article before the name in lines like “The robot can’t go that way.” Default “the”; '' for a proper name. */
+  article?: string;
   /** Item ID → event fired when the player gives that item. The item is handed over. */
   onGive?: Record<string, string>;
   /** Item ID → line for a specific gift they won't take. The player keeps the item. */

@@ -4,7 +4,7 @@ import { heldItems, matchNpc, namesPlayer, needObject, pickItem, PLAYER, reachab
 import { setCommand } from '../scripts.ts';
 import { stopLine } from '../effects.ts';
 import { miss, ok, type EngineResult } from '../result.ts';
-import { applyRule, findRule } from '../rules.ts';
+import { applyRule, findRule, withRules } from '../rules.ts';
 import { handleGo } from './movement.ts';
 import { withArticle } from '../describe.ts';
 import { nextRandom } from '../rng.ts';
@@ -29,7 +29,10 @@ function handleTextVerb(action: ParsedAction, verb: WorldVerb, world: World, sta
 export function handleWorldVerb(action: ParsedAction, world: World, state: GameState): EngineResult | null {
   const verb = world.verbs && Object.hasOwn(world.verbs, action.action) ? world.verbs[action.action] : undefined;
   if (!verb) return null;
-  if (verb.go) return handleGo(action.target ?? action.action, world, state);
+  if (verb.go) {
+    const target = action.target ?? action.action;
+    return withRules('go', { ...action, action: 'go', target }, world, state, () => handleGo(target, world, state));
+  }
   if (verb.target === 'text') return handleTextVerb(action, verb, world, state);
   const reach = reachableItems(world, state);
   const scope = verb.held ? heldItems(world, state) : reach;
