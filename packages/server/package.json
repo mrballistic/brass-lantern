@@ -6,7 +6,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/mrballistic/brass-lantern.git",
+    "url": "git+https://github.com/mrballistic/brass-lantern.git",
     "directory": "packages/server"
   },
   "homepage": "https://mrballistic.github.io/brass-lantern/",
