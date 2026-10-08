@@ -85,9 +85,10 @@ export function createGame(world: World, options: { seed?: number } = {}): Game 
   let conv = newConversation();
 
   /** This line's UNDO snapshot, kept if any piece of the line changes the game. */
-  let line = { snapshot: { state: structuredClone(state), outputLength: 0 }, changed: false };
+  const snapshotLine = () => ({ snapshot: { state: structuredClone(state), outputLength: 0 }, changed: false });
+  let line = snapshotLine();
   const beginLine = () => {
-    line = { snapshot: { state: structuredClone(state), outputLength: 0 }, changed: false };
+    line = snapshotLine();
   };
   const endLine = () => {
     if (!line.changed) return;
@@ -99,14 +100,15 @@ export function createGame(world: World, options: { seed?: number } = {}): Game 
   /** The words a UI handles itself. Returns their reply, or null for anything else. */
   function hostCommand(command: string): string[] | null {
     const lower = command.trim().toLowerCase();
-    // Like the Vue store, save the line so far first: UNDO then undoes it, RESTART discards it.
-    if (lower === 'restart' || lower === 'undo') endLine();
+    // Like the Vue store, RESTART and UNDO save the line so far first: UNDO then undoes it, RESTART discards it.
     if (lower === 'restart') {
+      endLine();
       state = fresh();
       conv = newConversation();
       return [...openingLines(world, state)];
     }
     if (lower === 'undo') {
+      endLine();
       const snapshot = conv.history.pop();
       if (!snapshot) return ['[Nothing to undo.]'];
       state = snapshot.state;
