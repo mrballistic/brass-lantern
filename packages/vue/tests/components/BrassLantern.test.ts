@@ -127,6 +127,30 @@ describe('BrassLantern: two games on one page', () => {
     expect(b.find('.consent-open').exists()).toBe(false);
   });
 
+  it('the COOKIES link calls openConsent as a method, and a throw is only logged', async () => {
+    class Analytics {
+      opened = 0;
+      onEvent(): void {}
+      openConsent(): void {
+        this.opened++;
+        if (this.opened > 1) throw new Error('boom');
+      }
+    }
+    const analytics = new Analytics();
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const w = mount(BrassLantern, {
+      props: { options: { ...A, analytics } },
+      global: { plugins: [createPinia()] },
+    });
+    await settle();
+    await w.find('.consent-open').trigger('click');
+    expect(analytics.opened).toBe(1);
+    await w.find('.consent-open').trigger('click');
+    expect(analytics.opened).toBe(2);
+    expect(error).toHaveBeenCalledWith('Analytics callback failed:', expect.any(Error));
+    error.mockRestore();
+  });
+
   it('renders its slot inside the shell once booted', async () => {
     const w = mount(BrassLantern, {
       props: { options: A },

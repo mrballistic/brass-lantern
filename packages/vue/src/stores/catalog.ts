@@ -6,6 +6,8 @@ export interface Catalog {
   /** The cartridge last inserted, so a reload can go straight back to it. */
   lastCartridgeKey: string;
   saveKeyFor(c: WorldCartridge): string;
+  /** The native-world autosave before any world cartridge is inserted (a Z-machine-only game). */
+  defaultSaveKey: string;
   transcriptKey(id: string): string;
   /** Is there a game in progress to come back to? */
   hasProgress(c: Cartridge): boolean;
@@ -39,6 +41,7 @@ export function createCatalog({ cartridges, storagePrefix }: { cartridges: Cartr
   return {
     lastCartridgeKey,
     saveKeyFor,
+    defaultSaveKey: `${storagePrefix}:save`,
     transcriptKey,
     hasProgress,
     autoBootCartridge,

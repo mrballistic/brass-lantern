@@ -87,10 +87,23 @@ export function storyUrl(options: GameOptions, path: string): string {
   return `${base.endsWith('/') ? base : `${base}/`}${path}`;
 }
 
+/**
+ * Opens the app's consent settings: called as a method, so a class instance
+ * keeps its `this`. A callback that throws is logged, never breaks the game.
+ * Returns whether it opened.
+ */
+export function openConsent(options: GameOptions): boolean {
+  try {
+    options.analytics?.openConsent?.();
+    return true;
+  } catch (error) {
+    console.error('Analytics callback failed:', error);
+    return false;
+  }
+}
+
 /** The COOKIES command: open the app's consent settings, or say there's nothing to consent to. */
 export function cookiesReply(options: GameOptions): string {
-  const open = options.analytics?.openConsent;
-  if (!open) return '[This build has no analytics. Nothing is collected.]';
-  open();
-  return '[Analytics settings opened]';
+  if (!options.analytics?.openConsent) return '[This build has no analytics. Nothing is collected.]';
+  return openConsent(options) ? '[Analytics settings opened]' : '[Analytics settings couldn’t be opened.]';
 }

@@ -26,13 +26,15 @@ export function createGameContext(given: GameOptions): GameContext {
   // A custom theme's name is kept as is (untyped JS callers use it); the store accepts any name it can resolve.
   const options: GameOptions = { ...given, theme: checked.theme as GameOptions['theme'], themes: checked.themes };
   const shelf = createLocalShelf(options.storagePrefix);
+  // One catalog per game, shared by its stores.
+  const catalog = createCatalog(options);
   return {
     options,
-    catalog: createCatalog(options),
+    catalog,
     shelf,
-    useGameStore: createGameStore(options),
-    useZGameStore: createZGameStore(options, shelf),
-    useCartridgeStore: createCartridgeStore(options, shelf),
+    useGameStore: createGameStore(options, catalog),
+    useZGameStore: createZGameStore(options, shelf, catalog),
+    useCartridgeStore: createCartridgeStore(options, shelf, catalog),
   };
 }
 

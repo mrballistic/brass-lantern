@@ -8,7 +8,7 @@ import {
 } from '@brass-lantern/engine/zmachine';
 import { reportEvent, storyUrl, type GameOptions } from '../options.ts';
 import { readItem, removeItem, writeItem } from '../services/storage.ts';
-import { createCatalog } from './catalog.ts';
+import { createCatalog, type Catalog } from './catalog.ts';
 import type { LocalShelf } from './cartridges.ts';
 
 const MAX_TRANSCRIPT = 500;
@@ -35,9 +35,8 @@ async function loadInterpreter(): Promise<void> {
 
 const ENDED = '[The story has ended. Type PLAY to start again.]';
 
-/** The store for one game's Z-machine stories, by its storage prefix (see createGameStore). */
-export function createZGameStore(options: GameOptions, local: LocalShelf) {
-  const catalog = createCatalog(options);
+/** The store for one game's Z-machine stories, by its storage prefix (see createGameStore). A game's context passes its own catalog. */
+export function createZGameStore(options: GameOptions, local: LocalShelf, catalog: Catalog = createCatalog(options)) {
 
   const defaultDeps: ZGameDeps = {
     async fetchStory(url) {

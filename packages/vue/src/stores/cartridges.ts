@@ -3,7 +3,7 @@ import { makeLine, type Cartridge, type OutputLine, type ZCodeCartridge } from '
 import { IndexedDbShelf, type LoadedStory } from '@brass-lantern/engine/zmachine';
 import type { GameOptions } from '../options.ts';
 import { removeItem, writeItem } from '../services/storage.ts';
-import { createCatalog } from './catalog.ts';
+import { createCatalog, type Catalog } from './catalog.ts';
 
 /**
  * One game's shelf: the stories the player loaded, in IndexedDB. One the browser
@@ -43,10 +43,12 @@ const asCartridge = (s: { id: string; title: string; format: string }): ZCodeCar
   local: true,
 });
 
-/** Which cartridge is inserted, and the menu shown when none is: one game's, by its storage prefix. */
-export function createCartridgeStore(options: GameOptions, local: LocalShelf) {
+/**
+ * Which cartridge is inserted, and the menu shown when none is: one game's, by
+ * its storage prefix. A game's context passes its own catalog.
+ */
+export function createCartridgeStore(options: GameOptions, local: LocalShelf, catalog: Catalog = createCatalog(options)) {
   const { cartridges } = options;
-  const catalog = createCatalog(options);
   const { unstored } = local;
   const theShelf = local.shelf;
 

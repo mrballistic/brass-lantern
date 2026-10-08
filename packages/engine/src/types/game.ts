@@ -126,6 +126,4 @@ export interface SavedState {
   outputHistory: OutputLine[];
 }
 
-/** The autosave key for a game whose storage is namespaced by `prefix`. */
-export const saveKeyFor = (prefix: string): string => `${prefix}:save`;
 export const SAVE_VERSION = '2.0' as const;

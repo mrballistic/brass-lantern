@@ -575,6 +575,38 @@ describe('useGameStore', () => {
       expect(store.game.moveCount).toBe(moves);
     });
 
+    it('COOKIES calls openConsent as a method, so a class instance keeps its this', async () => {
+      class Analytics {
+        opened = 0;
+        onEvent(): void {}
+        openConsent(): void {
+          this.opened++;
+        }
+      }
+      const analytics = new Analytics();
+      setActivePinia(createPinia());
+      const store = createGameStore({ ...fixtureOptions, analytics })();
+      store.initialize();
+      await store.submit('cookies');
+      expect(analytics.opened).toBe(1);
+      expect(store.output.at(-1)!.text).toBe('[Analytics settings opened]');
+    });
+
+    it('an openConsent that throws is logged and never escapes submit', async () => {
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+      setActivePinia(createPinia());
+      const openConsent = () => {
+        throw new Error('boom');
+      };
+      const store = createGameStore({ ...fixtureOptions, analytics: { onEvent: vi.fn(), openConsent } })();
+      store.initialize();
+      await expect(store.submit('cookies')).resolves.toBeUndefined();
+      expect(error).toHaveBeenCalledWith('Analytics callback failed:', expect.any(Error));
+      expect(store.output.at(-1)!.text).toBe('[Analytics settings couldn’t be opened.]');
+      await store.submit('look');
+      expect(store.output.some((l) => l.text.includes('Bedroom'))).toBe(true);
+    });
+
     it('calls the intent client for unparseable input and runs the returned action', async () => {
       const store = freshStore();
       store.initialize();
@@ -940,6 +972,27 @@ describe('theme commands', () => {
       expect(store.theme.base).toBe('Parchment');
     });
 
+    it('custom theme names match however they are spaced, and are restored', async () => {
+      const plain = { palette: 'green' as const, effects: { bloom: true, scanlines: true, flicker: true, vignette: true, noise: true, glitch: true, decay: true } };
+      for (const name of ['neon_night', 'Neon Night']) {
+        localStorage.clear();
+        const store = freshStore();
+        store.initialize();
+        store.configureThemes('crt-amber', { [name]: plain });
+        await store.submit('theme neon night');
+        expect(store.theme.base).toBe(name);
+        await store.submit('theme green');
+        await store.submit('THEME NEON_NIGHT');
+        expect(last(store)).toBe(`Theme: ${name}.`);
+        expect(store.theme.base).toBe(name);
+        const again = freshStore();
+        again.initialize();
+        again.configureThemes('crt-amber', { [name]: plain });
+        expect(again.theme.base).toBe(name);
+        expect(again.themeBase).toBe(name);
+      }
+    });
+
     it('BLOOM and EFFECTS set the overrides', async () => {
       const store = freshStore();
       store.initialize();
@@ -1159,9 +1212,7 @@ describe('createGameStore options', () => {
     expect(b.themeBase).toBe('crt-amber');
     a.configureThemes('simple', { parchment });
     expect(a.themeBase).toBe('simple');
-    a.themeCommand(undefined);
-    b.themeCommand(undefined);
-    expect(a.output.at(-1)!.text).toContain('parchment');
-    expect(b.output.at(-1)!.text).not.toContain('parchment');
+    expect(a.themeCommand(undefined)).toContain('parchment');
+    expect(b.themeCommand(undefined)).not.toContain('parchment');
   });
 });

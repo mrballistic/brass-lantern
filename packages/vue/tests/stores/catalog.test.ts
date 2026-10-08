@@ -16,6 +16,7 @@ const {
   lastCartridgeKey: LAST_CARTRIDGE_KEY,
   menuLines,
   saveKeyFor,
+  defaultSaveKey,
   transcriptKey,
   willResume,
 } = createCatalog({ cartridges, storagePrefix: 'test' });
@@ -27,6 +28,8 @@ describe('cartridges', () => {
     expect(saveKeyFor(cartridges[0] as never)).toBe('test:save:house');
     expect(saveKeyFor({ ...(cartridges[0] as never), saveKey: 'custom' })).toBe('custom');
     expect(transcriptKey('story')).toBe('test:z:story:transcript');
+    // Before any world cartridge is inserted (a Z-machine-only game): the key earlier versions used.
+    expect(defaultSaveKey).toBe('test:save');
   });
 
   it('knows which cartridges have a game in progress', () => {

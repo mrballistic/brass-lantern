@@ -89,6 +89,7 @@ export function useSession(ctx: GameContext = useGameContext()) {
       carts.eject();
       return;
     }
+    // A native world handles these itself, as store commands (with its line and UNDO bookkeeping).
     if (mode.value === 'world') {
       await game.submit(input);
       return;
@@ -96,6 +97,12 @@ export function useSession(ctx: GameContext = useGameContext()) {
     const lines = mode.value === 'zcode' ? zgame.output : carts.output;
     if (lower === 'cookies' || lower === 'privacy') {
       lines.push(makeLine(`> ${input}`), makeLine(cookiesReply(ctx.options)));
+      return;
+    }
+    // THEME, BLOOM and EFFECTS: the same theme state and replies as in a native world.
+    const themeReply = game.themeInput(input);
+    if (themeReply !== null) {
+      lines.push(makeLine(`> ${input}`), makeLine(themeReply));
       return;
     }
     if (mode.value === 'zcode') {

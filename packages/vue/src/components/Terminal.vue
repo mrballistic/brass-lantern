@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
-import { terminalTitle } from '../options.ts';
+import { openConsent, terminalTitle } from '../options.ts';
 import { useGameContext } from '../stores/context.ts';
 import { useSession } from '../stores/session.ts';
 import { useTypewriter } from '../composables/useTypewriter.ts';
@@ -194,8 +194,9 @@ function decayClass(idx: number): string {
 }
 
 const heading = terminalTitle(game.options);
-// The app's consent settings, if it has any to open.
-const openConsent = game.options.analytics?.openConsent;
+// The app's consent settings, if it has any to open (called as a method, guarded).
+const hasConsent = Boolean(game.options.analytics?.openConsent);
+const showConsent = (): void => void openConsent(game.options);
 
 const parsingLabel = computed(() => (isParsing.value ? '[parsing...]' : ''));
 const inputPlaceholder = computed(() =>
@@ -215,7 +216,7 @@ const inputPlaceholder = computed(() =>
     <header class="terminal-header">
       <span>{{ heading }}<template v-if="title"> · {{ title }}</template></span>
       <span class="header-right">
-        <button v-if="openConsent" type="button" class="consent-open" @click.stop="openConsent()">[ COOKIES ]</button>
+        <button v-if="hasConsent" type="button" class="consent-open" @click.stop="showConsent()">[ COOKIES ]</button>
         <span class="moves">{{ status }}</span>
       </span>
     </header>

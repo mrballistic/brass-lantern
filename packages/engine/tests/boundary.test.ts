@@ -121,4 +121,19 @@ describe('the engine boundary', () => {
     expect(pkg.exports['./worlds'].node).toBeUndefined();
     expect(pkg.exports['./zmachine'].node).toBeUndefined();
   });
+
+  it('pins ifvms exactly: the session deep-imports its internals (src/zvm/dispatch.js)', () => {
+    const read = (p: string) => JSON.parse(readFileSync(join(SRC, '..', p), 'utf8')) as Record<string, Record<string, string>>;
+    const engine = read('package.json');
+    const vue = read('../vue/package.json');
+    expect(engine.peerDependencies.ifvms).toBe('1.1.6');
+    expect((engine.peerDependenciesMeta as unknown as Record<string, { optional: boolean }>).ifvms.optional).toBe(true);
+    expect(engine.devDependencies.ifvms).toBe('1.1.6');
+    expect(vue.dependencies.ifvms).toBe('1.1.6');
+  });
+
+  it('leaves browser storage keys to the apps: no saveKeyFor in the public API', async () => {
+    const api = await import('../src/index.ts');
+    expect('saveKeyFor' in api).toBe(false);
+  });
 });

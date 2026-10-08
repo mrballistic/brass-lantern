@@ -121,4 +121,57 @@ describe('session router', () => {
     await s.submit('cookies');
     expect(texts(zgame.output)).toContain('[This build has no analytics. Nothing is collected.]');
   });
+  describe('THEME, BLOOM and EFFECTS work in every mode', () => {
+    it('at the menu: changes the theme, with the native world’s reply, and never reaches the menu', async () => {
+      const game = useGameStore();
+      game.configureThemes();
+      const s = session();
+      await s.boot();
+      const carts = ctx.useCartridgeStore();
+      const choose = vi.spyOn(carts, 'choose');
+      await s.submit('THEME GREEN');
+      await s.submit('bloom off');
+      await s.submit('effects');
+      await s.submit('theme');
+      expect(choose).not.toHaveBeenCalled();
+      expect(s.mode.value).toBe('menu');
+      expect(game.theme).toEqual({ base: 'crt-green', overrides: { bloom: false } });
+      expect(texts(s.output.value).slice(-8)).toEqual([
+        '> THEME GREEN', 'Theme: crt-green.',
+        '> bloom off', 'Bloom is off.',
+        '> effects', 'EFFECTS ON or EFFECTS OFF?',
+        '> theme', 'Themes: crt-amber, crt-green, simple, simple-light, simple-dark. Current: crt-green. Try THEME <name>.',
+      ]);
+      expect(JSON.parse(localStorage.getItem('test:theme')!)).toEqual({ base: 'crt-green', overrides: { bloom: false } });
+    });
+
+    it('in a story: changes the theme, with the same reply, and never reaches the interpreter', async () => {
+      const game = useGameStore();
+      game.configureThemes();
+      const zgame = useZGameStore();
+      vi.spyOn(zgame, 'initialize').mockResolvedValue();
+      const submit = vi.spyOn(zgame, 'submit').mockImplementation(() => {});
+      const s = session();
+      await s.boot();
+      await s.submit('2');
+      await s.submit('THEME GREEN');
+      await s.submit('effects off');
+      expect(submit).not.toHaveBeenCalled();
+      expect(game.theme).toEqual({ base: 'crt-green', overrides: { effects: false } });
+      expect(texts(zgame.output).slice(-4)).toEqual(['> THEME GREEN', 'Theme: crt-green.', '> effects off', 'Effects are off.']);
+    });
+
+    it('in a native world: changes the theme, with the same reply, and never reaches the engine', async () => {
+      const game = useGameStore();
+      game.configureThemes();
+      const s = session();
+      await s.boot();
+      await s.submit('1');
+      const execute = vi.spyOn(game, 'execute');
+      await s.submit('THEME GREEN');
+      expect(execute).not.toHaveBeenCalled();
+      expect(game.theme.base).toBe('crt-green');
+      expect(texts(s.output.value).slice(-2)).toEqual(['> THEME GREEN', 'Theme: crt-green.']);
+    });
+  });
 });

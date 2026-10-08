@@ -18,7 +18,6 @@ import {
   parseIntentRemote,
   remember,
   resolvePronouns,
-  saveKeyFor,
   scriptLines,
   setScriptFreeze,
   splitCommands,
@@ -33,7 +32,7 @@ import {
 } from '@brass-lantern/engine';
 import { PRESET_NAMES, type Theme, type ThemeName, type ThemeOverrides } from '../theme/themes.ts';
 import { cookiesReply, reportEvent, terminalTitle, type GameEvent, type GameOptions } from '../options.ts';
-import { createCatalog } from './catalog.ts';
+import { createCatalog, type Catalog } from './catalog.ts';
 import { createPersistenceService } from '../services/persistence.ts';
 import { readItem, writeItem } from '../services/storage.ts';
 
@@ -84,6 +83,9 @@ const THEME_ALIASES: Record<string, string> = {
   amber: 'crt-amber', green: 'crt-green', crt: 'crt-amber', light: 'simple-light', dark: 'simple-dark',
 };
 
+/** THEME, BLOOM and EFFECTS, with their argument. */
+const THEME_INPUT = /^(theme|bloom|effects)(?:\s+(.+))?$/;
+
 interface State {
   game: GameState;
   output: OutputLine[];
@@ -112,19 +114,21 @@ function themeLabel(theme: ThemeName | Theme | string): string {
 
 /** A typed or intent-server theme name as one of `names`, or null. */
 function matchTheme(raw: string, names: string[]): string | null {
-  const key = raw.trim().toLowerCase().replace(/[\s_-]+/g, '-');
-  return names.find((n) => n.toLowerCase() === key) ?? (THEME_ALIASES[key] && names.includes(THEME_ALIASES[key]) ? THEME_ALIASES[key] : null);
+  // Both sides the same way: "Neon Night", "neon_night" and "neon-night" are one name.
+  const norm = (s: string) => s.trim().toLowerCase().replace(/[\s_-]+/g, '-');
+  const key = norm(raw);
+  return names.find((n) => norm(n) === key) ?? (THEME_ALIASES[key] && names.includes(THEME_ALIASES[key]) ? THEME_ALIASES[key] : null);
 }
 
 /**
  * The store for one game's native worlds, as a Pinia store definition whose id
  * comes from `options.storagePrefix`: games with different prefixes are fully
- * independent; the same prefix twice is the same store.
+ * independent; the same prefix twice is the same store. A game's context
+ * passes its own catalog.
  */
-export function createGameStore(options: GameOptions) {
+export function createGameStore(options: GameOptions, catalog: Catalog = createCatalog(options)) {
   // Scripts see a frozen state in development (and tests), so one that assigns throws.
   if (options.devChecks) setScriptFreeze(true);
-  const catalog = createCatalog(options);
   // The intent server to ask, or null: an unset or empty endpoint means none.
   const endpoint = options.intentEndpoint || null;
   const report = (name: GameEvent, params?: Record<string, unknown>) => reportEvent(options, name, params);
@@ -135,7 +139,7 @@ export function createGameStore(options: GameOptions) {
   let cartridgeId = initialCartridge?.id ?? 'game';
   /** Where the transcript started in the output, while SCRIPT is on. */
   let scriptFrom: number | null = null;
-  let persistence = createPersistenceService(initialCartridge ? catalog.saveKeyFor(initialCartridge) : saveKeyFor(options.storagePrefix));
+  let persistence = createPersistenceService(initialCartridge ? catalog.saveKeyFor(initialCartridge) : catalog.defaultSaveKey);
   // Between-command state (questions, pronouns, AGAIN, OOPS, UNDO). Not saved.
   let conversation = newConversation();
 
@@ -219,33 +223,36 @@ export function createGameStore(options: GameOptions) {
         writeItem(THEME_KEY, JSON.stringify({ base: this.themeChosen ? this.theme.base : '', overrides: this.theme.overrides }));
       },
 
-      /** THEME [name]. */
-      themeCommand(raw: string | undefined): void {
+      /** THEME [name]: applies it, and returns the reply. */
+      themeCommand(raw: string | undefined): string {
         const names = this.themeNames;
-        if (!raw?.trim()) {
-          this.appendSystem(`Themes: ${names.join(', ')}. Current: ${themeLabel(this.themeBase)}. Try THEME <name>.`);
-          return;
-        }
+        if (!raw?.trim()) return `Themes: ${names.join(', ')}. Current: ${themeLabel(this.themeBase)}. Try THEME <name>.`;
         const name = matchTheme(raw, names);
-        if (!name) {
-          this.appendSystem(`There’s no theme called “${raw.trim()}”. Try: ${names.join(', ')}.`);
-          return;
-        }
+        if (!name) return `There’s no theme called “${raw.trim()}”. Try: ${names.join(', ')}.`;
         this.theme = { ...this.theme, base: name };
         this.themeChosen = true;
         this.saveTheme();
-        this.appendSystem(`Theme: ${name}.`);
+        return `Theme: ${name}.`;
       },
 
-      /** BLOOM ON|OFF and EFFECTS ON|OFF. */
-      themeSwitch(which: 'bloom' | 'effects', value: string | undefined): void {
-        if (value !== 'on' && value !== 'off') {
-          this.appendSystem(`${which.toUpperCase()} ON or ${which.toUpperCase()} OFF?`);
-          return;
-        }
+      /** BLOOM ON|OFF and EFFECTS ON|OFF: applies it, and returns the reply. */
+      themeSwitch(which: 'bloom' | 'effects', value: string | undefined): string {
+        if (value !== 'on' && value !== 'off') return `${which.toUpperCase()} ON or ${which.toUpperCase()} OFF?`;
         this.theme = { ...this.theme, overrides: { ...this.theme.overrides, [which]: value === 'on' } };
         this.saveTheme();
-        this.appendSystem(`${which === 'bloom' ? 'Bloom is' : 'Effects are'} ${value}.`);
+        return `${which === 'bloom' ? 'Bloom is' : 'Effects are'} ${value}.`;
+      },
+
+      /**
+       * THEME, BLOOM or EFFECTS, whatever is running (the session store calls it at
+       * the menu and in stories too): applies it and returns the reply, or null for
+       * any other command.
+       */
+      themeInput(command: string): string | null {
+        const m = THEME_INPUT.exec(command.trim().toLowerCase());
+        if (!m) return null;
+        const [, verb, arg] = m;
+        return verb === 'theme' ? this.themeCommand(arg) : this.themeSwitch(verb as 'bloom' | 'effects', arg?.trim());
       },
 
       initialize(cartridge: WorldCartridge | undefined = catalog.defaultWorldCartridge()): void {
@@ -428,17 +435,15 @@ export function createGameStore(options: GameOptions) {
       storeCommand(command: string): boolean {
         const lower = command.trim().toLowerCase();
         const saveOrRestore = lower.match(/^(save|restore)(?:\s+(.+))?$/);
-        const themeCmd = lower.match(/^(theme|bloom|effects)(?:\s+(.+))?$/);
+        const themeCmd = THEME_INPUT.test(lower);
         const isStore = Boolean(saveOrRestore) || Boolean(themeCmd) || ['load', 'undo', 'restart', 'cookies', 'privacy'].includes(lower);
         if (!isStore) return false;
         // A store command answers no question, and UNDO and the rest act on the line so far.
         conversation.pending = null;
         this.endLine();
-        if (themeCmd) {
-          const [, verb, arg] = themeCmd;
-          if (verb === 'theme') this.themeCommand(arg);
-          else this.themeSwitch(verb as 'bloom' | 'effects', arg?.trim());
-        } else if (saveOrRestore) {
+        const themeReply = this.themeInput(command);
+        if (themeReply !== null) this.appendSystem(themeReply);
+        else if (saveOrRestore) {
           const [, verb, name] = saveOrRestore;
           if (verb === 'save') this.saveAs(name);
           else this.restoreFrom(name);
