@@ -6,5 +6,5 @@ export { ZMachineSession, type SessionEvents, type SessionOptions } from './sess
 export { readStoryFile, type LoadedStory, type StoryFileResult } from './storyfile.ts';
 export { IndexedDbShelf, type ShelfEntry } from './shelf.ts';
 export { localStorageSaveStore, type SaveStore } from './save-store.ts';
-export { LocalStorageDialog, type FileRef } from './dialog.ts';
+export { SaveStoreDialog, type FileRef } from './dialog.ts';
 export type { FilePrompt, StatusLine } from './types.ts';

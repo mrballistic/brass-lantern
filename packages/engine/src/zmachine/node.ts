@@ -8,4 +8,4 @@ import { requireIfvms } from './require-ifvms.ts';
 await requireIfvms();
 const runtime = await import('./index.ts');
 
-export const { ZMachineSession, readStoryFile, IndexedDbShelf, localStorageSaveStore, LocalStorageDialog } = runtime;
+export const { ZMachineSession, readStoryFile, IndexedDbShelf, localStorageSaveStore, SaveStoreDialog } = runtime;

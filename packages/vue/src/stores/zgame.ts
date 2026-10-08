@@ -4,7 +4,7 @@ import type { ZCodeCartridge } from '@brass-lantern/engine';
 import type { StatusLine } from '@brass-lantern/engine/zmachine';
 import { makeLine } from '@brass-lantern/engine';
 import { reportEvent, storyUrl, type GameOptions } from '../options.ts';
-import { LocalStorageDialog } from '@brass-lantern/engine/zmachine';
+import { SaveStoreDialog } from '@brass-lantern/engine/zmachine';
 import { localStorageSaveStore } from '@brass-lantern/engine/zmachine';
 import { createCatalog } from './catalog.ts';
 import type { LocalShelf } from './cartridges.ts';
@@ -21,7 +21,7 @@ export interface ZGameDeps {
   fetchStory(url: string): Promise<Uint8Array>;
   /** A story the player loaded, from the shelf. */
   loadLocal(id: string): Promise<Uint8Array>;
-  createSession(story: Uint8Array, dialog: LocalStorageDialog, events: SessionEvents): RunningSession;
+  createSession(story: Uint8Array, dialog: SaveStoreDialog, events: SessionEvents): RunningSession;
 }
 
 // The interpreter (ifvms + glkapi) is loaded only when a story cartridge
@@ -150,7 +150,7 @@ export function createZGameStore(options: GameOptions, local: LocalShelf) {
       /** Start (or restart) the story. Resumes from the autosave if there is one. */
       boot(): void {
         if (!story) return;
-        const dialog = new LocalStorageDialog(localStorageSaveStore(`${options.storagePrefix}:`));
+        const dialog = new SaveStoreDialog(localStorageSaveStore(`${options.storagePrefix}:`));
         session = deps.createSession(story, dialog, {
           onLines: (lines) => {
             for (const line of lines) this.appendLine(line);

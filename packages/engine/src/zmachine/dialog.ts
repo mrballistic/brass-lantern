@@ -9,12 +9,12 @@ export interface FileRef {
 }
 
 /**
- * Glk's file layer, kept in a SaveStore (browser storage in the app). Non-streaming: glkapi reads and
+ * Glk’s file layer, kept in any SaveStore (browser storage in the Vue app, a Map or a directory in Node). Non-streaming: glkapi reads and
  * writes whole files, which we store as JSON byte arrays. Also holds
  * ifvms's per-turn autosave. Every method swallows storage errors: a full
  * or blocked store costs persistence, never the game.
  */
-export class LocalStorageDialog {
+export class SaveStoreDialog {
   readonly streaming = false;
   private writeFailed = false;
 

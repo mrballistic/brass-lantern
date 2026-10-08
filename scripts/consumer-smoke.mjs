@@ -245,7 +245,7 @@ export const summary: [boolean, number] = [reply.gameOver, problems.length];
        const lines = [];
        const storage = new Map();
        const store = { list: () => [...storage.keys()], read: (k) => storage.get(k) ?? null, write: (k, v) => void storage.set(k, v), remove: (k) => void storage.delete(k) };
-       const dialog = new zm.LocalStorageDialog(store);
+       const dialog = new zm.SaveStoreDialog(store);
        let waiting = false;
        const session = new ZMachineSession(new Uint8Array(readFileSync(${JSON.stringify(story)})), dialog, {
          onLines: (l) => lines.push(...l), onStatus() {}, onWaiting() { waiting = true; }, onExit() {}, onError(m) { lines.push('ERROR ' + m); },

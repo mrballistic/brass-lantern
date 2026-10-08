@@ -2,7 +2,7 @@ import ifvms from 'ifvms';
 import ZVMDispatch from 'ifvms/src/zvm/dispatch.js';
 import { createGlk } from './vendor/glkapi.js';
 import { BrowserGlkOte } from './glkote.ts';
-import type { LocalStorageDialog } from './dialog.ts';
+import type { SaveStoreDialog } from './dialog.ts';
 import type { FilePrompt, StatusLine } from './types.ts';
 
 export interface SessionEvents {
@@ -32,7 +32,7 @@ export class ZMachineSession {
 
   constructor(
     private readonly story: Uint8Array,
-    private readonly dialog: LocalStorageDialog,
+    private readonly dialog: SaveStoreDialog,
     private readonly events: SessionEvents,
     private readonly options: SessionOptions = {},
   ) {
@@ -82,7 +82,7 @@ export class ZMachineSession {
   }
 
   private reportFailedWrite(): void {
-    if (this.dialog.takeWriteFailure()) this.events.onLines(['[That save didn’t fit: browser storage is full.]']);
+    if (this.dialog.takeWriteFailure()) this.events.onLines(['[There’s no room to save that.]']);
   }
 
   private askForFile(prompt: FilePrompt): void {
@@ -103,7 +103,7 @@ export class ZMachineSession {
       this.events.onLines([`[Restore which save? ${saves.join(', ')}. Or CANCEL.]`]);
     } else {
       if (!this.dialog.isAvailable()) {
-        this.events.onLines(['[Saving isn’t available in this browser.]']);
+        this.events.onLines(['[Saving isn’t available here.]']);
         this.answerFile(null);
         return;
       }

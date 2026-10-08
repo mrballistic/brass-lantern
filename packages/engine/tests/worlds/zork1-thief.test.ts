@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { execute, initialState, openingLines } from '../../src/engine/engine';
 import { fallbackParse } from '../../src/engine/parser';
 import { zork1 } from '../../src/worlds/zork1';
-import { LocalStorageDialog } from '../../src/zmachine/dialog';
+import { SaveStoreDialog } from '../../src/zmachine/dialog';
 import { localStorageSaveStore } from '../../src/zmachine/save-store';
 import { ZMachineSession } from '../../src/zmachine/session';
 
@@ -27,7 +27,7 @@ const normalize = (text: string) =>
 async function originalWait(): Promise<string[]> {
   let lines: string[] = [];
   let waiting = false;
-  const session = new ZMachineSession(story, new LocalStorageDialog(localStorageSaveStore('thief:')), {
+  const session = new ZMachineSession(story, new SaveStoreDialog(localStorageSaveStore('thief:')), {
     onLines: (l) => lines.push(...l),
     onStatus: () => {},
     onExit: () => {},

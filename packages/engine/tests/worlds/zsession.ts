@@ -4,7 +4,7 @@ import type { newConversation } from '../../src/engine/conversation';
 import { createGame, runTurn } from '../../src/engine/game';
 import type { GameState } from '../../src/types/game';
 import { zork1 } from '../../src/worlds/zork1';
-import { LocalStorageDialog } from '../../src/zmachine/dialog';
+import { SaveStoreDialog } from '../../src/zmachine/dialog';
 import { localStorageSaveStore } from '../../src/zmachine/save-store';
 import { ZMachineSession } from '../../src/zmachine/session';
 import type { World } from '../../src/types/world';
@@ -53,7 +53,7 @@ export async function openOriginal(seed?: number, which: StoryName = 'zork1'): P
   let waiting = false;
   const session = new ZMachineSession(
     storyFile(which),
-    new LocalStorageDialog(localStorageSaveStore('diff:')),
+    new SaveStoreDialog(localStorageSaveStore('diff:')),
     {
       onLines: (l) => lines.push(...l),
       onStatus: () => {},

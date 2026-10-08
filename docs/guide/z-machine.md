@@ -73,14 +73,14 @@ Got a story file? Type **LOAD** at the cartridge menu and pick it, or drag it on
 - **ifvms** ([MIT](https://github.com/curiousdannii/ifvms.js)), the Z-machine inside Parchment, runs the story.
 - It talks to the screen through **Glk**, a standard interface for interactive fiction. Brass Lantern includes a modified copy of glkapi.js (`packages/engine/src/zmachine/vendor/`), wrapped so each game gets its own instance.
 - **`BrowserGlkOte`** (`packages/engine/src/zmachine/glkote.ts`) turns the game’s screen updates into terminal lines, and its status line into the header.
-- **`LocalStorageDialog`** (`packages/engine/src/zmachine/dialog.ts`) stores saves and autosaves.
+- **`SaveStoreDialog`** (`packages/engine/src/zmachine/dialog.ts`) stores saves and autosaves in any `SaveStore`: browser storage in the Vue terminal, a `Map`, a directory or a database in a Node host.
 
 The game’s own echo of your command, and its `>` prompt, are dropped, since the terminal draws its own.
 
 ## Limits
 
 - **SCRIPT** (a transcript file) isn’t supported; it says so and the game carries on.
-- **A full browser storage** makes SAVE say the save didn’t fit, rather than claiming success.
+- **A full browser storage** (or any store that refuses a write) makes SAVE say “There’s no room to save that.”, rather than claiming success.
 - **A story that won’t download** within 20 seconds shows an error; reload to try again, or EJECT.
 
 - **Formats:** Z-machine versions 3, 4, 5 and 8 (what ifvms supports). No Glulx.

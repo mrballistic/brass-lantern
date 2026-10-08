@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { LocalStorageDialog } from '../../src/zmachine/dialog';
+import { SaveStoreDialog } from '../../src/zmachine/dialog';
 import { localStorageSaveStore } from '../../src/zmachine/save-store';
 import { ZMachineSession } from '../../src/zmachine/session';
 import type { StatusLine } from '../../src/zmachine/types';
@@ -18,7 +18,7 @@ async function waitFor(check: () => boolean, ms = 4000): Promise<void> {
 }
 
 /** A session plus a transcript, and type() to play a turn and get its output. */
-function harness(dialog = new LocalStorageDialog(localStorageSaveStore('test:'))) {
+function harness(dialog = new SaveStoreDialog(localStorageSaveStore('test:'))) {
   const lines: string[] = [];
   const state = { waiting: false, exited: false, status: null as StatusLine | null, errors: [] as string[] };
   const session = new ZMachineSession(story, dialog, {
@@ -102,10 +102,10 @@ describe('ZMachineSession with Zork I', () => {
   });
 
   it('refuses to save when storage is unavailable, and keeps playing', async () => {
-    const h = harness(new LocalStorageDialog(localStorageSaveStore('test:', null)));
+    const h = harness(new SaveStoreDialog(localStorageSaveStore('test:', null)));
     h.session.start();
     const out = await h.type('save');
-    expect(out).toContain('[Saving isn’t available in this browser.]');
+    expect(out).toContain('[Saving isn’t available here.]');
     expect(out).toContain('Failed.');
     expect(await h.type('open mailbox')).toContain('reveals a leaflet');
   });
@@ -124,11 +124,11 @@ describe('ZMachineSession with Zork I', () => {
         real.setItem(k, v);
       },
     };
-    const h = harness(new LocalStorageDialog(localStorageSaveStore('test:', tight)));
+    const h = harness(new SaveStoreDialog(localStorageSaveStore('test:', tight)));
     h.session.start();
     await h.type('save');
     const out = await h.type('slot');
-    expect(out).toContain('[That save didn’t fit: browser storage is full.]');
+    expect(out).toContain('[There’s no room to save that.]');
   });
 
   it('declines SCRIPT (transcripts aren’t saved here) and keeps playing', async () => {
@@ -141,7 +141,7 @@ describe('ZMachineSession with Zork I', () => {
   });
 
   it('autosaves every turn, and a new session resumes without replaying', async () => {
-    const dialog = new LocalStorageDialog(localStorageSaveStore('test:'));
+    const dialog = new SaveStoreDialog(localStorageSaveStore('test:'));
     const first = harness(dialog);
     first.session.start();
     await first.type('open mailbox');

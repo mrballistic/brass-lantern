@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it } from 'vitest';
-import { LocalStorageDialog } from '../../src/zmachine/dialog';
+import { SaveStoreDialog } from '../../src/zmachine/dialog';
 import { localStorageSaveStore } from '../../src/zmachine/save-store';
 
 /** A Storage whose writes always fail, like a full or locked-down localStorage. */
@@ -19,18 +19,18 @@ function brokenStorage(): Storage {
   };
 }
 
-describe('LocalStorageDialog', () => {
+describe('SaveStoreDialog', () => {
   beforeEach(() => localStorage.clear());
 
   it('builds refs with a cleaned name under its prefix', () => {
-    const d = new LocalStorageDialog(localStorageSaveStore('test:'));
+    const d = new SaveStoreDialog(localStorageSaveStore('test:'));
     const ref = d.file_construct_ref('my/save!', 'save', 'game1');
     expect(ref).toEqual({ filename: 'mysave', usage: 'save', gameid: 'game1', dirent: 'z:file:save:game1:mysave' });
     expect(d.file_clean_fixed_name('   ')).toBe('save');
   });
 
   it('writes and reads files as byte arrays', () => {
-    const d = new LocalStorageDialog(localStorageSaveStore('test:'));
+    const d = new SaveStoreDialog(localStorageSaveStore('test:'));
     const ref = d.file_construct_ref('slot', 'save', 'g');
     expect(d.file_ref_exists(ref)).toBe(false);
     expect(d.file_write(ref, new Uint8Array([1, 2, 3]))).toBe(true);
@@ -41,14 +41,14 @@ describe('LocalStorageDialog', () => {
   });
 
   it('creates an empty file for a raw write', () => {
-    const d = new LocalStorageDialog(localStorageSaveStore('test:'));
+    const d = new SaveStoreDialog(localStorageSaveStore('test:'));
     const ref = d.file_construct_ref('slot', 'save', 'g');
     d.file_write(ref, '', true);
     expect(d.file_read(ref)).toEqual([]);
   });
 
   it('treats unreadable contents as missing', () => {
-    const d = new LocalStorageDialog(localStorageSaveStore('test:'));
+    const d = new SaveStoreDialog(localStorageSaveStore('test:'));
     const ref = d.file_construct_ref('slot', 'save', 'g');
     localStorage.setItem(`test:${ref.dirent}`, 'not json');
     expect(d.file_read(ref)).toBeNull();
@@ -57,12 +57,12 @@ describe('LocalStorageDialog', () => {
   });
 
   it('makes distinct temp refs', () => {
-    const d = new LocalStorageDialog(localStorageSaveStore('test:'));
+    const d = new SaveStoreDialog(localStorageSaveStore('test:'));
     expect(d.file_construct_temp_ref('data').dirent).not.toBe(d.file_construct_temp_ref('data').dirent);
   });
 
   it('lists only this game’s saves, sorted', () => {
-    const d = new LocalStorageDialog(localStorageSaveStore('test:'));
+    const d = new SaveStoreDialog(localStorageSaveStore('test:'));
     d.file_write(d.file_construct_ref('zeta', 'save', 'g1'), [1]);
     d.file_write(d.file_construct_ref('alpha', 'save', 'g1'), [1]);
     d.file_write(d.file_construct_ref('other', 'save', 'g2'), [1]);
@@ -71,7 +71,7 @@ describe('LocalStorageDialog', () => {
   });
 
   it('stores, reads and clears autosaves', () => {
-    const d = new LocalStorageDialog(localStorageSaveStore('test:'));
+    const d = new SaveStoreDialog(localStorageSaveStore('test:'));
     d.autosave_write('sig', { ram: [1, 2] });
     expect(d.autosave_read('sig')).toEqual({ ram: [1, 2] });
     d.autosave_write('sig', null);
@@ -81,7 +81,7 @@ describe('LocalStorageDialog', () => {
   });
 
   it('never throws when storage fails, and says it isn’t available', () => {
-    const d = new LocalStorageDialog(localStorageSaveStore('test:', brokenStorage()));
+    const d = new SaveStoreDialog(localStorageSaveStore('test:', brokenStorage()));
     const ref = d.file_construct_ref('slot', 'save', 'g');
     expect(d.isAvailable()).toBe(false);
     expect(d.file_write(ref, [1])).toBe(false);
@@ -91,7 +91,7 @@ describe('LocalStorageDialog', () => {
   });
 
   it('works without storage at all', () => {
-    const d = new LocalStorageDialog(localStorageSaveStore('test:', null));
+    const d = new SaveStoreDialog(localStorageSaveStore('test:', null));
     const ref = d.file_construct_ref('slot', 'save', 'g');
     expect(d.isAvailable()).toBe(false);
     expect(d.file_read(ref)).toBeNull();
@@ -101,6 +101,6 @@ describe('LocalStorageDialog', () => {
   });
 
   it('is available with working localStorage', () => {
-    expect(new LocalStorageDialog(localStorageSaveStore('test:')).isAvailable()).toBe(true);
+    expect(new SaveStoreDialog(localStorageSaveStore('test:')).isAvailable()).toBe(true);
   });
 });

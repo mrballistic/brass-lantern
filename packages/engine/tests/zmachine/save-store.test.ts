@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { LocalStorageDialog } from '../../src/zmachine/dialog';
+import { SaveStoreDialog } from '../../src/zmachine/dialog';
 import { localStorageSaveStore, type SaveStore } from '../../src/zmachine/save-store';
 import { ZMachineSession } from '../../src/zmachine/session';
 
@@ -52,7 +52,7 @@ describe('a session over a custom SaveStore', () => {
     const story = new Uint8Array(readFileSync(resolve(import.meta.dirname, '../fixtures/zork1.z3')));
     let waiting = false;
     const lines: string[] = [];
-    const session = new ZMachineSession(story, new LocalStorageDialog(store), {
+    const session = new ZMachineSession(story, new SaveStoreDialog(store), {
       onLines: (l) => lines.push(...l),
       onStatus: () => {},
       onWaiting: () => {

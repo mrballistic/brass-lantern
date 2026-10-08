@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { cartridges, storagePrefix } from '../src/app.config.ts';
 import { createCatalog } from '@brass-lantern/vue';
 import type { WorldCartridge, ZCodeCartridge } from '@brass-lantern/engine';
-import { LocalStorageDialog } from '@brass-lantern/engine/zmachine';
+import { SaveStoreDialog } from '@brass-lantern/engine/zmachine';
 import { localStorageSaveStore } from '@brass-lantern/engine/zmachine';
 import { ZMachineSession } from '@brass-lantern/engine/zmachine';
 
@@ -31,7 +31,7 @@ describe('app config', () => {
 
     const lines: string[] = [];
     let waiting = false;
-    new ZMachineSession(bytes, new LocalStorageDialog(localStorageSaveStore(`boot-${cart.id}:`)), {
+    new ZMachineSession(bytes, new SaveStoreDialog(localStorageSaveStore(`boot-${cart.id}:`)), {
       onLines: (l) => lines.push(...l),
       onStatus: () => {},
       onWaiting: () => {
