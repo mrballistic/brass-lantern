@@ -3,27 +3,15 @@ import ZVMDispatch from 'ifvms/src/zvm/dispatch.js';
 import { createGlk } from './vendor/glkapi.js';
 import { BrowserGlkOte } from './glkote.ts';
 import type { SaveStoreDialog } from './dialog.ts';
-import type { FilePrompt, StatusLine } from './types.ts';
+import type { FilePrompt, SessionEvents, SessionOptions } from './types.ts';
 
-export interface SessionEvents {
-  onLines(lines: string[]): void;
-  onStatus(status: StatusLine): void;
-  /** Ready for the player's next input: a command, or a save name. */
-  onWaiting(): void;
-  onExit(): void;
-  onError(message: string): void;
-}
+export type { SessionEvents, SessionOptions } from './types.ts';
 
 /**
  * One running story file: a fresh Glk instance, VM and dispatcher, wired to
  * the terminal through BrowserGlkOte. Autosaves every turn, and resumes from
  * the autosave when a session for the same story starts again.
  */
-export interface SessionOptions {
-  /** Tests only: seeds the interpreter's generator (ifvms's xorshift), so a story replays exactly. */
-  seed?: number;
-}
-
 export class ZMachineSession {
   private readonly glkote: BrowserGlkOte;
   private filePrompt: FilePrompt | null = null;

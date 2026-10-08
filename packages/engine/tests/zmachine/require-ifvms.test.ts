@@ -18,14 +18,13 @@ describe('the ifvms guard', () => {
   });
 });
 
-describe('the Node entries (the "node" export condition)', () => {
-  it('./zmachine re-exports everything index.ts does, as the same objects', async () => {
-    const node = await import('../../src/zmachine/node');
-    expect(Object.keys(node).sort()).toEqual(Object.keys(runtime).sort());
-    for (const name of Object.keys(runtime)) expect(node[name as keyof typeof node]).toBe(runtime[name as keyof typeof runtime]);
+describe('the entries', () => {
+  it('./zmachine has the shelf, saves and story-file helpers, and no session (that is ./zmachine/session)', () => {
+    expect(Object.keys(runtime).sort()).toEqual(['IndexedDbShelf', 'SaveStoreDialog', 'localStorageSaveStore', 'readStoryFile']);
+    expect('ZMachineSession' in runtime).toBe(false);
   });
 
-  it('./zmachine/session re-exports the session', async () => {
+  it('./zmachine/session’s Node entry re-exports the session', async () => {
     const node = await import('../../src/zmachine/session-node');
     expect(Object.keys(node)).toEqual(Object.keys(session));
     expect(node.ZMachineSession).toBe(session.ZMachineSession);

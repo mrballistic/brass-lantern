@@ -34,14 +34,14 @@ RESTART and UNDO work headless; SAVE, RESTORE, LOAD and SCRIPT say they aren’t
 |---|---|
 | `@brass-lantern/engine` | `createGame`, `auditWorld`, the parser, `execute` and the types (`World`, `Cartridge`, `GameState`) |
 | `@brass-lantern/engine/worlds` | The bundled worlds: Snack Attack (`tutorial`), Zork I (`zork1`) and the docs examples |
-| `@brass-lantern/engine/zmachine` | Story-file runtime: `ZMachineSession`, `readStoryFile`, `SaveStore`, `localStorageSaveStore` |
-| `@brass-lantern/engine/zmachine/session` | Just the session, so a UI can load the interpreter on demand |
+| `@brass-lantern/engine/zmachine` | Story files without the interpreter: `readStoryFile`, `IndexedDbShelf`, `SaveStore`, `localStorageSaveStore`, `SaveStoreDialog` and the types |
+| `@brass-lantern/engine/zmachine/session` | `ZMachineSession`, which loads the interpreter (ifvms): import it dynamically to keep it in a chunk of its own |
 
-The core and `./worlds` also load with `require()` on Node 24 and later; the Z-machine entries are ESM only.
+The core, `./worlds` and `./zmachine` also load with `require()` on Node 24 and later; `./zmachine/session` is ESM only (it uses top-level `await`, so `require()` throws `ERR_REQUIRE_ASYNC_MODULE`).
 
 ## Story files
 
-The Z-machine runtime uses [ifvms](https://github.com/curiousdannii/ifvms.js), an optional peer dependency: install it (`npm i ifvms`) to use `./zmachine` in Node. Without it the import fails with an error that names the package.
+The Z-machine session uses [ifvms](https://github.com/curiousdannii/ifvms.js), an optional peer dependency: install it (`npm i ifvms`) to use `./zmachine/session` in Node. Without it the import fails with an error that names the package. `./zmachine` never needs it.
 
 ## Docs
 

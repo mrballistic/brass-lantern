@@ -66,3 +66,18 @@ export interface StatusLine {
   location: string;
   detail: string;
 }
+
+/** What a ZMachineSession tells its host. */
+export interface SessionEvents {
+  onLines(lines: string[]): void;
+  onStatus(status: StatusLine): void;
+  /** Ready for the player's next input: a command, or a save name. */
+  onWaiting(): void;
+  onExit(): void;
+  onError(message: string): void;
+}
+
+export interface SessionOptions {
+  /** Tests only: seeds the interpreter's generator (ifvms's xorshift), so a story replays exactly. */
+  seed?: number;
+}

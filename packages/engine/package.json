@@ -29,7 +29,6 @@
     "./zmachine": {
       "@brass-lantern/source": "./src/zmachine/index.ts",
       "types": "./dist/zmachine/index.d.ts",
-      "node": "./dist/zmachine/node.js",
       "default": "./dist/zmachine/index.js"
     },
     "./zmachine/session": {

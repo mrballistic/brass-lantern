@@ -2,11 +2,10 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { cartridges, storagePrefix } from '../src/app.config.ts';
-import { createCatalog } from '@brass-lantern/vue';
 import type { WorldCartridge, ZCodeCartridge } from '@brass-lantern/engine';
 import { SaveStoreDialog } from '@brass-lantern/engine/zmachine';
 import { localStorageSaveStore } from '@brass-lantern/engine/zmachine';
-import { ZMachineSession } from '@brass-lantern/engine/zmachine';
+import { ZMachineSession } from '@brass-lantern/engine/zmachine/session';
 
 const stories = cartridges.filter((c): c is ZCodeCartridge => c.kind === 'zcode');
 
@@ -14,7 +13,9 @@ const stories = cartridges.filter((c): c is ZCodeCartridge => c.kind === 'zcode'
 describe('app config', () => {
   it('keeps Snack Attack on the save key 1.0.0 used, so existing games still load', () => {
     const snack = cartridges.find((c) => c.id === 'snack-attack') as WorldCartridge;
-    expect(createCatalog({ cartridges, storagePrefix }).saveKeyFor(snack)).toBe('brass-lantern:save');
+    // A cartridge's own saveKey is the key its game is saved under (packages/vue/tests/stores/catalog.test.ts).
+    expect(snack.saveKey).toBe('brass-lantern:save');
+    expect(storagePrefix).toBe('brass-lantern');
   });
 
   it('offers the Zork trilogy, and Zork I rebuilt natively', () => {

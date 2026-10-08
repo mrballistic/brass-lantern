@@ -76,15 +76,30 @@ describe('the engine boundary', () => {
     expect(users.sort()).toEqual(['zmachine/require-ifvms.ts', 'zmachine/session.ts']);
   });
 
-  it('checks for ifvms in the Node entries before anything loads it, so a missing peer names itself', () => {
-    for (const entry of ['zmachine/node.ts', 'zmachine/session-node.ts']) {
-      const code = stripComments(readFileSync(join(SRC, entry), 'utf8'));
-      // The only static import is the guard; the runtime comes after it, dynamically.
-      const staticImports = [...code.matchAll(/^import\s.*from\s+['"]([^'"]+)['"]/gm)].map((m) => m[1]);
-      expect(staticImports, entry).toEqual(['./require-ifvms.ts']);
-      expect(code.indexOf('await requireIfvms()'), entry).toBeGreaterThan(-1);
-      expect(code.indexOf('await requireIfvms()'), entry).toBeLessThan(code.indexOf('await import('));
-    }
+  it('checks for ifvms in the session’s Node entry before anything loads it, so a missing peer names itself', () => {
+    const entry = 'zmachine/session-node.ts';
+    const code = stripComments(readFileSync(join(SRC, entry), 'utf8'));
+    // The only static import is the guard; the runtime comes after it, dynamically.
+    const staticImports = [...code.matchAll(/^import\s.*from\s+['"]([^'"]+)['"]/gm)].map((m) => m[1]);
+    expect(staticImports, entry).toEqual(['./require-ifvms.ts']);
+    expect(code.indexOf('await requireIfvms()'), entry).toBeGreaterThan(-1);
+    expect(code.indexOf('await requireIfvms()'), entry).toBeLessThan(code.indexOf('await import('));
+  });
+
+  it('keeps ./zmachine free of the interpreter: only ./zmachine/session loads ifvms', () => {
+    // Every module index.ts loads, statically or dynamically, following relative imports.
+    const seen = new Set<string>();
+    const visit = (rel: string) => {
+      if (seen.has(rel)) return;
+      seen.add(rel);
+      const code = stripComments(readFileSync(join(SRC, rel), 'utf8'));
+      for (const [, spec] of code.matchAll(/(?:from\s+|import\(\s*)['"]([^'"]+)['"]/g)) {
+        expect(spec, `${rel} loads ${spec}`).not.toMatch(/^ifvms/);
+        if (spec.startsWith('.')) visit(join(rel, '..', spec).split(sep).join('/'));
+      }
+    };
+    visit('zmachine/index.ts');
+    expect([...seen].filter((rel) => /zmachine\/(session|glkote|vendor\/)/.test(rel))).toEqual([]);
   });
 
   it('keeps the core entry free of the Z-machine runtime and the bundled worlds', () => {
@@ -96,14 +111,14 @@ describe('the engine boundary', () => {
     expect(crossings).toEqual([]);
   });
 
-  it('points the published Z-machine entries at the guarded Node files under the "node" condition', () => {
+  it('points ./zmachine/session at the guarded Node file under the "node" condition', () => {
     const pkg = JSON.parse(readFileSync(join(SRC, '..', 'package.json'), 'utf8')) as {
       exports: Record<string, Record<string, string>>;
     };
-    expect(pkg.exports['./zmachine'].node).toBe('./dist/zmachine/node.js');
     expect(pkg.exports['./zmachine/session'].node).toBe('./dist/zmachine/session-node.js');
-    // Core and worlds never need ifvms, so they have no guard.
+    // Core, worlds and ./zmachine never need ifvms, so they have no guard.
     expect(pkg.exports['.'].node).toBeUndefined();
     expect(pkg.exports['./worlds'].node).toBeUndefined();
+    expect(pkg.exports['./zmachine'].node).toBeUndefined();
   });
 });

@@ -1,13 +1,13 @@
-// ifvms is an optional peer dependency: the core engine never needs it, and
-// only the Z-machine entries load it. In Node, those entries (node.ts and
-// session-node.ts, chosen by the "node" export condition) call this before
-// loading the runtime, so a missing install is an error that names the
+// ifvms is an optional peer dependency: the core engine and ./zmachine never
+// need it; only ./zmachine/session loads it. In Node, that entry
+// (session-node.ts, chosen by the "node" export condition) calls this before
+// loading the session, so a missing install is an error that names the
 // package and the fix, not a resolver message from deep inside dist/. Browser
-// bundles import the runtime statically: their bundler reports a missing
-// ifvms at build time, and the interpreter stays in one lazy chunk.
+// bundles import the session itself: their bundler reports a missing ifvms
+// at build time, and the interpreter stays in one lazy chunk.
 
 export const MISSING_IFVMS =
-  '@brass-lantern/engine/zmachine needs the optional peer dependency ifvms to run story files. ' +
+  '@brass-lantern/engine/zmachine/session needs the optional peer dependency ifvms to run story files. ' +
   'Install it next to the engine: npm install ifvms';
 
 /** Loads ifvms (and the dispatcher the session uses), or throws MISSING_IFVMS with the resolver's error as the cause. */
