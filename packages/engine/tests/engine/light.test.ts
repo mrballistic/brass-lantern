@@ -152,3 +152,34 @@ describe('arriving in the dark (5d)', () => {
     expect(execute({ action: 'go', target: 'down' }, { world, state: lit }).lines).not.toContain('You have moved into a dark place.');
   });
 });
+
+describe('EXAMINE in the dark, and LIGHT a burning thing', () => {
+  const crowded = { ...world, rooms: { ...world.rooms, cellar: { ...world.rooms.cellar, npcs: ['neighbor'] } } };
+  const exec = (w: typeof world, s: GameState, action: string, target: string) => execute({ action, target }, { world: w, state: s });
+
+  it('EXAMINE a character in the dark gives the darkness reply', () => {
+    const s = stateWith(crowded, { room: 'cellar' });
+    const before = structuredClone(s);
+    const r = exec(crowded, s, 'examine', 'neighbor');
+    expect(r.lines.join(' ')).toMatch(/too dark/i);
+    expect(s).toEqual(before);
+  });
+
+  it('and still describes them with a light', () => {
+    const s = stateWith(crowded, { room: 'cellar', carrying: ['lamp'] });
+    s.itemState.lamp = { on: true };
+    expect(exec(crowded, s, 'examine', 'neighbor').lines.join(' ')).toContain('Your neighbor');
+  });
+
+  it('LIGHT a burning thing with no switch', () => {
+    const w = { ...world, items: { ...world.items, torch: { name: 'torch', description: 'A torch.', portable: true, tags: [], flaming: true } } };
+    const s = stateWith(w, { carrying: ['torch'] });
+    expect(exec(w, s, 'turn_on', 'torch').lines.join(' ')).toBe('It’s already lit.');
+  });
+
+  it('LIGHT still says you can’t on a plain thing', () => {
+    const w = { ...world, items: { ...world.items, rock: { name: 'rock', description: 'A rock.', portable: true, tags: [] } } };
+    const s = stateWith(w, { carrying: ['rock'] });
+    expect(exec(w, s, 'turn_on', 'rock').lines.join(' ')).toContain('can’t turn that on');
+  });
+});

@@ -3,7 +3,7 @@ import type { Item, World } from '../../types/world.ts';
 import { evaluateCondition } from '../conditions.ts';
 import { contentsLines, describeRoom, lightNote, listedName, npcDescription, scriptDescription } from '../describe.ts';
 import { expandTemplate } from '../text.ts';
-import { closedAround, inventoryOf, isCarried, isHeld, isOpen, itemStateOf, matchItem, matchNpc, moveItem, needObject, pickItem, pickSecond, PLAYER, reachableItems, visibleItems } from '../model.ts';
+import { closedAround, inventoryOf, isCarried, isHeld, isOpen, itemStateOf, matchItem, isLit, matchNpc, moveItem, needObject, pickItem, pickSecond, PLAYER, reachableItems, visibleItems } from '../model.ts';
 import { miss, ok, type EngineResult } from '../result.ts';
 import { runEventKey } from '../effects.ts';
 import { afterRuleLines, applyRule, findRule } from '../rules.ts';
@@ -98,7 +98,8 @@ export function handleExamine(target: string | undefined, world: World, state: G
   }
 
   const matchedNpc = matchNpc(target, world, state);
-  if (matchedNpc) return ok([npcDescription(world, state, matchedNpc)]);
+  // In the dark you can't see who's there: the same miss as an unknown name, which executeTurn turns into the darkness line.
+  if (matchedNpc && isLit(world, state)) return ok([npcDescription(world, state, matchedNpc)]);
 
   return miss(`You see no “${target}” here worth examining.`);
 }
@@ -227,6 +228,8 @@ export function handleSwitch(target: string | undefined, on: boolean, world: Wor
   const id = pickItem(target, reachableItems(world, state), world, 'target', state);
   if (!id) return miss(`You don’t see a “${target}” here.`);
   const item = world.items[id];
+  // A burning thing with no switch (a torch) is already lit; room lighting is still only `light` items that are on.
+  if (on && !item.switchable && item.flaming) return ok(['It’s already lit.']);
   if (!item.switchable) {
     // Outside Infocom style, turning off what can't be switched (“put out the fire”) is a miss, so the intent server can read it.
     if (!on && world.style !== 'infocom') return miss(`You can’t turn that ${word}.`);

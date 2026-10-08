@@ -105,4 +105,20 @@ describe('older saves’ arrival stamps (1.12.5)', () => {
     const out = migrateSave(fixtureWorld, { version: SAVE_VERSION, gameState: g, outputHistory: [] });
     expect((out?.gameState.npcs?.guard as Record<string, unknown>).arrived).toBeUndefined();
   });
+
+  it('a 2.0 save missing a later item gets its starting place', () => {
+    const state = initialState(world);
+    const id = Object.keys(state.locations).find((k) => state.locations[k] !== null)!;
+    const locations = { ...state.locations };
+    delete locations[id];
+    const save = { version: '2.0', savedAt: 'x', gameState: { ...state, locations }, outputHistory: [] };
+    expect(migrateSave(world, save)!.gameState.locations[id]).toBe(state.locations[id]);
+  });
+
+  it('a consumed item stays gone', () => {
+    const state = initialState(world);
+    const id = Object.keys(state.locations).find((k) => state.locations[k] !== null)!;
+    const save = { version: '2.0', savedAt: 'x', gameState: { ...state, locations: { ...state.locations, [id]: null } }, outputHistory: [] };
+    expect(migrateSave(world, save)!.gameState.locations[id]).toBeNull();
+  });
 });
