@@ -74,15 +74,17 @@ export function interpret(input: string, conv: Conversation, world: World, _stat
   if (!pending) return { parse: input };
   // Anything that is a command in its own right drops the question (as in Zork).
   if (strictParse(input, world.verbs)) return { parse: input };
+  // An answer drops a leading THE, as the parser does for an object in a command.
+  const answer = input.trim().replace(/^the\s+/i, '');
   if (pending.kind === 'which') {
     const candidates = pending.candidates.map((id) => ({ id, name: world.items[id]?.name ?? id, aliases: world.items[id]?.aliases }));
-    const found = fuzzyCandidates(input, candidates);
+    const found = fuzzyCandidates(answer, candidates);
     if (found.length === 1) return { run: fill(pending.action, pending.slot, found[0], true), viaAnswer: true };
     // Still several: the handler asks again with the narrower set.
-    if (found.length > 1) return { run: fill(pending.action, pending.slot, input, false), viaAnswer: true };
+    if (found.length > 1) return { run: fill(pending.action, pending.slot, answer, false), viaAnswer: true };
     return { parse: input };
   }
-  return { run: fill(pending.action, pending.slot, input, false), viaAnswer: true };
+  return { run: fill(pending.action, pending.slot, answer, false), viaAnswer: true };
 }
 
 const FILLER = new Set(['the', 'a', 'an', 'to', 'with', 'in', 'on', 'at', 'my', 'into', 'onto', 'from', 'and', 'then', 'it', 'them']);

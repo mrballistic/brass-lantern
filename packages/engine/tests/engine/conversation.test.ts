@@ -53,6 +53,17 @@ describe('answers', () => {
     expect(interpret('wallet', conv, world, s)).toMatchObject({ viaAnswer: true });
   });
 
+  it('an answer may start with THE, as an object in a command may', () => {
+    const conv = newConversation();
+    const s = stateWith(world, { room: 'living' });
+    say(conv, s, 'take');
+    say(conv, s, 'the wallet');
+    expect(s.locations.wallet).toBe('player');
+    say(conv, s, 'take key');
+    say(conv, s, 'the rusty key');
+    expect(s.locations.rusty_key).toBe('player');
+  });
+
   it('an answer for the second object fills that slot', () => {
     const conv = newConversation();
     const s = stateWith(world, { room: 'shed', carrying: ['key'] });
