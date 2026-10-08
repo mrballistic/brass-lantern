@@ -12,10 +12,6 @@ All three are ESM with TypeScript declarations. On Node 24 and later every entry
 
 TypeScript 5.0 or later works with `moduleResolution` set to `bundler`, `node16` or `nodenext`. The engine’s public types mention `fetch` and `Storage`, so your project needs the DOM lib or `@types/node`.
 
-::: tip The first publish is separate
-Version 2.0.0 is the first version with packages. Until it is on npm, the repo’s `npm run smoke` packs the three packages, installs the tarballs into a scratch project and uses them, so what ships is what is tested.
-:::
-
 ## Install
 
 ```bash

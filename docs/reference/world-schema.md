@@ -138,8 +138,6 @@ Message-only exits aren't listed unless `listExits` names them.
 
 You can see into a surface, an open container or a transparent one; you can reach into a surface or an open container. The parser only matches what you can see, and taking something you can see but can't reach says which container is closed.
 
-> `onSnooze` was removed in 1.4.0: SNOOZE is no longer built in. Declare it as a [world verb](#world-verbs) and give the item an `instead.snooze` rule.
-
 ### UseRule
 
 Rules are tried in order and the **first** whose conditions hold runs. For two-object commands, rules on both items are checked, so one rule covers "put the disk in the drive" and "use the drive with the disk".

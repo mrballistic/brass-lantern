@@ -1,4 +1,4 @@
-<p align="center"><img src="./docs/public/brand/lantern-mark-amber.svg" alt="" width="96" height="96"></p>
+<p><img src="./docs/public/brand/lantern-mark-amber.svg" alt="" width="96" height="96"></p>
 
 # Brass Lantern
 
@@ -41,7 +41,7 @@ Both kinds sit side by side as **cartridges**. With more than one, the terminal 
 
 ## Built with Brass Lantern
 
-**[Office Space: The Text Adventure](https://initech.mrballistic.com)** is a full-length game on this engine (it runs 1.13.0 for now and moves onto the packages on its own schedule): four chapters from a very bad Monday at Initech to a field, a baseball bat and a printer that has it coming. It runs with the intent server, so you can type like a person.
+**[Office Space: The Text Adventure](https://initech.mrballistic.com)** is a full-length game on this engine: four chapters from a very bad Monday at Initech to a field, a baseball bat and a printer that has it coming. It runs with the intent server, so you can type like a person.
 
 ## Use it as a library
 
