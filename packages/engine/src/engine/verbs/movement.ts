@@ -1,10 +1,11 @@
 import type { GameState } from '../../types/game.ts';
 import type { Exit, World } from '../../types/world.ts';
 import { evaluateCondition } from '../conditions.ts';
+import { exitRefusal } from '../exits.ts';
 import { COMPASS, describeRoom, exitList, exitTarget } from '../describe.ts';
 import { fuzzyMatchExit } from '../fuzzy.ts';
 import { isSafeKey } from '../keys.ts';
-import { isAwake, isLit, isNpcHidden, isOpen, isWater, restTerrains, matchItem, nextPlacing, npcStateOf, npcsIn, onFootTerrains, pickItem, terrainOf, travelTerrains, visibleItems } from '../model.ts';
+import { isAwake, isLit, isNpcHidden, isWater, restTerrains, matchItem, nextPlacing, npcStateOf, npcsIn, onFootTerrains, pickItem, terrainOf, travelTerrains, visibleItems } from '../model.ts';
 import { handleBoard } from './vehicle.ts';
 import { runEventKey, runSteps, turnHalted, vehicleLine } from '../effects.ts';
 import { nextRandom } from '../rng.ts';
@@ -118,19 +119,6 @@ function enterRoomInner(targetId: string, world: World, state: GameState, opts: 
 
 /** An exit's own refusal (V-WALK's RFATAL): it changes nothing, and skips the room's end routine. */
 const refuse = (line: string): EngineResult => ({ ...ok([line]), fatal: true });
-
-/**
- * Why an exit can't be taken now, in the words the player hears: a denial that holds, a failing `if`, a closed
- * door, in that order. Null when it's passable. The one check the player, characters and `ctx.exits` share.
- */
-export function exitRefusal(exit: string | Exit, world: World, state: GameState): string | null {
-  if (typeof exit === 'string') return null;
-  const refused = exit.denials?.find((d) => evaluateCondition(d.if, state, world));
-  if (refused) return refused.text;
-  if (exit.if && !evaluateCondition(exit.if, state, world)) return exit.denial ?? 'You can’t go that way.';
-  if (exit.door && !isOpen(world, state, exit.door)) return `The ${world.items[exit.door]?.name ?? exit.door} is closed.`;
-  return null;
-}
 
 /** Follow one exit. Every refusal comes before the move, so it changes nothing. */
 function followExit(exit: string | Exit, world: World, state: GameState): EngineResult {

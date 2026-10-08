@@ -4,7 +4,7 @@ import { fightStrength } from './combat.ts';
 import { fallbackParse } from './parser.ts';
 import { evaluateCondition } from './conditions.ts';
 import { exitTarget } from './describe.ts';
-import { exitRefusal } from './verbs/movement.ts';
+import { exitRefusal } from './exits.ts';
 import { fuzzyCandidates } from './fuzzy.ts';
 import { childrenOf, isCarried, isHeld, isLit, isNpcHidden, isNpcIn, isReachable, isWater, parentOf, terrainOf } from './model.ts';
 import { nextRandom, roll } from './rng.ts';

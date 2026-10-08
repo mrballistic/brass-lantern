@@ -3,7 +3,7 @@ import type { World } from '../../types/world.ts';
 import { whichQuestion } from '../ask.ts';
 import { evaluateCondition } from '../conditions.ts';
 import { exitTarget, npcThe } from '../describe.ts';
-import { exitRefusal } from './movement.ts';
+import { exitRefusal } from '../exits.ts';
 import { fuzzyCandidates, fuzzyMatchExit, isMeWord, isSelfWord, namesSelf } from '../fuzzy.ts';
 import { AskSignal, isAwake, isInside, isNpcHidden, matchNpc, moveItem, needObject, nextPlacing, npcRoom, npcScope, npcsSeen, npcStateOf, pickItem, PLAYER } from '../model.ts';
 import { fallbackParse, readsNumber } from '../parser.ts';
