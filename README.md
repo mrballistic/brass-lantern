@@ -1,3 +1,5 @@
+<p align="center"><img src="./docs/public/brand/lantern-mark-amber.svg" alt="" width="96" height="96"></p>
+
 # Brass Lantern
 
 **Classic parser text adventures in a CRT terminal, in the browser.** Write your own game as data, or load a real Infocom-era story file. **The Zork trilogy** is included.
@@ -39,7 +41,28 @@ Both kinds sit side by side as **cartridges**. With more than one, the terminal 
 
 ## Built with Brass Lantern
 
-**[Office Space: The Text Adventure](https://initech.mrballistic.com)** is a full-length game on this engine: four chapters from a very bad Monday at Initech to a field, a baseball bat and a printer that has it coming. It runs with the intent server, so you can type like a person.
+**[Office Space: The Text Adventure](https://initech.mrballistic.com)** is a full-length game on this engine (it runs 1.13.0 for now and moves onto the packages on its own schedule): four chapters from a very bad Monday at Initech to a field, a baseball bat and a printer that has it coming. It runs with the intent server, so you can type like a person.
+
+## Use it as a library
+
+Version 2.0 ships as three npm packages: `@brass-lantern/engine` (worlds, parser, turn loop, Z-machine runtime), `@brass-lantern/vue` (the CRT terminal, themes and `mountGame`) and `@brass-lantern/server` (the intent server). Put a game in your own app:
+
+```bash
+npm i @brass-lantern/engine @brass-lantern/vue vue pinia
+```
+
+```ts
+import { mountGame } from '@brass-lantern/vue';
+import '@brass-lantern/vue/style.css';
+import { tutorial } from '@brass-lantern/engine/worlds';
+
+mountGame('#app', {
+  cartridges: [{ kind: 'world', id: 'snack-attack', title: 'SNACK ATTACK', world: tutorial }],
+  storagePrefix: 'my-game',
+});
+```
+
+The terminal comes in five themes (amber and green CRT, and plain light and dark), and the engine also runs headless in Node. [Using the library](https://mrballistic.github.io/brass-lantern/guide/using-the-library) covers all of it. This repo is an npm-workspaces monorepo: `packages/` holds the libraries and `apps/site` is the demo.
 
 ## Quick start
 
@@ -50,7 +73,7 @@ npm install
 npm run dev            # http://localhost:5173
 ```
 
-You'll get the cartridge menu: **Snack Attack**, a three-room tutorial world, **Zork I, II and III**, and **Zork I rebuilt natively** on the engine. What it offers is set in `src/app.config.ts`:
+You'll get the cartridge menu: **Snack Attack**, a three-room tutorial world, **Zork I, II and III**, and **Zork I rebuilt natively** on the engine. What it offers is set in `apps/site/src/app.config.ts`:
 
 ```ts
 export const cartridges: Cartridge[] = [
@@ -62,19 +85,21 @@ export const cartridges: Cartridge[] = [
 ];
 ```
 
-- **To make your own game**, write a world in `src/worlds/` and add it as a cartridge. [Building worlds](https://mrballistic.github.io/brass-lantern/guide/building-worlds/) walks through it, from a two-room game up, with recipes for containers, darkness, timers and endings.
-- **To add a story file**, drop it in `public/stories/` and add a `zcode` entry. See [Playing story files](https://mrballistic.github.io/brass-lantern/guide/z-machine).
+- **To make your own game**, write a world (the bundled ones are in `packages/engine/src/worlds/`) and add it as a cartridge. [Building worlds](https://mrballistic.github.io/brass-lantern/guide/building-worlds/) walks through it, from a two-room game up, with recipes for containers, darkness, timers and endings.
+- **To add a story file**, drop it in `apps/site/public/stories/` and add a `zcode` entry. See [Playing story files](https://mrballistic.github.io/brass-lantern/guide/z-machine).
 
 For loose phrasing in native worlds, run the intent server too ([guide](https://mrballistic.github.io/brass-lantern/guide/intent-server)):
 
 ```bash
-cd server && cp .env.example .env    # add GEMINI_KEY
-npm install && npm run dev
+npm install                           # at the repo root
+cd packages/server && cp .env.example .env    # add GEMINI_KEY
+npm run dev
 ```
 
 ## Docs
 
 - [Getting started](https://mrballistic.github.io/brass-lantern/guide/getting-started)
+- [Using the library](https://mrballistic.github.io/brass-lantern/guide/using-the-library)
 - [Building worlds](https://mrballistic.github.io/brass-lantern/guide/building-worlds/)
 - [Playing story files](https://mrballistic.github.io/brass-lantern/guide/z-machine)
 - [Porting Zork](https://mrballistic.github.io/brass-lantern/guide/porting-zork)

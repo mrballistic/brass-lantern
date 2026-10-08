@@ -19,8 +19,11 @@ export default defineConfig({
     ['link', { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=VT323&display=swap' }],
   ],
   themeConfig: {
+    // The owner's lantern mark (currentColor, so it follows the theme).
+    logo: '/brand/lantern-mark.svg',
     nav: [
       { text: 'Guide', link: '/guide/getting-started' },
+      { text: 'Library', link: '/guide/using-the-library' },
       { text: 'Build a world', link: '/guide/building-worlds/' },
       { text: 'Story files', link: '/guide/z-machine' },
       { text: 'Reference', link: '/reference/world-schema' },
@@ -32,6 +35,7 @@ export default defineConfig({
         text: 'Guide',
         items: [
           { text: 'Getting started', link: '/guide/getting-started' },
+          { text: 'Using the library', link: '/guide/using-the-library' },
           { text: 'Playing story files (Zork)', link: '/guide/z-machine' },
           { text: 'Porting Zork', link: '/guide/porting-zork' },
           { text: 'How it works', link: '/guide/how-it-works' },

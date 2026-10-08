@@ -25,7 +25,7 @@ Brass Lantern’s own command splitting, the intent server and HINT don’t appl
 
 ## Cartridges
 
-`src/app.config.ts` lists what the terminal offers:
+`apps/site/src/app.config.ts` lists what the terminal offers:
 
 ```ts
 export const cartridges: Cartridge[] = [
@@ -41,7 +41,7 @@ export const cartridges: Cartridge[] = [
 - **With one cartridge**, it boots straight in, with no menu.
 - **After a reload**, the last cartridge you played comes straight back if it has a game in progress.
 
-To add a story, put the file in `public/stories/` and add an entry. `story` is relative to the site’s base, so it works under a subpath too. Story files are binary and fetched on demand, and the interpreter is a separate chunk that loads only when a story cartridge is inserted, so a build that offers only native worlds never downloads it.
+To add a story, put the file in `apps/site/public/stories/` and add an entry. `story` is relative to the site’s base, so it works under a subpath too. Story files are binary and fetched on demand, and the interpreter is a separate chunk that loads only when a story cartridge is inserted, so a build that offers only native worlds never downloads it.
 
 ## Playing your own story files
 
@@ -71,9 +71,9 @@ Got a story file? Type **LOAD** at the cartridge menu and pick it, or drag it on
 ## How it works
 
 - **ifvms** ([MIT](https://github.com/curiousdannii/ifvms.js)), the Z-machine inside Parchment, runs the story.
-- It talks to the screen through **Glk**, a standard interface for interactive fiction. Brass Lantern includes a modified copy of glkapi.js (`src/zmachine/vendor/`), wrapped so each game gets its own instance.
-- **`BrowserGlkOte`** (`src/zmachine/glkote.ts`) turns the game’s screen updates into terminal lines, and its status line into the header.
-- **`LocalStorageDialog`** (`src/zmachine/dialog.ts`) stores saves and autosaves.
+- It talks to the screen through **Glk**, a standard interface for interactive fiction. Brass Lantern includes a modified copy of glkapi.js (`packages/engine/src/zmachine/vendor/`), wrapped so each game gets its own instance.
+- **`BrowserGlkOte`** (`packages/engine/src/zmachine/glkote.ts`) turns the game’s screen updates into terminal lines, and its status line into the header.
+- **`LocalStorageDialog`** (`packages/engine/src/zmachine/dialog.ts`) stores saves and autosaves.
 
 The game’s own echo of your command, and its `>` prompt, are dropped, since the terminal draws its own.
 

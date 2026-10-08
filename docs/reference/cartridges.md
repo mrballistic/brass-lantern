@@ -2,7 +2,7 @@
 
 ## Cartridges
 
-`src/app.config.ts` exports `cartridges`, `appName` (the header) and `storagePrefix` (the namespace for everything stored in the browser).
+`apps/site/src/app.config.ts` exports `cartridges`, `appName` (the header) and `storagePrefix` (the namespace for everything stored in the browser).
 
 **A native world:**
 

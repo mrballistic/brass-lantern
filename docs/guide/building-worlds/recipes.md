@@ -1,6 +1,6 @@
 # Recipes
 
-Each recipe is a small world in [`src/worlds/examples/`](https://github.com/mrballistic/brass-lantern/tree/main/packages/engine/src/worlds/examples) about one idea. The code is included from those files, and the transcripts are what [`tests/worlds/examples/recipes.test.ts`](https://github.com/mrballistic/brass-lantern/blob/main/packages/engine/tests/worlds/examples/recipes.test.ts) checks.
+Each recipe is a small world in [`packages/engine/src/worlds/examples/`](https://github.com/mrballistic/brass-lantern/tree/main/packages/engine/src/worlds/examples) about one idea. The code is included from those files, and the transcripts are what [`packages/engine/tests/worlds/examples/recipes.test.ts`](https://github.com/mrballistic/brass-lantern/blob/main/packages/engine/tests/worlds/examples/recipes.test.ts) checks.
 
 ## Containers and keys
 

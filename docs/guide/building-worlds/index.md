@@ -10,7 +10,7 @@ This section is three worked examples, each a real world file that a test plays 
 
 ## Where a world lives
 
-Put the file in `src/worlds/` and add it to `cartridges` in `src/app.config.ts`:
+Put the file in `packages/engine/src/worlds/` and add it to `cartridges` in `apps/site/src/app.config.ts`:
 
 ```ts
 import { twoRooms } from '@/worlds/examples/two-rooms';
@@ -26,7 +26,7 @@ With one cartridge the terminal boots straight into it; with several it shows a 
 
 1. **Write a little.** One room, one item, one rule.
 2. **Play it** in the browser, or in a test (below), which is faster.
-3. **Run the checks.** `npm test` runs `tests/worlds/audit.test.ts` over every world in `cartridges`: effects naming things that don't exist, exits to nowhere, unknown conditions and events. Those mistakes fail silently in play, so they fail loudly here.
+3. **Run the checks.** `npm test` runs `packages/engine/tests/worlds/audit.test.ts` over every world in `cartridges`: effects naming things that don't exist, exits to nowhere, unknown conditions and events. Those mistakes fail silently in play, so they fail loudly here.
 
 A test that plays your world is a few lines:
 

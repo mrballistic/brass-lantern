@@ -1,12 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" fill="#0a0a08"/>
-  <rect x="13" y="6" width="6" height="20" fill="#FFB000">
-    <animate attributeName="opacity" values="1;0.85;1" dur="2.4s" repeatCount="indefinite"/>
-  </rect>
-  <rect x="0" y="0" width="32" height="2" fill="#000" opacity="0.25"/>
-  <rect x="0" y="6" width="32" height="2" fill="#000" opacity="0.25"/>
-  <rect x="0" y="12" width="32" height="2" fill="#000" opacity="0.25"/>
-  <rect x="0" y="18" width="32" height="2" fill="#000" opacity="0.25"/>
-  <rect x="0" y="24" width="32" height="2" fill="#000" opacity="0.25"/>
-  <rect x="0" y="30" width="32" height="2" fill="#000" opacity="0.25"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="#0b0f0a" role="img" aria-label="Brass Lantern"><rect width="64" height="64" fill="#f2a93b"/><path d="M23 16V12a9 9 0 0 1 18 0V16" fill="none" stroke="#0b0f0a" stroke-width="4"/><path d="M22 14H42L50 22H14Z"/><path fill-rule="evenodd" d="M14 24H50V50H14ZM21 29V45H43V29Z"/><path d="M32 30L37.2 35.5A6.2 6.2 0 1 1 26.8 35.5Z"/><path d="M10 52H54V58H10Z"/></svg>

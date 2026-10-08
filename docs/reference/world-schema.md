@@ -1,6 +1,6 @@
 # World schema
 
-Every field a world can use. The source of truth is [`src/types/world.ts`](https://github.com/mrballistic/brass-lantern/blob/main/packages/engine/src/types/world.ts), which has a comment on each one. "Condition" means a [condition string](./conditions-and-events#conditions); "event" means a key in `events`.
+Every field a world can use. The source of truth is [`packages/engine/src/types/world.ts`](https://github.com/mrballistic/brass-lantern/blob/main/packages/engine/src/types/world.ts), which has a comment on each one. "Condition" means a [condition string](./conditions-and-events#conditions); "event" means a key in `events`.
 
 ## World
 

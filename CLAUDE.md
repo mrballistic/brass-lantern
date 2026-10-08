@@ -4,36 +4,44 @@ Guidance for AI coding agents working in this repo. Humans: see CONTRIBUTING.md 
 
 ## What this is
 
-Brass Lantern: a text-adventure engine (Vue 3 SPA with a CRT terminal) plus an optional intent server (`server/`, Express + Gemini). A native game is a `World` object in `src/worlds/`. `src/app.config.ts` lists the cartridges: native worlds and Z-machine story files (Zork I–III in `public/stories/`). With more than one, the terminal opens on a menu, where players can also LOAD their own story files (kept in IndexedDB). Snack Attack is the tutorial world. `src/main.ts` mounts the site with `mountGame` (`src/mount.ts`), which renders `<BrassLantern>` (shell, boot, terminal) for one game. `src/stores/session.ts` routes input to the menu (`stores/cartridges.ts`), a native world (`stores/game.ts`) or a story (`stores/zgame.ts`).
+Brass Lantern: a text-adventure engine with a CRT terminal, shipped as three npm packages from an npm-workspaces monorepo, plus the demo site that uses them.
+
+- `packages/engine` (`@brass-lantern/engine`): the engine (`src/engine/`), the world schema (`src/types/world.ts`), the Z-machine runtime (`src/zmachine/`), the bundled worlds (`src/worlds/`, Snack Attack is the tutorial) and the headless `createGame` / `auditWorld`. It imports no Vue, Pinia or browser globals (`tests/boundary.test.ts` checks).
+- `packages/vue` (`@brass-lantern/vue`): the terminal components, the stores (`src/stores/session.ts` routes input to the menu, a native world via `game.ts`, or a story via `zgame.ts`), themes (`src/theme/`), `src/styles/crt.css` and `mountGame` (`src/mount.ts`), which renders `<BrassLantern>` for one `GameOptions`.
+- `packages/server` (`@brass-lantern/server`): `parseIntent` and `intentRoute` (`src/lib.ts`, `src/express.ts`), which read no environment, plus the repo's own Express app (`src/index.ts`, `src/config.ts`), which does and is not published.
+- `apps/site` (`brass-lantern-site`, private): the demo. `src/app.config.ts` lists the cartridges (native worlds and Zork I-III in `public/stories/`), `src/main.ts` calls `mountGame`, and consent and analytics live here, not in the library.
+- `docs/` (VitePress) stays at the repo root. Everything is version 2.0.0; in the repo the packages resolve to their sources through the `@brass-lantern/source` export condition, so tests and the site need no build.
 
 ## Invariants
 
-- **The engine never branches on a world's IDs.** World-specific behavior is data; if the schema can't express something, add a generic hook to `src/types/world.ts` + `src/engine/engine.ts`, and give `tests/fixtures/world.ts` a use of it.
-- **Engine misses never mutate state.** The store runs the regex reading, and on `understood: false` retries with the LLM's reading; that's only safe because a miss changes nothing. `tests/engine/engine-hooks.test.ts` checks it.
+- **The engine never branches on a world's IDs.** World-specific behavior is data; if the schema can't express something, add a generic hook to `packages/engine/src/types/world.ts` + `packages/engine/src/engine/engine.ts`, and give `packages/engine/tests/fixtures/world.ts` a use of it.
+- **Engine misses never mutate state.** The store runs the regex reading, and on `understood: false` retries with the LLM's reading; that's only safe because a miss changes nothing. `packages/engine/tests/engine/engine-hooks.test.ts` checks it.
 - **The LLM only classifies.** It returns `{ action, target, indirect }`; the server drops anything that isn't a known verb plus identifiers. LLM-generated story text is a defect.
-- **World verbs** (`world.verbs`, with `instead` rules) need no engine or server edits; prefer them. **Built-in verbs** still go in three places: `src/engine/parser.ts` (and `BUILT_IN_WORDS`), the dispatcher (wrapped in `withRules`, plus HELP) in `src/engine/engine.ts`, and `ACTION_VOCAB` in `server/src/llm.ts`.
-- **Every item has one parent** (`GameState.locations`); inventory and contents are derived (`src/engine/model.ts`). Built-in verbs check everything before changing anything, so a refusal is an understood reply and a miss changes nothing.
-- **Events are steps** (lines and typed effects, `src/engine/effects.ts`). Randomness is drawn only inside effects (`nextRandom`, seeded in state), and fuses and daemons run only after a turn the engine acted on (`src/engine/time.ts`), so a miss still changes nothing.
-- **Saves are format 2.0**; older ones are migrated in `src/engine/migrate.ts`. Add state fields as optional, or add a migration step.
-- **`tests/worlds/zork1-diff.test.ts`** plays the native Zork I (`src/worlds/zork1.ts`) against the original story file. Keep it passing; a difference goes in `tests/worlds/zork1-allowlist.ts` with its reason.
-- **Conditions** (`flag:` / `has:` / `in:`, `!`, `&`) are parsed only in `src/engine/conditions.ts`; **fuzzy matching** only in `src/engine/fuzzy.ts`.
-- **The Gemini key is server-only**, sent in the `x-goog-api-key` header. Never a `VITE_` variable. Every server env var goes through `server/src/config.ts`.
+- **World verbs** (`world.verbs`, with `instead` rules) need no engine or server edits; prefer them. **Built-in verbs** still go in three places: `packages/engine/src/engine/parser.ts` (and `BUILT_IN_WORDS`), the dispatcher (wrapped in `withRules`, plus HELP) in `packages/engine/src/engine/engine.ts`, and `ACTION_VOCAB` in `packages/server/src/llm.ts`.
+- **Every item has one parent** (`GameState.locations`); inventory and contents are derived (`packages/engine/src/engine/model.ts`). Built-in verbs check everything before changing anything, so a refusal is an understood reply and a miss changes nothing.
+- **Events are steps** (lines and typed effects, `packages/engine/src/engine/effects.ts`). Randomness is drawn only inside effects (`nextRandom`, seeded in state), and fuses and daemons run only after a turn the engine acted on (`packages/engine/src/engine/time.ts`), so a miss still changes nothing.
+- **Saves are format 2.0**; older ones are migrated in `packages/engine/src/engine/migrate.ts`. Add state fields as optional, or add a migration step.
+- **`packages/engine/tests/worlds/zork1-diff.test.ts`** plays the native Zork I (`packages/engine/src/worlds/zork1.ts`) against the original story file. Keep it passing; a difference goes in `packages/engine/tests/worlds/zork1-allowlist.ts` with its reason.
+- **Conditions** (`flag:` / `has:` / `in:`, `!`, `&`) are parsed only in `packages/engine/src/engine/conditions.ts`; **fuzzy matching** only in `packages/engine/src/engine/fuzzy.ts`.
+- **The Gemini key is server-only**, sent in the `x-goog-api-key` header. Never a `VITE_` variable. Every server env var goes through `packages/server/src/config.ts`.
 - **Player-facing text** uses curly quotes and apostrophes.
-- **Story files run in their own session** (`src/zmachine/session.ts`): fresh `createGlk()`, ZVM and `ZVMDispatch` each time, and a fresh copy of the story bytes (ifvms writes into them). `src/zmachine/vendor/glkapi.js` is generated by `scripts/vendor-glkapi.mjs`; regenerate it rather than editing it.
+- **Story files run in their own session** (`packages/engine/src/zmachine/session.ts`): fresh `createGlk()`, ZVM and `ZVMDispatch` each time, and a fresh copy of the story bytes (ifvms writes into them). `packages/engine/src/zmachine/vendor/glkapi.js` is generated by `scripts/vendor-glkapi.mjs`; regenerate it rather than editing it.
 
 ## Tests and checks
 
 ```bash
-npm run lint && npm run type-check && npm run test:coverage && npm run build
-cd server && npm run lint && npm run type-check && npm test
+npm run lint && npm run type-check && npm run test:coverage   # every workspace
+npm run build:packages && npm run build && npm run smoke       # packages, site, consumer smoke test
 ```
 
-Coverage thresholds: 80% lines/functions/statements, 75% branches. Shared tests play the fixture world by passing its options: `createGameStore(fixtureOptions)`, or `<BrassLantern :options="fixtureOptions">` (`tests/fixtures/world.ts`). Only `src/app.config.ts` and `src/main.ts` read the site's config; the stores and components take a `GameOptions` (`src/options.ts`), one game per storage prefix.
+`ZORK_LONG=1 npm test` also runs the long Zork tests. One workspace: `npm run test -w @brass-lantern/engine`.
+
+Coverage thresholds: 80% lines/functions/statements, 75% branches. Shared tests play the fixture world by passing its options: `createGameStore(fixtureOptions)`, or `<BrassLantern :options="fixtureOptions">` (`packages/engine/tests/fixtures/world.ts`). Only `apps/site/src/app.config.ts` and `apps/site/src/main.ts` read the site's config; the stores and components take a `GameOptions` (`packages/vue/src/options.ts`), one game per storage prefix.
 
 ## Docs
 
-`docs/` is a VitePress site published to GitHub Pages with a demo build (`.github/workflows/pages.yml`). When behavior changes, update the relevant page in the same change: `guide/your-first-world.md` quotes `src/worlds/tutorial.ts`, and `tests/worlds/tutorial.test.ts` plays it, so keep the three in sync.
+`docs/` is a VitePress site published to GitHub Pages with a demo build (`.github/workflows/pages.yml`). When behavior changes, update the relevant page in the same change: `guide/your-first-world.md` quotes `packages/engine/src/worlds/tutorial.ts`, and `packages/engine/tests/worlds/tutorial.test.ts` plays it, so keep the three in sync.
 
 ## Provenance
 
-Much of `src/`, `server/src/` and `tests/` is developed alongside a private game and synced here file for file. Keep shared files free of any particular game's content.
+Keep the packages free of any particular game's content. Office Space, the private game that used to sync files with this repo, stays on 1.13.0 until it moves onto the packages in its own change; its file sync no longer matches this layout.

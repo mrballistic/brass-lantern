@@ -1,17 +1,30 @@
 # The intent server
 
-Players don't type like parsers. The intent server is an optional Express app (`server/`) that hears what the regex parser couldn't handle, such as "make that thing stop beeping" or "pocket my billfold", and asks an LLM which of the engine's verbs and IDs that means. Without it the game is fully playable; loose phrasing just gets a "didn't understand" reply.
+Players don't type like parsers. The intent server is optional. It ships as `@brass-lantern/server`: `parseIntent` (a function) and `intentRoute` (an Express router), and the repo adds a small Express app around them (`packages/server/src/index.ts`) for the demo. It hears what the regex parser couldn't handle, such as "make that thing stop beeping" or "pocket my billfold", and asks an LLM which of the engine's verbs and IDs that means. Without it the game is fully playable; loose phrasing just gets a "didn't understand" reply.
 
-## Run it
+## Use it in your own backend
+
+The package reads no environment variables; you pass the key in. [Using the library](./using-the-library#the-intent-server) has the full wiring:
+
+```ts
+import { intentRoute } from '@brass-lantern/server/express';
+
+app.use(express.json({ limit: '32kb' }));
+app.use('/api', intentRoute({ apiKey, models, timeoutMs, rateLimitPerMinute }));
+```
+
+Then set `intentEndpoint: '/api/parse-intent'` in the game’s options. Without it (or with `null` or an empty string) the game never asks.
+
+## Run the repo’s server
 
 ```bash
-cd server
+npm install                                  # at the repo root: installs every workspace
+cd packages/server
 cp .env.example .env        # then set GEMINI_KEY (get one at https://aistudio.google.com/apikey)
-npm install
 npm run dev                 # http://127.0.0.1:3001
 ```
 
-With `npm run dev` running at the repo root too, Vite proxies `/api/*` to it, so the browser just calls its own origin.
+With `npm run dev` running at the repo root too, Vite proxies `/api/*` to it, so the browser just calls its own origin. This app reads its settings from the environment (below); the library does not.
 
 ::: danger Keep the key on the server
 The browser never talks to Google; only this server does, with the key in a request header. **Never give the key a `VITE_` prefix.** Vite inlines `VITE_*` variables into the public bundle.
@@ -54,7 +67,7 @@ The server calls Gemini's REST API directly, with no SDK:
 
 ## Configuration
 
-All environment variables are read in `server/src/config.ts`:
+These apply to the repo’s own server app. All of them are read in `packages/server/src/config.ts`; the library entry points take the same settings as parameters instead.
 
 | Variable | Default | |
 |---|---|---|
@@ -71,6 +84,6 @@ Google retires models regularly. A retired model just answers 404 and the chain 
 There's no auth, by design: the endpoint only classifies short commands. Its cost is bounded instead:
 
 - **Input caps:** 200 characters of input, and context lists of at most 50 entries of 100 characters each.
-- **Rate limit:** per client, with IPv6 bucketed by /64 so one user can't rotate addresses, plus a global ceiling (`server/src/rate-limit.ts`).
+- **Rate limit:** per client, with IPv6 bucketed by /64 so one user can't rotate addresses, plus a global ceiling (`packages/server/src/rate-limit.ts`).
 - **No CORS headers**, so other websites can't spend your quota from their visitors' browsers.
 - **Your provider's quota** as the backstop. Keep a spending limit on the key.

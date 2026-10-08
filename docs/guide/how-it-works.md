@@ -1,10 +1,10 @@
 # How it works
 
-Three parts, kept deliberately apart:
+Three parts, kept deliberately apart, and shipped as three npm packages ([Using the library](./using-the-library)): the engine and parser are `@brass-lantern/engine`, the terminal and stores are `@brass-lantern/vue`, and the intent server is `@brass-lantern/server`. The engine imports no Vue, Pinia or browser globals, so the same turn loop runs in a browser, in Node (`createGame`) and in tests.
 
-1. **The engine** (`src/engine/`) is a deterministic state machine. It never knows which game it's running: everything specific to a world, including its rules, is data.
+1. **The engine** (`packages/engine/src/engine/`) is a deterministic state machine. It never knows which game it's running: everything specific to a world, including its rules, is data.
 2. **The parser** turns what the player typed into `{ action, target, indirect }`. A regex parser in the browser handles the canonical commands instantly. Anything it can't parse, or parses into something the engine can't act on, can go to the optional [intent server](./intent-server), where an LLM reads it more loosely. The LLM only *classifies* input; it never writes story text.
-3. **The world** (`src/worlds/`) is one object. Swap it and you have a different game.
+3. **The world** (`packages/engine/src/worlds/`) is one object. Swap it and you have a different game.
 
 ```
 browser                                      intent server (optional)
@@ -20,16 +20,16 @@ browser                                      intent server (optional)
 
 ## From keystroke to reply
 
-The store (`src/stores/game.ts`) runs every line through the same steps:
+The store (`packages/vue/src/stores/game.ts`) runs every line through the same steps:
 
 1. **Meta commands** (SAVE, RESTORE, LOAD, UNDO, RESTART, COOKIES) are handled by the store itself, and so is the answer to a SAVE or RESTORE prompt.
-2. **Split.** `splitCommands` (`src/engine/parser.ts`) breaks the line into commands:
+2. **Split.** `splitCommands` (`packages/engine/src/engine/parser.ts`) breaks the line into commands:
    - Clauses always split on `then`, `;` and full stops, except after `dr.`, `mr.` and the like.
    - Within a clause, `and` and commas split only when every piece is a recognized command, or an object after a list verb: `get key and wallet` becomes `get key` and `take wallet`.
    - A clause that isn't clearly a list ("could you grab my keys and wallet") stays whole.
    - Anything inside quotes is masked first, so a quoted “. ” or “, ” never splits a line (`answer “a well. yes”` is one command). A text verb (SAY, ANSWER) takes the rest of the line, and ends it.
-   Each command may be **captured** first: a room's or the world's `capture` (`captureLine` in `src/engine/engine.ts`) can take it before it's parsed, which ends the line. Captured input never reaches the intent server.
-3. **The conversation.** `interpret` (`src/engine/conversation.ts`) looks at the command in the light of the last one:
+   Each command may be **captured** first: a room's or the world's `capture` (`captureLine` in `packages/engine/src/engine/engine.ts`) can take it before it's parsed, which ends the line. Captured input never reaches the intent server.
+3. **The conversation.** `interpret` (`packages/engine/src/engine/conversation.ts`) looks at the command in the light of the last one:
    - **an answer** to a question the engine just asked (“Which door do you mean?” → `trap`) fills in the waiting command and runs it, **without** asking the intent server;
    - **AGAIN** (`g`) runs the last command again;
    - **OOPS *word*** swaps the word nobody understood in the last line and runs that.
@@ -44,18 +44,18 @@ The store (`src/stores/game.ts`) runs every line through the same steps:
 5. **Pronouns.** `it`, `them` and `that` become the last thing the engine acted on; `him` and `her`, the last person.
 6. **Execute.** `execute(action, { world, state })` returns the lines to print, whether anything changed, and `understood: false` if it couldn't make sense of the command (no such exit, no such item, no rule that applies). When a noun matches more than one thing, or a verb is missing its object, it returns a **question** (`ask`) instead, before touching anything. Before running a command that changes the game, the store keeps a snapshot for UNDO (the last 50, for this session only).
 7. **Retry on a miss.** If the regex couldn't parse the command, or the engine didn't understand it, the store asks the intent server how to read it. If the LLM's reading is different and the engine can act on it, that result is shown instead; otherwise the literal reply stands.
-8. **Time passes.** After a command the engine acted on (never after a misunderstood one, a question, or a command like VERBOSE that takes no time), the room's end routines run (`onEnd`), then the move counter goes up, wounds heal, timers fire, daemons run, characters fight, and ambient lines print, in that order (`src/engine/time.ts`, after Zork's CLOCKER). If the light changed, the reply says so.
+8. **Time passes.** After a command the engine acted on (never after a misunderstood one, a question, or a command like VERBOSE that takes no time), the room's end routines run (`onEnd`), then the move counter goes up, wounds heal, timers fire, daemons run, characters fight, and ambient lines print, in that order (`packages/engine/src/engine/time.ts`, after Zork's CLOCKER). If the light changed, the reply says so.
 9. **Output.** Lines are styled by their prefix and typed out, and the game is saved if anything changed.
 
 ::: warning The one rule to keep
-Step 7 runs the engine on the literal reading first, and possibly again on the LLM's reading. That's only safe because **a miss never changes the game**. When you add an engine handler, decide whether you can act before you touch any state. `tests/engine/engine-hooks.test.ts` checks this.
+Step 7 runs the engine on the literal reading first, and possibly again on the LLM's reading. That's only safe because **a miss never changes the game**. When you add an engine handler, decide whether you can act before you touch any state. `packages/engine/tests/engine/engine-hooks.test.ts` checks this.
 :::
 
-The intent server sees the room by ID and name (`red_mug (red coffee mug)`), so its answer uses IDs the engine matches exactly. Everything still goes through the same fuzzy matcher (`src/engine/fuzzy.ts`: exact ID, then exact name, then substring, then token prefix), so a slightly-off answer still lands.
+The intent server sees the room by ID and name (`red_mug (red coffee mug)`), so its answer uses IDs the engine matches exactly. Everything still goes through the same fuzzy matcher (`packages/engine/src/engine/fuzzy.ts`: exact ID, then exact name, then substring, then token prefix), so a slightly-off answer still lands.
 
 ## Cartridges and sessions
 
-The terminal talks to whatever is running through one interface (`useSession()` in `src/stores/session.ts`):
+The terminal talks to whatever is running through one interface (`useSession()` in `packages/vue/src/stores/session.ts`):
 
 - **The cartridge menu**, when nothing is inserted.
 - **A native world**, run by the engine above.
@@ -65,26 +65,26 @@ Inserting or ejecting a cartridge clears the screen.
 
 ## The engine
 
-`execute` (`src/engine/engine.ts`) dispatches on the action to one handler per verb (`src/engine/verbs/`), and each handler reads the world's rules rather than knowing any particular game.
+`execute` (`packages/engine/src/engine/engine.ts`) dispatches on the action to one handler per verb (`packages/engine/src/engine/verbs/`), and each handler reads the world's rules rather than knowing any particular game.
 
-**The object tree.** Every item has one parent: a room, the player, another item, or nowhere yet (`GameState.locations`, in `src/engine/model.ts`). Inventory, a room's contents and a container's contents are all read from that one map. Containers and surfaces nest. What the player can *see* (through glass) and *reach* (into open things) is computed from the tree, and the parser only matches what can be seen.
+**The object tree.** Every item has one parent: a room, the player, another item, or nowhere yet (`GameState.locations`, in `packages/engine/src/engine/model.ts`). Inventory, a room's contents and a container's contents are all read from that one map. Containers and surfaces nest. What the player can *see* (through glass) and *reach* (into open things) is computed from the tree, and the parser only matches what can be seen.
 
 | Concept | Where in the world | Notes |
 |---|---|---|
-| Conditions | anywhere | `flag:`, `has:`, `held:`, `in:`, `visited:`, `inside:`, `open:`, `locked:`, `on:`, `here:`, `var:`, `number:`, `said:`, `target:`, `terrain:`, `following:`, `carrying`, `lit:`, `alive:`, `awake:`, `fighting:`, `with:`, `!`, `&`. One parser, `src/engine/conditions.ts`. |
-| Rules | `instead`, `after` on items and rooms | Replace a verb's default, or follow it. `src/engine/rules.ts`. |
+| Conditions | anywhere | `flag:`, `has:`, `held:`, `in:`, `visited:`, `inside:`, `open:`, `locked:`, `on:`, `here:`, `var:`, `number:`, `said:`, `target:`, `terrain:`, `following:`, `carrying`, `lit:`, `alive:`, `awake:`, `fighting:`, `with:`, `!`, `&`. One parser, `packages/engine/src/engine/conditions.ts`. |
+| Rules | `instead`, `after` on items and rooms | Replace a verb's default, or follow it. `packages/engine/src/engine/rules.ts`. |
 | Containers, doors | `item.container`, `item.surface`, `item.door` | Open, close, lock, put in, take from. |
 | Exits | `room.exits` | A room ID, or `{ to, if, denial, door, denials, then }`. GO runs through rules. |
-| Vehicles | `item.vehicle`, `room.terrain` / `water` / `air`, `world.onFoot` | BOARD, DISEMBARK, and Zork's rules for water and land, generalised to named terrains: a vehicle `travels` on some, rests on others (`src/engine/verbs/vehicle.ts`, `movement.ts`). |
-| Effects | `events` | Lines and typed effects: flags, moves, variables, timers, chance, death, endings (`src/engine/effects.ts`). |
-| Darkness | `room.dark`, `item.light`, `world.darkness` | In an unlit dark room you can only find what you carry (`src/engine/model.ts` `isLit`). |
-| Death, endings | `world.death`, `world.endings` | `src/engine/death.ts`, `src/engine/endings.ts`. |
-| Characters | `npcs`, `room.npcs` | Places, held things, states, hiding and descriptions (`GameState.npcs`, read through `src/engine/model.ts`). |
-| Topics, orders | `npc.topics`, `npc.orders`, `npc.obeys`, `npc.refuseOrder`, `instead.order` | ASK *X* ABOUT *Y* and “*X*, do this” (`src/engine/verbs/talk.ts`; see [Orders](#orders) below). |
-| Followers | `npc.follows`, `{ follow }` | Characters who go where the player goes (`src/engine/verbs/movement.ts`). |
-| Combat, health | `npc.combat`, `world.combat` | Zork's blows, tables, wounds and healing (`src/engine/combat.ts`). |
-| Weight | `world.carry`, `item.size` | `src/engine/weight.ts`. |
-| Scripts | `world.scripts` | The code hatch: functions that return steps (`src/engine/scripts.ts`). `descriptionScript` also builds descriptions from state; `{var:NAME}` and `{number}` fill in text (`src/engine/text.ts`). |
+| Vehicles | `item.vehicle`, `room.terrain` / `water` / `air`, `world.onFoot` | BOARD, DISEMBARK, and Zork's rules for water and land, generalised to named terrains: a vehicle `travels` on some, rests on others (`packages/engine/src/engine/verbs/vehicle.ts`, `movement.ts`). |
+| Effects | `events` | Lines and typed effects: flags, moves, variables, timers, chance, death, endings (`packages/engine/src/engine/effects.ts`). |
+| Darkness | `room.dark`, `item.light`, `world.darkness` | In an unlit dark room you can only find what you carry (`packages/engine/src/engine/model.ts` `isLit`). |
+| Death, endings | `world.death`, `world.endings` | `packages/engine/src/engine/death.ts`, `packages/engine/src/engine/endings.ts`. |
+| Characters | `npcs`, `room.npcs` | Places, held things, states, hiding and descriptions (`GameState.npcs`, read through `packages/engine/src/engine/model.ts`). |
+| Topics, orders | `npc.topics`, `npc.orders`, `npc.obeys`, `npc.refuseOrder`, `instead.order` | ASK *X* ABOUT *Y* and “*X*, do this” (`packages/engine/src/engine/verbs/talk.ts`; see [Orders](#orders) below). |
+| Followers | `npc.follows`, `{ follow }` | Characters who go where the player goes (`packages/engine/src/engine/verbs/movement.ts`). |
+| Combat, health | `npc.combat`, `world.combat` | Zork's blows, tables, wounds and healing (`packages/engine/src/engine/combat.ts`). |
+| Weight | `world.carry`, `item.size` | `packages/engine/src/engine/weight.ts`. |
+| Scripts | `world.scripts` | The code hatch: functions that return steps (`packages/engine/src/engine/scripts.ts`). `descriptionScript` also builds descriptions from state; `{var:NAME}` and `{number}` fill in text (`packages/engine/src/engine/text.ts`). |
 | Events | `events` | Line lists. `[Flag set: …]`, `[Added to inventory: …]` and `[… consumed]` lines change state. Events from `onEnter`, `onTake`, `onWear`, `onSmash` and `bareHanded` fire once; use-rule and gift events run every time. |
 | Flags | `flagLabels` | The friendly label in an event line, mapped to a flag ID. |
 | Use rules | `item.onUse` | The older form of `instead.use`. |
@@ -95,11 +95,11 @@ Inserting or ejecting a cartridge clears the screen.
 | Score | `scoring`, `ranks`, `maxScore`, `scoreLine`, `rankLine` | Summed from flags, conditions that hold, and the `score` variable; the lines are templates. |
 | Status line | `style`, `statusLine` | Zork's room, score and moves in Infocom style; `MOVES: n` (or score and moves) otherwise. |
 
-When a world needs behavior the schema can't express, add a *generic* hook to `src/types/world.ts` and the engine. Never branch on a world's IDs.
+When a world needs behavior the schema can't express, add a *generic* hook to `packages/engine/src/types/world.ts` and the engine. Never branch on a world's IDs.
 
 ### Orders
 
-“*X*, *command*” (and TELL *X* TO *command*) is its own verb, `order`, handled by `handleOrder` in `src/engine/verbs/talk.ts`. The pipeline, in order:
+“*X*, *command*” (and TELL *X* TO *command*) is its own verb, `order`, handled by `handleOrder` in `packages/engine/src/engine/verbs/talk.ts`. The pipeline, in order:
 
 1. **Address.** The character is matched in the player's room, or among those whose `heardFrom` names it. No one matching is a miss.
 2. **`instead.order` rules** answer first, and the order's words stay words (they aren't resolved as things).
@@ -112,22 +112,22 @@ When a world needs behavior the schema can't express, add a *generic* hook to `s
 **Adding a verb** is usually a world change: declare it in `world.verbs` and give things `instead` rules for it. The parser learns its words from the world, and the browser tells the intent server which world verbs to accept, so neither needs editing.
 
 A *built-in* verb, with default behavior in the engine, still takes three edits:
-- the regex in `src/engine/parser.ts`, plus its words in `BUILT_IN_WORDS`;
-- the dispatcher in `src/engine/engine.ts` (wrapped in `withRules`), plus its HELP text;
-- `ACTION_VOCAB` in `server/src/llm.ts`. Without that last one, the server throws away the LLM's answer as an unknown verb.
+- the regex in `packages/engine/src/engine/parser.ts`, plus its words in `BUILT_IN_WORDS`;
+- the dispatcher in `packages/engine/src/engine/engine.ts` (wrapped in `withRules`), plus its HELP text;
+- `ACTION_VOCAB` in `packages/server/src/llm.ts`. Without that last one, the server throws away the LLM's answer as an unknown verb.
 
-**Saves** are format 2.0. A 1.0 save (from before the object tree) is converted on load by `src/engine/migrate.ts`, so players keep their games.
+**Saves** are format 2.0. A 1.0 save (from before the object tree) is converted on load by `packages/engine/src/engine/migrate.ts`, so players keep their games.
 
 ## The terminal
 
-The CRT is hand-written CSS (`src/styles/crt.css`), with no canvas and no UI framework:
+The CRT is hand-written CSS (`packages/vue/src/styles/crt.css`), with no canvas and no UI framework:
 - a boot sequence, scanlines, phosphor bloom and a barrel vignette;
 - flicker at two rates, plus occasional glitches;
 - phosphor decay on older lines, and a block cursor with a square-wave blink.
 
-The amber-on-black contrast is deliberately period-accurate rather than WCAG-compliant. Change `--bl-fg` and the other `--bl-*` variables if you need otherwise.
+The default look, `crt-amber`, is deliberately period-accurate rather than WCAG-compliant. The colours are twelve `--bl-*` role variables set by a **theme**, so a game can ship `crt-green`, a plain `simple` look (light or dark, following the system) or a palette of its own, and the player can switch with THEME. Reduced motion turns off flicker, glitch and noise. [Using the library](./using-the-library#themes) has the details.
 
-Each output line is classified by its first characters (`src/engine/output.ts`). The class sets both its style and its typewriter speed:
+Each output line is classified by its first characters (`packages/engine/src/engine/output.ts`). The class sets both its style and its typewriter speed:
 
 | Prefix | Type | Speed |
 |---|---|---|
@@ -138,7 +138,7 @@ Each output line is classified by its first characters (`src/engine/output.ts`).
 | `[` | system | instant |
 | anything else | prose | 10ms/char |
 
-A restored session renders instantly, with no typewriter replay, and its boot sequence is shortened. The header shows `appName` and the version from `package.json`, then the cartridge’s title (in builds with a menu); on the right, a native world's status line (`MOVES: n`, or Zork's “West of House  Score: 0  Moves: 0” in Infocom style) or the story’s own, and a COOKIES button when analytics are configured.
+A restored session renders instantly, with no typewriter replay, and its boot sequence is shortened. The header shows the game’s `terminalName` and `version` options, then the cartridge’s title (in builds with a menu); on the right, a native world's status line (`MOVES: n`, or Zork's “West of House  Score: 0  Moves: 0” in Infocom style) or the story’s own, and a COOKIES button when analytics are configured.
 
 ## Saves and analytics
 

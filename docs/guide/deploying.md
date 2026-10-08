@@ -1,6 +1,6 @@
 # Deploying
 
-A Brass Lantern game is a static site, plus the intent server if you want loose phrasing understood.
+A Brass Lantern game is a static site, plus the intent server if you want loose phrasing understood. If you use the packages in your own app ([Using the library](./using-the-library)), deploy your app the way you already do and mount `intentRoute` in your backend; this page is about the repo’s demo site and server.
 
 ## Static only
 
@@ -41,6 +41,10 @@ Build and run the server:
 npm ci && npm run build -w @brass-lantern/server
 GEMINI_KEY=… NODE_ENV=production node packages/server/dist/index.js
 ```
+
+::: warning Install the dev dependencies
+The repo’s server imports `express`, which this repo keeps as a dev dependency (the published package treats it as an optional peer). Don’t run `npm ci --omit=dev` before `npm start`: the server won’t start. Install everything, or write your own small app around `intentRoute` and install `express` yourself.
+:::
 
 In production, use a process manager (systemd, pm2, a container) and keep the key in an environment file only that service can read. The server drains in-flight requests on SIGTERM, so rolling restarts don't drop players' commands.
 

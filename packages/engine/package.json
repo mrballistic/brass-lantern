@@ -1,6 +1,6 @@
 {
   "name": "@brass-lantern/engine",
-  "version": "1.13.0",
+  "version": "2.0.0",
   "author": "Todd Greco <mrballistic@gmail.com>",
   "description": "The Brass Lantern text-adventure engine: worlds as data, a regex parser, a headless turn loop, and a Z-machine runtime for story files.",
   "license": "MIT",

@@ -1,6 +1,6 @@
 # A two-room game
 
-This page builds the smallest complete game, [`src/worlds/examples/two-rooms.ts`](https://github.com/mrballistic/brass-lantern/blob/main/packages/engine/src/worlds/examples/two-rooms.ts), from nothing. You're home after a long time away; the door is locked, and you left the key somewhere obvious. [A test](https://github.com/mrballistic/brass-lantern/blob/main/packages/engine/tests/worlds/examples/two-rooms.test.ts) plays it to the end, and the code below is that file.
+This page builds the smallest complete game, [`packages/engine/src/worlds/examples/two-rooms.ts`](https://github.com/mrballistic/brass-lantern/blob/main/packages/engine/src/worlds/examples/two-rooms.ts), from nothing. You're home after a long time away; the door is locked, and you left the key somewhere obvious. [A test](https://github.com/mrballistic/brass-lantern/blob/main/packages/engine/tests/worlds/examples/two-rooms.test.ts) plays it to the end, and the code below is that file.
 
 ## Two rooms
 

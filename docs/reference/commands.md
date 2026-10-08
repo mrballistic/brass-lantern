@@ -50,6 +50,9 @@ The verbs are fixed; a world gives them things to act on. Anything the regex par
 | RESTART | | Wipes the automatic save and starts over. Named saves are kept. |
 | SCRIPT / UNSCRIPT | | Starts a transcript, then downloads it as a text file. |
 | VERSION | | The app’s version, then the world’s title and credits. |
+| THEME [*name*] | | Lists the colour themes, or switches to one (`crt-amber`, `crt-green`, `simple`, `simple-light`, `simple-dark`, plus any the game adds). Remembered in the browser. Takes no game time. |
+| BLOOM ON / OFF | | Turns the phosphor glow on or off. |
+| EFFECTS ON / OFF | | Turns every screen effect on or off. |
 | COOKIES | `privacy` | Analytics settings, when analytics are configured. |
 | EJECT | | Back to the cartridge menu (builds with more than one cartridge). |
 | LOAD (at the menu) | `open`, or drop a file on the terminal | Play a Z-machine story file from your computer. In a native world, LOAD restores your save instead. |
