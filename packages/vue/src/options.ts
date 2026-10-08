@@ -1,0 +1,110 @@
+import type { Cartridge } from '@brass-lantern/engine';
+import type { Theme, ThemeName } from './theme/themes.ts';
+
+/** What a game reports to the app's analytics. */
+export type GameEvent = 'game_start' | 'game_completed' | 'session_resumed';
+
+/**
+ * One game on the page: what `createGameStore`, `<BrassLantern :options>` and
+ * `mountGame` take.
+ *
+ * `storagePrefix` namespaces everything the game keeps in the browser (saves,
+ * transcripts, the player's theme, the story shelf) and its Pinia stores. Two
+ * games on one page need two prefixes: the same prefix twice is the same game,
+ * sharing its stores and saves.
+ */
+export interface GameOptions {
+  /** One or more native worlds or Z-machine story files. With more than one, the terminal shows a menu. */
+  cartridges: Cartridge[];
+  /** Shown in the terminal header. Default 'BRASS LANTERN'. */
+  terminalName?: string;
+  storagePrefix: string;
+  /** Where misses go for the LLM's reading (POST, see the server package). null: misses get the engine's reply only. Default null. */
+  intentEndpoint?: string | null;
+  /**
+   * The author's default theme: a preset, the name of one of `themes`, or a
+   * theme object. The player's THEME command wins over it. An unknown name
+   * falls back to 'crt-amber' with a console warning. Default 'crt-amber'.
+   * (`string & {}` takes a custom theme's name and keeps the presets' autocompletion.)
+   */
+  theme?: ThemeName | (string & {}) | Theme;
+  /** Extra named themes, offered by THEME beside the presets. One named like a preset is ignored, with a warning. */
+  themes?: Record<string, Theme>;
+  /** The app's (consent-gated) analytics. */
+  analytics?: {
+    onEvent(name: GameEvent, params?: Record<string, unknown>): void;
+    /**
+     * Opens the app's consent settings. Given, the header shows a [ COOKIES ]
+     * link and the COOKIES command calls it; without it, COOKIES says nothing
+     * is collected.
+     */
+    openConsent?(): void;
+  };
+  /** Shown in the header after the terminal name (the site passes its release). */
+  version?: string;
+  /**
+   * Where story cartridges' relative `story` paths are fetched from. A Vite app
+   * hosted under a subpath passes `import.meta.env.BASE_URL`. Default '/'.
+   */
+  storyBaseUrl?: string;
+  /**
+   * Development checks: turns on the engine's script freeze (`setScriptFreeze`),
+   * so a world script that assigns to state throws instead of passing
+   * silently. It's global to the page and only ever turned on here. A Vite app
+   * passes `import.meta.env.DEV`. Default false.
+   */
+  devChecks?: boolean;
+  /**
+   * Focus the game's input when it boots, which also scrolls the page to it.
+   * An embedded game on a longer page passes false; the input still takes
+   * focus when the player clicks the game. Default true.
+   */
+  autofocus?: boolean;
+}
+
+const DEFAULT_TERMINAL_NAME = 'BRASS LANTERN';
+
+/** The terminal's name, and its version if it has one: `BRASS LANTERN v2.0.0`. */
+export function terminalTitle(options: GameOptions): string {
+  const name = options.terminalName ?? DEFAULT_TERMINAL_NAME;
+  return options.version ? `${name} v${options.version}` : name;
+}
+
+/** Tells the app's analytics; a callback that throws is logged, never breaks the game. */
+export function reportEvent(options: GameOptions, name: GameEvent, params?: Record<string, unknown>): void {
+  const analytics = options.analytics;
+  if (!analytics) return;
+  try {
+    if (params) analytics.onEvent(name, params);
+    else analytics.onEvent(name);
+  } catch (error) {
+    console.error('Analytics callback failed:', error);
+  }
+}
+
+/** The URL a story cartridge's `story` path is fetched from (storyBaseUrl, '/' by default, then the path). */
+export function storyUrl(options: GameOptions, path: string): string {
+  const base = options.storyBaseUrl ?? '/';
+  return `${base.endsWith('/') ? base : `${base}/`}${path}`;
+}
+
+/**
+ * Opens the app's consent settings: called as a method, so a class instance
+ * keeps its `this`. A callback that throws is logged, never breaks the game.
+ * Returns whether it opened.
+ */
+export function openConsent(options: GameOptions): boolean {
+  try {
+    options.analytics?.openConsent?.();
+    return true;
+  } catch (error) {
+    console.error('Analytics callback failed:', error);
+    return false;
+  }
+}
+
+/** The COOKIES command: open the app's consent settings, or say there's nothing to consent to. */
+export function cookiesReply(options: GameOptions): string {
+  if (!options.analytics?.openConsent) return '[This build has no analytics. Nothing is collected.]';
+  return openConsent(options) ? '[Analytics settings opened]' : '[Analytics settings couldn’t be opened.]';
+}

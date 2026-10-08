@@ -1,0 +1,82 @@
+{
+  "name": "@brass-lantern/engine",
+  "version": "2.0.0",
+  "author": "Todd Greco <mrballistic@gmail.com>",
+  "description": "The Brass Lantern text-adventure engine: worlds as data, a regex parser, a headless turn loop, and a Z-machine runtime for story files.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mrballistic/brass-lantern.git",
+    "directory": "packages/engine"
+  },
+  "homepage": "https://mrballistic.github.io/brass-lantern/",
+  "bugs": "https://github.com/mrballistic/brass-lantern/issues",
+  "keywords": [
+    "text-adventure",
+    "interactive-fiction",
+    "parser",
+    "z-machine",
+    "game-engine"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "@brass-lantern/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./zmachine": {
+      "@brass-lantern/source": "./src/zmachine/index.ts",
+      "types": "./dist/zmachine/index.d.ts",
+      "default": "./dist/zmachine/index.js"
+    },
+    "./zmachine/session": {
+      "@brass-lantern/source": "./src/zmachine/session.ts",
+      "types": "./dist/zmachine/session.d.ts",
+      "node": "./dist/zmachine/session-node.js",
+      "default": "./dist/zmachine/session.js"
+    },
+    "./worlds": {
+      "@brass-lantern/source": "./src/worlds/index.ts",
+      "types": "./dist/worlds/index.d.ts",
+      "default": "./dist/worlds/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "!dist/**/*.map",
+    "README.md",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "scripts": {
+    "prebuild": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\"",
+    "build": "tsc -p tsconfig.build.json && node scripts/copy-vendor.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "peerDependencies": {
+    "ifvms": "1.1.6"
+  },
+  "peerDependenciesMeta": {
+    "ifvms": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "ifvms": "1.1.6"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

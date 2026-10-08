@@ -1,0 +1,20 @@
+/* The demo site is one full-screen game: the page doesn't scroll, and #app
+   is the viewport, so the game's shell (which fills its container) fills the
+   screen. These are the page rules the library's stylesheet used to carry;
+   the values are crt-amber's, as they were. */
+html, body, #app {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: #0a0a08;
+  font-family: 'VT323', 'Courier New', monospace;
+  color: #ffb000;
+  overflow: hidden;
+}
+
+#app {
+  width: 100vw;
+  height: 100vh;
+}
+
+* { box-sizing: border-box; }

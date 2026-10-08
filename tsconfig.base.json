@@ -1,0 +1,25 @@
+{
+  // Shared compiler options; each workspace's tsconfig.json extends this.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "useDefineForClassFields": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    // The engine's relative imports name their .ts files (its build rewrites them to .js).
+    "allowImportingTsExtensions": true,
+    // In the repo, @brass-lantern/* resolve to their sources (the export condition
+    // below), so nothing needs building first; published, they resolve to dist/.
+    "customConditions": ["@brass-lantern/source"]
+  }
+}

@@ -4,7 +4,7 @@ layout: home
 hero:
   name: BRASS LANTERN
   text: A text adventure engine
-  tagline: Classic parser games in a CRT terminal. Write your own as data, or load a Z-machine story file. The Zork trilogy included.
+  tagline: Classic parser games in a CRT terminal. Write your own as data, or load a Z-machine story file. The demo plays the Zork trilogy.
   actions:
     - theme: brand
       text: Get started
@@ -14,7 +14,7 @@ hero:
       link: https://mrballistic.github.io/brass-lantern/demo/
       target: _self
     - theme: alt
-      text: Play Zork
+      text: Story files
       link: /guide/z-machine
     - theme: alt
       text: GitHub

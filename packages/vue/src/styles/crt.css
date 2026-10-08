@@ -1,0 +1,504 @@
+/* ============================================================
+   CRT visual system. Everything here is scoped to .crt-shell, the
+   game's root: the stylesheet styles the game and nothing else on
+   the page. The shell fills its container; a full-screen page
+   gives that container the viewport (the demo site's site.css).
+   ============================================================ */
+
+.crt-shell {
+  /* Palette roles (defaults: crt-amber; a theme sets them inline on the shell). Glows elsewhere are color-mix()ed from these. */
+  --bl-bg: #0a0a08;
+  --bl-fg: #ffb000;
+  --bl-fg-bright: #ffc833;
+  --bl-fg-dim: rgba(255, 176, 0, 0.6);
+  --bl-glow: rgba(255, 176, 0, 0.3);
+  --bl-glow-strong: rgba(255, 176, 0, 0.6);
+  --bl-border: #332800;
+  --bl-input: #88ffaa;
+  --bl-location: #ffc833;
+  --bl-event: #ff8844;
+  --bl-decorative: #ffd866;
+  --bl-system: rgba(255, 176, 0, 0.6);
+  --bl-scanline: rgba(0, 0, 0, 0.15);
+  --bl-shade: #000000;
+
+  /* Phosphor decay levels */
+  --bl-decay-fresh: 1;
+  --bl-decay-recent: 0.92;
+  --bl-decay-old: 0.85;
+
+  /* Boot sequence */
+  --bl-boot-line: #ffd866;
+  --bl-boot-flash: #ffffff;
+  --bl-boot-duration: 2000ms;
+
+  /* Typewriter timing */
+  --bl-type-fast: 10ms;
+  --bl-type-normal: 18ms;
+  --bl-type-medium: 12ms;
+  --bl-type-line-pause: 150ms;
+
+  /* Flicker */
+  --bl-flicker-base: 3.7s;
+  --bl-flicker-secondary: 2.3s;
+  --bl-glitch-interval-min: 15s;
+  --bl-glitch-interval-max: 30s;
+}
+
+.crt-shell,
+.crt-shell * { box-sizing: border-box; }
+
+/* ============================================================
+   The CRT shell, sized by its container — content layer
+   ============================================================ */
+.crt-shell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: var(--bl-bg);
+  color: var(--bl-fg);
+  /* Its own type, whatever the host page's. */
+  font-family: 'VT323', 'Courier New', monospace;
+  font-size: 16px;
+  line-height: normal;
+  overflow: hidden;
+}
+
+/* Phosphor bloom: radial amber glow centered on the shell. z=2. */
+.crt-shell::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  background: radial-gradient(
+    ellipse at center,
+    color-mix(in srgb, var(--bl-fg) 5%, transparent) 0%,
+    color-mix(in srgb, var(--bl-fg) 2%, transparent) 40%,
+    transparent 70%
+  );
+}
+
+/* Scanline overlay: z=10. 2px transparent / 2px shadow bands. */
+.crt-shell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 2px,
+    var(--bl-scanline) 2px,
+    var(--bl-scanline) 4px
+  );
+}
+
+/* Ambient noise + barrel vignette layered as overlays over the whole shell. */
+.crt-noise {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  /* Dark base; the dots are a mask over the foreground colour so they follow the theme. */
+  background-color: var(--bl-shade);
+  opacity: 0.03;
+  animation: crt-noise-shift 12s steps(8, end) infinite;
+  will-change: transform;
+}
+.crt-noise::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-color: var(--bl-fg);
+  -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='4' height='4'><circle cx='1' cy='1' r='0.5' fill='%23000' opacity='0.4'/><circle cx='3' cy='2' r='0.5' fill='%23000' opacity='0.3'/></svg>");
+  mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='4' height='4'><circle cx='1' cy='1' r='0.5' fill='%23000' opacity='0.4'/><circle cx='3' cy='2' r='0.5' fill='%23000' opacity='0.3'/></svg>");
+  -webkit-mask-size: 4px 4px;
+  mask-size: 4px 4px;
+}
+
+@keyframes crt-noise-shift {
+  0%   { transform: translate(0, 0); }
+  25%  { transform: translate(1px, -1px); }
+  50%  { transform: translate(-1px, 1px); }
+  75%  { transform: translate(1px, 1px); }
+  100% { transform: translate(0, 0); }
+}
+
+.crt-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 11;
+  will-change: transform;
+  background:
+    radial-gradient(ellipse at center, transparent 55%, color-mix(in srgb, var(--bl-shade) 45%, transparent) 100%),
+    radial-gradient(ellipse at center, transparent 70%, color-mix(in srgb, var(--bl-shade) 25%, transparent) 100%);
+}
+
+/* ============================================================
+   Multi-rate flicker (combined via nested containers)
+   ============================================================ */
+.crt-flicker-base {
+  animation: crt-flicker-base var(--bl-flicker-base) ease-in-out infinite;
+  width: 100%;
+  height: 100%;
+}
+.crt-flicker-secondary {
+  animation: crt-flicker-secondary var(--bl-flicker-secondary) ease-in-out infinite;
+  width: 100%;
+  height: 100%;
+}
+.crt-glitch {
+  animation: none;
+  width: 100%;
+  height: 100%;
+}
+.crt-glitch.crt-glitch-pulse {
+  animation: crt-glitch-pulse 80ms linear 1;
+}
+
+@keyframes crt-flicker-base {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.96; }
+}
+@keyframes crt-flicker-secondary {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.98; }
+}
+@keyframes crt-glitch-pulse {
+  0%   { filter: brightness(1); }
+  50%  { filter: brightness(1.08); }
+  100% { filter: brightness(1); }
+}
+
+/* ============================================================
+   Terminal frame: header / output / input
+   ============================================================ */
+.terminal {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.terminal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--bl-border);
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--bl-fg);
+  opacity: 0.6;
+}
+.terminal-header .moves {
+  font-variant-numeric: tabular-nums;
+}
+.terminal-header .header-right { display: flex; gap: 20px; align-items: center; }
+
+.terminal-output {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 24px;
+  scroll-behavior: smooth;
+}
+
+.terminal-output::-webkit-scrollbar { width: 6px; }
+.terminal-output::-webkit-scrollbar-track { background: var(--bl-bg); }
+.terminal-output::-webkit-scrollbar-thumb {
+  background: var(--bl-border);
+  border-radius: 3px;
+}
+
+.terminal-input-bar {
+  display: flex;
+  align-items: center;
+  border-top: 1px solid var(--bl-border);
+  padding: 10px 20px;
+  gap: 8px;
+  background: var(--bl-bg);
+}
+.terminal-input-bar .prompt {
+  color: var(--bl-fg);
+  font-size: 20px;
+  line-height: 1;
+}
+.terminal-input-bar .input-field {
+  flex: 1;
+  position: relative;
+  display: flex;
+  overflow: hidden;
+}
+.terminal-input-bar input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--bl-input);
+  font-family: 'VT323', 'Courier New', monospace;
+  font-size: 20px;
+  /* The block cursor below stands in for the caret. */
+  caret-color: transparent;
+  text-shadow: 0 0 6px color-mix(in srgb, var(--bl-input) 50%, transparent);
+}
+.terminal-input-bar input::placeholder {
+  color: var(--bl-fg);
+  opacity: 0.3;
+}
+.terminal-input-bar input:disabled {
+  opacity: 0.5;
+}
+
+/* The hidden file input behind LOAD */
+.story-picker {
+  display: none;
+}
+
+/* Block cursor, positioned at the caret by a transparent mirror of the text before it */
+.terminal-input-bar .caret-mirror {
+  position: absolute;
+  inset: 0 auto 0 0;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  white-space: pre;
+  font-family: 'VT323', 'Courier New', monospace;
+  font-size: 20px;
+}
+.terminal-input-bar .caret-before {
+  color: transparent;
+}
+.terminal-input-bar .block-cursor {
+  display: inline-block;
+  width: 0.5em;
+  height: 22px;
+  background: var(--bl-fg);
+  animation: crt-cursor-blink 1s steps(2, end) infinite;
+  box-shadow: 0 0 8px var(--bl-glow-strong);
+}
+@keyframes crt-cursor-blink {
+  0%, 50%  { opacity: 1; }
+  50.01%, 100% { opacity: 0; }
+}
+
+/* ============================================================
+   Line type styling
+   ============================================================ */
+.line {
+  font-size: 18px;
+  line-height: 1.5;
+  color: var(--bl-fg);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--bl-fg) 30%, transparent);
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0 0 2px 0;
+}
+
+.line.input {
+  color: var(--bl-input);
+  text-shadow: 0 0 6px color-mix(in srgb, var(--bl-input) 40%, transparent);
+}
+.line.location {
+  font-size: 20px;
+  font-weight: bold;
+  color: var(--bl-location);
+  text-shadow:
+    0 0 10px var(--bl-glow-strong),
+    0 0 18px var(--bl-glow);
+  margin-top: 14px;
+}
+.line.event {
+  color: var(--bl-event);
+  font-style: italic;
+  text-shadow: 0 0 8px color-mix(in srgb, var(--bl-event) 50%, transparent);
+}
+.line.decorative {
+  color: var(--bl-decorative);
+  text-shadow: 0 0 8px color-mix(in srgb, var(--bl-decorative) 50%, transparent);
+}
+.line.system {
+  color: var(--bl-system);
+  font-size: 16px;
+}
+
+/* Phosphor decay applied by JS classes. */
+.line.decay-recent { opacity: var(--bl-decay-recent); text-shadow: 0 0 6px color-mix(in srgb, var(--bl-fg) 20%, transparent); }
+.line.decay-old    { opacity: var(--bl-decay-old);    text-shadow: 0 0 4px color-mix(in srgb, var(--bl-fg) 10%, transparent); }
+
+/* Parsing indicator */
+.parsing {
+  color: var(--bl-fg-dim);
+  font-size: 16px;
+  animation: parsing-blink 1s steps(2, end) infinite;
+}
+@keyframes parsing-blink {
+  0%, 50%  { opacity: 0.5; }
+  50.01%, 100% { opacity: 0; }
+}
+
+/* ============================================================
+   Boot sequence overlay
+   ============================================================ */
+.crt-boot {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  background: var(--bl-shade);
+  pointer-events: none;
+  overflow: hidden;
+}
+.crt-boot .ignition {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background: var(--bl-boot-line);
+  box-shadow: 0 0 10px var(--bl-boot-line);
+  opacity: 0;
+  transform: translateY(-0.5px);
+}
+.crt-boot.phase-1 .ignition {
+  animation: boot-ignition 300ms ease-out 100ms forwards;
+}
+.crt-boot.phase-2 .ignition {
+  animation: boot-expand 500ms ease-out forwards;
+}
+.crt-boot.phase-3 {
+  background: transparent;
+  animation: boot-stabilize 600ms ease-out forwards;
+}
+
+/* Restore (abbreviated) variant */
+.crt-boot.fast .ignition { animation-duration: 150ms !important; }
+.crt-boot.fast.phase-2 .ignition { animation-duration: 300ms !important; }
+
+@keyframes boot-ignition {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+@keyframes boot-expand {
+  0% {
+    height: 1px;
+    background: var(--bl-boot-line);
+    opacity: 1;
+  }
+  60% {
+    height: 100%;
+    top: 0;
+    background: var(--bl-fg);
+    opacity: 0.7;
+  }
+  100% {
+    height: 100%;
+    top: 0;
+    background: var(--bl-fg);
+    opacity: 0;
+  }
+}
+@keyframes boot-stabilize {
+  0%   { background: color-mix(in srgb, var(--bl-fg) 40%, transparent); filter: brightness(1.2); transform: translate(0, 0); }
+  20%  { transform: translate(-1px, 1px); }
+  40%  { transform: translate(2px, -1px); }
+  60%  { transform: translate(-1px, -1px); }
+  100% { background: transparent; filter: brightness(1); transform: translate(0, 0); }
+}
+
+/* ============================================================
+   Event emphasis
+   ============================================================ */
+.chapter-flash {
+  animation: chapter-flash 100ms ease-out 1;
+}
+@keyframes chapter-flash {
+  0%, 100% { filter: brightness(1); }
+  50%      { filter: brightness(1.15); }
+}
+
+.screen-shake {
+  animation: screen-shake 80ms steps(3, end) 1;
+}
+@keyframes screen-shake {
+  0%   { transform: translate(0, 0); }
+  33%  { transform: translate(2px, -1px); }
+  66%  { transform: translate(-2px, 1px); }
+  100% { transform: translate(0, 0); }
+}
+
+/* ============================================================
+   Analytics consent memo (see services/consent.ts). Sits under
+   the scanline and vignette layers so it reads as part of the
+   screen. Both choices carry equal weight.
+   ============================================================ */
+.consent {
+  position: absolute;
+  z-index: 8;
+  right: 24px;
+  bottom: 72px;
+  max-width: 420px;
+  padding: 14px 18px 12px;
+  background: var(--bl-bg);
+  border: 1px solid var(--bl-fg-dim);
+  box-shadow: 0 0 12px var(--bl-glow);
+  font-size: 18px;
+  line-height: 1.25;
+  text-shadow: 0 0 4px var(--bl-glow);
+}
+.consent p { margin: 0 0 10px; }
+.consent .consent-title { color: var(--bl-decorative); letter-spacing: 2px; }
+.consent .consent-note { margin: 10px 0 0; opacity: 0.6; font-size: 16px; }
+.consent-actions { display: flex; gap: 12px; }
+.consent button,
+.terminal-header .consent-open {
+  font: inherit;
+  color: var(--bl-fg);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  text-shadow: inherit;
+}
+.consent button {
+  flex: 1 1 0;
+  min-height: 40px;
+  border: 1px solid var(--bl-border);
+}
+.consent button:hover,
+.consent button:focus-visible {
+  color: var(--bl-bg);
+  background: var(--bl-fg);
+  outline: none;
+}
+.terminal-header .consent-open { padding: 0; letter-spacing: inherit; text-transform: inherit; }
+.terminal-header .consent-open:hover,
+.terminal-header .consent-open:focus-visible { color: var(--bl-fg-bright); outline: none; }
+@media (max-width: 599px) {
+  .consent { left: 12px; right: 12px; bottom: 64px; max-width: none; }
+}
+
+/* ============================================================
+   Effect switches. A theme puts these classes on its root (the
+   .crt-shell, and the .terminal itself), so two terminals on one
+   page stay independent.
+   ============================================================ */
+.bl-bloom-off.crt-shell::before { display: none; }
+.bl-scanlines-off.crt-shell::after { display: none; }
+.bl-vignette-off .crt-vignette { display: none; }
+.bl-noise-off .crt-noise { display: none; }
+.bl-flicker-off .crt-flicker-base,
+.bl-flicker-off .crt-flicker-secondary { animation: none; }
+.bl-glitch-off .crt-glitch.crt-glitch-pulse { animation: none; }
+
+/* Bloom is the glow: every text-shadow and box-shadow that comes from it. */
+.bl-bloom-off :is(.line, .terminal-input-bar input, .consent) { text-shadow: none; }
+.bl-bloom-off :is(.block-cursor, .consent) { box-shadow: none; }
+
+/* Decay is the opacity steps on older lines. */
+.bl-decay-off .line.decay-recent,
+.bl-decay-off .line.decay-old { opacity: 1; }

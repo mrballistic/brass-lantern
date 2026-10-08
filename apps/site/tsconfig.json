@@ -1,0 +1,10 @@
+{
+  "extends": ["@vue/tsconfig/tsconfig.dom.json", "../../tsconfig.base.json"],
+  "compilerOptions": {
+    "types": ["node", "vite/client"]
+  },
+  // In the repo the packages are read from source (the @brass-lantern/source
+  // condition), and the engine's ifvms module types are ambient, so they're
+  // included by name.
+  "include": ["../../packages/engine/src/zmachine/vendor/*.d.ts", "src/**/*.ts", "src/**/*.vue", "vite.config.ts"]
+}

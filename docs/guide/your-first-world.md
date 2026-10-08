@@ -1,13 +1,13 @@
 # The demo game: Snack Attack
 
-A world is one TypeScript object: rooms, items, people, the lines they say, and the rules that join them. If you haven't written one yet, start with [a two-room game](./building-worlds/two-rooms); this page goes further, and builds **Snack Attack**, the tutorial world in [`src/worlds/tutorial.ts`](https://github.com/mrballistic/brass-lantern/blob/main/src/worlds/tutorial.ts), piece by piece. A test plays that exact file to the end, so everything here matches what the engine does.
+A world is one TypeScript object: rooms, items, people, the lines they say, and the rules that join them. If you haven’t written one yet, start with [a two-room game](./building-worlds/two-rooms); this page goes further, and builds **Snack Attack**, the tutorial world (`tutorial` in `@brass-lantern/engine/worlds`, [source on GitHub](https://github.com/mrballistic/brass-lantern/blob/main/packages/engine/src/worlds/tutorial.ts)), piece by piece. A test plays that exact file to the end, so everything here matches what the engine does.
 
-The story: it's 12:01, your pretzels are stuck in the break room vending machine, and you need your badge, a heavy object, and maybe some advice from Gary in Accounts.
+The story: it’s 12:01, your pretzels are stuck in the break room vending machine, and you need your badge, a heavy object, and maybe some advice from Gary in Accounts.
 
 ## The shape
 
 ```ts
-import type { World } from '@/types/world';
+import type { World } from '@brass-lantern/engine';
 
 export const tutorial: World = {
   startRoom: 'cubicle',
@@ -21,7 +21,7 @@ export const tutorial: World = {
 };
 ```
 
-Every room, item and person has an **ID**, its key (`desk_drawer`, `gary`). IDs are snake_case and never shown to players. The engine's state is small: where you are, where every item is, a set of **flags** (named booleans like `drawer_open`), a few numbers, which events have fired, and how many moves you've made. Everything a world does comes down to reading and setting those.
+Every room, item and person has an **ID**, its key (`desk_drawer`, `gary`). IDs are snake_case and never shown to players. The engine’s state is small: where you are, where every item is, a set of **flags** (named booleans like `drawer_open`), a few numbers, which events have fired, and how many moves you’ve made. Everything a world does comes down to reading and setting those.
 
 ## Rooms
 
@@ -50,9 +50,9 @@ rooms: {
 }
 ```
 
-- **`exits`** maps what the player can type to where it leads. Give each destination a few labels (a direction, a place name, `out`). The parser is forgiving about phrasing ("go to the hallway", "hall", "n"), but only matches labels you provide.
+- **`exits`** maps what the player can type to where it leads. Give each destination a few labels (a direction, a place name, `out`). The parser is forgiving about phrasing (“go to the hallway”, “hall”, “n”), but only matches labels you provide.
 - **`listExits`** is what the player sees. The engine adds the direction that goes to the same place: `Exits: hallway (north).`
-- **`requires`** is a [condition](../reference/conditions-and-events#conditions) for entering, and **`denial`** is the reply when it fails. A good denial hints at what's missing.
+- **`requires`** is a [condition](../reference/conditions-and-events#conditions) for entering, and **`denial`** is the reply when it fails. A good denial hints at what’s missing.
 - **`onEnter`** fires an event when you arrive, if its condition holds. **An `onEnter` event fires at most once per game.**
 
 ## Items
@@ -78,7 +78,7 @@ items: {
 
 `name` is what players see; `aliases` are other words they might use. `portable: false` items stay put, and `refusal` is what trying to take one says.
 
-The badge isn't in any room: opening the drawer hands it over. **`onUse`** is a list of rules, and the first one whose conditions hold wins. Each rule can fire an event (`then`), print lines (`say`), require another item nearby (`with`), or test a condition (`if`). End with a plain `say` as the fallback. PUSH, PULL and PRESS mean USE, and OPEN falls back to use rules on anything that isn't a container, so "open drawer" works.
+The badge isn’t in any room: opening the drawer hands it over. **`onUse`** is a list of rules, and the first one whose conditions hold wins. Each rule can fire an event (`then`), print lines (`say`), require another item nearby (`with`), or test a condition (`if`). End with a plain `say` as the fallback. PUSH, PULL and PRESS mean USE, and OPEN falls back to use rules on anything that isn’t a container, so “open drawer” works.
 
 Items also have `onTake`, `onWear` and `onSmash` hooks, and `instead`/`after` rules for any verb; see the [schema](../reference/world-schema#item).
 
@@ -104,7 +104,7 @@ dialogue: {
 
 GIVE MUG TO GARY takes the mug and fires `gary_mug`. With only one person in the room, GIVE MUG is enough. **`refuse`** declines a specific item and lets the player keep it.
 
-**Dialogue** maps conditions to lines; TALK TO uses the **last** entry whose condition holds, so list them from least to most advanced. Here, Gary's advice only appears once he's happy, which turns him into a hint.
+**Dialogue** maps conditions to lines; TALK TO uses the **last** entry whose condition holds, so list them from least to most advanced. Here, Gary’s advice only appears once he’s happy, which turns him into a hint.
 
 ## Events and flags
 
@@ -187,11 +187,11 @@ ambient: [
 - **HINT** shows the first hint whose condition holds, so order them along the critical path.
 - **SCORE** sums points for flags that are set, and names the highest rank reached.
 - **`confused`** replies rotate for input nothing could understand.
-- **`ambient`** lines interrupt every few turns while their condition holds. They're good for a ringing phone, a ticking clock, or a smug vending machine.
+- **`ambient`** lines interrupt every few turns while their condition holds. They’re good for a ringing phone, a ticking clock, or a smug vending machine.
 
 ## Play it
 
-Add your world to `cartridges` in `src/app.config.ts` (`{ kind: 'world', id: 'snack-attack', title: 'SNACK ATTACK', world: tutorial }`) and run `npm run dev`. The winning transcript for Snack Attack:
+Pass your world to `mountGame` as one of its `cartridges` (`{ kind: 'world', id: 'snack-attack', title: 'SNACK ATTACK', world: tutorial }`; see [Using the library](./using-the-library#put-a-game-on-a-page)). Snack Attack itself ships with the engine: `import { tutorial } from '@brass-lantern/engine/worlds'`. The winning transcript for Snack Attack:
 
 ```
 > open drawer

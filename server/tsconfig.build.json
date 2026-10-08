@@ -1,7 +1,0 @@
-{
-  // Tests live in tsconfig.json so type-check and Vitest see them (without
-  // that, Vite walks up to the repo-root tsconfig, which needs the frontend's
-  // node_modules). The build leaves them out of dist/.
-  "extends": "./tsconfig.json",
-  "exclude": ["dist", "node_modules", "src/**/*.test.ts", "src/test-setup.ts"]
-}

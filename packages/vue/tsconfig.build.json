@@ -1,0 +1,15 @@
+{
+  // Declarations only (vite.config.ts builds the JavaScript). The engine
+  // resolves to its built declarations, so build the engine first.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    "customConditions": [],
+    "types": []
+  },
+  "include": ["src/**/*.ts", "src/**/*.vue"]
+}

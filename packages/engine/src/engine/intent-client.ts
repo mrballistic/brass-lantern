@@ -1,0 +1,103 @@
+import type { ParsedAction } from '../types/game.ts';
+import type { World, Room } from '../types/world.ts';
+import { readsNumber } from './parser.ts';
+
+export interface IntentContext {
+  roomName: string;
+  exits: string[];
+  items: string[];
+  npcs: string[];
+  inventory: string[];
+  /** The world's own verbs, which the server accepts alongside its built-in list. */
+  verbs: string[];
+}
+
+/** "red_stapler (red Swingline stapler)": the ID the engine matches exactly, plus what the player sees. */
+function label(id: string, name: string | undefined): string {
+  return name && name !== id ? `${id} (${name})` : id;
+}
+
+// What the server accepts (server/src/routes/parse-intent.ts). A verb outside
+// this would get the whole request rejected, so it's left out instead.
+const VERB_ID = /^[a-z0-9_]{1,48}$/;
+const MAX_VERBS = 50;
+
+function sendableVerbs(world: World): string[] {
+  return Object.keys(world.verbs ?? {})
+    .filter((id) => VERB_ID.test(id))
+    .slice(0, MAX_VERBS);
+}
+
+export function buildContext(
+  room: Room,
+  world: World,
+  inventory: string[],
+  visibleItemIds: string[],
+  dark = false,
+  /** The characters the player can see; default, the room's own list. */
+  npcIds: string[] = room.npcs,
+): IntentContext {
+  // In the dark the player can't see where they are or who's there, so neither does the LLM.
+  return {
+    roomName: dark ? 'darkness' : room.name,
+    exits: Object.keys(room.exits),
+    items: visibleItemIds.map((id) => label(id, world.items[id]?.name)),
+    npcs: dark ? [] : npcIds.map((id) => label(id, world.npcs[id]?.name)),
+    inventory: inventory.map((id) => label(id, world.items[id]?.name)),
+    verbs: sendableVerbs(world),
+  };
+}
+
+// A little over the server's own 5s Gemini deadline, so the server's
+// fallback answer arrives instead of the client giving up first.
+const DEFAULT_TIMEOUT_MS = 6000;
+
+const PREPS: ReadonlySet<string> = new Set(['in', 'on', 'under', 'behind', 'off', 'over', 'through']);
+
+const DIRECTIONS: ReadonlySet<string> = new Set(['north', 'south', 'east', 'west', 'northeast', 'northwest', 'southeast', 'southwest', 'up', 'down']);
+
+export interface IntentOptions {
+  /** Where the intent server lives, e.g. '/api/parse-intent'. */
+  endpoint: string;
+  /** Default 6000. */
+  timeoutMs?: number;
+  /** Default: the global fetch. */
+  fetch?: typeof fetch;
+}
+
+export async function parseIntentRemote(
+  input: string,
+  context: IntentContext,
+  options: IntentOptions,
+): Promise<ParsedAction> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+
+  try {
+    const res = await (options.fetch ?? fetch)(options.endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input, context }),
+      signal: controller.signal,
+    });
+    if (!res.ok) return { action: 'unknown' };
+    const json = (await res.json()) as Partial<ParsedAction> & { fallback?: ParsedAction };
+    if (json.fallback) return json.fallback;
+    if (typeof json.action !== 'string') return { action: 'unknown' };
+    const out: ParsedAction = { action: json.action };
+    if (typeof json.target === 'string') out.target = json.target;
+    if (typeof json.indirect === 'string') out.indirect = json.indirect;
+    if (typeof json.prep === 'string' && PREPS.has(json.prep)) out.prep = json.prep;
+    if (typeof json.direction === 'string' && DIRECTIONS.has(json.direction)) out.direction = json.direction as ParsedAction['direction'];
+    // A number rides along only when a slot reads it (the literal 'number', or its digits).
+    const n = json.number;
+    if (typeof n === 'number' && Number.isInteger(n) && n >= 0 && n <= 1000 && (readsNumber({ number: n }, out.target) || readsNumber({ number: n }, out.indirect))) {
+      out.number = n;
+    }
+    return out;
+  } catch {
+    return { action: 'unknown' };
+  } finally {
+    clearTimeout(timer);
+  }
+}

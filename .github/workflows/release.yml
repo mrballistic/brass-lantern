@@ -1,0 +1,100 @@
+# Publishes @brass-lantern/engine, /vue and /server to npm when a v* tag is
+# pushed. The tag must be on main and must equal the version in every package.
+#
+# One-time setup (an owner step, not done by CI): create the "brass-lantern"
+# organization on npm, add an automation token as the NPM_TOKEN secret of the
+# "npm-publish" environment, and give that environment a required reviewer.
+# Then: bump versions, merge to main, `git tag v2.0.0 && git push --tags`.
+#
+# Re-runnable: a package whose version is already on npm is skipped, so after
+# a partial publish (say the engine went out and vue failed) re-running the
+# job publishes only what is missing.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+# id-token lets npm attach a provenance statement to each package.
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    # The owner adds a required reviewer to this environment in GitHub settings.
+    environment: npm-publish
+    env:
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The whole history, to check that the tag is on main.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - name: The tag is on main
+        run: |
+          git fetch --no-tags origin main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::Tag $TAG is not on main. Merge first, then tag main."
+            exit 1
+          fi
+
+      - name: The tag equals every package version
+        run: |
+          expected="${TAG#v}"
+          status=0
+          for manifest in package.json packages/*/package.json apps/*/package.json; do
+            actual="$(node -p "require('./$manifest').version")"
+            if [ "$actual" != "$expected" ]; then
+              echo "::error file=$manifest::version is $actual, but the tag is $TAG."
+              status=1
+            fi
+          done
+          exit "$status"
+
+      - run: npm ci
+
+      # @brass-lantern/vue depends on @brass-lantern/engine by range; that
+      # range has to accept the engine this release publishes.
+      - name: Internal dependency ranges accept the tag
+        run: node scripts/release-check.mjs "${TAG#v}"
+      - run: npm run lint
+      - run: npm run type-check
+      - name: Test (with coverage thresholds)
+        run: npm run test:coverage
+      - run: npm run build:packages
+      - run: npm run build
+      # Packs the three packages as `npm publish` would, installs the tarballs
+      # into a scratch project and uses them from Node, tsc, Vite and a browser.
+      - run: npm run smoke
+
+      # One package at a time, in dependency order (the engine first, vue
+      # last), skipping any whose version is already on the registry.
+      - name: Publish
+        run: |
+          version="${TAG#v}"
+          for dir in engine server vue; do
+            name="$(node -p "require('./packages/$dir/package.json').name")"
+            published="$(npm view "$name@$version" version 2>/dev/null || true)"
+            if [ "$published" = "$version" ]; then
+              echo "$name@$version is already on npm; skipping."
+              continue
+            fi
+            echo "Publishing $name@$version"
+            npm publish -w "$name" --provenance --access public
+          done
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

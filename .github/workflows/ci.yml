@@ -5,16 +5,25 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
-  # deploy.yml runs this same workflow before shipping a release.
   workflow_call:
 
 permissions:
   contents: read
 
 jobs:
-  frontend:
-    name: Frontend (lint / type-check / test / build)
+  workspace:
+    name: ${{ matrix.workspace }} (lint / type-check / test / build)
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        workspace:
+          - "@brass-lantern/engine"
+          - "@brass-lantern/vue"
+          - "@brass-lantern/server"
+          - brass-lantern-site
+    env:
+      WORKSPACE: ${{ matrix.workspace }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -25,29 +34,34 @@ jobs:
           node-version: 24
           cache: npm
 
+      # One lockfile at the root links every workspace.
       - run: npm ci
-      - run: npm run lint
-      - run: npm run type-check
+      - run: npm run lint -w "$WORKSPACE"
+      - run: npm run type-check -w "$WORKSPACE"
       - name: Test (with coverage thresholds)
-        run: npm run test:coverage
-      - run: npm run build
+        run: npm run test:coverage -w "$WORKSPACE"
+      # In the repo the packages resolve to their sources, so tests and the
+      # site need no build. The vue package's declarations are built against
+      # the engine's, so the engine builds first there.
+      - name: Build
+        run: |
+          if [ "$WORKSPACE" = "@brass-lantern/vue" ]; then npm run build -w @brass-lantern/engine; fi
+          npm run build -w "$WORKSPACE" --if-present
 
       # The Gemini key lives only on the server. Fail loudly if anything that
       # looks like a Google API key, or the key's env var name, ever reaches
       # the public bundle.
       - name: Bundle contains no API keys
+        if: matrix.workspace == 'brass-lantern-site'
         run: |
-          if grep -rEl 'AIza[0-9A-Za-z_-]{35}|GEMINI_KEY|generativelanguage\.googleapis' dist; then
+          if grep -rEl 'AIza[0-9A-Za-z_-]{35}|GEMINI_KEY|generativelanguage\.googleapis' apps/site/dist; then
             echo "::error::A Gemini key or endpoint reference is in the client bundle."
             exit 1
           fi
 
-  server:
-    name: Server (lint / type-check / test / build)
+  smoke:
+    name: Consumer smoke test (pack, install, import, bundle, browser)
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: server
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -57,10 +71,28 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: server/package-lock.json
 
       - run: npm ci
-      - run: npm run lint
-      - run: npm run type-check
-      - run: npm test
-      - run: npm run build
+      # Builds the three packages, packs them as `npm publish` would, installs
+      # the tarballs into a scratch project and uses them from Node and tsc,
+      # then builds two Vite apps from them and checks them in a browser (the
+      # runner's Chrome, or Playwright's Chromium).
+      - run: npm run smoke
+
+  repo:
+    name: Repo (root lint / docs build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+      # The workspaces lint themselves above; this covers scripts/ and the docs config.
+      - run: npm run lint:root
+      - run: npm run docs:build

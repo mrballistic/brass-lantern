@@ -1,5 +1,6 @@
-# Dependency updates for both npm trees and the workflow actions. Minor and
-# patch bumps are grouped into one PR per tree so they don't pile up; majors
+# Dependency updates for the npm workspaces (one lockfile at the root covers
+# packages/* and apps/*) and the workflow actions. Minor and
+# patch bumps are grouped into one PR so they don't pile up; majors
 # arrive individually because they tend to need code changes.
 #
 # Held on purpose:
@@ -15,19 +16,6 @@ updates:
       interval: monthly
     groups:
       frontend-minor:
-        update-types: [minor, patch]
-    ignore:
-      - dependency-name: typescript
-        update-types: [version-update:semver-major]
-      - dependency-name: '@types/node'
-        update-types: [version-update:semver-major]
-
-  - package-ecosystem: npm
-    directory: /server
-    schedule:
-      interval: monthly
-    groups:
-      server-minor:
         update-types: [minor, patch]
     ignore:
       - dependency-name: typescript
