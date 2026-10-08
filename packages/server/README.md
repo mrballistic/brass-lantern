@@ -23,7 +23,7 @@ app.use(express.json({ limit: '32kb' }));
 app.use('/api', intentRoute({ apiKey: process.env.GEMINI_KEY! }));   // POST /api/parse-intent
 ```
 
-Then give the game `intentEndpoint: '/api/parse-intent'`. Not on Express? `parseIntent(input, context, { apiKey })` from `@brass-lantern/server` is the same thing as a function. Both accept `models`, `timeoutMs` and, for the route, `rateLimitPerMinute`.
+Then give the game `intentEndpoint: '/api/parse-intent'`. Not on Express? `parseIntent(input, context, { apiKey })` from `@brass-lantern/server` is the same thing as a function. Both accept `models` (empty means the defaults), `timeoutMs` and, for the route, `rateLimitPerMinute` (a positive number; anything else throws when the route is built).
 
 The package reads no environment variables: you pass the key in. Keep it on the server, and never give it a `VITE_` name, which Vite would inline into the public bundle. The route sets no CORS headers, on purpose.
 

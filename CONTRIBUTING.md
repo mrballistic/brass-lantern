@@ -8,4 +8,4 @@ Thanks for wanting to help. A few things make changes easy to accept:
 - **Player-facing text** uses curly quotes and apostrophes (“ ” ’).
 - **Docs** live in `docs/` (VitePress: `npm run docs:dev`). If you change behavior, change the docs in the same PR.
 
-Versions follow the packages: a release tag (`v2.0.0`) must match every package.json, and the release workflow publishes the three packages.
+Versions follow the packages: a release tag (`v2.0.0`) must match every package.json, and the release workflow publishes the three packages one at a time (engine, server, vue), skipping any version already on npm, so a failed release can be re-run. `node scripts/release-check.mjs <version>` checks that the internal dependency ranges accept the version.

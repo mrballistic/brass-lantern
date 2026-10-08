@@ -70,11 +70,34 @@ describe('parseIntent (library entry)', () => {
     expect(String(fake.mock.calls[0]![0])).toContain('gemini-3.5-flash-lite');
     expect(String(fake.mock.calls[1]![0])).toContain('gemini-3.6-flash');
   });
+
+  it('treats models: [] as the defaults, as intentRoute does', async () => {
+    const fake = vi.fn<typeof fetch>().mockResolvedValue(geminiReply('{"action":"look"}'));
+    const out = await parseIntent('look', ctx, { apiKey: 'k', models: [], fetch: fake });
+    expect(out).toEqual({ action: 'look' });
+    expect(String(fake.mock.calls[0]![0])).toContain('gemini-3.5-flash-lite');
+  });
 });
 
 describe('intentRoute', () => {
   it('throws at construction on an empty key', () => {
     expect(() => intentRoute({ apiKey: '' })).toThrow(/apiKey/);
+  });
+
+  it('throws at construction unless rateLimitPerMinute is a positive finite number', () => {
+    for (const bad of [0, -1, Number.NaN, Number.POSITIVE_INFINITY, '30' as unknown as number]) {
+      expect(() => intentRoute({ apiKey: 'k', rateLimitPerMinute: bad })).toThrow(/rateLimitPerMinute/);
+    }
+    expect(() => intentRoute({ apiKey: 'k', rateLimitPerMinute: 1 })).not.toThrow();
+    expect(() => intentRoute({ apiKey: 'k', rateLimitPerMinute: 0.5 })).not.toThrow();
+  });
+
+  it('treats models: [] as the defaults', async () => {
+    const fake = vi.fn<typeof fetch>().mockResolvedValue(geminiReply('{"action":"look"}'));
+    vi.stubGlobal('fetch', fake);
+    const res = await request(mount({ models: [] })).post('/api/parse-intent').send({ input: 'look', context: ctx });
+    expect(res.status).toBe(200);
+    expect(String(fake.mock.calls[0]![0])).toContain('gemini-3.5-flash-lite');
   });
 
   function mount(options: Partial<Parameters<typeof intentRoute>[0]> = {}) {

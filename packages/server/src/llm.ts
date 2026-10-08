@@ -316,7 +316,8 @@ export async function parseIntent(
   opts: ParseIntentOptions,
 ): Promise<ParsedAction> {
   const apiKey = requireApiKey(opts.apiKey);
-  const models = opts.models ?? DEFAULT_MODELS;
+  // No models, or an empty list, means the defaults (as in intentRoute).
+  const models = opts.models?.length ? opts.models : DEFAULT_MODELS;
   // Resolved per call so tests can stub global fetch after import.
   const fetchImpl = opts.fetchImpl ?? fetch;
   const deadline = AbortSignal.timeout(opts.timeoutMs ?? DEFAULT_TIMEOUT_MS);

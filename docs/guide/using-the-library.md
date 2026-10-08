@@ -160,7 +160,7 @@ app.use('/api', intentRoute({ apiKey: process.env.GEMINI_KEY! }));
 app.listen(3001);
 ```
 
-That serves `POST /api/parse-intent`, with a per-client rate limit. Pass `models`, `timeoutMs` or `rateLimitPerMinute` to change the defaults. You own `express.json()` and `trust proxy`, and the route sets no CORS headers, on purpose: other sites should not be able to spend your quota from their visitors’ browsers.
+That serves `POST /api/parse-intent`, with a per-client rate limit. Pass `models`, `timeoutMs` or `rateLimitPerMinute` to change the defaults. An empty `models` list means the defaults, here and in `parseIntent`; `rateLimitPerMinute` must be a positive number, or `intentRoute` throws when it is built, as it does for an empty key. You own `express.json()` and `trust proxy`, and the route sets no CORS headers, on purpose: other sites should not be able to spend your quota from their visitors’ browsers.
 
 In the browser:
 

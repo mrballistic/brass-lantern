@@ -8,7 +8,7 @@ export { ACTION_VOCAB, THEME_SLUGS } from './llm.js';
 export interface ParseIntentOptions {
   /** Gemini API key. Sent only in the x-goog-api-key header. An empty value throws. */
   apiKey: string;
-  /** Models tried in order within one deadline. Defaults to the measured-good chain. */
+  /** Models tried in order within one deadline. Unset or empty: the measured-good default chain. */
   models?: string[];
   /** Overall deadline across every model tried, in ms. Default 5000. */
   timeoutMs?: number;

@@ -2,8 +2,13 @@
 # pushed. The tag must be on main and must equal the version in every package.
 #
 # One-time setup (an owner step, not done by CI): create the "brass-lantern"
-# organization on npm and add an automation token as the NPM_TOKEN repository
-# secret. Then: bump versions, merge to main, `git tag v2.0.0 && git push --tags`.
+# organization on npm, add an automation token as the NPM_TOKEN secret of the
+# "npm-publish" environment, and give that environment a required reviewer.
+# Then: bump versions, merge to main, `git tag v2.0.0 && git push --tags`.
+#
+# Re-runnable: a package whose version is already on npm is skipped, so after
+# a partial publish (say the engine went out and vue failed) re-running the
+# job publishes only what is missing.
 name: Release
 
 on:
@@ -22,6 +27,8 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    # The owner adds a required reviewer to this environment in GitHub settings.
+    environment: npm-publish
     env:
       TAG: ${{ github.ref_name }}
     steps:
@@ -59,6 +66,11 @@ jobs:
           exit "$status"
 
       - run: npm ci
+
+      # @brass-lantern/vue depends on @brass-lantern/engine by range; that
+      # range has to accept the engine this release publishes.
+      - name: Internal dependency ranges accept the tag
+        run: node scripts/release-check.mjs "${TAG#v}"
       - run: npm run lint
       - run: npm run type-check
       - name: Test (with coverage thresholds)
@@ -69,9 +81,20 @@ jobs:
       # into a scratch project and uses them from Node and tsc.
       - run: npm run smoke
 
-      # The root and the demo site are "private": true, so --workspaces skips
-      # them and only the three packages under packages/ are published.
+      # One package at a time, in dependency order (the engine first, vue
+      # last), skipping any whose version is already on the registry.
       - name: Publish
-        run: npm publish --workspaces --provenance --access public
+        run: |
+          version="${TAG#v}"
+          for dir in engine server vue; do
+            name="$(node -p "require('./packages/$dir/package.json').name")"
+            published="$(npm view "$name@$version" version 2>/dev/null || true)"
+            if [ "$published" = "$version" ]; then
+              echo "$name@$version is already on npm; skipping."
+              continue
+            fi
+            echo "Publishing $name@$version"
+            npm publish -w "$name" --provenance --access public
+          done
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
