@@ -1,13 +1,5 @@
 import { Router } from 'express';
-import {
-  DEFAULT_ATTEMPT_MS,
-  DEFAULT_MODELS,
-  DEFAULT_TIMEOUT_MS,
-  IDENTIFIER_RE,
-  parseIntent,
-  requireApiKey,
-  type IntentContext,
-} from '../llm.js';
+import { IDENTIFIER_RE, parseIntent, requireApiKey, type IntentContext } from '../llm.js';
 
 function isIntentContext(value: unknown): value is IntentContext {
   if (typeof value !== 'object' || value === null) return false;
@@ -51,9 +43,10 @@ export interface IntentRouterOptions {
 
 /** The POST /parse-intent handler, no rate limit. `intentRoute` (express.ts) adds that. */
 export function createIntentRouter(options: IntentRouterOptions): Router {
+  // Checked here, so a missing key fails at construction, not on the first request.
   const apiKey = requireApiKey(options.apiKey);
-  const models = options.models?.length ? options.models : DEFAULT_MODELS;
-  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  // parseIntent applies the defaults (models, deadline, per-attempt cap).
+  const { models, timeoutMs } = options;
   const router = Router();
 
   /**
@@ -79,12 +72,7 @@ export function createIntentRouter(options: IntentRouterOptions): Router {
       return;
     }
     try {
-      const parsed = await parseIntent(body.input, body.context, {
-        apiKey,
-        models,
-        timeoutMs,
-        attemptMs: DEFAULT_ATTEMPT_MS,
-      });
+      const parsed = await parseIntent(body.input, body.context, { apiKey, models, timeoutMs });
       res.status(200).json(parsed);
     } catch (err) {
       console.error(

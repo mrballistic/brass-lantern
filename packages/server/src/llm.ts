@@ -39,13 +39,13 @@ export const THEME_SLUGS: readonly string[] = ['crt-amber', 'crt-green', 'simple
 // can't fit the 5s budget and is deliberately left out.
 export const DEFAULT_MODELS: readonly string[] = ['gemini-3.5-flash-lite', 'gemini-3.6-flash'];
 /** Hard ceiling on LLM call latency, across every model tried. */
-export const DEFAULT_TIMEOUT_MS = 5_000;
+const DEFAULT_TIMEOUT_MS = 5_000;
 /**
  * Cap on each attempt before the last. 3.5-flash-lite usually answers in under
  * a second but occasionally stalls past 4s; 2.5s leaves the fallback (~1s
  * typical) room inside the overall deadline.
  */
-export const DEFAULT_ATTEMPT_MS = 2_500;
+const DEFAULT_ATTEMPT_MS = 2_500;
 
 const ACTIONS: ReadonlySet<string> = new Set(ACTION_VOCAB);
 
@@ -316,7 +316,7 @@ export async function parseIntent(
   opts: ParseIntentOptions,
 ): Promise<ParsedAction> {
   const apiKey = requireApiKey(opts.apiKey);
-  // No models, or an empty list, means the defaults (as in intentRoute).
+  // No models, or an empty list, means the defaults (intentRoute relies on this).
   const models = opts.models?.length ? opts.models : DEFAULT_MODELS;
   // Resolved per call so tests can stub global fetch after import.
   const fetchImpl = opts.fetchImpl ?? fetch;
