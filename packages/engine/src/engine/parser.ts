@@ -48,6 +48,7 @@ const RE = {
   climb: /^climb(?: (up|down))?(?: (?:the )?(.+))?$/i,
   take: /^(?:take|get|grab|pick up) (?:the )?(.+)$/i,
   drop: /^(?:drop|put down|leave) (?:the )?(.+)$/i,
+  follow: /^follow (?:the )?(.+)$/i,
   examine: /^(?:examine|inspect|look at|x) (?:the )?(.+)$/i,
   read: /^read (?:the )?(.+)$/i,
   // Zork's prepositions: PUT UNDER/BEHIND, THROW OFF/OVER, READ THROUGH, PUSH X dir / TO Y.
@@ -106,7 +107,7 @@ const BARE_VERBS: Record<string, string> = {
   take: 'take', get: 'take', grab: 'take', drop: 'drop', examine: 'examine', x: 'examine', inspect: 'examine',
   read: 'read', open: 'open', close: 'close', shut: 'close', lock: 'lock', unlock: 'unlock', put: 'put',
   give: 'give', wear: 'wear', use: 'use', search: 'search', smash: 'smash', break: 'smash', attack: 'attack',
-  kill: 'attack', fight: 'attack', stab: 'attack', throw: 'throw',
+  kill: 'attack', fight: 'attack', stab: 'attack', throw: 'throw', follow: 'follow',
 };
 
 const SINGLE_WORD: Record<string, ParsedAction> = {
@@ -155,6 +156,7 @@ const VERB_PATTERNS: ReadonlyArray<readonly [RegExp, string, ParsedAction['prep'
   [RE.take, 'take'],
   [RE.drop, 'drop'],
   [RE.search, 'search'],
+  [RE.follow, 'follow'],
   [RE.examine, 'examine'],
   [RE.read, 'read'],
   [RE.burn, 'burn'],
@@ -200,7 +202,7 @@ export const BUILT_IN_WORDS: ReadonlySet<string> = new Set([
   'push', 'pull', 'press', 'insert', 'put', 'slide', 'stick', 'feed', 'plug', 'attach', 'give', 'hand',
   'offer', 'return', 'wear', 'put on', 'close', 'shut', 'lock', 'unlock', 'place', 'set', 'remove',
   'search', 'look in', 'look inside', 'climb', 'go into', 'turn', 'switch', 'light', 'extinguish', 'douse', 'blow out', 'put out', 'board', 'disembark', 'get in', 'get out', 'get off', 'stand', 'burn', 'burn down', 'ignite', 'incinerate', 'talk', 'speak', 'chat', 'ask', 'question', 'tell', 'order', 'smash', 'destroy',
-  'break', 'kill', 'hit', 'attack', 'fight', 'stab', 'murder', 'slay', 'throw', 'toss', 'hurl', 'wreck', 'whack', 'beat', 'sit', 'sit down', 'relax', 'wait', 'z',
+  'break', 'kill', 'hit', 'attack', 'fight', 'stab', 'murder', 'slay', 'throw', 'toss', 'hurl', 'wreck', 'whack', 'beat', 'sit', 'sit down', 'relax', 'wait', 'z', 'follow',
   ...Object.keys(SINGLE_WORD),
   ...Object.keys(DIRECTIONS),
 ]);

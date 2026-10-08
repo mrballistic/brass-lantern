@@ -251,3 +251,8 @@ export function npcDescription(world: World, state: GameState, id: string): stri
   const text = scriptDescription(npc?.descriptionScript, world, state) ?? npc?.descriptions?.find((d) => evaluateCondition(d.if, state, world))?.text ?? npc?.description ?? id;
   return expandTemplate(text, world, state);
 }
+
+/** “The Samir”: a character’s name with its article (Task 5 makes this honour `NPC.article`). */
+export function npcThe(world: World, id: string): string {
+  return `The ${world.npcs[id].name}`;
+}

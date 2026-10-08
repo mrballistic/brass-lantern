@@ -190,6 +190,11 @@ describe('POST /api/parse-intent', () => {
     }
   });
 
+  it('accepts follow', async () => {
+    fetchMock.mockResolvedValueOnce(geminiReply('{"action":"follow","target":"samir"}'));
+    expect((await post({ input: 'tail samir', context: makeContext() })).body).toEqual({ action: 'follow', target: 'samir' });
+  });
+
   it('accepts board and disembark', async () => {
     fetchMock.mockResolvedValueOnce(geminiReply('{"action":"board","target":"boat"}'));
     expect((await post({ input: 'climb into the boat', context: makeContext() })).body).toEqual({ action: 'board', target: 'boat' });
