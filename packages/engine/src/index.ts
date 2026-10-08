@@ -18,7 +18,7 @@ export {
   type EngineDeps,
   type EngineResult,
 } from './engine/engine.ts';
-export { BUILT_IN_WORDS, MAX_INPUT_LENGTH, TOO_LONG_REPLY, cleanInput, fallbackParse, splitCommands, strictParse } from './engine/parser.ts';
+export { BUILT_IN_WORDS, MAX_INPUT_LENGTH, TOO_LONG_REPLY, andNames, cleanInput, fallbackParse, splitCommands, strictParse } from './engine/parser.ts';
 export { conditionProblems, evaluateCondition } from './engine/conditions.ts';
 export {
   interpret,

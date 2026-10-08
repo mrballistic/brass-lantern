@@ -382,11 +382,14 @@ function maskQuotes(s: string): string {
  * recognizes, or an object list after a list verb. Otherwise the clause stays
  * whole ("could you grab my keys and wallet") for the LLM to read in one go.
  */
-export function splitCommands(rawInput: string, verbs?: World['verbs']): string[] {
+export function splitCommands(rawInput: string, verbs?: World['verbs'], names?: readonly string[]): string[] {
   const clean = cleanInput(rawInput);
   if (clean === null) return [];
-  const input = stripTrailingStops(clean);
-  if (!input) return [];
+  const stripped = stripTrailingStops(clean);
+  if (!stripped) return [];
+  // A name that holds “and” (“lost and found”) stays whole: its spaces are masked while splitting
+  // and restored in every piece.
+  const input = maskNames(stripped, names);
   // A quoted phrase never splits (its contents are masked, length for length), and a text verb
   // takes everything after it: its words may hold full stops and “then”.
   const masked = maskQuotes(input);
@@ -400,7 +403,7 @@ export function splitCommands(rawInput: string, verbs?: World['verbs']): string[
   for (const [breakAt, next] of [...breaks, [masked.length, masked.length]]) {
     const clause = input.slice(start, breakAt);
     if (textVerb?.test(clause)) {
-      out.push(input.slice(start));
+      out.push(unmaskNames(input.slice(start)));
       return out;
     }
     if (clause) out.push(...splitClause(clause, verbs));
@@ -471,12 +474,46 @@ function orderInLine(input: string, verbs?: World['verbs']): ParsedAction | null
   return { action: 'order', target: head, indirect: m[2].trim() };
 }
 
-function splitClause(clause: string, verbs?: World['verbs']): string[] {
+const NAME_SPACE = '\u0001';
+
+/** The names in `names` (longest first) with their spaces swapped for a mask character. */
+function maskNames(input: string, names?: readonly string[]): string {
+  let out = input;
+  for (const name of names ?? []) {
+    const words = name.trim().split(/\s+/).filter(Boolean).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    if (words.length < 2) continue;
+    const re = new RegExp(`(?<![\\w])${words.join('\\s+')}(?![\\w])`, 'gi');
+    out = out.replace(re, (m) => m.replace(/\s/g, NAME_SPACE));
+  }
+  return out;
+}
+
+function unmaskNames(text: string): string {
+  return text.includes(NAME_SPACE) ? text.replaceAll(NAME_SPACE, ' ') : text;
+}
+
+/**
+ * Every item and NPC name and alias that contains “and”, lowercased and whitespace-collapsed, longest
+ * first. Hand it to `splitCommands` so “lost and found” isn’t read as two things.
+ */
+export function andNames(world: World): string[] {
+  const found = new Set<string>();
+  for (const thing of [...Object.values(world.items ?? {}), ...Object.values(world.npcs ?? {})]) {
+    for (const raw of [thing.name, ...(thing.aliases ?? [])]) {
+      const name = raw.toLowerCase().replace(/\s+/g, ' ').trim();
+      if (/\band\b/.test(name)) found.add(name);
+    }
+  }
+  return [...found].sort((a, b) => b.length - a.length);
+}
+
+function splitClause(masked: string, verbs?: World['verbs']): string[] {
+  const clause = unmaskNames(masked);
   if (orderInLine(clause, verbs)) return [clause];
   // “take all but the wallet and shirt” is one command.
   const all = /\b(?:all|everything)\b/i.exec(clause);
   if (all && /\b(?:but|except)\b/i.test(clause.slice(all.index + all[0].length))) return [clause];
-  const pieces = clause.split(LIST_BREAK).filter(Boolean);
+  const pieces = masked.split(LIST_BREAK).filter(Boolean).map(unmaskNames);
   if (pieces.length === 1) return [clause];
   const out: string[] = [];
   let listVerb: string | null = null;

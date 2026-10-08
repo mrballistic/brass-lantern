@@ -10,6 +10,21 @@ import type { Effect, World } from '../../src/types/world';
 import { fixtureWorld } from '../fixtures/world';
 
 describe('createGame', () => {
+  it('a name that contains “and” stays whole in a command', () => {
+    const world: World = {
+      ...fixtureWorld,
+      rooms: { ...fixtureWorld.rooms, bedroom: { ...fixtureWorld.rooms.bedroom, items: ['alarm', 'bed', 'lost_and_found'] } },
+      items: {
+        ...fixtureWorld.items,
+        lost_and_found: { name: 'lost and found box', aliases: ['lost and found'], description: 'A box.', portable: false, tags: [], container: {}, contains: ['flair'] },
+        flair: { name: 'flair', description: 'Piece of flair.', portable: true, tags: [] },
+      },
+    };
+    const game = createGame(world, { seed: 1 });
+    game.send('take flair from lost and found');
+    expect(game.state.locations.flair).toBe('player');
+  });
+
   describe('hosted commands inside a compound line', () => {
     const room = (g: ReturnType<typeof createGame>) => g.state.currentRoom;
 
