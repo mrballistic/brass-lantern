@@ -20,7 +20,7 @@ export default defineConfig({
   ],
   themeConfig: {
     // The owner's lantern mark (currentColor, so it follows the theme).
-    logo: '/brand/lantern-mark.svg',
+    logo: '/brand/lantern-mark-amber.svg',
     nav: [
       { text: 'Guide', link: '/guide/getting-started' },
       { text: 'Library', link: '/guide/using-the-library' },
