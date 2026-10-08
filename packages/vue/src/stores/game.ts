@@ -32,7 +32,7 @@ import {
   type WorldCartridge,
 } from '@brass-lantern/engine';
 import { PRESET_NAMES, type Theme, type ThemeName, type ThemeOverrides } from '../theme/themes.ts';
-import { cookiesReply, intentEndpointOf, reportEvent, terminalTitle, type GameEvent, type GameOptions } from '../options.ts';
+import { cookiesReply, reportEvent, terminalTitle, type GameEvent, type GameOptions } from '../options.ts';
 import { createCatalog } from './catalog.ts';
 import { createPersistenceService } from '../services/persistence.ts';
 import { readItem, writeItem } from '../services/storage.ts';
@@ -125,7 +125,8 @@ export function createGameStore(options: GameOptions) {
   // Scripts see a frozen state in development (and tests), so one that assigns throws.
   if (options.devChecks) setScriptFreeze(true);
   const catalog = createCatalog(options);
-  const endpoint = intentEndpointOf(options);
+  // The intent server to ask, or null: an unset or empty endpoint means none.
+  const endpoint = options.intentEndpoint || null;
   const report = (name: GameEvent, params?: Record<string, unknown>) => reportEvent(options, name, params);
 
   // Live, non-serializable state stays out of Pinia: one store runs one game at a time.

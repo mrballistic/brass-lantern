@@ -61,7 +61,7 @@ export interface GameOptions {
   autofocus?: boolean;
 }
 
-export const DEFAULT_TERMINAL_NAME = 'BRASS LANTERN';
+const DEFAULT_TERMINAL_NAME = 'BRASS LANTERN';
 
 /** The terminal's name, and its version if it has one: `BRASS LANTERN v2.0.0`. */
 export function terminalTitle(options: GameOptions): string {
@@ -85,11 +85,6 @@ export function reportEvent(options: GameOptions, name: GameEvent, params?: Reco
 export function storyUrl(options: GameOptions, path: string): string {
   const base = options.storyBaseUrl ?? '/';
   return `${base.endsWith('/') ? base : `${base}/`}${path}`;
-}
-
-/** The intent server to ask, or null: an unset or empty endpoint means none. */
-export function intentEndpointOf(options: GameOptions): string | null {
-  return options.intentEndpoint || null;
 }
 
 /** The COOKIES command: open the app's consent settings, or say there's nothing to consent to. */

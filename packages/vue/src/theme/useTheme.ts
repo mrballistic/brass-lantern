@@ -17,7 +17,7 @@ function query(q: string): MediaQueryList | null {
  * reduced-motion preferences change. Variables live on the element, so two
  * terminals on one page keep their own.
  */
-export function useTheme(root: Ref<HTMLElement | null>, options: UseThemeOptions) {
+export function useTheme(root: Ref<HTMLElement | null>, options: UseThemeOptions): void {
   const prefersDark = ref(false);
   const reducedMotion = ref(false);
   let applied: { classes: string[]; vars: string[] } = { classes: [], vars: [] };
@@ -37,8 +37,6 @@ export function useTheme(root: Ref<HTMLElement | null>, options: UseThemeOptions
   watchQuery('(prefers-color-scheme: dark)', prefersDark);
   watchQuery('(prefers-reduced-motion: reduce)', reducedMotion);
 
-  const resolved = ref(resolveTheme('crt-amber', {}, {}, { prefersDark: false, reducedMotion: false }));
-
   watchEffect(() => {
     const next = resolveTheme(
       toValue(options.theme),
@@ -46,7 +44,6 @@ export function useTheme(root: Ref<HTMLElement | null>, options: UseThemeOptions
       toValue(options.overrides) ?? {},
       { prefersDark: prefersDark.value, reducedMotion: reducedMotion.value },
     );
-    resolved.value = next;
     const el = root.value;
     if (!el) return;
     el.classList.remove(...applied.classes);
@@ -56,6 +53,4 @@ export function useTheme(root: Ref<HTMLElement | null>, options: UseThemeOptions
     applied = { classes: next.classes, vars: Object.keys(next.vars) };
   }, { flush: 'post' });
   onBeforeUnmount(() => cleanups.forEach(fn => fn()));
-
-  return { resolved };
 }
