@@ -412,7 +412,7 @@ export const zork1: World = {
   emptyInventory: 'You are empty-handed.',
 
   rooms: {
-    // Stage 5c: the coal mine, SLIDE-ROOM through MINE-ENTRANCE, in story order.
+    // the coal mine, SLIDE-ROOM through MINE-ENTRANCE, in story order.
     slide_room: {
       name: 'Slide Room',
       description: 'This is a small chamber, which appears to have been part of a coal mine. On the south wall of the chamber the letters “Granite Wall” are etched in the rock. To the east is a long passage, and there is a steep metal slide twisting downward. To the north is a small opening.',
@@ -588,7 +588,7 @@ export const zork1: World = {
       npcs: [],
       onEnter: [],
     },
-    // Stage 5b: the canyon and the rainbow. CANYON-VIEW through ARAGAIN-FALLS, in story order.
+    // the canyon and the rainbow. CANYON-VIEW through ARAGAIN-FALLS, in story order.
     canyon_view: {
       name: 'Canyon View',
       description: 'You are at the top of the Great Canyon on its west wall. From here there is a marvelous view of the canyon and parts of the Frigid River upstream. Across the canyon, the walls of the White Cliffs join the mighty ramparts of the Flathead Mountains to the east. Following the Canyon upstream to the north, Aragain Falls may be seen, complete with rainbow. The mighty Frigid River flows out from a great dark cavern. To the west and south can be seen an immense forest, stretching for miles around. A path leads northwest. It is possible to climb down into the canyon from here.',
@@ -663,7 +663,7 @@ export const zork1: World = {
       tags: ['sacred'],
       instead: { jump: [{ then: 'jump_death' }] },
     },
-    // Stage 5b: the east bank. SANDY-CAVE, SANDY-BEACH and SHORE, in story order.
+    // the east bank. SANDY-CAVE, SANDY-BEACH and SHORE, in story order.
     sandy_cave: {
       name: 'Sandy Cave',
       description: 'This is a sand-filled cave whose exit is to the southwest.',
@@ -695,7 +695,7 @@ export const zork1: World = {
       scenery: ['global_water'],
       tags: ['sacred'],
     },
-    // Stage 5b: the Frigid River. RIVER-5 to RIVER-1, in story order (the White Cliffs beaches come between 4 and 3).
+    // the Frigid River. RIVER-5 to RIVER-1, in story order (the White Cliffs beaches come between 4 and 3).
     river_5: {
       name: 'Frigid River',
       description: 'The sound of rushing water is nearly unbearable here. On the east shore is a large landing area.',
@@ -719,7 +719,7 @@ export const zork1: World = {
       scenery: ['global_water'],
       tags: ['sacred'],
     },
-    // Stage 5b: the White Cliffs beaches. The narrow paths take you only without the inflated boat (WHITE-CLIFFS-FUNCTION).
+    // the White Cliffs beaches. The narrow paths take you only without the inflated boat (WHITE-CLIFFS-FUNCTION).
     white_cliffs_south: {
       name: 'White Cliffs Beach',
       description: 'You are on a rocky, narrow strip of beach beside the Cliffs. A narrow path leads north along the shore.',
@@ -782,7 +782,7 @@ export const zork1: World = {
       scenery: ['global_water'],
       tags: ['sacred'],
     },
-    // Stage 5a: the dam. DAM-BASE through DEEP-CANYON, in story order.
+    // the dam. DAM-BASE through DEEP-CANYON, in story order.
     dam_base: {
       name: 'Dam Base',
       description: 'You are at the base of Flood Control Dam #3, which looms above you and to the north. The river Frigid is flowing by here. Along the river are the White Cliffs which seem to form giant walls stretching from north to south along the shores of the river as it winds its way downstream.',
@@ -834,8 +834,8 @@ export const zork1: World = {
       onEnter: [],
       scenery: ['bolt', 'bubble', 'dam', 'control_panel', 'global_water'],
     },
-    // Stage 5a: the dome. TORCH-ROOM through ENGRAVINGS-CAVE, in story order (the temple and Hades come between).
-    // Stage 5a: the temple. SOUTH-TEMPLE and NORTH-TEMPLE, in story order.
+    // the dome. TORCH-ROOM through ENGRAVINGS-CAVE, in story order (the temple and Hades come between).
+    // the temple. SOUTH-TEMPLE and NORTH-TEMPLE, in story order.
     south_temple: {
       name: 'Altar',
       description: 'This is the south end of a large temple. In front of you is what appears to be an altar. In one corner is a small hole in the floor which leads into darkness. You probably could not get back up it.',
@@ -903,7 +903,7 @@ export const zork1: World = {
       npcs: [],
       onEnter: [],
     },
-    // Stage 5a: Hades. LAND-OF-LIVING-DEAD and ENTRANCE-TO-HADES, in story order.
+    // Hades. LAND-OF-LIVING-DEAD and ENTRANCE-TO-HADES, in story order.
     land_of_living_dead: {
       name: 'Land of the Dead',
       description: 'You have entered the Land of the Living Dead. Thousands of lost souls can be heard weeping and moaning. In the corner are stacked the remains of dozens of previous adventurers less fortunate than yourself. A passage exits to the north.',
@@ -1033,7 +1033,7 @@ export const zork1: World = {
       // Zork's VALUE 5.
       onEnter: [{ if: '!flag:ew_passage_visited', then: 'ew_passage_points' }],
     },
-    // Stage 5a: the mirrors. ATLANTIS-ROOM through MIRROR-ROOM-1, in story order.
+    // the mirrors. ATLANTIS-ROOM through MIRROR-ROOM-1, in story order.
     atlantis_room: {
       name: 'Atlantis Room',
       description: 'This is an ancient room, long under water. There is an exit to the south and a staircase leading up.',
@@ -1118,8 +1118,8 @@ export const zork1: World = {
       npcs: [],
       onEnter: [],
     },
-    // Stage 5a: the reservoir. STREAM-VIEW through RESERVOIR-SOUTH, in story order.
-    // Stage 5b: the Stream (IN-STREAM), water.
+    // the reservoir. STREAM-VIEW through RESERVOIR-SOUTH, in story order.
+    // the Stream (IN-STREAM), water.
     in_stream: {
       name: 'Stream',
       description: 'You are on the gently flowing stream. The upstream route is too narrow to navigate, and the downstream route is invisible due to twisting walls. There is a narrow beach to land on.',
@@ -1661,7 +1661,7 @@ export const zork1: World = {
       onEnter: [],
       scenery: inForest,
     },
-    // Stage 5d: MOUNTAINS.
+    // MOUNTAINS.
     mountains: {
       name: 'Forest',
       description: 'The forest thins out, revealing impassable mountains.',
@@ -1764,7 +1764,7 @@ export const zork1: World = {
       onEnter: [],
       scenery: [...outside, 'boarded_window', 'board'],
     },
-    // Stage 5d: STONE-BARROW. Going in ends the game (STONE-BARROW-FCN).
+    // STONE-BARROW. Going in ends the game (STONE-BARROW-FCN).
     stone_barrow: {
       name: 'Stone Barrow',
       description: 'You are standing in front of a massive barrow of stone. In the east face is a huge stone door which is open. You cannot see into the dark of the tomb.',
@@ -1899,7 +1899,7 @@ export const zork1: World = {
       instead: { turn_off: [{ say: ['You nearly burn your hand trying to extinguish the flame.'] }] },
       after: { take: [{ if: '!flag:took_torch', then: 'took_torch' }] },
     },
-    // Stage 5b: the rainbow and the canyon.
+    // the rainbow and the canyon.
     pot_of_gold: {
       name: 'pot of gold',
       aliases: ['pot', 'gold', 'treasure', 'gold pot'],
@@ -1930,7 +1930,7 @@ export const zork1: World = {
       scenery: true,
       instead: { throw: [{ as: 'indirect', then: 'over_the_cliff' }], put: [{ as: 'indirect', then: 'over_the_cliff' }] },
     },
-    // Stage 5d: the end.
+    // the end.
     mountain_range: {
       name: 'mountain range',
       aliases: ['mountain', 'mountains', 'range', 'impassable mountains', 'flathead mountains'],
@@ -1969,7 +1969,7 @@ export const zork1: World = {
       scenery: true,
       instead: { enter: [{ then: 'barrow_end' }] },
     },
-    // Stage 5c: the coal mine.
+    // the coal mine.
     jade: {
       name: 'jade figurine',
       aliases: ['figurine', 'treasure', 'jade', 'exquisite figurine'],
@@ -2138,7 +2138,7 @@ export const zork1: World = {
         lower: [{ say: ['Perhaps you should do that to the basket.'] }],
       },
     },
-    // Stage 5b: the banks.
+    // the banks.
     shovel: {
       name: 'shovel',
       aliases: ['tool', 'tools'],
@@ -2176,7 +2176,7 @@ export const zork1: World = {
       scenery: true,
       instead: { climb: [{ say: ['The cliff is too steep for climbing.'] }] },
     },
-    // Stage 5a: the temple and Hades.
+    // the temple and Hades.
     altar: {
       name: 'altar',
       description: '',
@@ -2315,7 +2315,7 @@ export const zork1: World = {
         burn: [{ as: 'target', then: 'bodies_defiled' }],
       },
     },
-    // Stage 5a: the dam and the reservoir.
+    // the dam and the reservoir.
     bar: {
       name: 'platinum bar',
       aliases: ['bar', 'platinum', 'treasure', 'large bar', 'platinum bar'],
@@ -4014,7 +4014,7 @@ export const zork1: World = {
     { if: 'inside:pot_of_gold:trophy_case', points: 10 },
     { if: 'inside:scarab:trophy_case', points: 5 },
     { if: 'inside:emerald:trophy_case', points: 10 },
-    // Stage 5c: the coal mine. LIGHT-SHAFT is 13 for the first lit turn in the Lower Shaft.
+    // the coal mine. LIGHT-SHAFT is 13 for the first lit turn in the Lower Shaft.
     { flag: 'took_canary', points: 6 },
     { flag: 'took_bauble', points: 1 },
     { if: 'inside:bauble:trophy_case', points: 1 },

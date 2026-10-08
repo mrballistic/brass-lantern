@@ -74,7 +74,7 @@ That is most of the package: `BrassLantern`, `mountGame`, `ConsentBanner`, the t
 | `terminalName` | Shown in the header. Default `BRASS LANTERN`. |
 | `version` | Shown after the name in the header. |
 | `intentEndpoint` | Where misses go for the LLM’s reading: a URL that accepts `POST`. `null`, `''` or unset means none, and a miss gets the engine’s reply. |
-| `theme` | The author’s default: a preset name, the name of one of `themes`, or a custom theme object (TypeScript types the option as a preset name or a theme object, so for a custom theme pass the object itself). The player’s `THEME` command wins. A name that isn’t a theme falls back to `crt-amber`, with a warning in the console. Default `crt-amber`. |
+| `theme` | The author’s default: a preset name, the name of one of `themes`, or a custom theme object. The player’s `THEME` command wins. A name that isn’t a theme falls back to `crt-amber`, with a warning in the console. Default `crt-amber`. |
 | `themes` | Extra named themes, offered by `THEME` beside the presets. One named like a preset is ignored, with a warning. |
 | `analytics` | `{ onEvent(name, params?), openConsent?() }`. `onEvent` hears `game_start`, `game_completed` and `session_resumed`; a callback that throws is logged and never breaks the game. With `openConsent`, the header shows a COOKIES link and the command calls it; without it, COOKIES says nothing is collected. |
 | `storyBaseUrl` | Where a story cartridge’s relative `story` path is fetched from. A Vite app under a subpath passes `import.meta.env.BASE_URL`. Default `/`. |
