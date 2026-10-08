@@ -1,8 +1,11 @@
 import { defineConfig } from 'vitest/config';
 import vue from '@vitejs/plugin-vue';
+import { resolveSources } from '../../vite.shared.ts';
 
 export default defineConfig({
   plugins: [vue()],
+  // The engine from its source, not dist/ (see vite.shared.ts).
+  ...resolveSources,
   test: {
     // Files that need a DOM say so with a `// @vitest-environment happy-dom`
     // comment: creating happy-dom for every file was most of the run.

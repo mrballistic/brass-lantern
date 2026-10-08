@@ -23,11 +23,11 @@ export const RANDOM_LINES: Record<StoryName, string[]> = { zork1: ZORK1_RANDOM, 
 
 const stories = new Map<StoryName, Uint8Array>([['zork1', story]]);
 
-/** A story's bytes: Zork I from the fixture, the others from public/stories. */
+/** A story's bytes, from tests/fixtures (copies of the site's public/stories). */
 export function storyFile(name: StoryName): Uint8Array {
   let bytes = stories.get(name);
   if (!bytes) {
-    bytes = new Uint8Array(readFileSync(resolve(import.meta.dirname, `../../../../apps/site/public/stories/${name}.z3`)));
+    bytes = new Uint8Array(readFileSync(resolve(import.meta.dirname, `../fixtures/${name}.z3`)));
     stories.set(name, bytes);
   }
   return bytes;

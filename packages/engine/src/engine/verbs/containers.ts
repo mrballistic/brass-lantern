@@ -1,6 +1,6 @@
-import type { GameState } from '../../types/game';
-import type { World } from '../../types/world';
-import { contentsLines, listPhrase } from '../describe';
+import type { GameState } from '../../types/game.ts';
+import type { World } from '../../types/world.ts';
+import { contentsLines, listPhrase } from '../describe.ts';
 import {
   canReachInside,
   closedAround,
@@ -18,11 +18,11 @@ import {
   pickItem,
   reachableItems,
   visibleItems,
-} from '../model';
-import { miss, ok, zorkDefault, type EngineResult } from '../result';
-import { applyRule, findRule } from '../rules';
-import { takeItem } from './objects';
-import { weightOf } from '../weight';
+} from '../model.ts';
+import { miss, ok, zorkDefault, type EngineResult } from '../result.ts';
+import { applyRule, findRule } from '../rules.ts';
+import { takeItem } from './objects.ts';
+import { weightOf } from '../weight.ts';
 
 // Every handler checks everything it needs before it changes anything, so a
 // refusal is an understood reply that leaves the game as it was.

@@ -1,4 +1,4 @@
-import type { ParsedAction } from '../types/game';
+import type { ParsedAction } from '../types/game.ts';
 
 // What every handler returns.
 

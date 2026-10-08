@@ -1,6 +1,6 @@
-import type { GameState } from '../types/game';
-import type { ScoreEntry, World } from '../types/world';
-import { evaluateCondition } from './conditions';
+import type { GameState } from '../types/game.ts';
+import type { ScoreEntry, World } from '../types/world.ts';
+import { evaluateCondition } from './conditions.ts';
 
 /** The score SCORE reports: the `scoring` entries that hold, plus `vars.score`. */
 export function currentScore(world: World, state: GameState): number {

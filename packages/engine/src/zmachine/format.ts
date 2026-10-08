@@ -1,4 +1,4 @@
-import type { GlkGridLine, GlkParagraph, GlkRuns, StatusLine } from './types';
+import type { GlkGridLine, GlkParagraph, GlkRuns, StatusLine } from './types.ts';
 
 /** The text of a run list, leaving out runs in any of the given styles. */
 export function runsText(runs: GlkRuns | undefined, skip: readonly string[] = []): string {

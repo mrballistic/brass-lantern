@@ -21,6 +21,10 @@ mountGame(
     intentEndpoint: '/api/parse-intent',
     analytics: { onEvent: track, ...(analyticsConfigured() ? { openConsent } : {}) },
     version: __APP_VERSION__,
+    // Story files are served from the site's base (VITE_BASE under GitHub Pages).
+    storyBaseUrl: import.meta.env.BASE_URL,
+    // The engine's script freeze, on in development.
+    devChecks: import.meta.env.DEV,
   },
   { slot: SiteConsent },
 );

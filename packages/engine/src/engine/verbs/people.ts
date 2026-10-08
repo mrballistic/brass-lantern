@@ -1,9 +1,9 @@
-import type { GameState } from '../../types/game';
-import type { World } from '../../types/world';
-import { evaluateCondition } from '../conditions';
-import { inventoryOf, matchNpc, moveItem, needObject, npcsSeen, pickItem } from '../model';
-import { miss, ok, type EngineResult } from '../result';
-import { runEventKey } from '../effects';
+import type { GameState } from '../../types/game.ts';
+import type { World } from '../../types/world.ts';
+import { evaluateCondition } from '../conditions.ts';
+import { inventoryOf, matchNpc, moveItem, needObject, npcsSeen, pickItem } from '../model.ts';
+import { miss, ok, type EngineResult } from '../result.ts';
+import { runEventKey } from '../effects.ts';
 
 export function handleTalk(target: string | undefined, world: World, state: GameState): EngineResult {
   const present = npcsSeen(world, state, state.currentRoom);

@@ -1,4 +1,4 @@
-import type { World } from '../../types/world';
+import type { World } from '../../types/world.ts';
 
 /** Recipe: containers, surfaces and keys. See docs/guide/building-worlds/recipes.md. */
 export const containers: World = {

@@ -1,9 +1,9 @@
-import type { GameState, ParsedAction } from '../types/game';
-import type { World } from '../types/world';
-import { interpret, newConversation, remember, resolvePronouns, type Conversation } from './conversation';
-import { captureLine, execute, initialState, openingLines } from './engine';
-import { fallbackParse, splitCommands } from './parser';
-import type { EngineResult } from './result';
+import type { GameState, ParsedAction } from '../types/game.ts';
+import type { World } from '../types/world.ts';
+import { interpret, newConversation, remember, resolvePronouns, type Conversation } from './conversation.ts';
+import { captureLine, execute, initialState, openingLines } from './engine.ts';
+import { fallbackParse, splitCommands } from './parser.ts';
+import type { EngineResult } from './result.ts';
 
 /** What one line of input produced. `awaiting` is true while the game waits for an answer to a question (its text is the last of `lines`). */
 export interface EngineReply {

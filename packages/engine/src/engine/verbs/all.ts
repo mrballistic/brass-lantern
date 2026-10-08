@@ -1,12 +1,12 @@
-import type { GameState, ParsedAction } from '../../types/game';
-import type { World } from '../../types/world';
-import { fuzzyCandidates } from '../fuzzy';
-import { canReachInside, childrenOf, closedAround, inventoryOf, isHeld, isLit, pickItem, setResolveById, shown, visibleItems } from '../model';
-import { turnHalted } from '../effects';
-import { miss, ok, type EngineResult } from '../result';
-import { withRules } from '../rules';
-import { handlePut } from './containers';
-import { handleDrop, handleTake } from './objects';
+import type { GameState, ParsedAction } from '../../types/game.ts';
+import type { World } from '../../types/world.ts';
+import { fuzzyCandidates } from '../fuzzy.ts';
+import { canReachInside, childrenOf, closedAround, inventoryOf, isHeld, isLit, pickItem, setResolveById, shown, visibleItems } from '../model.ts';
+import { turnHalted } from '../effects.ts';
+import { miss, ok, type EngineResult } from '../result.ts';
+import { withRules } from '../rules.ts';
+import { handlePut } from './containers.ts';
+import { handleDrop, handleTake } from './objects.ts';
 
 const NOTHING: Record<string, string> = {
   take: 'There is nothing here to take.',

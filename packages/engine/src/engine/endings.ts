@@ -1,7 +1,7 @@
-import type { GameState } from '../types/game';
-import type { EventStep, World } from '../types/world';
-import { runSteps } from './effects';
-import { scoreLines } from './verbs/meta';
+import type { GameState } from '../types/game.ts';
+import type { EventStep, World } from '../types/world.ts';
+import { runSteps } from './effects.ts';
+import { scoreLines } from './verbs/meta.ts';
 
 /** Plays out an ending: its lines, the score if asked, the footer; then the game is over. */
 export function finishEnding(lines: string[], score: boolean, footer: EventStep[], world: World, state: GameState): string[] {

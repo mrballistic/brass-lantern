@@ -2,7 +2,6 @@
   "name": "@brass-lantern/server",
   "version": "1.13.0",
   "author": "Todd Greco <mrballistic@gmail.com>",
-  "private": true,
   "description": "Optional intent server for brass-lantern: one Express route that asks Gemini to map loose player input onto the engine’s verbs.",
   "license": "MIT",
   "repository": {
@@ -10,12 +9,41 @@
     "url": "https://github.com/mrballistic/brass-lantern.git",
     "directory": "packages/server"
   },
+  "homepage": "https://mrballistic.github.io/brass-lantern/",
+  "bugs": "https://github.com/mrballistic/brass-lantern/issues",
+  "keywords": [
+    "text-adventure",
+    "interactive-fiction",
+    "intent-parser",
+    "gemini",
+    "express"
+  ],
   "type": "module",
+  "sideEffects": false,
   "exports": {
-    ".": "./src/lib.ts",
-    "./express": "./src/express.ts"
+    ".": {
+      "@brass-lantern/source": "./src/lib.ts",
+      "types": "./dist/lib.d.ts",
+      "import": "./dist/lib.js"
+    },
+    "./express": {
+      "@brass-lantern/source": "./src/express.ts",
+      "types": "./dist/express.d.ts",
+      "import": "./dist/express.js"
+    },
+    "./package.json": "./package.json"
   },
+  "types": "./dist/lib.d.ts",
+  "files": [
+    "dist",
+    "!dist/index.*",
+    "!dist/config.*",
+    "!dist/**/*.map",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
+    "prebuild": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\"",
     "dev": "tsx watch --env-file-if-exists=.env src/index.ts",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/index.js",
@@ -25,8 +53,17 @@
     "lint": "eslint .",
     "test:coverage": "vitest run --coverage"
   },
-  "dependencies": {
-    "express": "^5.2.1"
+  "peerDependencies": {
+    "@types/express": "^5.0.0",
+    "express": "^5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@types/express": {
+      "optional": true
+    },
+    "express": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -39,7 +76,12 @@
     "tsx": "^4.23.15",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.71.0",
-    "vitest": "^5.0.3"
+    "vitest": "^5.0.3",
+    "express": "^5.2.1"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   },
   "engines": {
     "node": ">=24"

@@ -1,9 +1,9 @@
-import type { GameState, ParsedAction } from '../../types/game';
-import type { World } from '../../types/world';
-import { combatText, heroBlow } from '../combat';
-import { inventoryOf, isCarried, matchNpc, moveItem, needObject, pickItem, visibleItems } from '../model';
-import { miss, ok, type EngineResult } from '../result';
-import { BARE_HANDS, withRules } from '../rules';
+import type { GameState, ParsedAction } from '../../types/game.ts';
+import type { World } from '../../types/world.ts';
+import { combatText, heroBlow } from '../combat.ts';
+import { inventoryOf, isCarried, matchNpc, moveItem, needObject, pickItem, visibleItems } from '../model.ts';
+import { miss, ok, type EngineResult } from '../result.ts';
+import { BARE_HANDS, withRules } from '../rules.ts';
 
 /**
  * ATTACK, KILL, FIGHT, STAB. At a character it's combat; at anything else,

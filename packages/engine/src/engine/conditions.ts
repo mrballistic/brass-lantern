@@ -1,9 +1,9 @@
-import type { GameState } from '../types/game';
-import type { World } from '../types/world';
-import { currentScore } from './score';
-import { commandOf } from './scripts';
-import { weightOf } from './weight';
-import { isAlive, isAwake, isCarried, isHeld, isLit, isLocked, isNpcIn, isOn, isOpen, isReachable, isWater, npcsSeen, PLAYER, terrainOf } from './model';
+import type { GameState } from '../types/game.ts';
+import type { World } from '../types/world.ts';
+import { currentScore } from './score.ts';
+import { commandOf } from './scripts.ts';
+import { weightOf } from './weight.ts';
+import { isAlive, isAwake, isCarried, isHeld, isLit, isLocked, isNpcIn, isOn, isOpen, isReachable, isWater, npcsSeen, PLAYER, terrainOf } from './model.ts';
 
 /**
  * Evaluate a condition string against the current game state.

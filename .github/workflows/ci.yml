@@ -41,7 +41,13 @@ jobs:
       - run: npm run type-check -w "$WORKSPACE"
       - name: Test (with coverage thresholds)
         run: npm run test:coverage -w "$WORKSPACE"
-      - run: npm run build -w "$WORKSPACE" --if-present
+      # In the repo the packages resolve to their sources, so tests and the
+      # site need no build. The vue package's declarations are built against
+      # the engine's, so the engine builds first there.
+      - name: Build
+        run: |
+          if [ "$WORKSPACE" = "@brass-lantern/vue" ]; then npm run build -w @brass-lantern/engine; fi
+          npm run build -w "$WORKSPACE" --if-present
 
       # The Gemini key lives only on the server. Fail loudly if anything that
       # looks like a Google API key, or the key's env var name, ever reaches
@@ -53,6 +59,24 @@ jobs:
             echo "::error::A Gemini key or endpoint reference is in the client bundle."
             exit 1
           fi
+
+  smoke:
+    name: Consumer smoke test (pack, install, import)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+      # Builds the three packages, packs them as `npm publish` would, installs
+      # the tarballs into a scratch project and uses them from Node and tsc.
+      - run: npm run smoke
 
   repo:
     name: Repo (root lint / docs build)

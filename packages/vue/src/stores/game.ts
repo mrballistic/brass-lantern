@@ -25,9 +25,6 @@ import { setScriptFreeze } from '@brass-lantern/engine';
 import { makeLine } from '@brass-lantern/engine';
 import { createPersistenceService } from '../services/persistence';
 
-// Scripts see a frozen state in development and tests, so one that assigns throws.
-setScriptFreeze(import.meta.env.DEV);
-
 /** Used before any world cartridge is inserted, e.g. in a Z-machine-only build. */
 const EMPTY_WORLD: World = {
   startRoom: 'nowhere',
@@ -109,6 +106,8 @@ function matchTheme(raw: string, names: string[]): string | null {
  * independent; the same prefix twice is the same store.
  */
 export function createGameStore(options: GameOptions) {
+  // Scripts see a frozen state in development (and tests), so one that assigns throws.
+  if (options.devChecks) setScriptFreeze(true);
   const catalog = createCatalog(options);
   const endpoint = intentEndpointOf(options);
   const report = (name: GameEvent, params?: Record<string, unknown>) => reportEvent(options, name, params);

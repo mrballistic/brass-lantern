@@ -1,13 +1,13 @@
-import type { GameState } from '../../types/game';
-import type { Exit, World } from '../../types/world';
-import { evaluateCondition } from '../conditions';
-import { COMPASS, describeRoom, exitList, exitTarget } from '../describe';
-import { fuzzyMatchExit } from '../fuzzy';
-import { isAwake, isLit, isNpcHidden, isOpen, isWater, restTerrains, matchItem, nextPlacing, npcStateOf, npcsIn, onFootTerrains, pickItem, terrainOf, travelTerrains, visibleItems } from '../model';
-import { handleBoard } from './vehicle';
-import { runEventKey, runSteps, turnHalted, vehicleLine } from '../effects';
-import { nextRandom } from '../rng';
-import { miss, ok, type EngineResult } from '../result';
+import type { GameState } from '../../types/game.ts';
+import type { Exit, World } from '../../types/world.ts';
+import { evaluateCondition } from '../conditions.ts';
+import { COMPASS, describeRoom, exitList, exitTarget } from '../describe.ts';
+import { fuzzyMatchExit } from '../fuzzy.ts';
+import { isAwake, isLit, isNpcHidden, isOpen, isWater, restTerrains, matchItem, nextPlacing, npcStateOf, npcsIn, onFootTerrains, pickItem, terrainOf, travelTerrains, visibleItems } from '../model.ts';
+import { handleBoard } from './vehicle.ts';
+import { runEventKey, runSteps, turnHalted, vehicleLine } from '../effects.ts';
+import { nextRandom } from '../rng.ts';
+import { miss, ok, type EngineResult } from '../result.ts';
 
 /** Evaluate onEnter triggers and emit any event-script lines. */
 function runOnEnter(roomId: string, world: World, state: GameState): string[] {

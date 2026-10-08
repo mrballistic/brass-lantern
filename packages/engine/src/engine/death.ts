@@ -1,9 +1,9 @@
-import type { GameState } from '../types/game';
-import type { World } from '../types/world';
-import { evaluateCondition } from './conditions';
-import { inventoryOf, isWater, moveItem } from './model';
-import { nextRandom } from './rng';
-import { runEventKey } from './effects';
+import type { GameState } from '../types/game.ts';
+import type { World } from '../types/world.ts';
+import { evaluateCondition } from './conditions.ts';
+import { inventoryOf, isWater, moveItem } from './model.ts';
+import { nextRandom } from './rng.ts';
+import { runEventKey } from './effects.ts';
 
 type GoTo = (room: string, world: World, state: GameState) => string[];
 

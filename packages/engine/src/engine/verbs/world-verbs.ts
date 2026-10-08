@@ -1,13 +1,13 @@
-import type { GameState, ParsedAction } from '../../types/game';
-import type { World, WorldVerb } from '../../types/world';
-import { heldItems, matchNpc, namesPlayer, needObject, pickItem, PLAYER, reachableItems } from '../model';
-import { setCommand } from '../scripts';
-import { stopLine } from '../effects';
-import { miss, ok, type EngineResult } from '../result';
-import { applyRule, findRule } from '../rules';
-import { handleGo } from './movement';
-import { withArticle } from '../describe';
-import { nextRandom } from '../rng';
+import type { GameState, ParsedAction } from '../../types/game.ts';
+import type { World, WorldVerb } from '../../types/world.ts';
+import { heldItems, matchNpc, namesPlayer, needObject, pickItem, PLAYER, reachableItems } from '../model.ts';
+import { setCommand } from '../scripts.ts';
+import { stopLine } from '../effects.ts';
+import { miss, ok, type EngineResult } from '../result.ts';
+import { applyRule, findRule } from '../rules.ts';
+import { handleGo } from './movement.ts';
+import { withArticle } from '../describe.ts';
+import { nextRandom } from '../rng.ts';
 
 /** Typed words (SAY, INCANT, ANSWER): never a miss for naming nothing, and the rest of the line is dropped. */
 function handleTextVerb(action: ParsedAction, verb: WorldVerb, world: World, state: GameState): EngineResult {

@@ -1,8 +1,8 @@
-import type { GameState } from '../types/game';
-import { cureTick, fightTurn } from './combat';
-import type { World } from '../types/world';
-import { evaluateCondition } from './conditions';
-import { runConditional, runEventKey, scheduledThisTurn, turnHalted } from './effects';
+import type { GameState } from '../types/game.ts';
+import { cureTick, fightTurn } from './combat.ts';
+import type { World } from '../types/world.ts';
+import { evaluateCondition } from './conditions.ts';
+import { runConditional, runEventKey, scheduledThisTurn, turnHalted } from './effects.ts';
 
 const fired = new WeakSet<GameState>();
 

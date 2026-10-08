@@ -1,6 +1,6 @@
-import type { ParsedAction } from '../types/game';
-import type { World, Room } from '../types/world';
-import { readsNumber } from './parser';
+import type { ParsedAction } from '../types/game.ts';
+import type { World, Room } from '../types/world.ts';
+import { readsNumber } from './parser.ts';
 
 export interface IntentContext {
   roomName: string;

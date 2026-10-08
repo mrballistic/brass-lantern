@@ -1,35 +1,35 @@
-import type { GameState, ParsedAction } from '../types/game';
-import type { EventStep, World } from '../types/world';
-import { evaluateCondition } from './conditions';
-import { describeRoom } from './describe';
-import { AskSignal, initialLocations, inventoryOf, isLit, matchItem, matchNpc, needObject, pickItem, restoreState, setResolveById, snapshotState, takeActed, visibleItems } from './model';
-import { whatQuestion, whichQuestion } from './ask';
-import { darknessFalls, tooDark } from './light';
-import { beginTick, beginTurn, darkLineSaid, lineStop, runConditional, runSteps, setEffectHooks, turnFree, turnHalted } from './effects';
-import { seedFor } from './rng';
-import { afterTurn, fuseFired } from './time';
-import { die } from './death';
-import { runEnding } from './endings';
-import { miss, ok, zorkDefault, type EngineResult } from './result';
-import { enterRoom, handleClimb, handleEnter, handleGo, handleIdle, vehicleRefusal } from './verbs/movement';
+import type { GameState, ParsedAction } from '../types/game.ts';
+import type { EventStep, World } from '../types/world.ts';
+import { evaluateCondition } from './conditions.ts';
+import { describeRoom } from './describe.ts';
+import { AskSignal, initialLocations, inventoryOf, isLit, matchItem, matchNpc, needObject, pickItem, restoreState, setResolveById, snapshotState, takeActed, visibleItems } from './model.ts';
+import { whatQuestion, whichQuestion } from './ask.ts';
+import { darknessFalls, tooDark } from './light.ts';
+import { beginTick, beginTurn, darkLineSaid, lineStop, runConditional, runSteps, setEffectHooks, turnFree, turnHalted } from './effects.ts';
+import { seedFor } from './rng.ts';
+import { afterTurn, fuseFired } from './time.ts';
+import { die } from './death.ts';
+import { runEnding } from './endings.ts';
+import { miss, ok, zorkDefault, type EngineResult } from './result.ts';
+import { enterRoom, handleClimb, handleEnter, handleGo, handleIdle, vehicleRefusal } from './verbs/movement.ts';
 import {
   ALL, handleDrop, handleExamine, handleInventory, handleLook, handleRead, handleSmash, handleSwitch, handleTake, handleUse, handleWear, notHeld,
-} from './verbs/objects';
-import { withRules } from './rules';
-import { handleWorldVerb } from './verbs/world-verbs';
-import { handleAll } from './verbs/all';
-import { handleClose, handleLock, handleOpen, handlePut, handleSearch, handleTakeFrom, handleUnlock } from './verbs/containers';
-import { handleGive, handleTalk } from './verbs/people';
-import { handleAttack, handleThrow } from './verbs/attack';
-import { handleBurn, handleNoEffect } from './verbs/burn';
-import { handleBoard, handleDisembark } from './verbs/vehicle';
-import { handleAsk, handleOrder } from './verbs/talk';
-import { scriptSteps, setCommand } from './scripts';
-import { diagnoseLines } from './combat';
-import { handleHelp, handleHint, handleScore, handleUnknown, scoreLines } from './verbs/meta';
+} from './verbs/objects.ts';
+import { withRules } from './rules.ts';
+import { handleWorldVerb } from './verbs/world-verbs.ts';
+import { handleAll } from './verbs/all.ts';
+import { handleClose, handleLock, handleOpen, handlePut, handleSearch, handleTakeFrom, handleUnlock } from './verbs/containers.ts';
+import { handleGive, handleTalk } from './verbs/people.ts';
+import { handleAttack, handleThrow } from './verbs/attack.ts';
+import { handleBurn, handleNoEffect } from './verbs/burn.ts';
+import { handleBoard, handleDisembark } from './verbs/vehicle.ts';
+import { handleAsk, handleOrder } from './verbs/talk.ts';
+import { scriptSteps, setCommand } from './scripts.ts';
+import { diagnoseLines } from './combat.ts';
+import { handleHelp, handleHint, handleScore, handleUnknown, scoreLines } from './verbs/meta.ts';
 
-export type { EngineResult } from './result';
-export { visibleItemsIn } from './model';
+export type { EngineResult } from './result.ts';
+export { visibleItemsIn } from './model.ts';
 
 export interface EngineDeps {
   world: World;

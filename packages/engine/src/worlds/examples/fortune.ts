@@ -1,4 +1,4 @@
-import type { World } from '../../types/world';
+import type { World } from '../../types/world.ts';
 
 /** Recipe: a script, for what data alone can't say. See docs/guide/building-worlds/recipes.md. */
 export const fortune: World = {

@@ -1,6 +1,6 @@
-import type { ParsedAction } from '../types/game';
-import type { World } from '../types/world';
-import type { Ask } from './result';
+import type { ParsedAction } from '../types/game.ts';
+import type { World } from '../types/world.ts';
+import type { Ask } from './result.ts';
 
 // How the engine words its questions back to the player.
 

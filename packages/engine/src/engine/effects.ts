@@ -1,10 +1,10 @@
-import type { GameState, Place } from '../types/game';
-import type { Effect, EventStep, VehicleLine, World } from '../types/world';
-import { evaluateCondition } from './conditions';
-import { isCarried, moveItem, nextPlacing, npcStateOf, PLAYER } from './model';
-import { nextRandom } from './rng';
-import { commandOf, scriptSteps } from './scripts';
-import { expandTemplate } from './text';
+import type { GameState, Place } from '../types/game.ts';
+import type { Effect, EventStep, VehicleLine, World } from '../types/world.ts';
+import { evaluateCondition } from './conditions.ts';
+import { isCarried, moveItem, nextPlacing, npcStateOf, PLAYER } from './model.ts';
+import { nextRandom } from './rng.ts';
+import { commandOf, scriptSteps } from './scripts.ts';
+import { expandTemplate } from './text.ts';
 
 // Running event steps: printed lines (bracket lines also act) and typed effects.
 

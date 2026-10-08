@@ -1,11 +1,11 @@
-import type { GameState, ParsedAction } from '../../types/game';
-import type { World } from '../../types/world';
-import { withArticle } from '../describe';
-import { runSteps } from '../effects';
-import { isCarried, isOn, matchNpc, moveItem, namesThing, needObject, pickItem, reachableItems, visibleItems } from '../model';
-import { miss, ok, zorkDefault, type EngineResult } from '../result';
-import { notHeld } from './objects';
-import { readsNumber } from '../parser';
+import type { GameState, ParsedAction } from '../../types/game.ts';
+import type { World } from '../../types/world.ts';
+import { withArticle } from '../describe.ts';
+import { runSteps } from '../effects.ts';
+import { isCarried, isOn, matchNpc, moveItem, namesThing, needObject, pickItem, reachableItems, visibleItems } from '../model.ts';
+import { miss, ok, zorkDefault, type EngineResult } from '../result.ts';
+import { notHeld } from './objects.ts';
+import { readsNumber } from '../parser.ts';
 
 /** Is it burning: a flaming thing, switched on if it switches. */
 function isFlaming(world: World, state: GameState, id: string): boolean {

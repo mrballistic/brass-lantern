@@ -27,6 +27,38 @@ function fakeDeps(fetchStory: () => Promise<Uint8Array> = async () => new Uint8A
 
 const texts = (store: ReturnType<typeof useZGameStore>) => store.output.map((l) => l.text);
 
+describe('story URLs (storyBaseUrl)', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia());
+    localStorage.clear();
+  });
+
+  async function fetchedUrl(storyBaseUrl: string | undefined): Promise<string> {
+    const fetchMock = vi.fn(async () => new Response(null, { status: 404 }));
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      const options = storyBaseUrl === undefined ? fixtureOptions : { ...fixtureOptions, storyBaseUrl };
+      const useStore = createZGameStore({ ...options, storagePrefix: `url-${storyBaseUrl ?? 'default'}` }, createLocalShelf('url'));
+      const store = useStore();
+      await store.initialize(CART);
+      expect(store.failed).toBe(true);
+      return String((fetchMock.mock.calls[0] as unknown[])[0]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  }
+
+  it('fetches a story from the site root by default', async () => {
+    expect(await fetchedUrl(undefined)).toBe('/stories/story.z3');
+  });
+
+  it('fetches under the base the app passes (a Vite app passes import.meta.env.BASE_URL)', async () => {
+    expect(await fetchedUrl('/brass-lantern/demo/')).toBe('/brass-lantern/demo/stories/story.z3');
+    expect(await fetchedUrl('/games')).toBe('/games/stories/story.z3');
+    expect(await fetchedUrl('https://cdn.example/')).toBe('https://cdn.example/stories/story.z3');
+  });
+});
+
 describe('zgame store', () => {
   beforeEach(() => {
     setActivePinia(createPinia());

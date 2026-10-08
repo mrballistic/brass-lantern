@@ -1,4 +1,4 @@
-import type { OutputLine, OutputLineType } from '../types/game';
+import type { OutputLine, OutputLineType } from '../types/game.ts';
 
 const EVENT_PREFIX = /^[💼🌀👔💕💻💾🔨💥📎✨🪄🤜😖😴🐟🌺📬📞]/u;
 

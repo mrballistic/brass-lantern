@@ -1,7 +1,7 @@
-import type { GameState, NpcState, Place } from '../types/game';
-import type { Item, World } from '../types/world';
-import { evaluateCondition } from './conditions';
-import { fuzzyCandidates, fuzzyMatch, isSelfWord, namesSelf } from './fuzzy';
+import type { GameState, NpcState, Place } from '../types/game.ts';
+import type { Item, World } from '../types/world.ts';
+import { evaluateCondition } from './conditions.ts';
+import { fuzzyCandidates, fuzzyMatch, isSelfWord, namesSelf } from './fuzzy.ts';
 
 /** The place that means “carried by the player”. Reserved: no room or item may use it. */
 export const PLAYER = 'player';

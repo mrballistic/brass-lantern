@@ -1,11 +1,11 @@
-import type { GameState, ParsedAction } from '../types/game';
-import type { Item, NPC, Room, Rule, World } from '../types/world';
-import { evaluateCondition } from './conditions';
-import { readsNumber } from './parser';
-import { heldItems, inventoryOf, matchNpc, namesPlayer, namesThing, pickItem, pickSecond, PLAYER, reachableItems, restoreState, snapshotState, visibleItems } from './model';
-import { setCommand } from './scripts';
-import { runEventKey, turnHalted } from './effects';
-import { miss, ok, type EngineResult } from './result';
+import type { GameState, ParsedAction } from '../types/game.ts';
+import type { Item, NPC, Room, Rule, World } from '../types/world.ts';
+import { evaluateCondition } from './conditions.ts';
+import { readsNumber } from './parser.ts';
+import { heldItems, inventoryOf, matchNpc, namesPlayer, namesThing, pickItem, pickSecond, PLAYER, reachableItems, restoreState, snapshotState, visibleItems } from './model.ts';
+import { setCommand } from './scripts.ts';
+import { runEventKey, turnHalted } from './effects.ts';
+import { miss, ok, type EngineResult } from './result.ts';
 
 /* Events and rules */
 

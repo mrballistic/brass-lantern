@@ -1,10 +1,10 @@
-import type { GameState } from '../types/game';
-import type { EventStep, Exit, Room, World } from '../types/world';
-import { evaluateCondition } from './conditions';
-import { darknessLook } from './light';
-import { scriptSteps } from './scripts';
-import { expandTemplate } from './text';
-import { canSeeInside, childrenOf, isLit, listable, npcsSeen, visibleItemsIn } from './model';
+import type { GameState } from '../types/game.ts';
+import type { EventStep, Exit, Room, World } from '../types/world.ts';
+import { evaluateCondition } from './conditions.ts';
+import { darknessLook } from './light.ts';
+import { scriptSteps } from './scripts.ts';
+import { expandTemplate } from './text.ts';
+import { canSeeInside, childrenOf, isLit, listable, npcsSeen, visibleItemsIn } from './model.ts';
 
 export const COMPASS = ['north', 'south', 'east', 'west', 'northeast', 'northwest', 'southeast', 'southwest', 'up', 'down'];
 

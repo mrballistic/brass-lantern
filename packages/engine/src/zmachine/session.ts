@@ -1,9 +1,9 @@
 import ifvms from 'ifvms';
 import ZVMDispatch from 'ifvms/src/zvm/dispatch.js';
 import { createGlk } from './vendor/glkapi.js';
-import { BrowserGlkOte } from './glkote';
-import type { LocalStorageDialog } from './dialog';
-import type { FilePrompt, StatusLine } from './types';
+import { BrowserGlkOte } from './glkote.ts';
+import type { LocalStorageDialog } from './dialog.ts';
+import type { FilePrompt, StatusLine } from './types.ts';
 
 export interface SessionEvents {
   onLines(lines: string[]): void;

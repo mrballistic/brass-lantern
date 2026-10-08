@@ -37,4 +37,47 @@ export default tseslint.config(
       'vue/multi-word-component-names': 'off',
     },
   },
+  // The engine boundary: framework-free, and it runs in Node or a browser
+  // (packages/engine/tests/boundary.test.ts checks the same by grep).
+  {
+    files: ['packages/engine/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            { name: 'vue', message: 'The engine is framework-free: Vue belongs in @brass-lantern/vue.' },
+            { name: 'pinia', message: 'The engine is framework-free: Pinia belongs in @brass-lantern/vue.' },
+          ],
+          patterns: [
+            { group: ['@brass-lantern/vue', '@brass-lantern/vue/*'], message: 'The engine depends on no other package.' },
+            { group: ['@brass-lantern/server', '@brass-lantern/server/*'], message: 'The engine depends on no other package.' },
+            { group: ['**/apps/**'], message: 'The engine imports nothing from the apps.' },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['packages/engine/src/**/*.ts'],
+    // localStorageSaveStore is the browser's SaveStore, behind the ./zmachine entry.
+    ignores: ['packages/engine/src/zmachine/save-store.ts'],
+    rules: {
+      'no-restricted-globals': [
+        'error',
+        ...['window', 'document', 'localStorage', 'sessionStorage'].map((name) => ({
+          name,
+          message: `The engine runs in Node too: no ${name}. Take what you need as an option (see SaveStore).`,
+        })),
+      ],
+      'no-restricted-properties': [
+        'error',
+        ...['window', 'document', 'localStorage', 'sessionStorage'].map((property) => ({
+          object: 'globalThis',
+          property,
+          message: `The engine runs in Node too: no ${property}.`,
+        })),
+      ],
+    },
+  },
 );

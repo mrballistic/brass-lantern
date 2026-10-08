@@ -25,12 +25,14 @@
   "scripts": {
     "dev": "npm run dev -w brass-lantern-site",
     "build": "npm run build -w brass-lantern-site",
+    "build:packages": "npm run build -w @brass-lantern/engine && npm run build -w @brass-lantern/server && npm run build -w @brass-lantern/vue",
     "preview": "npm run preview -w brass-lantern-site",
     "type-check": "npm run type-check --workspaces",
     "lint": "eslint .",
     "lint:root": "eslint --ignore-pattern \"packages/**\" --ignore-pattern \"apps/**\" .",
     "test": "npm test --workspaces",
     "test:coverage": "npm run test:coverage --workspaces",
+    "smoke": "node scripts/consumer-smoke.mjs",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs"

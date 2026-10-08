@@ -1,6 +1,6 @@
-import type { GameState } from '../types/game';
-import type { World } from '../types/world';
-import { commandOf } from './scripts';
+import type { GameState } from '../types/game.ts';
+import type { World } from '../types/world.ts';
+import { commandOf } from './scripts.ts';
 
 /**
  * Fills a text's placeholders from the game: `{var:NAME}` (0 when unset) and

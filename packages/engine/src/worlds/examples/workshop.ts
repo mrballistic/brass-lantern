@@ -1,4 +1,4 @@
-import type { World } from '../../types/world';
+import type { World } from '../../types/world.ts';
 
 /** Recipe: orders, numbers and a buggy. See docs/guide/building-worlds/recipes.md. */
 export const workshop: World = {

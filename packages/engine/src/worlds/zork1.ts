@@ -1,5 +1,5 @@
-import type { ScriptContext } from '../engine/scripts';
-import type { EventStep, World } from '../types/world';
+import type { ScriptContext } from '../engine/scripts.ts';
+import type { EventStep, World } from '../types/world.ts';
 
 /**
  * Zork I, rebuilt as a native Brass Lantern world: the house and the forest

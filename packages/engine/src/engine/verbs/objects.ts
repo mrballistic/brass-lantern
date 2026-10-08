@@ -1,14 +1,14 @@
-import type { GameState } from '../../types/game';
-import type { Item, World } from '../../types/world';
-import { evaluateCondition } from '../conditions';
-import { contentsLines, describeRoom, lightNote, listedName, npcDescription, scriptDescription } from '../describe';
-import { expandTemplate } from '../text';
-import { closedAround, inventoryOf, isCarried, isHeld, isOpen, matchItem, matchNpc, moveItem, needObject, pickItem, pickSecond, PLAYER, reachableItems, visibleItems } from '../model';
-import { miss, ok, type EngineResult } from '../result';
-import { runEventKey } from '../effects';
-import { afterRuleLines, applyRule, findRule } from '../rules';
-import { takeRefusal } from '../weight';
-import { finishEnding } from '../endings';
+import type { GameState } from '../../types/game.ts';
+import type { Item, World } from '../../types/world.ts';
+import { evaluateCondition } from '../conditions.ts';
+import { contentsLines, describeRoom, lightNote, listedName, npcDescription, scriptDescription } from '../describe.ts';
+import { expandTemplate } from '../text.ts';
+import { closedAround, inventoryOf, isCarried, isHeld, isOpen, matchItem, matchNpc, moveItem, needObject, pickItem, pickSecond, PLAYER, reachableItems, visibleItems } from '../model.ts';
+import { miss, ok, type EngineResult } from '../result.ts';
+import { runEventKey } from '../effects.ts';
+import { afterRuleLines, applyRule, findRule } from '../rules.ts';
+import { takeRefusal } from '../weight.ts';
+import { finishEnding } from '../endings.ts';
 
 export function handleLook(world: World, state: GameState): EngineResult {
   return ok(describeRoom(state.currentRoom, world, state));

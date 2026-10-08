@@ -1,0 +1,16 @@
+{
+  // dist/: plain ES modules plus declarations, runnable in Node as is.
+  // src/zmachine/vendor/glkapi.js is copied by scripts/copy-vendor.mjs.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "rootDir": "src",
+    "outDir": "dist",
+    "declaration": true,
+    "rewriteRelativeImportExtensions": true,
+    // The library must type-check without Node's or the DOM's globals
+    // leaking in by accident; the zmachine entries use the DOM's types only.
+    "types": []
+  },
+  "include": ["src/**/*.ts"]
+}

@@ -1,4 +1,4 @@
-import type { Script } from '../engine/scripts';
+import type { Script } from '../engine/scripts.ts';
 
 export interface Room {
   name: string;

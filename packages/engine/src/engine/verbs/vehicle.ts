@@ -1,7 +1,7 @@
-import type { GameState, ParsedAction } from '../../types/game';
-import type { World } from '../../types/world';
-import { needObject, onFootTerrains, terrainOf, pickItem, visibleItems } from '../model';
-import { miss, ok, type EngineResult } from '../result';
+import type { GameState, ParsedAction } from '../../types/game.ts';
+import type { World } from '../../types/world.ts';
+import { needObject, onFootTerrains, terrainOf, pickItem, visibleItems } from '../model.ts';
+import { miss, ok, type EngineResult } from '../result.ts';
 
 // Vehicles (Zork's VEHBIT): getting into one and out again.
 

@@ -1,5 +1,5 @@
-import type { ParsedAction } from '../types/game';
-import type { World, WorldVerb } from '../types/world';
+import type { ParsedAction } from '../types/game.ts';
+import type { World, WorldVerb } from '../types/world.ts';
 
 const DIRECTIONS: Record<string, string> = {
   n: 'north', north: 'north',

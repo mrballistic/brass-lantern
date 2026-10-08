@@ -1,4 +1,4 @@
-import type { World } from '../../types/world';
+import type { World } from '../../types/world.ts';
 
 /** Recipe: verbs of your own, and more than one way to end. See docs/guide/building-worlds/recipes.md. */
 export const endings: World = {

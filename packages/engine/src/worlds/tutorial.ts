@@ -1,4 +1,4 @@
-import type { World } from '../types/world';
+import type { World } from '../types/world.ts';
 
 /**
  * A three-room world that exercises most of the engine: a gated room, a use

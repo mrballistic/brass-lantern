@@ -1,4 +1,4 @@
-import type { World } from './world';
+import type { World } from './world.ts';
 
 /** A native Brass Lantern world. */
 export interface WorldCartridge {

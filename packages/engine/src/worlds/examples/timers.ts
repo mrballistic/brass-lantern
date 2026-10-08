@@ -1,4 +1,4 @@
-import type { World } from '../../types/world';
+import type { World } from '../../types/world.ts';
 
 /** Recipe: fuses, daemons and ambient lines. See docs/guide/building-worlds/recipes.md. */
 export const timers: World = {

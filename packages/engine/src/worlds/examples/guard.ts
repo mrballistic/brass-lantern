@@ -1,4 +1,4 @@
-import type { World } from '../../types/world';
+import type { World } from '../../types/world.ts';
 
 /** Recipe: a guard to fight, and something too heavy to carry. See docs/guide/building-worlds/recipes.md. */
 export const guard: World = {

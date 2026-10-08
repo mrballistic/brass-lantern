@@ -1,4 +1,4 @@
-import type { World } from '../../types/world';
+import type { World } from '../../types/world.ts';
 
 /**
  * The smallest complete game: two rooms, a locked door, a hidden key and a

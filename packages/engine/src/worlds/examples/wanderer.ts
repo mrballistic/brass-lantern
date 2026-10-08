@@ -1,4 +1,4 @@
-import type { EventStep, World } from '../../types/world';
+import type { EventStep, World } from '../../types/world.ts';
 
 /** Recipe: a character who wanders and steals. See docs/guide/building-worlds/recipes.md. */
 export const wanderer: World = {

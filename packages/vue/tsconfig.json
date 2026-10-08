@@ -1,9 +1,10 @@
 {
   "extends": ["@vue/tsconfig/tsconfig.dom.json", "../../tsconfig.base.json"],
   "compilerOptions": {
-    "types": ["node", "vite/client"]
+    "types": ["node"]
   },
-  // The engine is read from source until it ships declarations (its ifvms
-  // module types are ambient, so they have to be included by name).
+  // In the repo the engine is read from source (the @brass-lantern/source
+  // condition), and its ifvms module types are ambient, so they're included by
+  // name. The build (tsconfig.build.json) reads the engine's dist/ instead.
   "include": ["../engine/src/zmachine/vendor/*.d.ts", "src/**/*.ts", "src/**/*.vue"]
 }

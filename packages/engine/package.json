@@ -2,7 +2,6 @@
   "name": "@brass-lantern/engine",
   "version": "1.13.0",
   "author": "Todd Greco <mrballistic@gmail.com>",
-  "private": true,
   "description": "The Brass Lantern text-adventure engine: worlds as data, a regex parser, a headless turn loop, and a Z-machine runtime for story files.",
   "license": "MIT",
   "repository": {
@@ -10,23 +9,72 @@
     "url": "https://github.com/mrballistic/brass-lantern.git",
     "directory": "packages/engine"
   },
+  "homepage": "https://mrballistic.github.io/brass-lantern/",
+  "bugs": "https://github.com/mrballistic/brass-lantern/issues",
+  "keywords": [
+    "text-adventure",
+    "interactive-fiction",
+    "parser",
+    "z-machine",
+    "game-engine"
+  ],
   "type": "module",
   "sideEffects": false,
   "exports": {
-    ".": "./src/index.ts",
-    "./zmachine": "./src/zmachine/index.ts",
-    "./zmachine/session": "./src/zmachine/session.ts",
-    "./worlds": "./src/worlds/index.ts"
+    ".": {
+      "@brass-lantern/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./zmachine": {
+      "@brass-lantern/source": "./src/zmachine/index.ts",
+      "types": "./dist/zmachine/index.d.ts",
+      "node": "./dist/zmachine/node.js",
+      "import": "./dist/zmachine/index.js"
+    },
+    "./zmachine/session": {
+      "@brass-lantern/source": "./src/zmachine/session.ts",
+      "types": "./dist/zmachine/session.d.ts",
+      "node": "./dist/zmachine/session-node.js",
+      "import": "./dist/zmachine/session.js"
+    },
+    "./worlds": {
+      "@brass-lantern/source": "./src/worlds/index.ts",
+      "types": "./dist/worlds/index.d.ts",
+      "import": "./dist/worlds/index.js"
+    },
+    "./package.json": "./package.json"
   },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "!dist/**/*.map",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
+    "prebuild": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\"",
+    "build": "tsc -p tsconfig.build.json && node scripts/copy-vendor.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "type-check": "tsc --noEmit",
     "lint": "eslint ."
   },
-  "dependencies": {
+  "peerDependencies": {
+    "ifvms": "^1.1.6"
+  },
+  "peerDependenciesMeta": {
+    "ifvms": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
     "ifvms": "1.1.6"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   },
   "engines": {
     "node": ">=24"

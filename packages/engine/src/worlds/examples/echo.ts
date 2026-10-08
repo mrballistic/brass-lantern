@@ -1,4 +1,4 @@
-import type { World } from '../../types/world';
+import type { World } from '../../types/world.ts';
 
 /** Recipe: a room that listens. See docs/guide/building-worlds/recipes.md. */
 export const echo: World = {

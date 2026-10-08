@@ -5,7 +5,10 @@
     "types": ["node"],
     "noEmit": true,
     "verbatimModuleSyntax": true,
-    "moduleDetection": "force"
+    "moduleDetection": "force",
+    // Relative imports name their .ts file; the build rewrites them to .js,
+    // so dist/ runs in Node without a bundler.
+    "allowImportingTsExtensions": true
   },
   "include": ["src/**/*.ts"]
 }

@@ -1,5 +1,5 @@
-import { paragraphsToLines, statusFromGrid } from './format';
-import type { FilePrompt, GlkUpdate, GlkWindow, StatusLine } from './types';
+import { paragraphsToLines, statusFromGrid } from './format.ts';
+import type { FilePrompt, GlkUpdate, GlkWindow, StatusLine } from './types.ts';
 
 export interface GlkOteHandlers {
   onLines(lines: string[]): void;

@@ -1,16 +1,16 @@
-import type { GameState, ParsedAction } from '../../types/game';
-import type { World } from '../../types/world';
-import { whichQuestion } from '../ask';
-import { evaluateCondition } from '../conditions';
-import { exitTarget } from '../describe';
-import { fuzzyCandidates, fuzzyMatchExit, isMeWord, isSelfWord, namesSelf } from '../fuzzy';
-import { AskSignal, isAwake, isInside, isNpcHidden, isOpen, matchNpc, moveItem, needObject, nextPlacing, npcRoom, npcScope, npcsSeen, npcStateOf, pickItem, PLAYER } from '../model';
-import { fallbackParse, readsNumber } from '../parser';
-import { miss, ok, type EngineResult } from '../result';
-import { runEventKey, turnHalted } from '../effects';
-import { applyRule, findRule } from '../rules';
-import { setCommand } from '../scripts';
-import { handleTalk, talkLine } from './people';
+import type { GameState, ParsedAction } from '../../types/game.ts';
+import type { World } from '../../types/world.ts';
+import { whichQuestion } from '../ask.ts';
+import { evaluateCondition } from '../conditions.ts';
+import { exitTarget } from '../describe.ts';
+import { fuzzyCandidates, fuzzyMatchExit, isMeWord, isSelfWord, namesSelf } from '../fuzzy.ts';
+import { AskSignal, isAwake, isInside, isNpcHidden, isOpen, matchNpc, moveItem, needObject, nextPlacing, npcRoom, npcScope, npcsSeen, npcStateOf, pickItem, PLAYER } from '../model.ts';
+import { fallbackParse, readsNumber } from '../parser.ts';
+import { miss, ok, type EngineResult } from '../result.ts';
+import { runEventKey, turnHalted } from '../effects.ts';
+import { applyRule, findRule } from '../rules.ts';
+import { setCommand } from '../scripts.ts';
+import { handleTalk, talkLine } from './people.ts';
 
 /** ASK/TELL X ABOUT Y: the character's topic for Y, else its noTopic or TALK line. */
 export function handleAsk(action: ParsedAction, world: World, state: GameState): EngineResult {

@@ -37,6 +37,18 @@ export interface GameOptions {
   };
   /** Shown in the header after the terminal name (the site passes its release). */
   version?: string;
+  /**
+   * Where story cartridges' relative `story` paths are fetched from. A Vite app
+   * hosted under a subpath passes `import.meta.env.BASE_URL`. Default '/'.
+   */
+  storyBaseUrl?: string;
+  /**
+   * Development checks: turns on the engine's script freeze (`setScriptFreeze`),
+   * so a world script that assigns to state throws instead of passing
+   * silently. It's global to the page and only ever turned on here. A Vite app
+   * passes `import.meta.env.DEV`. Default false.
+   */
+  devChecks?: boolean;
 }
 
 export const DEFAULT_TERMINAL_NAME = 'BRASS LANTERN';
@@ -57,6 +69,12 @@ export function reportEvent(options: GameOptions, name: GameEvent, params?: Reco
   } catch (error) {
     console.error('Analytics callback failed:', error);
   }
+}
+
+/** The URL a story cartridge's `story` path is fetched from (storyBaseUrl, '/' by default, then the path). */
+export function storyUrl(options: GameOptions, path: string): string {
+  const base = options.storyBaseUrl ?? '/';
+  return `${base.endsWith('/') ? base : `${base}/`}${path}`;
 }
 
 /** The intent server to ask, or null: an unset or empty endpoint means none. */

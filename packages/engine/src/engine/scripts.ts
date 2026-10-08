@@ -1,12 +1,12 @@
-import type { GameState, NpcState, ParsedAction, Place } from '../types/game';
-import type { EventStep, World } from '../types/world';
-import { fightStrength } from './combat';
-import { fallbackParse } from './parser';
-import { evaluateCondition } from './conditions';
-import { exitTarget } from './describe';
-import { fuzzyCandidates } from './fuzzy';
-import { childrenOf, isCarried, isHeld, isLit, isNpcHidden, isNpcIn, isOpen, isReachable, isWater, parentOf, terrainOf } from './model';
-import { nextRandom, roll } from './rng';
+import type { GameState, NpcState, ParsedAction, Place } from '../types/game.ts';
+import type { EventStep, World } from '../types/world.ts';
+import { fightStrength } from './combat.ts';
+import { fallbackParse } from './parser.ts';
+import { evaluateCondition } from './conditions.ts';
+import { exitTarget } from './describe.ts';
+import { fuzzyCandidates } from './fuzzy.ts';
+import { childrenOf, isCarried, isHeld, isLit, isNpcHidden, isNpcIn, isOpen, isReachable, isWater, parentOf, terrainOf } from './model.ts';
+import { nextRandom, roll } from './rng.ts';
 
 // The code hatch: a world's own functions for behavior its data can't express.
 // A script sees the game read-only and returns ordinary steps for the engine to

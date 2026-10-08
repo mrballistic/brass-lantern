@@ -1,8 +1,8 @@
-import type { GameState, ParsedAction } from '../types/game';
-import type { World } from '../types/world';
-import { fuzzyCandidates } from './fuzzy';
-import { BUILT_IN_WORDS, strictParse } from './parser';
-import type { Ask, EngineResult } from './result';
+import type { GameState, ParsedAction } from '../types/game.ts';
+import type { World } from '../types/world.ts';
+import { fuzzyCandidates } from './fuzzy.ts';
+import { BUILT_IN_WORDS, strictParse } from './parser.ts';
+import type { Ask, EngineResult } from './result.ts';
 
 /**
  * Everything that lives between commands: a question waiting for its answer,

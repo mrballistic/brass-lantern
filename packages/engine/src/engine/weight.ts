@@ -1,7 +1,7 @@
-import type { GameState } from '../types/game';
-import type { World } from '../types/world';
-import { childrenOf, inventoryOf, isInside } from './model';
-import { prob } from './rng';
+import type { GameState } from '../types/game.ts';
+import type { World } from '../types/world.ts';
+import { childrenOf, inventoryOf, isInside } from './model.ts';
+import { prob } from './rng.ts';
 
 // Carrying weight, for worlds that set `carry` (Zork's SIZE and LOAD-ALLOWED).
 

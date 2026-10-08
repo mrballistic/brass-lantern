@@ -15,6 +15,11 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    // The engine's relative imports name their .ts files (its build rewrites them to .js).
+    "allowImportingTsExtensions": true,
+    // In the repo, @brass-lantern/* resolve to their sources (the export condition
+    // below), so nothing needs building first; published, they resolve to dist/.
+    "customConditions": ["@brass-lantern/source"]
   }
 }

@@ -23,7 +23,7 @@ const session = () => useSession(ctx);
 const { useZGameStore } = ctx;
 const useShelf = (s: IndexedDbShelf) => ctx.shelf.use(s);
 
-const zork = new Uint8Array(readFileSync(resolve(import.meta.dirname, '../../../engine/tests/fixtures/zork1.z3')));
+const zork = new Uint8Array(readFileSync(resolve(import.meta.dirname, '../fixtures/zork1.z3')));
 const file = (bytes: Uint8Array, name: string) => new File([bytes], name);
 const texts = (lines: { text: string }[]) => lines.map((l) => l.text);
 const ZORK_ID = 'local-r119-880429-bf44';

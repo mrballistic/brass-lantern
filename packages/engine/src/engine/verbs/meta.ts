@@ -1,12 +1,12 @@
-import type { GameState } from '../../types/game';
-import type { World, WorldVerb } from '../../types/world';
-import { evaluateCondition } from '../conditions';
-import { BUILT_IN_WORDS } from '../parser';
-import { ok, type EngineResult } from '../result';
+import type { GameState } from '../../types/game.ts';
+import type { World, WorldVerb } from '../../types/world.ts';
+import { evaluateCondition } from '../conditions.ts';
+import { BUILT_IN_WORDS } from '../parser.ts';
+import { ok, type EngineResult } from '../result.ts';
 
 /** The score so far: scoring entries earned, plus the `score` var. */
-export { currentScore } from '../score';
-import { currentScore } from '../score';
+export { currentScore } from '../score.ts';
+import { currentScore } from '../score.ts';
 
 /** The header's status: Zork's room, score and moves in Infocom style; MOVES (or SCORE and MOVES) in brass. */
 export function statusText(world: World, state: GameState): string {

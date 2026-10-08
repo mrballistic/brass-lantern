@@ -3,7 +3,7 @@ import type { OutputLine } from '@brass-lantern/engine';
 import type { ZCodeCartridge } from '@brass-lantern/engine';
 import type { StatusLine } from '@brass-lantern/engine/zmachine';
 import { makeLine } from '@brass-lantern/engine';
-import { reportEvent, type GameOptions } from '../options';
+import { reportEvent, storyUrl, type GameOptions } from '../options';
 import { LocalStorageDialog } from '@brass-lantern/engine/zmachine';
 import { localStorageSaveStore } from '@brass-lantern/engine/zmachine';
 import { createCatalog } from './catalog';
@@ -42,7 +42,7 @@ export function createZGameStore(options: GameOptions, local: LocalShelf) {
     async fetchStory(url) {
       const [res] = await Promise.all([
         // A stalled connection fails after 20s instead of hanging forever.
-        fetch(`${import.meta.env.BASE_URL}${url}`, { signal: AbortSignal.timeout(20_000) }),
+        fetch(storyUrl(options, url), { signal: AbortSignal.timeout(20_000) }),
         loadInterpreter(),
       ]);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);

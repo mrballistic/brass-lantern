@@ -1,4 +1,4 @@
-import type { World } from '../../types/world';
+import type { World } from '../../types/world.ts';
 
 /** Recipe: topics and orders. See docs/guide/building-worlds/recipes.md. */
 export const topics: World = {

@@ -1,4 +1,4 @@
-import type { World } from '../../types/world';
+import type { World } from '../../types/world.ts';
 
 /** Recipe: dark rooms, a lamp, and a death that isn't the end. See docs/guide/building-worlds/recipes.md. */
 export const darkness: World = {

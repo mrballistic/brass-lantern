@@ -1,4 +1,4 @@
-import type { LoadedStory } from './storyfile';
+import type { LoadedStory } from './storyfile.ts';
 
 /** What the menu lists for a story on the shelf. */
 export interface ShelfEntry {

@@ -2,7 +2,6 @@
   "name": "@brass-lantern/vue",
   "version": "1.13.0",
   "author": "Todd Greco <mrballistic@gmail.com>",
-  "private": true,
   "description": "Brass Lantern for Vue: the CRT terminal, the game store, themes, and a mountGame helper.",
   "license": "MIT",
   "repository": {
@@ -10,12 +9,41 @@
     "url": "https://github.com/mrballistic/brass-lantern.git",
     "directory": "packages/vue"
   },
+  "homepage": "https://mrballistic.github.io/brass-lantern/",
+  "bugs": "https://github.com/mrballistic/brass-lantern/issues",
+  "keywords": [
+    "text-adventure",
+    "interactive-fiction",
+    "vue",
+    "crt",
+    "terminal"
+  ],
   "type": "module",
+  "sideEffects": [
+    "*.css"
+  ],
   "exports": {
-    ".": "./src/index.ts",
-    "./style.css": "./src/styles/crt.css"
+    ".": {
+      "@brass-lantern/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./style.css": {
+      "@brass-lantern/source": "./src/styles/crt.css",
+      "default": "./dist/style.css"
+    },
+    "./package.json": "./package.json"
   },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "!dist/**/*.map",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
+    "prebuild": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\"",
+    "build": "vite build && vue-tsc -p tsconfig.build.json && node -e \"fs.copyFileSync('src/styles/crt.css', 'dist/style.css')\"",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -24,8 +52,19 @@
   },
   "dependencies": {
     "@brass-lantern/engine": "1.13.0",
+    "ifvms": "^1.1.6"
+  },
+  "peerDependencies": {
+    "pinia": "^4.0.0",
+    "vue": "^3.5.0"
+  },
+  "devDependencies": {
     "pinia": "^4.0.3",
     "vue": "^3.5.43"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
   },
   "engines": {
     "node": ">=24"

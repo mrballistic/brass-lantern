@@ -1,6 +1,6 @@
-import type { World } from '../types/world';
+import type { World } from '../types/world.ts';
 
-export { isLit } from './model';
+export { isLit } from './model.ts';
 
 /** The reply when the player tries to act on something they can't see. */
 export function tooDark(world: World): string {

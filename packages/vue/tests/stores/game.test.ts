@@ -3,7 +3,7 @@ import { setActivePinia, createPinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createGameStore, setDownload } from '../../src/stores/game';
 import { inventoryOf } from '@brass-lantern/engine';
-import { carry } from '../../../engine/tests/helpers/state';
+import { carry } from '../helpers/state';
 import { fixtureOptions, fixtureWorld } from '../fixtures/world';
 
 // Plays the fixture world, so this file is the same in every repo using the engine.

@@ -1,9 +1,9 @@
-import { conditionProblems } from './conditions';
-import { descriptionSteps } from './describe';
-import { initialState } from './engine';
-import { travelTerrains } from './model';
-import { verbClashes } from './parser';
-import type { Effect, EventStep, Rule, RuleTable, World } from '../types/world';
+import { conditionProblems } from './conditions.ts';
+import { descriptionSteps } from './describe.ts';
+import { initialState } from './engine.ts';
+import { travelTerrains } from './model.ts';
+import { verbClashes } from './parser.ts';
+import type { Effect, EventStep, Rule, RuleTable, World } from '../types/world.ts';
 
 // Checks a world's data: effects and rules naming things that exist, exits
 // going somewhere, conditions that parse, no reserved IDs. Mistakes here fail

@@ -1,7 +1,7 @@
-import type { GameState, OutputLine, SavedState } from '../types/game';
-import { SAVE_VERSION } from '../types/game';
-import type { World } from '../types/world';
-import { initialLocations, moveItem, PLAYER } from './model';
+import type { GameState, OutputLine, SavedState } from '../types/game.ts';
+import { SAVE_VERSION } from '../types/game.ts';
+import type { World } from '../types/world.ts';
+import { initialLocations, moveItem, PLAYER } from './model.ts';
 
 /** The 1.0 state: an inventory list plus per-room deltas against the world's starting items. */
 interface V1Game {

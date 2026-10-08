@@ -1,5 +1,5 @@
-import type { GameState } from '../types/game';
-import type { World } from '../types/world';
+import type { GameState } from '../types/game.ts';
+import type { World } from '../types/world.ts';
 
 /** Zork's <RANDOM n>: 1 to n. */
 export function roll(state: GameState, n: number): number {

@@ -1,4 +1,4 @@
-import type { SaveStore } from './save-store';
+import type { SaveStore } from './save-store.ts';
 
 /** A file reference, as glkapi passes it back to us. */
 export interface FileRef {

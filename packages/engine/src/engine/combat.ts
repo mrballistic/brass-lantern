@@ -1,10 +1,10 @@
-import type { GameState } from '../types/game';
-import type { BlowMessages, BlowResult, CombatText, World } from '../types/world';
-import { childrenOf, isAlive, isAwake, isCarried, isNpcHidden, isNpcIn, moveItem, npcStateOf } from './model';
-import { commandOf } from './scripts';
-import { runEventKey, runSteps, stopLine, turnHalted } from './effects';
-import { prob, roll } from './rng';
-import { currentScore } from './score';
+import type { GameState } from '../types/game.ts';
+import type { BlowMessages, BlowResult, CombatText, World } from '../types/world.ts';
+import { childrenOf, isAlive, isAwake, isCarried, isNpcHidden, isNpcIn, moveItem, npcStateOf } from './model.ts';
+import { commandOf } from './scripts.ts';
+import { runEventKey, runSteps, stopLine, turnHalted } from './effects.ts';
+import { prob, roll } from './rng.ts';
+import { currentScore } from './score.ts';
 
 // Fights, ported from Zork I's HERO-BLOW, VILLAIN-BLOW and I-FIGHT
 // (historicalsource/zork1, 1actions.zil). The engine owns the mechanics; the
