@@ -4,7 +4,7 @@ A Brass Lantern game is a static site, plus the intent server if you want loose 
 
 ## Static only
 
-`npm run build` writes `apps/site/dist/`, which any static host can serve: GitHub Pages, Netlify, an S3 bucket, a web server. Without an intent server the game still plays on the regex parser alone; players just get a "didn't understand" reply where the server would have helped.
+`npm run build` writes `apps/site/dist/`, which any static host can serve: GitHub Pages, Netlify, an S3 bucket, a web server. Without an intent server the game still plays on the regex parser alone; players just get a “didn’t understand” reply where the server would have helped.
 
 To serve from a subpath, set the base at build time:
 
@@ -12,7 +12,7 @@ To serve from a subpath, set the base at build time:
 VITE_BASE=/my-game/ npm run build
 ```
 
-That's how the [demo](https://mrballistic.github.io/brass-lantern/demo/) is published: `.github/workflows/pages.yml` builds these docs and the demo together and deploys them to GitHub Pages on every push to `main`.
+That’s how the [demo](https://mrballistic.github.io/brass-lantern/demo/) is published: `.github/workflows/pages.yml` builds these docs and the demo together and deploys them to GitHub Pages on every push to `main`.
 
 ## With the intent server
 
@@ -46,11 +46,11 @@ GEMINI_KEY=… NODE_ENV=production node packages/server/dist/index.js
 The repo’s server imports `express`, which this repo keeps as a dev dependency (the published package treats it as an optional peer). Don’t install with `npm ci --omit=dev` before running `node packages/server/dist/index.js`: the server won’t start. Install everything, or write your own small app around `intentRoute` and install `express` yourself.
 :::
 
-In production, use a process manager (systemd, pm2, a container) and keep the key in an environment file only that service can read. The server drains in-flight requests on SIGTERM, so rolling restarts don't drop players' commands.
+In production, use a process manager (systemd, pm2, a container) and keep the key in an environment file only that service can read. The server drains in-flight requests on SIGTERM, so rolling restarts don’t drop players’ commands.
 
 ## Suggestions from running one
 
-- **Cache hashed assets forever and `index.html` never**, and upload the assets before `index.html`. Then a deploy never serves a page whose scripts haven't arrived yet.
+- **Cache hashed assets forever and `index.html` never**, and upload the assets before `index.html`. Then a deploy never serves a page whose scripts haven’t arrived yet.
 - **Deploy as a user that can only write the site**, not an admin. A CI deploy key is as powerful as the account it logs into.
 - **Pin your CI actions to commit SHAs**, and keep deploy secrets in a deployment environment that only release tags can use.
 - **Check that the key never reaches the bundle.** A CI step that greps `dist/` for `AIza` fails the build if it ever does.

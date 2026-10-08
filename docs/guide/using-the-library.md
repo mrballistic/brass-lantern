@@ -74,14 +74,14 @@ That is most of the package: `BrassLantern`, `mountGame`, `ConsentBanner`, the t
 | `terminalName` | Shown in the header. Default `BRASS LANTERN`. |
 | `version` | Shown after the name in the header. |
 | `intentEndpoint` | Where misses go for the LLM’s reading: a URL that accepts `POST`. `null`, `''` or unset means none, and a miss gets the engine’s reply. |
-| `theme` | The author’s default: a preset name, the name of one of `themes`, or a custom theme object. The player’s `THEME` command wins. A name that isn’t a theme falls back to `crt-amber`, with a warning in the console. Default `crt-amber`. |
+| `theme` | The author’s default: a preset name, the name of one of `themes`, or a custom theme object (TypeScript types the option as a preset name or a theme object, so for a custom theme pass the object itself). The player’s `THEME` command wins. A name that isn’t a theme falls back to `crt-amber`, with a warning in the console. Default `crt-amber`. |
 | `themes` | Extra named themes, offered by `THEME` beside the presets. One named like a preset is ignored, with a warning. |
 | `analytics` | `{ onEvent(name, params?), openConsent?() }`. `onEvent` hears `game_start`, `game_completed` and `session_resumed`; a callback that throws is logged and never breaks the game. With `openConsent`, the header shows a COOKIES link and the command calls it; without it, COOKIES says nothing is collected. |
 | `storyBaseUrl` | Where a story cartridge’s relative `story` path is fetched from. A Vite app under a subpath passes `import.meta.env.BASE_URL`. Default `/`. |
 | `devChecks` | Turns on the engine’s script freeze, so a world script that assigns to game state throws instead of passing silently. Global to the page, and only ever turned on. A Vite app passes `import.meta.env.DEV`. Default `false`. |
 | `autofocus` | Focus the game’s input when it boots (which scrolls the page to it). An embedded game passes `false`; a click on the game still focuses it. Default `true`. |
 
-`mountGame(el, options, { slot })` takes a third argument for a component rendered inside the game’s shell once it has booted. The demo site uses it for its consent banner. `ConsentBanner` is exported, and it is presentational: it takes an `open` prop and emits `choose` with `'granted'` or `'denied'`, and your app decides what to store and what to send. Its wording is yours too: the text comes from props (or a slot), and the defaults are neutral, naming no analytics provider, so pass your own when you say what you collect.
+`mountGame(el, options, { slot })` takes a third argument for a component rendered inside the game’s shell once it has booted. The demo site uses it for its consent banner. `ConsentBanner` is exported, and it is presentational: it takes an `open` prop and emits `choose` with `'granted'` or `'denied'`, and your app decides what to store and what to send. Its wording is yours too: `title`, `body`, `note` and `label` (the section’s accessible name) are props, and the defaults are neutral and name no analytics provider, so pass your own to say what you collect and where it goes.
 
 ### Two games on one page
 

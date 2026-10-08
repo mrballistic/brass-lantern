@@ -25,9 +25,9 @@ npm install
 npm run dev        # http://localhost:5173
 ```
 
-The terminal boots to the cartridge menu; type `1` for Snack Attack, `2`–`4` for Zork I–III, or `5` for the native Zork I. All are fully playable offline: the regex parser handles every command the engine knows, and Zork has its own parser. Loose phrasing ("make that thing stop beeping") needs the optional [intent server](./intent-server).
+The terminal boots to the cartridge menu; type `1` for Snack Attack, `2`–`4` for Zork I–III, or `5` for the native Zork I. All are fully playable offline: the regex parser handles every command the engine knows, and Zork has its own parser. Loose phrasing (“make that thing stop beeping”) needs the optional [intent server](./intent-server).
 
-## What's in the box
+## What’s in the box
 
 ```
 packages/

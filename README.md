@@ -29,7 +29,7 @@ There is a small mailbox here.
 **Write a world.** A game is one TypeScript object: rooms, items, people, events and the rules that join them. The engine runs it, with no game code to write. You get:
 - gated rooms, use rules, gifts, dialogue that changes with progress, timed interruptions, hints, a score with ranks, and endings that remember what you did;
 - a forgiving parser, with synonyms, chained commands (`take key and wallet`, `north then look`), pronouns and a second object (`put the disk in the drive`), all with zero latency. Players can give orders to characters (`robot, go east`), type numbers (`turn dial to 4`) and say or answer things in quotes (`answer “a well”`);
-- an optional LLM on a short leash. Input the parser can't handle goes to a small server that asks Gemini which of *your* verbs and IDs it means. The reply is reduced to a verb plus identifiers, so the model never writes the story, and the key stays on the server.
+- an optional LLM on a short leash. Input the parser can’t handle goes to a small server that asks Gemini which of *your* verbs and IDs it means. The reply is reduced to a verb plus identifiers, so the model never writes the story, and the key stays on the server.
 
 **Load a story file.** Z-machine games (versions 3, 4, 5 and 8) run unmodified in the same terminal, through [ifvms](https://github.com/curiousdannii/ifvms.js), the interpreter inside Parchment. SAVE and RESTORE work, every turn autosaves, and the status line shows in the header. Zork I, II and III ship with the demo; Microsoft released them under the MIT License in 2025. Type LOAD at the menu to play your own story files, which stay in your browser.
 
@@ -73,7 +73,7 @@ npm install
 npm run dev            # http://localhost:5173
 ```
 
-You'll get the cartridge menu: **Snack Attack**, a three-room tutorial world, **Zork I, II and III**, and **Zork I rebuilt natively** on the engine. What it offers is set in `apps/site/src/app.config.ts`:
+You’ll get the cartridge menu: **Snack Attack**, a three-room tutorial world, **Zork I, II and III**, and **Zork I rebuilt natively** on the engine. What it offers is set in `apps/site/src/app.config.ts`:
 
 ```ts
 export const cartridges: Cartridge[] = [
@@ -117,10 +117,10 @@ They live in `docs/`; `npm run docs:dev` serves them locally.
 
 ## Stack
 
-Vue 3, TypeScript, Pinia and Vite in the browser; ifvms and glkapi.js for story files; Node 24 and Express for the optional intent server; Vitest throughout. Saves stay in the browser's localStorage, and analytics run only if you configure them, and then only with the player's consent. See [CONTRIBUTING.md](./CONTRIBUTING.md) to help, and [SECURITY.md](./SECURITY.md) to report a problem.
+Vue 3, TypeScript, Pinia and Vite in the browser; ifvms and glkapi.js for story files; Node 24 and Express for the optional intent server; Vitest throughout. Saves stay in the browser’s localStorage, and analytics run only if you configure them, and then only with the player’s consent. See [CONTRIBUTING.md](./CONTRIBUTING.md) to help, and [SECURITY.md](./SECURITY.md) to report a problem.
 
 ## License
 
-[MIT](./LICENSE). Brass Lantern isn't affiliated with any historical text-adventure publisher, though it owes them everything.
+[MIT](./LICENSE). Brass Lantern isn’t affiliated with any historical text-adventure publisher, though it owes them everything.
 
 The Zork story files, ifvms and glkapi.js are included under their own MIT licenses; see [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).

@@ -93,4 +93,4 @@ The game’s own echo of your command, and its `>` prompt, are dropped, since th
 - **Formats:** Z-machine versions 3, 4, 5 and 8 (what ifvms supports). No Glulx.
 - **Windows:** only the status line from the upper window is shown, so games that draw menus or quote boxes there lose them.
 - **No graphics, sound or timed input.**
-- **Loose phrasing:** the intent server doesn’t help with story files yet. Story files have their own parsers.
+- **Loose phrasing:** the intent server doesn’t help with story files, which have their own parsers.

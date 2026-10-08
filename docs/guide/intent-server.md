@@ -51,7 +51,7 @@ The browser never talks to Google; only this server does, with the key in a requ
 }
 ```
 
-Response: `{ "action": "give", "target": "mug", "indirect": "gary" }`, or `{ "action": "unknown" }` when there's no good reading or every model fails. Items whose name matches their ID are sent as the bare ID; others as `id (name)`.
+Response: `{ "action": "give", "target": "mug", "indirect": "gary" }`, or `{ "action": "unknown" }` when there’s no good reading or every model fails. Items whose name matches their ID are sent as the bare ID; others as `id (name)`.
 
 The reply can also carry a `prep` (`put … under`, `throw … off`, `read … through`), a `direction` (`push … north`), and a `number` (`turn dial to 4`, 0 to 1000; the client keeps it only when `target` or `indirect` is the word `number` or its digits). For an order (`tell robot to take lamp`), `indirect` is the command as a few plain lowercase words instead of an identifier; the engine parses it as it would typed text.
 
@@ -61,9 +61,9 @@ The repo’s server app also answers `GET /health` with `{"ok":true}`; `intentRo
 
 ## How it decides
 
-The server calls Gemini's REST API directly, with no SDK:
+The server calls Gemini’s REST API directly, with no SDK:
 
-- **Structured output.** `responseMimeType: application/json` with a schema whose verb field is an enum of the engine's actions. Temperature 0, minimal thinking, 150 output tokens.
+- **Structured output.** `responseMimeType: application/json` with a schema whose verb field is an enum of the engine’s actions. Temperature 0, minimal thinking, 150 output tokens.
 - **A model chain inside one deadline.** It tries `gemini-3.5-flash-lite`, then `gemini-3.6-flash`, within 5 seconds in total. Every attempt but the last is capped at 2.5s, so a stalled model still leaves time for the fallback.
 - **Error handling.** A retired model (404), rate limiting (429) and server errors (5xx) move on to the next model. Bad requests and bad keys (400/401/403) stop, since every model would repeat them.
 - **Sanitizing.** The reply must name a known verb, and `target` / `indirect` must look like identifiers. Anything else is dropped, so model output can never carry prose to the player.
@@ -85,9 +85,9 @@ Google retires models regularly. A retired model just answers 404 and the chain 
 
 ## Abuse limits
 
-There's no auth, by design: the endpoint only classifies short commands. Its cost is bounded instead:
+There’s no auth, by design: the endpoint only classifies short commands. Its cost is bounded instead:
 
 - **Input caps:** 200 characters of input, and context lists of at most 50 entries of 100 characters each.
-- **Rate limit:** per client, with IPv6 bucketed by /64 so one user can't rotate addresses, plus a global ceiling.
-- **No CORS headers**, so other websites can't spend your quota from their visitors' browsers.
-- **Your provider's quota** as the backstop. Keep a spending limit on the key.
+- **Rate limit:** per client, with IPv6 bucketed by /64 so one user can’t rotate addresses, plus a global ceiling.
+- **No CORS headers**, so other websites can’t spend your quota from their visitors’ browsers.
+- **Your provider’s quota** as the backstop. Keep a spending limit on the key.
