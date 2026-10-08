@@ -31,7 +31,7 @@ import {
   type World,
   type WorldCartridge,
 } from '@brass-lantern/engine';
-import { PRESETS, type Theme, type ThemeName, type ThemeOverrides } from '../theme/themes.ts';
+import { PRESET_NAMES, type Theme, type ThemeName, type ThemeOverrides } from '../theme/themes.ts';
 import { cookiesReply, intentEndpointOf, reportEvent, terminalTitle, type GameEvent, type GameOptions } from '../options.ts';
 import { createCatalog } from './catalog.ts';
 import { createPersistenceService } from '../services/persistence.ts';
@@ -79,7 +79,6 @@ function saveName(raw: string): string {
 
 const UNDO_LIMIT = 50;
 
-const PRESET_NAMES = Object.keys(PRESETS);
 const THEME_ALIASES: Record<string, string> = {
   amber: 'crt-amber', green: 'crt-green', crt: 'crt-amber', light: 'simple-light', dark: 'simple-dark',
 };
@@ -103,6 +102,11 @@ interface State {
 function sameAction(a: ParsedAction, b: ParsedAction): boolean {
   const norm = (s?: string) => (s ?? '').toLowerCase().replace(/[\s-]+/g, '_');
   return a.action === b.action && norm(a.target) === norm(b.target) && norm(a.indirect) === norm(b.indirect);
+}
+
+/** A theme as THEME names it: a theme object has no name, so it shows as 'custom'. */
+function themeLabel(theme: ThemeName | Theme | string): string {
+  return typeof theme === 'string' ? theme : 'custom';
 }
 
 /** A typed or intent-server theme name as one of `names`, or null. */
@@ -204,7 +208,7 @@ export function createGameStore(options: GameOptions) {
         const stored = readStoredTheme(this.themeNames);
         this.themeChosen = stored.base !== null;
         this.theme = {
-          base: stored.base ?? (typeof this.authorTheme === 'string' ? this.authorTheme : 'custom'),
+          base: stored.base ?? themeLabel(this.authorTheme),
           overrides: stored.overrides,
         };
       },
@@ -224,8 +228,7 @@ export function createGameStore(options: GameOptions) {
       themeCommand(raw: string | undefined): void {
         const names = this.themeNames;
         if (!raw?.trim()) {
-          const current = typeof this.themeBase === 'string' ? this.themeBase : 'custom';
-          this.appendSystem(`Themes: ${names.join(', ')}. Current: ${current}. Try THEME <name>.`);
+          this.appendSystem(`Themes: ${names.join(', ')}. Current: ${themeLabel(this.themeBase)}. Try THEME <name>.`);
           return;
         }
         const name = matchTheme(raw, names);

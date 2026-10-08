@@ -108,6 +108,9 @@ export const PRESETS: Record<ThemeName, Theme> = {
   'simple-dark': { palette: 'dark', effects: { ...ALL_OFF } },
 };
 
+/** The presets' names, in THEME's order. */
+export const PRESET_NAMES = Object.keys(PRESETS) as ThemeName[];
+
 /** The player's BLOOM and EFFECTS commands. */
 export interface ThemeOverrides {
   bloom?: boolean;
@@ -139,12 +142,17 @@ function kebab(s: string): string {
   return s.replace(/[A-Z]/g, c => `-${c.toLowerCase()}`);
 }
 
+/** An own key: a name like 'constructor' or '__proto__' is never a theme or a palette. */
+function has(record: object, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(record, key);
+}
+
 function isPreset(name: string): name is ThemeName {
-  return Object.prototype.hasOwnProperty.call(PRESETS, name);
+  return has(PRESETS, name);
 }
 
 function isPaletteName(name: string): name is PaletteName {
-  return Object.prototype.hasOwnProperty.call(PALETTES, name);
+  return has(PALETTES, name);
 }
 
 /** A theme whose palette names nothing gets amber, with one warning. */
@@ -164,7 +172,7 @@ export function resolveTheme(
   let paletteOverride: PaletteName | undefined;
   if (typeof base !== 'string') {
     theme = base;
-  } else if (Object.prototype.hasOwnProperty.call(custom, base)) {
+  } else if (has(custom, base)) {
     theme = custom[base];
   } else if (isPreset(base)) {
     theme = PRESETS[base];
@@ -212,17 +220,16 @@ export function checkAuthorThemes(
   themes: Record<string, Theme> | undefined,
 ): { theme: ThemeName | Theme | string; themes: Record<string, Theme> } {
   const custom: Record<string, Theme> = {};
-  const presetNames = Object.keys(PRESETS).map((n) => n.toLowerCase());
   for (const [name, value] of Object.entries(themes ?? {})) {
-    if (presetNames.includes(name.toLowerCase())) {
+    if (isPreset(name.toLowerCase())) {
       console.warn(`Brass Lantern: the custom theme “${name}” has a preset’s name, so it is ignored. Give it another name.`);
       continue;
     }
     custom[name] = repairTheme(value, `the custom theme “${name}”`);
   }
   const author = typeof theme === 'object' && theme !== null ? repairTheme(theme, 'the theme') : (theme ?? 'crt-amber');
-  if (typeof author === 'string' && !isPreset(author) && !Object.prototype.hasOwnProperty.call(custom, author)) {
-    console.warn(`Brass Lantern: there’s no theme called “${author}”, so the game uses crt-amber. Try one of: ${[...Object.keys(PRESETS), ...Object.keys(custom)].join(', ')}.`);
+  if (typeof author === 'string' && !isPreset(author) && !has(custom, author)) {
+    console.warn(`Brass Lantern: there’s no theme called “${author}”, so the game uses crt-amber. Try one of: ${[...PRESET_NAMES, ...Object.keys(custom)].join(', ')}.`);
     return { theme: 'crt-amber', themes: custom };
   }
   return { theme: author, themes: custom };
