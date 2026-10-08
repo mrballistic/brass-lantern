@@ -1,6 +1,6 @@
 # Player commands
 
-The verbs are fixed; a world gives them things to act on. Anything the regex parser doesn't recognize, or recognizes but can't act on, can go to the [intent server](../guide/intent-server), which maps loose phrasing onto these.
+The built-in verbs are fixed; a world gives them things to act on, and can add verbs of its own. Anything the regex parser doesn't recognize, or recognizes but can't act on, can go to the [intent server](../guide/intent-server), which maps loose phrasing onto these.
 
 | Command | Also | Notes |
 |---|---|---|
@@ -50,7 +50,7 @@ The verbs are fixed; a world gives them things to act on. Anything the regex par
 | RESTART | | Wipes the automatic save and starts over. Named saves are kept. |
 | SCRIPT / UNSCRIPT | | Starts a transcript, then downloads it as a text file. |
 | VERSION | | The app’s version, then the world’s title and credits. |
-| THEME [*name*] | | Lists the colour themes, or switches to one (`crt-amber`, `crt-green`, `simple`, `simple-light`, `simple-dark`, plus any the game adds). Remembered in the browser. Takes no game time. |
+| THEME [*name*] | | Lists the color themes, or switches to one (`crt-amber`, `crt-green`, `simple`, `simple-light`, `simple-dark`, plus any the game adds). Remembered in the browser. Takes no game time. Works at the cartridge menu and in story files too, like BLOOM and EFFECTS. |
 | BLOOM ON / OFF | | Turns the phosphor glow on or off. |
 | EFFECTS ON / OFF | | Turns every screen effect on or off. |
 | COOKIES | `privacy` | Analytics settings, when analytics are configured. |

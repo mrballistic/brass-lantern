@@ -113,9 +113,3 @@ Zork was written in ZIL, Infocom's language. Its source is MIT licensed ([histor
 - **The room order is read from the story file.** `packages/engine/tests/helpers/zobjects.ts` decodes `zork1.z3`'s object tree, and the native world's rooms must follow it, since the thief walks rooms in that order.
 - **Expected differences** go in `packages/engine/tests/worlds/zork1-allowlist.ts`, each with a reason, and the test fails if one stops being different. Two kinds: a misspelled word, where Zork says “I don't know the word” and the native engine says it sees no such thing (and, in the app, asks the intent server; the OOPS that follows it matches); and replies after the fight that depend on how it went (DIAGNOSE, SCORE's move count).
 - **Random lines** the original prints (the distant songbird) are filtered out: the engine's generator is seeded and reproducible, but it can't replay Zork's own. Random outcomes (the grue, where things scatter when you die) are pinned by seeded unit tests instead, and the death texts are checked against a real death in the original.
-
-## What's next
-
-- **Zork II and Zork III:** a survey of what each would need that the engine doesn't have yet (the balloon, the robot, the wizard's spells, the Royal Puzzle, time travel).
-- The npm library.
-- Characters who obey orders or follow the player.

@@ -2,6 +2,8 @@
 
 Three parts, kept deliberately apart, and shipped as three npm packages ([Using the library](./using-the-library)): the engine and parser are `@brass-lantern/engine`, the terminal and stores are `@brass-lantern/vue`, and the intent server is `@brass-lantern/server`. The engine imports no Vue, Pinia or browser globals, so the same turn loop runs in a browser, in Node (`createGame`) and in tests.
 
+This page is a tour of the internals. File paths are in the [repo](https://github.com/mrballistic/brass-lantern), for readers of the source; nothing here is needed to use the packages.
+
 1. **The engine** (`packages/engine/src/engine/`) is a deterministic state machine. It never knows which game it's running: everything specific to a world, including its rules, is data.
 2. **The parser** turns what the player typed into `{ action, target, indirect }`. A regex parser in the browser handles the canonical commands instantly. Anything it can't parse, or parses into something the engine can't act on, can go to the optional [intent server](./intent-server), where an LLM reads it more loosely. The LLM only *classifies* input; it never writes story text.
 3. **The world** (`packages/engine/src/worlds/`) is one object. Swap it and you have a different game.
@@ -22,12 +24,13 @@ browser                                      intent server (optional)
 
 The store (`packages/vue/src/stores/game.ts`) runs every line through the same steps:
 
-1. **Meta commands** (SAVE, RESTORE, LOAD, UNDO, RESTART, COOKIES) are handled by the store itself, and so is the answer to a SAVE or RESTORE prompt.
+1. **Meta commands** (SAVE, RESTORE, LOAD, UNDO, RESTART, SCRIPT, THEME, BLOOM, EFFECTS, EJECT, COOKIES) are handled by the store itself, and so is the answer to a SAVE or RESTORE prompt.
 2. **Split.** `splitCommands` (`packages/engine/src/engine/parser.ts`) breaks the line into commands:
    - Clauses always split on `then`, `;` and full stops, except after `dr.`, `mr.` and the like.
    - Within a clause, `and` and commas split only when every piece is a recognized command, or an object after a list verb: `get key and wallet` becomes `get key` and `take wallet`.
    - A clause that isn't clearly a list ("could you grab my keys and wallet") stays whole.
    - Anything inside quotes is masked first, so a quoted “. ” or “, ” never splits a line (`answer “a well. yes”` is one command). A text verb (SAY, ANSWER) takes the rest of the line, and ends it.
+
    Each command may be **captured** first: a room's or the world's `capture` (`captureLine` in `packages/engine/src/engine/engine.ts`) can take it before it's parsed, which ends the line. Captured input never reaches the intent server.
 3. **The conversation.** `interpret` (`packages/engine/src/engine/conversation.ts`) looks at the command in the light of the last one:
    - **an answer** to a question the engine just asked (“Which door do you mean?” → `trap`) fills in the waiting command and runs it, **without** asking the intent server;
@@ -71,11 +74,11 @@ Inserting or ejecting a cartridge clears the screen.
 
 | Concept | Where in the world | Notes |
 |---|---|---|
-| Conditions | anywhere | `flag:`, `has:`, `held:`, `in:`, `visited:`, `inside:`, `open:`, `locked:`, `on:`, `here:`, `var:`, `number:`, `said:`, `target:`, `terrain:`, `following:`, `carrying`, `lit:`, `alive:`, `awake:`, `fighting:`, `with:`, `!`, `&`. One parser, `packages/engine/src/engine/conditions.ts`. |
+| Conditions | anywhere | `flag:`, `has:`, `held:`, `in:`, `visited:`, `inside:`, `open:`, `locked:`, `on:`, `here:`, `var:`, `number:`, `said:`, `target:`, `indirect:`, `direction:`, `terrain:`, `water:`, `aboard`, `seen:`, `following:`, `carrying`, `lit:`, `alive:`, `awake:`, `fighting:`, `with:`, `!`, `&`. One parser, `packages/engine/src/engine/conditions.ts`. |
 | Rules | `instead`, `after` on items and rooms | Replace a verb's default, or follow it. `packages/engine/src/engine/rules.ts`. |
 | Containers, doors | `item.container`, `item.surface`, `item.door` | Open, close, lock, put in, take from. |
 | Exits | `room.exits` | A room ID, or `{ to, if, denial, door, denials, then }`. GO runs through rules. |
-| Vehicles | `item.vehicle`, `room.terrain` / `water` / `air`, `world.onFoot` | BOARD, DISEMBARK, and Zork's rules for water and land, generalised to named terrains: a vehicle `travels` on some, rests on others (`packages/engine/src/engine/verbs/vehicle.ts`, `movement.ts`). |
+| Vehicles | `item.vehicle`, `room.terrain` / `water` / `air`, `world.onFoot` | BOARD, DISEMBARK, and Zork's rules for water and land, generalized to named terrains: a vehicle `travels` on some, rests on others (`packages/engine/src/engine/verbs/vehicle.ts`, `movement.ts`). |
 | Effects | `events` | Lines and typed effects: flags, moves, variables, timers, chance, death, endings (`packages/engine/src/engine/effects.ts`). |
 | Darkness | `room.dark`, `item.light`, `world.darkness` | In an unlit dark room you can only find what you carry (`packages/engine/src/engine/model.ts` `isLit`). |
 | Death, endings | `world.death`, `world.endings` | `packages/engine/src/engine/death.ts`, `packages/engine/src/engine/endings.ts`. |
@@ -95,7 +98,7 @@ Inserting or ejecting a cartridge clears the screen.
 | Score | `scoring`, `ranks`, `maxScore`, `scoreLine`, `rankLine` | Summed from flags, conditions that hold, and the `score` variable; the lines are templates. |
 | Status line | `style`, `statusLine` | Zork's room, score and moves in Infocom style; `MOVES: n` (or score and moves) otherwise. |
 
-When a world needs behavior the schema can't express, add a *generic* hook to `packages/engine/src/types/world.ts` and the engine. Never branch on a world's IDs.
+When a world needs behavior the schema can't express, the engine gets a *generic* hook (in `packages/engine/src/types/world.ts` and the engine); it never branches on a world's IDs. [CONTRIBUTING.md](https://github.com/mrballistic/brass-lantern/blob/main/CONTRIBUTING.md) has the details.
 
 ### Orders
 
@@ -111,7 +114,7 @@ When a world needs behavior the schema can't express, add a *generic* hook to `p
 
 **Adding a verb** is usually a world change: declare it in `world.verbs` and give things `instead` rules for it. The parser learns its words from the world, and the browser tells the intent server which world verbs to accept, so neither needs editing.
 
-A *built-in* verb, with default behavior in the engine, still takes three edits:
+A *built-in* verb, with default behavior in the engine, is a change to the engine itself (for contributors; see [CONTRIBUTING.md](https://github.com/mrballistic/brass-lantern/blob/main/CONTRIBUTING.md)), and takes three edits:
 - the regex in `packages/engine/src/engine/parser.ts`, plus its words in `BUILT_IN_WORDS`;
 - the dispatcher in `packages/engine/src/engine/engine.ts` (wrapped in `withRules`), plus its HELP text;
 - `ACTION_VOCAB` in `packages/server/src/llm.ts`. Without that last one, the server throws away the LLM's answer as an unknown verb.
@@ -125,7 +128,7 @@ The CRT is hand-written CSS (`packages/vue/src/styles/crt.css`), with no canvas 
 - flicker at two rates, plus occasional glitches;
 - phosphor decay on older lines, and a block cursor with a square-wave blink.
 
-The default look, `crt-amber`, is deliberately period-accurate rather than WCAG-compliant. The colours are twelve `--bl-*` role variables set by a **theme**, so a game can ship `crt-green`, a plain `simple` look (light or dark, following the system) or a palette of its own, and the player can switch with THEME. Reduced motion turns off flicker, glitch and noise. [Using the library](./using-the-library#themes) has the details.
+The default look, `crt-amber`, is deliberately period-accurate rather than WCAG-compliant. The colors are twelve `--bl-*` role variables set by a **theme**, so a game can ship `crt-green`, a plain `simple` look (light or dark, following the system) or a palette of its own, and the player can switch with THEME. Reduced motion turns off flicker, glitch and noise. [Using the library](./using-the-library#themes) has the details.
 
 Each output line is classified by its first characters (`packages/engine/src/engine/output.ts`). The class sets both its style and its typewriter speed:
 
@@ -145,4 +148,4 @@ A restored session renders instantly, with no typewriter replay, and its boot se
 - **Saves** live in `localStorage` only, one per cartridge, under `<storagePrefix>:save:<cartridge id>` (or the cartridge’s `saveKey`), with up to 500 lines of history. [Cartridges and storage](../reference/cartridges#browser-storage) lists every key. They're written after every change. SAVE *name* keeps an extra copy under `<save key>:named:<name>`, and RESTORE *name* brings it back. If storage is unavailable (private browsing), play continues and SAVE says so.
 - **UNDO** history is memory only: up to 50 snapshots, gone on reload, RESTART or RESTORE.
 - **SCRIPT** downloads a transcript as a text file when it stops; nothing is stored.
-- **Analytics** are off unless you set `VITE_GA_MEASUREMENT_ID` at build time. When it's set, nothing is sent and nothing is stored until the player accepts a consent banner, and Do Not Track is honored. Builds without an ID show no banner at all. Events: `page_view`, `game_start`, `session_resumed` (with a `cartridge` parameter for story files), and, for native worlds, `game_completed` with the move count.
+- **Analytics** are the app’s, not the library’s: the packages send nothing anywhere. A game tells `GameOptions.analytics.onEvent` about `game_start` and `session_resumed` (each with a `cartridge` parameter for story files) and, for native worlds, `game_completed` with the move count; what happens next, and whether the player has consented, is up to the app. Given `analytics.openConsent`, the header shows a COOKIES link and the COOKIES command calls it. The demo site, for example, sends those events to Google Analytics only when `VITE_GA_MEASUREMENT_ID` is set at build time, and only after the player accepts its `ConsentBanner`; it honors Do Not Track, and a build without an ID shows no banner.

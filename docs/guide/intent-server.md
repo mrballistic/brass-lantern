@@ -1,6 +1,8 @@
 # The intent server
 
-Players don't type like parsers. The intent server is optional. It ships as `@brass-lantern/server`: `parseIntent` (a function) and `intentRoute` (an Express router), and the repo adds a small Express app around them (`packages/server/src/index.ts`) for the demo. It hears what the regex parser couldn't handle, such as "make that thing stop beeping" or "pocket my billfold", and asks an LLM which of the engine's verbs and IDs that means. Without it the game is fully playable; loose phrasing just gets a "didn't understand" reply.
+Players don’t type like parsers. The intent server hears what the regex parser couldn’t handle, such as “make that thing stop beeping” or “pocket my billfold”, and asks an LLM which of the engine’s verbs and IDs that means. It’s optional: without it the game is fully playable, and loose phrasing just gets a “didn’t understand” reply.
+
+It ships as `@brass-lantern/server`, with `parseIntent` (a function) and `intentRoute` (an Express router). The repo also has a small Express app around them for the demo, described under [Run the repo’s server](#run-the-repo-s-server).
 
 ## Use it in your own backend
 
@@ -9,11 +11,12 @@ The package reads no environment variables; you pass the key in. [Using the libr
 ```ts
 import { intentRoute } from '@brass-lantern/server/express';
 
+app.set('trust proxy', 'loopback'); // behind a reverse proxy on the same machine
 app.use(express.json({ limit: '32kb' }));
 app.use('/api', intentRoute({ apiKey, models, timeoutMs, rateLimitPerMinute }));
 ```
 
-Then set `intentEndpoint: '/api/parse-intent'` in the game’s options. Without it (or with `null` or an empty string) the game never asks.
+Behind Apache or nginx, `trust proxy` lets the rate limit see each player’s address; without it every request seems to come from the proxy, and all your players share one bucket. Then set `intentEndpoint: '/api/parse-intent'` in the game’s options. Without it (or with `null` or an empty string) the game never asks.
 
 ## Run the repo’s server
 
@@ -42,7 +45,8 @@ The browser never talks to Google; only this server does, with the key in a requ
     "exits": ["south", "cubicle", "north", "break_room"],
     "items": ["mug"],
     "npcs": ["gary (Gary)"],
-    "inventory": ["stapler"]
+    "inventory": ["stapler"],
+    "verbs": []
   }
 }
 ```
@@ -51,9 +55,9 @@ Response: `{ "action": "give", "target": "mug", "indirect": "gary" }`, or `{ "ac
 
 The reply can also carry a `prep` (`put … under`, `throw … off`, `read … through`), a `direction` (`push … north`), and a `number` (`turn dial to 4`, 0 to 1000; the client keeps it only when `target` or `indirect` is the word `number` or its digits). For an order (`tell robot to take lamp`), `indirect` is the command as a few plain lowercase words instead of an identifier; the engine parses it as it would typed text.
 
-Bad requests and rate limiting get an error status instead: 400 for a missing input or malformed context, 400 for input over 200 characters, 429 (with `Retry-After`) when rate limited, 500 if something unexpected breaks. All but the first carry `fallback: { "action": "unknown" }`. The bundled client treats any non-OK response as `unknown`, so the player just sees the literal reply.
+`verbs` lists the world’s own verbs, which the server accepts alongside its built-in list. Bad requests and rate limiting get an error status instead: 400 with only an `error` field for a missing input or malformed context; 400 with `fallback` as well for input over 200 characters; 429 (with `Retry-After`) and 500, both with `fallback`. The `fallback` is always `{ "action": "unknown" }`. The bundled client treats any non-OK response as `unknown`, so the player just sees the literal reply.
 
-`GET /health` returns `{"ok":true}`.
+The repo’s server app also answers `GET /health` with `{"ok":true}`; `intentRoute` itself serves only `POST /parse-intent`.
 
 ## How it decides
 
@@ -84,6 +88,6 @@ Google retires models regularly. A retired model just answers 404 and the chain 
 There's no auth, by design: the endpoint only classifies short commands. Its cost is bounded instead:
 
 - **Input caps:** 200 characters of input, and context lists of at most 50 entries of 100 characters each.
-- **Rate limit:** per client, with IPv6 bucketed by /64 so one user can't rotate addresses, plus a global ceiling (`packages/server/src/rate-limit.ts`).
+- **Rate limit:** per client, with IPv6 bucketed by /64 so one user can't rotate addresses, plus a global ceiling.
 - **No CORS headers**, so other websites can't spend your quota from their visitors' browsers.
 - **Your provider's quota** as the backstop. Keep a spending limit on the key.

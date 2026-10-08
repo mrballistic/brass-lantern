@@ -30,9 +30,9 @@ Every field a world can use. The source of truth is [`packages/engine/src/types/
 | `vars?` | `Record<name, number>` | Starting values for numeric variables. |
 | `seed?` | number | Seeds the random generator, for reproducible games. Default: the clock. |
 | `daemons?` | `{ if, then }[]` | Run after every turn the engine acts on, while `if` holds. `then` is an event name or steps. See [Time](#time). |
-| `darkness?` | `Darkness` | Texts and behavior for dark rooms. See [Darkness](#darkness). |
-| `death?` | `Death` | What dying does. See [Death](#death). |
-| `endings?` | `Record<id, Ending>` | Named endings for the `end` effect. See [Endings](#endings). |
+| `darkness?` | object | Texts and behavior for dark rooms. See [Darkness](#darkness). |
+| `death?` | object | What dying does. See [Death](#death). |
+| `endings?` | `Record<id, …>` | Named endings for the `end` effect. See [Endings](#endings). |
 | `style?` | `'brass'` or `'infocom'` | Output conventions. See [Style](#style). Default `'brass'`. |
 | `emptyInventory?` | string | INVENTORY with nothing carried. Default: “You are empty-handed.” |
 | `smashRefusal?` | string | SMASH where nothing can be smashed. |
@@ -149,7 +149,7 @@ Rules are tried in order and the **first** whose conditions hold runs. For two-o
 | `then?` | event | |
 | `say?` | string[] | Lines printed without changing anything. |
 
-USE also covers PUSH, PULL, PRESS and ATTACH X TO Y. OPEN and PUT fall back to an item's use rules when it isn't a container (or isn't in your hands), so worlds written before OPEN and PUT existed keep working. Using an item with `onWear` and no matching rule wears it. Verbs like SLEEP, UNPLUG or INSTALL are [world verbs](#world-verbs) now: declare them and give items `instead` rules.
+USE also covers PUSH, PULL, PRESS and ATTACH X TO Y. OPEN and PUT fall back to an item's use rules when it isn't a container (or isn't in your hands), so OPEN DRAWER works on a drawer that has only a use rule. Using an item with `onWear` and no matching rule wears it. Verbs like SLEEP, UNPLUG or INSTALL are [world verbs](#world-verbs) now: declare them and give items `instead` rules.
 
 ## Rules
 
@@ -195,7 +195,7 @@ verbs: {
 
 - A world verb does nothing by itself: give items or rooms `instead` rules for it.
 - With no target, it looks for a rule on the room, then on anything in reach (SNOOZE finds the alarm clock).
-- A word a built-in verb already uses (`take`, `open`, …) is ignored, unless the verb is `afterBuiltIns`; `verbClashes(world.verbs)` lists any.
+- A word a built-in verb already uses (`take`, `open`, …) is ignored, unless the verb is `afterBuiltIns`; `auditWorld` reports any (“verb word … is a built-in”).
 
 ## Style
 
@@ -208,7 +208,7 @@ verbs: {
   - SCORE says “Your score is 15 (total of 350 points), in 40 moves.”, and (like VERBOSE, BRIEF and SUPERBRIEF) runs no clock: no move, no timers, though the room’s end routine still runs;
   - the header shows the room, score and moves, like Zork's status line;
   - questions, TAKE ALL and transcripts use Zork's wording;
-  - bookkeeping lines like `[Flag set: …]` act without being shown.
+  - bookkeeping lines like `[Flag set: …]` act without being shown;
   - each thing's contents are listed right after it;
   - READ takes the thing first (“(Taken)”), EXAMINE of a thing with no description reads it, and opening a container whose one untouched thing has a first-seen sentence says “The coffin opens.” and that sentence;
   - a door with no lines of its own “opens” and “is now closed”, and OPEN and CLOSE say “It is already open.” and “It is already closed.”;
@@ -221,10 +221,11 @@ verbs: {
 ## Time
 
 After every turn the engine acts on (never after a misunderstood command), these happen in order:
-0. **The room's end routines** (`onEnd`, Zork's M-END).
-1. **Fuses** count down, and those reaching zero run. A fuse is set by the `schedule` effect and removed by `cancel`; one set during a turn starts counting the next turn.
-2. **Daemons** run, in order, each while its `if` holds.
-3. **Ambient lines** print.
+
+1. **The room's end routines** (`onEnd`, Zork's M-END).
+2. **Fuses** count down, and those reaching zero run. A fuse is set by the `schedule` effect and removed by `cancel`; one set during a turn starts counting the next turn.
+3. **Daemons** run, in order, each while its `if` holds.
+4. **Ambient lines** print.
 
 A lamp that burns down is a variable and a few daemons:
 
@@ -314,7 +315,7 @@ Characters' places and states live in the game state (`npcs`), starting from the
 
 “*name*, *command*”, “tell *name* to *command*” and a bare “tell *name*” are orders. What happens, in order:
 
-1. **`instead.order`** rules on the character answer first, as for any verb. In one, `ctx.command.words.indirect` is the order as typed. A character with only `instead.order` (no `orders`, no `obeys`) behaves as before: it answers, or says `refuseOrder`, and the rest of the line carries on.
+1. **`instead.order`** rules on the character answer first, as for any verb. In one, `ctx.command.words.indirect` is the order as typed. A character with only `instead.order` (no `orders`, no `obeys`) answers, or says `refuseOrder`, and the rest of the line carries on.
 2. Otherwise the order is read as a command of its own, with its objects resolved among what the character can reach in **its** room (ME or MYSELF is the player, YOURSELF the character itself; a number typed as an object counts). A word that names nothing there is a miss that changes nothing, so the intent server may still read it; one that matches several things asks which, taking no time. A character can't refer to what the player carries.
 3. **`orders`** rules are keyed by the inner command's verb: `orders: { push: [...], take: [...] }`. They are the same shape as other [rules](#rules), and their conditions see the inner command (`target:`, `indirect:`, `number:`, `said:`, `direction:`). **The first word typed is tried first**, when it has a table (PUSH reads as USE, so “robot, push the button” runs `orders.push` even when `orders.use` exists); otherwise the parsed verb's table (“robot, press the button” runs `orders.use`). A rule with `continue: true` runs and then lets step 4 go on.
 4. If no rule answered and the verb is in `obeys`, the character performs it, saying `obeyReplies[verb]` (default “Okay.”):
@@ -323,7 +324,7 @@ Characters' places and states live in the game state (`npcs`), starting from the
    - **`give`**: “give me the key” moves it from the character to the player (the second object is the player).
 5. Otherwise `refuseOrder`, or “*Name* ignores you.”
 
-**An order to a character with `orders` or `obeys` ends the rest of the line** (Zork clears the typed-ahead commands), unless it was a miss. That includes an obeying character's refusal, which takes a turn like any understood command. A character with neither keeps today's behaviour entirely.
+**An order to a character with `orders` or `obeys` ends the rest of the line** (Zork clears the typed-ahead commands), unless it was a miss. That includes an obeying character's refusal, which takes a turn like any understood command. A character with neither answers orders only through `instead.order` and `refuseOrder`.
 
 **`heardFrom`** lists rooms from which the player can give a character orders while it's somewhere else. Its orders are carried out where it stands (Zork III's dungeon master, ordered from the cell while he stands on the parapet).
 
@@ -399,9 +400,9 @@ dial: {
 - A rule with `with: 'number'` matches only a command whose second object is a number.
 - An order can carry one (“robot, turn the dial to 4” runs `orders.turn` with `number:4`).
 
-**Typed words.** A world verb with `target: 'text'` (SAY, INCANT, ANSWER) takes the rest of the line as typed words. They are never resolved to things, so naming nothing is no miss. Outer quotes are dropped and whitespace collapsed. **`said:WORDS`** matches them as lowercase whole words, with punctuation and quotes ignored (`said:a well` matches `answer “A well.”`), and `ctx.text` has them. The verb consumes the whole rest of the line, so it ends the line: `say "well". west` drops WEST, as in Zork. A quoted phrase isn't split at its full stops or commas. Only double quotes (straight or curly) quote; a single quote is an apostrophe (`answer 'don't know'` keeps every word). This applies to every world: a quoted “. ” no longer ends a command. Unlike Zork, where only a quoted phrase is typed words, **unquoted text counts too**: `answer well` solves a riddle that wants “a well”.
+**Typed words.** A world verb with `target: 'text'` (SAY, INCANT, ANSWER) takes the rest of the line as typed words. They are never resolved to things, so naming nothing is no miss. Outer quotes are dropped and whitespace collapsed. **`said:WORDS`** matches them as lowercase whole words, with punctuation and quotes ignored (`said:a well` matches `answer “A well.”`), and `ctx.text` has them. The verb consumes the whole rest of the line, so it ends the line: `say "well". west` drops WEST, as in Zork. A quoted phrase isn't split at its full stops or commas. Only double quotes (straight or curly) quote; a single quote is an apostrophe (`answer 'don't know'` keeps every word). This applies to every world: a quoted “. ” doesn’t end a command. Unlike Zork, where only a quoted phrase is typed words, **unquoted text counts too**: `answer well` solves a riddle that wants “a well”.
 
-**Prepositions.** These forms go through the ordinary rules. With no rule, Infocom style gives Zork's reply below; brass style misses with the same line (all but READ, which reads), so the intent server can still read the input, as it did before these forms parsed. A rule answers in both styles.
+**Prepositions.** These forms go through the ordinary rules. With no rule, Infocom style gives Zork's reply below; brass style misses with the same line (all but READ, which reads), so the intent server can still read the input. A rule answers in both styles.
 
 | Form | Rule verb | Built-in reply |
 |---|---|---|
@@ -411,7 +412,7 @@ dial: {
 | READ X THROUGH/WITH Y | `read`, with the second object | reads X |
 | PUSH X *direction*, PUSH X TO Y | `push`, `direction:DIR` / the second object | “You can’t push things to that.” |
 
-**ME.** ME and MYSELF in an object slot name the player; so do SELF and YOURSELF, unless something in sight (or someone here) is named or aliased that. Rules match them with `target:player` or `indirect:player` (and `with: 'player'`). The engine adds no replies of its own for ME: a verb aimed at it with no rule misses with the word typed (“You don’t see a “me” here.”), as before 6a, so a world says what Zork says (“You can’t tie anything to yourself.”) in a rule. The reserved ID `player` is never matched against a thing's or character's name (a “record player” is safe from TAKE ME); typed, “player” is an ordinary word. In an order, ME is the speaker (“robot, give me the key”) and YOURSELF the character (“robot, push yourself”).
+**ME.** ME and MYSELF in an object slot name the player; so do SELF and YOURSELF, unless something in sight (or someone here) is named or aliased that. Rules match them with `target:player` or `indirect:player` (and `with: 'player'`). The engine adds no replies of its own for ME: a verb aimed at it with no rule misses with the word typed (“You don’t see a “me” here.”), so a world says what Zork says (“You can’t tie anything to yourself.”) in a rule. The reserved ID `player` is never matched against a thing's or character's name (a “record player” is safe from TAKE ME); typed, “player” is an ordinary word. In an order, ME is the speaker (“robot, give me the key”) and YOURSELF the character (“robot, push yourself”).
 
 ## Descriptions from state
 

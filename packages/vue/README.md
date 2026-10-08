@@ -26,11 +26,11 @@ mountGame('#app', {
 });
 ```
 
-The game fills its container and touches nothing else on the page, so give the container a size (for a full-screen game, `html, body, #app { height: 100%; margin: 0; overflow: hidden; }`). Pass `autofocus: false` to a game embedded in a longer page.
+Under TypeScript 6, the `.css` import needs Vite’s client types (`vite/client`) or a `declare module '*.css';` somewhere in your project. The game fills its container and touches nothing else on the page, so give the container a size (for a full-screen game, `html, body, #app { height: 100%; margin: 0; overflow: hidden; }`). Pass `autofocus: false` to a game embedded in a longer page.
 
-Prefer a component? `<BrassLantern :options="options" />` takes the same options. The package exports `BrassLantern`, `mountGame`, `ConsentBanner`, the themes (`PRESETS`, `PALETTES`, `resolveTheme`), `useTypewriter` and the `GameOptions` type; the rest is internal. Two games on one page need different `storagePrefix` values.
+Prefer a component? `<BrassLantern :options="options" />` takes the same options. The package exports `BrassLantern`, `mountGame`, `ConsentBanner`, the themes (`PRESETS`, `PALETTES`, `resolveTheme`, `UnknownTheme`), `useTypewriter`, the `GameOptions` and `GameEvent` types, and the cartridge types (`Cartridge`, `WorldCartridge`, `ZCodeCartridge`); the rest is internal. Two games on one page need different `storagePrefix` values.
 
-Players can type THEME, BLOOM ON|OFF and EFFECTS ON|OFF; the choice is remembered in the browser. Every option, custom themes and the intent server are in the guide.
+Players can type THEME, BLOOM ON|OFF and EFFECTS ON|OFF, at the menu, in native worlds and in story files; the choice is remembered in the browser. Every option, custom themes and the intent server are in the guide.
 
 ## Docs
 

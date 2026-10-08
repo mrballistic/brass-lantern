@@ -1,63 +1,82 @@
 # Testing a world
 
-A world is data, and data rots quietly: an exit points at a renamed room, a flag label gets a typo, the ending becomes unreachable. Two kinds of test catch nearly all of it.
+A world is data, and data rots quietly: an exit points at a renamed room, a flag label gets a typo, the ending becomes unreachable. Two kinds of test catch nearly all of it, and both run in plain Node with any test runner. The examples here use [Vitest](https://vitest.dev/).
 
 ## Play it
 
-[`packages/engine/tests/helpers/play.ts`](https://github.com/mrballistic/brass-lantern/blob/main/packages/engine/tests/helpers/play.ts) runs typed commands through the real parser and engine, so a test reads like a transcript:
+`createGame` from `@brass-lantern/engine` runs a world with no browser: feed it the lines a player would type, and read the replies. A test reads like a transcript:
 
 ```ts
-import { play } from '../helpers/play';
-import { tutorial } from '@/worlds/tutorial';
+import { describe, expect, it } from 'vitest';
+import { createGame } from '@brass-lantern/engine';
+import { tutorial } from '@brass-lantern/engine/worlds';
 
-it('plays to the best ending', () => {
-  const { state, text } = play(tutorial, [
-    'open drawer',
-    'take stapler',
-    'north',
-    'take mug and give mug to gary',
-    'talk to gary',
-    'north',
-    'smash machine with stapler',
-  ]);
-  expect(state.gameOver).toBe(true);
-  expect(text).toContain('You share the pretzels');
-  expect(text).toContain('[Score: 50 of 50');
+describe('Snack Attack', () => {
+  it('plays to the best ending', () => {
+    const game = createGame(tutorial, { seed: 1 });
+    const text = [
+      'open drawer',
+      'take stapler',
+      'north',
+      'take mug and give mug to gary',
+      'talk to gary',
+      'north',
+      'smash machine with stapler',
+    ].flatMap((line) => game.send(line).lines).join('\n');
+
+    expect(game.state.gameOver).toBe(true);
+    expect(text).toContain('You share the pretzels');
+    expect(text).toContain('[Score: 50 of 50');
+  });
 });
 ```
 
-Write at least two: the **shortest win**, and a run that **earns every point**. When either breaks, you've changed the critical path or the scoring, on purpose or not.
+Swap `tutorial` for your own world (`import { myWorld } from './my-world'`). `seed` makes the game’s randomness repeatable, so a world with chance effects or fights plays the same way on every run.
 
-To pin every word, compare the whole transcript: `expect(text).toMatchInlineSnapshot()` fills itself in on the first `npx vitest -u`, and from then on any change to the text fails the test until you look at it. The [example worlds](./building-worlds/) are tested this way.
+Write at least two: the **shortest win**, and a run that **earns every point**. When either breaks, you’ve changed the critical path or the scoring, on purpose or not.
 
-`play()` calls the engine directly, without the store, so pronouns, questions, AGAIN, OOPS and UNDO aren't involved and the intent server isn't consulted. Write commands the regex parser understands, naming things fully enough not to be asked “which one?”.
+To pin every word, compare the whole transcript: `expect(text).toMatchInlineSnapshot()` fills itself in on the first `npx vitest -u`, and from then on any change to the text fails the test until you look at it.
+
+`send` takes a whole line, as the player would type it: chained commands, pronouns, AGAIN, OOPS, UNDO and the answer to a question all work. When the game asks “Which door do you mean?”, the reply’s `awaiting` is true and the next `send` answers it. There’s no intent server in a test, so write commands the regex parser understands.
 
 ## Check the data
 
-[`packages/engine/tests/worlds/audit.test.ts`](https://github.com/mrballistic/brass-lantern/blob/main/packages/engine/tests/worlds/audit.test.ts) checks every world in `cartridges` for mistakes (`packages/engine/tests/worlds/examples/audit.test.ts` does the same for the example worlds) that fail silently in play:
+`auditWorld(world)` returns a list of problems, one string each, and an empty list when it finds none:
 
-- effects naming items, rooms, events or endings that don't exist, and unknown effects;
-- events named by rules, `onEnter`, `onTake`, `onWear`, `onSmash`, `onGive`, daemons and the finale that don't exist;
-- conditions of unknown kinds, or naming items and rooms that don't exist (in rules, triggers, exits, `requires`, daemons, hints and scoring);
-- exits to nowhere, doors that aren't items, items listed in rooms or containers that don't exist;
-- a world verb word that a built-in verb already owns, and the reserved ID `player`.
+```ts
+import { expect, it } from 'vitest';
+import { auditWorld } from '@brass-lantern/engine';
+import { myWorld } from './my-world';
 
-Your world gets these for free once it's a cartridge. A few more checks are worth writing for your own world. Every room reachable from the start:
+it('has no broken references', () => {
+  expect(auditWorld(myWorld)).toEqual([]);
+});
+```
+
+It finds the mistakes that fail silently in play:
+
+- effects naming items, rooms, events or endings that don’t exist, and unknown effects;
+- events named by rules, `onEnter`, `onTake`, `onWear`, `onSmash`, `onGive`, daemons and the finale that don’t exist;
+- conditions of unknown kinds, or naming items and rooms that don’t exist (in rules, triggers, exits, `requires`, daemons, hints and scoring);
+- exits to nowhere, doors that aren’t items, items listed in rooms or containers that don’t exist;
+- a world verb word that a built-in verb already owns, and the reserved IDs `player` and `number`.
+
+It doesn’t walk the map. A few more checks are worth writing for your own world. Every room reachable from the start:
 
 ```ts
 it('every room is reachable from the start', () => {
   const seen = new Set<string>();
-  const queue = [world.startRoom];
+  const queue = [myWorld.startRoom];
   while (queue.length) {
     const id = queue.shift()!;
     if (seen.has(id)) continue;
     seen.add(id);
-    for (const exit of Object.values(world.rooms[id]?.exits ?? {})) {
+    for (const exit of Object.values(myWorld.rooms[id]?.exits ?? {})) {
       const to = typeof exit === 'string' ? exit : exit.to;
       if (to) queue.push(to);
     }
   }
-  expect(Object.keys(world.rooms).filter((id) => !seen.has(id))).toEqual([]);
+  expect(Object.keys(myWorld.rooms).filter((id) => !seen.has(id))).toEqual([]);
 });
 ```
 
@@ -73,11 +92,9 @@ it('uses smart punctuation', () => {
     else if (Array.isArray(v)) v.forEach(walk);
     else if (v && typeof v === 'object') Object.values(v).forEach(walk);
   };
-  walk(world);
+  walk(myWorld);
   expect(strings.filter((s) => /["']/.test(s))).toEqual([]);
 });
 ```
 
-## The engine's own tests
-
-`packages/engine/tests/engine/engine-hooks.test.ts` exercises every engine hook against a fixture world (`packages/engine/tests/fixtures/world.ts`), including a check that a command the engine can't act on never changes the game state. If you add a hook to the engine, give the fixture a use of it and a test here.
+That walks every string in the world, IDs and conditions included, which is fine as long as those don’t use quotes either.

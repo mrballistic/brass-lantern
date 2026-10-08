@@ -1,6 +1,6 @@
 # Playing story files
 
-Brass Lantern also runs **Z-machine story files**, the format Infocom’s games shipped in. The demo includes the **Zork trilogy** (Zork I Release 119, Zork II Release 63, Zork III Release 25), which Microsoft released under the MIT License in 2025. It plays exactly as Infocom wrote it, in the same CRT terminal as native worlds.
+Brass Lantern also runs **Z-machine story files**, the format Infocom’s games shipped in. The [demo](https://mrballistic.github.io/brass-lantern/demo/) includes the **Zork trilogy** (Zork I Release 119, Zork II Release 63, Zork III Release 25), which Microsoft released under the MIT License in 2025. It plays exactly as Infocom wrote it, in the same CRT terminal as native worlds. The npm packages bring the interpreter, not the games: see [Cartridges](#cartridges) for adding story files to your own app.
 
 ## Playing Zork
 
@@ -25,23 +25,31 @@ Brass Lantern’s own command splitting, the intent server and HINT don’t appl
 
 ## Cartridges
 
-`apps/site/src/app.config.ts` lists what the terminal offers:
+A story file is a cartridge, listed in `GameOptions.cartridges` beside any native worlds. The demo’s list:
 
 ```ts
-export const cartridges: Cartridge[] = [
-  { kind: 'world', id: 'snack-attack', title: 'SNACK ATTACK', world: tutorial },
-  { kind: 'zcode', id: 'zork1', title: 'ZORK I', story: 'stories/zork1.z3', format: 'Z-machine v3' },
-  { kind: 'zcode', id: 'zork2', title: 'ZORK II', story: 'stories/zork2.z3', format: 'Z-machine v3' },
-  { kind: 'zcode', id: 'zork3', title: 'ZORK III', story: 'stories/zork3.z3', format: 'Z-machine v3' },
-  { kind: 'world', id: 'zork1-native', title: 'ZORK I · NATIVE', world: zork1 },
-];
+import { mountGame } from '@brass-lantern/vue';
+import { tutorial, zork1 } from '@brass-lantern/engine/worlds';
+
+mountGame('#app', {
+  cartridges: [
+    { kind: 'world', id: 'snack-attack', title: 'SNACK ATTACK', world: tutorial },
+    { kind: 'zcode', id: 'zork1', title: 'ZORK I', story: 'stories/zork1.z3', format: 'Z-machine v3' },
+    { kind: 'zcode', id: 'zork2', title: 'ZORK II', story: 'stories/zork2.z3', format: 'Z-machine v3' },
+    { kind: 'zcode', id: 'zork3', title: 'ZORK III', story: 'stories/zork3.z3', format: 'Z-machine v3' },
+    { kind: 'world', id: 'zork1-native', title: 'ZORK I · NATIVE', world: zork1 },
+  ],
+  storagePrefix: 'my-game',
+});
 ```
 
 - **With more than one cartridge**, the terminal shows a menu after it boots. Type a number to insert one; EJECT brings you back.
 - **With one cartridge**, it boots straight in, with no menu.
 - **After a reload**, the last cartridge you played comes straight back if it has a game in progress.
 
-To add a story, put the file in `apps/site/public/stories/` and add an entry. `story` is relative to the site’s base, so it works under a subpath too. Story files are binary and fetched on demand, and the interpreter is a separate chunk that loads only when a story cartridge is inserted, so a build that offers only native worlds never downloads it.
+**Story files aren’t in the npm packages.** Host them with your app, as static files: `story` is fetched from `storyBaseUrl` (default `/`) plus that path, so a Vite app puts `zork1.z3` in `public/stories/`, and one served from a subpath passes `storyBaseUrl: import.meta.env.BASE_URL`. Story files are binary and fetched on demand, and the interpreter is a separate chunk that loads only when a story cartridge is inserted, so a build that offers only native worlds never downloads it.
+
+**Getting Zork I, II and III.** Microsoft released them under the MIT License in 2025, in the `zork1`, `zork2` and `zork3` repositories at [historicalsource](https://github.com/historicalsource). The three files the demo plays are also in the Brass Lantern repo, in [`apps/site/public/stories/`](https://github.com/mrballistic/brass-lantern/tree/main/apps/site/public/stories), each beside its license (`LICENSE-zork1.txt` and so on). The MIT License asks that its text travel with the files, so publish each license beside its story.
 
 ## Playing your own story files
 
@@ -58,7 +66,7 @@ Got a story file? Type **LOAD** at the cartridge menu and pick it, or drag it on
 ## Finding more story files
 
 - **The [IF Archive](https://www.ifarchive.org/indexes/if-archive/games/zcode/)** holds thousands of Z-machine games, from the 1980s to this year. Files end in `.z3`, `.z5` or `.z8`; LOAD plays them.
-- **Infocom’s other games** are still under copyright, except Zork I, II and III, which Microsoft released under the MIT License in 2025 ([historicalsource](https://github.com/historicalsource)). Those three ship here; the rest can’t be redistributed.
+- **Infocom’s other games** are still under copyright, except Zork I, II and III, which Microsoft released under the MIT License in 2025 ([historicalsource](https://github.com/historicalsource)). Those three ship with the demo (see [Cartridges](#cartridges) for where to get them); the rest can’t be redistributed.
 - **Check the license before you publish one.** Playing a story file locally is one thing; putting it on a public site is redistribution. Many IF Archive games allow it; some don’t.
 - **Writing your own:** [Inform 6](https://www.inform-fiction.org/) and [ZIL](https://foss.heptapod.net/zilf/zilf) (Infocom’s own language) both compile to the Z-machine.
 
@@ -71,19 +79,18 @@ Got a story file? Type **LOAD** at the cartridge menu and pick it, or drag it on
 ## How it works
 
 - **ifvms** ([MIT](https://github.com/curiousdannii/ifvms.js)), the Z-machine inside Parchment, runs the story.
-- It talks to the screen through **Glk**, a standard interface for interactive fiction. Brass Lantern includes a modified copy of glkapi.js (`packages/engine/src/zmachine/vendor/`), wrapped so each game gets its own instance.
-- **`BrowserGlkOte`** (`packages/engine/src/zmachine/glkote.ts`) turns the game’s screen updates into terminal lines, and its status line into the header.
-- **`SaveStoreDialog`** (`packages/engine/src/zmachine/dialog.ts`) stores saves and autosaves in any `SaveStore`: browser storage in the Vue terminal, a `Map`, a directory or a database in a Node host.
+- It talks to the screen through **Glk**, a standard interface for interactive fiction. `@brass-lantern/engine` includes a modified copy of glkapi.js, wrapped so each game gets its own instance.
+- **`BrowserGlkOte`** turns the game’s screen updates into terminal lines, and its status line into the header.
+- **`SaveStoreDialog`** stores saves and autosaves in any `SaveStore`: browser storage in the Vue terminal, a `Map`, a directory or a database in a Node host.
 
 The game’s own echo of your command, and its `>` prompt, are dropped, since the terminal draws its own.
 
 ## Limits
 
 - **SCRIPT** (a transcript file) isn’t supported; it says so and the game carries on.
-- **A full browser storage** (or any store that refuses a write) makes SAVE say “There’s no room to save that.”, rather than claiming success.
+- **Full browser storage** (or any store that refuses a write) makes SAVE say “There’s no room to save that.”, rather than claiming success.
 - **A story that won’t download** within 20 seconds shows an error; reload to try again, or EJECT.
-
 - **Formats:** Z-machine versions 3, 4, 5 and 8 (what ifvms supports). No Glulx.
 - **Windows:** only the status line from the upper window is shown, so games that draw menus or quote boxes there lose them.
 - **No graphics, sound or timed input.**
-- **Loose phrasing:** the intent server doesn’t help with story files yet. Story files have their own parsers, and that’s planned as a separate feature.
+- **Loose phrasing:** the intent server doesn’t help with story files yet. Story files have their own parsers.

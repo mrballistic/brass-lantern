@@ -2,7 +2,7 @@
 
 # Brass Lantern
 
-**Classic parser text adventures in a CRT terminal, in the browser.** Write your own game as data, or load a real Infocom-era story file. **The Zork trilogy** is included.
+**Classic parser text adventures in a CRT terminal, in the browser.** Write your own game as data, or load a real Infocom-era story file. The demo plays **the Zork trilogy**.
 
 **[Play the demo](https://mrballistic.github.io/brass-lantern/demo/)** · **[Read the docs](https://mrballistic.github.io/brass-lantern/)**
 
@@ -62,7 +62,7 @@ mountGame('#app', {
 });
 ```
 
-The game fills `#app`, so give it a size (`html, body, #app { height: 100%; margin: 0; overflow: hidden; }` for a full-screen game); the stylesheet styles nothing else on the page. The terminal comes in five themes (amber and green CRT, and plain light and dark), and the engine also runs headless in Node. [Using the library](https://mrballistic.github.io/brass-lantern/guide/using-the-library) covers all of it. This repo is an npm-workspaces monorepo: `packages/` holds the libraries and `apps/site` is the demo.
+(Under TypeScript 6 the `.css` import needs `vite/client` types or a `declare module '*.css';`.) The game fills `#app`, so give it a size (`html, body, #app { height: 100%; margin: 0; overflow: hidden; }` for a full-screen game); the stylesheet styles nothing else on the page. The terminal comes in five themes (amber and green CRT, and plain light and dark), and the engine also runs headless in Node. [Using the library](https://mrballistic.github.io/brass-lantern/guide/using-the-library) covers all of it. This repo is an npm-workspaces monorepo: `packages/` holds the libraries and `apps/site` is the demo.
 
 ## Quick start
 
@@ -101,6 +101,7 @@ npm run dev
 - [Getting started](https://mrballistic.github.io/brass-lantern/guide/getting-started)
 - [Using the library](https://mrballistic.github.io/brass-lantern/guide/using-the-library)
 - [Building worlds](https://mrballistic.github.io/brass-lantern/guide/building-worlds/)
+- [Recipes](https://mrballistic.github.io/brass-lantern/guide/building-worlds/recipes)
 - [Playing story files](https://mrballistic.github.io/brass-lantern/guide/z-machine)
 - [Porting Zork](https://mrballistic.github.io/brass-lantern/guide/porting-zork)
 - [How it works](https://mrballistic.github.io/brass-lantern/guide/how-it-works)
@@ -108,7 +109,9 @@ npm run dev
 - [Testing a world](https://mrballistic.github.io/brass-lantern/guide/testing)
 - [Deploying](https://mrballistic.github.io/brass-lantern/guide/deploying)
 - [World schema](https://mrballistic.github.io/brass-lantern/reference/world-schema)
+- [Conditions and events](https://mrballistic.github.io/brass-lantern/reference/conditions-and-events)
 - [Player commands](https://mrballistic.github.io/brass-lantern/reference/commands)
+- [Cartridges and storage](https://mrballistic.github.io/brass-lantern/reference/cartridges)
 
 They live in `docs/`; `npm run docs:dev` serves them locally.
 

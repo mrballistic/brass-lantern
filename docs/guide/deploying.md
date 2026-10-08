@@ -43,7 +43,7 @@ GEMINI_KEY=… NODE_ENV=production node packages/server/dist/index.js
 ```
 
 ::: warning Install the dev dependencies
-The repo’s server imports `express`, which this repo keeps as a dev dependency (the published package treats it as an optional peer). Don’t run `npm ci --omit=dev` before `npm start`: the server won’t start. Install everything, or write your own small app around `intentRoute` and install `express` yourself.
+The repo’s server imports `express`, which this repo keeps as a dev dependency (the published package treats it as an optional peer). Don’t install with `npm ci --omit=dev` before running `node packages/server/dist/index.js`: the server won’t start. Install everything, or write your own small app around `intentRoute` and install `express` yourself.
 :::
 
 In production, use a process manager (systemd, pm2, a container) and keep the key in an environment file only that service can read. The server drains in-flight requests on SIGTERM, so rolling restarts don't drop players' commands.
@@ -54,4 +54,4 @@ In production, use a process manager (systemd, pm2, a container) and keep the ke
 - **Deploy as a user that can only write the site**, not an admin. A CI deploy key is as powerful as the account it logs into.
 - **Pin your CI actions to commit SHAs**, and keep deploy secrets in a deployment environment that only release tags can use.
 - **Check that the key never reaches the bundle.** A CI step that greps `dist/` for `AIza` fails the build if it ever does.
-- **Analytics:** set `VITE_GA_MEASUREMENT_ID` at build time to turn on GA4. The consent banner appears only then.
+- **Analytics (the demo site):** set `VITE_GA_MEASUREMENT_ID` at build time to turn on its GA4 reporting. The consent banner appears only then. In your own app, analytics are whatever you wire to `GameOptions.analytics`.

@@ -2,7 +2,7 @@
 
 ## Conditions
 
-Conditions are strings, used by `requires`, exits (`if`, `denials`), room `descriptions`, `onEnter`, rules (`instead`, `after`, `onUse`), dialogue keys, hints, scoring, daemons, the finale's epilogue and ambient lines. One parser handles all of them (`packages/engine/src/engine/conditions.ts`).
+Conditions are strings, used by `requires`, exits (`if`, `denials`), room `descriptions`, `onEnter`, rules (`instead`, `after`, `onUse`), dialogue keys, hints, scoring, daemons, the finale's epilogue and ambient lines. One parser handles all of them.
 
 | Condition | True when |
 |---|---|
@@ -37,7 +37,7 @@ Conditions are strings, used by `requires`, exits (`if`, `denials`), room `descr
 | `!…` | negates any of the above |
 | `a & b` | every part holds: `in:break_room & !flag:lunch_freed` |
 
-There's no "or". Write two rules, or two dialogue keys, instead. An unrecognized condition is false in play. The world audit fails on it, and on a condition naming an item or room that doesn't exist, in rules, triggers, exits, `requires`, daemons, hints and scoring (not yet in dialogue keys, ambient lines or room descriptions).
+There's no "or". Write two rules, or two dialogue keys, instead. An unrecognized condition is false in play. `auditWorld` reports it, and on a condition naming an item or room that doesn't exist, in rules, triggers, exits, `requires`, daemons, hints and scoring (not yet in dialogue keys, ambient lines or room descriptions).
 
 ## Events and effects
 
@@ -75,7 +75,7 @@ An event is a named list of steps, run in order. A string is printed. An object 
 | `{ die: 'cause' }` | Kills the player. See [Death](./world-schema#death). Nothing after it runs. |
 | `{ end: 'ending' }` | Plays an ending. See [Endings](./world-schema#endings). Nothing after it runs. |
 
-Effects print nothing unless they say so. An effect naming something that doesn't exist does nothing in play, and `packages/engine/tests/worlds/audit.test.ts` fails on it. The audit also checks the events named by rules, `onEnter`, `onTake`, `onWear`, `onSmash`, `onGive`, daemons and the finale.
+Effects print nothing unless they say so. An effect naming something that doesn't exist does nothing in play, and `auditWorld` reports it. It also checks the events named by rules, `onEnter`, `onTake`, `onWear`, `onSmash`, `onGive`, daemons and the finale.
 
 ### Bracket lines (the older form)
 
@@ -96,7 +96,7 @@ Facts worth knowing:
 
 ## How lines are styled
 
-Every line the player sees is classified by how it starts, which sets its look and typewriter speed (`packages/engine/src/engine/output.ts`):
+Every line the player sees is classified by how it starts, which sets its look and typewriter speed:
 
 | Starts with | Style | Use it for |
 |---|---|---|
@@ -106,6 +106,6 @@ Every line the player sees is classified by how it starts, which sets its look a
 | `[` | system | flags, inventory, hints, score (instant) |
 | anything else | prose | descriptions, replies (10ms/char) |
 
-A line starting with an emoji that isn't in the list renders as prose. To use a new one, add it to `EVENT_PREFIX` in `packages/engine/src/engine/output.ts`.
+A line starting with an emoji that isn't in the list renders as prose. The set is fixed in this version, so pick from the list for scripted moments.
 
 **Copy style:** the built-in replies use curly quotes and apostrophes (“ ” ’). Your world will read best if it does too.
