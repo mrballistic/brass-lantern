@@ -59,6 +59,10 @@ export function migrateSave(world: World, raw: unknown): SavedState | null {
     if (raw.version === SAVE_VERSION) {
       // 1.12.0 stamped characters' arrivals with turn numbers (`arrived`); 1.12.5 uses `seq`.
       if (isRecord(g.npcs)) for (const n of Object.values(g.npcs)) if (isRecord(n)) delete n.arrived;
+      // Items added to the world since the save was made start where the world places them; a null (consumed) stays null.
+      if (isRecord(g.locations)) {
+        for (const [id, at] of Object.entries(initialLocations(world))) if (!Object.hasOwn(g.locations, id)) g.locations[id] = at;
+      }
       return { version: SAVE_VERSION, savedAt, gameState: g as unknown as GameState, outputHistory: history(raw) };
     }
     if (raw.version === '1.0') {

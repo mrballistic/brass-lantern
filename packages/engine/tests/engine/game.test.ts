@@ -10,6 +10,44 @@ import type { Effect, World } from '../../src/types/world';
 import { fixtureWorld } from '../fixtures/world';
 
 describe('createGame', () => {
+  it('determiners and possessives do not block a name; an unknown descriptive word does', () => {
+    const world: World = {
+      ...fixtureWorld,
+      rooms: { ...fixtureWorld.rooms, bedroom: { ...fixtureWorld.rooms.bedroom, items: ['alarm', 'bed', 'ball', 'stapler', 'lantern'] } },
+      items: {
+        ...fixtureWorld.items,
+        ball: { name: 'ball', description: 'A ball.', portable: true, tags: [] },
+        stapler: { name: 'stapler', description: 'A stapler.', portable: true, tags: [] },
+        lantern: { name: 'brass lantern', aliases: ['lamp'], description: 'A lantern.', portable: true, tags: [] },
+      },
+    };
+    const game = createGame(world, { seed: 1 });
+    expect(game.send('examine his stapler').lines.join(' ')).toContain('A stapler.');
+    expect(game.send('examine your lamp').lines.join(' ')).toContain('A lantern.');
+    expect(game.send('take red ball').lines.join(' ')).toMatch(/don’t see/);
+    expect(game.state.locations.ball).not.toBe('player');
+    expect(game.send('examine old brass lamp').lines.join(' ')).toMatch(/You see no “old brass lamp”/);
+    game.send('take this ball');
+    expect(game.state.locations.ball).toBe('player');
+  });
+
+  it('a name that contains “and” stays whole in a command', () => {
+    const world: World = {
+      ...fixtureWorld,
+      rooms: { ...fixtureWorld.rooms, bedroom: { ...fixtureWorld.rooms.bedroom, items: ['alarm', 'bed', 'lost_and_found'] } },
+      items: {
+        ...fixtureWorld.items,
+        lost_and_found: { name: 'lost and found box', aliases: ['lost and found'], description: 'A box.', portable: false, tags: [], container: {}, contains: ['flair'] },
+        flair: { name: 'flair', description: 'Piece of flair.', portable: true, tags: [] },
+      },
+    };
+    const game = createGame(world, { seed: 1 });
+    const reply = game.send('take flair from lost and found');
+    expect(game.state.locations.flair).toBe('player');
+    expect(reply.lines).toHaveLength(1);
+    expect(reply.lines.join(' ')).not.toMatch(/can’t|don’t|not/i);
+  });
+
   describe('hosted commands inside a compound line', () => {
     const room = (g: ReturnType<typeof createGame>) => g.state.currentRoom;
 

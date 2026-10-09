@@ -2,7 +2,7 @@ import type { GameState, ParsedAction } from '../types/game.ts';
 import type { World } from '../types/world.ts';
 import { interpret, newConversation, remember, resolvePronouns, type Conversation } from './conversation.ts';
 import { captureLine, execute, initialState, openingLines } from './engine.ts';
-import { TOO_LONG_REPLY, cleanInput, fallbackParse, splitCommands } from './parser.ts';
+import { TOO_LONG_REPLY, andNames, cleanInput, fallbackParse, splitCommands } from './parser.ts';
 import type { EngineResult } from './result.ts';
 import { ENGINE_VERSION } from '../version.ts';
 
@@ -80,6 +80,7 @@ export function createGame(world: World, options: { seed?: number } = {}): Game 
     if (options.seed !== undefined) s.rng = options.seed;
     return s;
   };
+  const names = andNames(world);
   let state = fresh();
   const opening = [...openingLines(world, state)];
   let conv = newConversation();
@@ -127,7 +128,7 @@ export function createGame(world: World, options: { seed?: number } = {}): Game 
   function send(input: string): EngineReply {
     // A line over the cap is answered before anything runs (no UNDO step, no turn).
     if (cleanInput(input) === null) return { lines: [TOO_LONG_REPLY], gameOver: state.gameOver, awaiting: Boolean(conv.pending) };
-    const pieces = splitCommands(input, world.verbs);
+    const pieces = splitCommands(input, world.verbs, names);
     const lines: string[] = [];
     beginLine();
     for (const [i, command] of pieces.entries()) {

@@ -1,4 +1,5 @@
-import { fallbackParse, splitCommands } from '../../src/engine/parser';
+import { andNames, fallbackParse, splitCommands } from '../../src/engine/parser';
+import { fixtureWorld } from '../fixtures/world';
 import type { World } from '../../src/types/world';
 
 describe('fallbackParse', () => {
@@ -374,5 +375,38 @@ describe('with-objects for built-in verbs (5a)', () => {
 describe('turning lights off, Zork’s words (5d)', () => {
   it('EXTINGUISH, DOUSE, BLOW OUT and PUT OUT are TURN OFF', () => {
     for (const w of ['extinguish lamp', 'douse lamp', 'blow out lamp', 'put out lamp']) expect(fallbackParse(w)).toEqual({ action: 'turn_off', target: 'lamp' });
+  });
+});
+
+describe('splitCommands with names that contain “and”', () => {
+  const names = ['lost and found box', 'lost and found'];
+  it('a name containing “and” is one command', () => {
+    expect(splitCommands('take flair from lost and found', undefined, names)).toEqual(['take flair from lost and found']);
+    expect(splitCommands('open the lost and found box', undefined, names)).toEqual(['open the lost and found box']);
+    expect(splitCommands('open the Lost  And Found Box', undefined, names)).toEqual(['open the Lost And Found Box']);
+  });
+  it('even inside a longer compound line', () => {
+    expect(splitCommands('open lost and found and take flair', undefined, names)).toEqual(['open lost and found', 'take flair']);
+    expect(splitCommands('n. take flair from lost and found', undefined, names)).toEqual(['n', 'take flair from lost and found']);
+    expect(splitCommands('look then take flair from lost and found', undefined, names)).toEqual(['look', 'take flair from lost and found']);
+  });
+  it('without names, splitting is unchanged', () => {
+    expect(splitCommands('take lamp and sword')).toEqual(['take lamp', 'take sword']);
+    expect(splitCommands('take flair from lost and found')).toEqual(['take flair from lost', 'take found']);
+  });
+  it('never leaks the mask character', () => {
+    for (const line of ['take lost and found box', 'x lost and found; y lost and found']) {
+      expect(splitCommands(line, undefined, names).join('')).not.toContain('\u0001');
+    }
+  });
+  it('andNames lists only names with “and”, longest first', () => {
+    const world = {
+      ...fixtureWorld,
+      items: {
+        ...fixtureWorld.items,
+        lost_and_found: { name: 'Lost  and Found box', aliases: ['lost and found', 'bin'], description: 'x', tags: [] },
+      },
+    } as World;
+    expect(andNames(world)).toEqual(['lost and found box', 'lost and found']);
   });
 });

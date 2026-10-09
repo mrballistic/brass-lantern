@@ -37,7 +37,7 @@ Write at least two: the **shortest win**, and a run that **earns every point**. 
 
 To pin every word, compare the whole transcript: `expect(text).toMatchInlineSnapshot()` fills itself in on the first `npx vitest -u`, and from then on any change to the text fails the test until you look at it.
 
-`send` takes a whole line, as the player would type it: chained commands, pronouns, AGAIN, OOPS, UNDO and the answer to a question all work. When the game asks “Which door do you mean?”, the reply’s `awaiting` is true and the next `send` answers it. There’s no intent server in a test, so write commands the regex parser understands.
+`send` takes a whole line, as the player would type it: chained commands, pronouns, AGAIN, OOPS, UNDO and the answer to a question all work. When the game asks “Which door do you mean?”, the reply’s `awaiting` is true and the next `send` answers it. There’s no intent server in a test, so write commands the regex parser understands, and name things with words the world knows. Every word of three or more letters has to be in the thing’s name, an alias or its ID, so `take red ball` misses a thing called only “ball” (“You don’t see a “red ball” here.”). In the browser the intent server might rescue that; in a test it fails, which is how you find the alias players will need. Since 2.1.0 this is stricter than it was, so a test that passed on 2.0 can start failing here: add the alias (see [How names are matched](./building-worlds/#how-names-are-matched)).
 
 ## Check the data
 
@@ -57,7 +57,7 @@ It finds the mistakes that fail silently in play:
 
 - effects naming items, rooms, events or endings that don’t exist, and unknown effects;
 - events named by rules, `onEnter`, `onTake`, `onWear`, `onSmash`, `onGive`, daemons and the finale that don’t exist;
-- conditions of unknown kinds, or naming items and rooms that don’t exist (in rules, triggers, exits, `requires`, daemons, hints and scoring);
+- conditions of unknown kinds, or naming items and rooms that don’t exist (in rules, triggers, exits, `requires`, daemons, hints and scoring); `direction:` takes any lowercase word, since an `orders.go` rule sees the place as typed (`direction:basement`);
 - exits to nowhere, doors that aren’t items, items listed in rooms or containers that don’t exist;
 - a world verb word that a built-in verb already owns, and the reserved IDs `player` and `number`.
 

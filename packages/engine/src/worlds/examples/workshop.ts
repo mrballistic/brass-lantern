@@ -1,4 +1,4 @@
-import type { World } from '../../types/world.ts';
+import type { World } from '@brass-lantern/engine';
 
 /** Recipe: orders, numbers and a buggy. See docs/guide/building-worlds/recipes.md. */
 export const workshop: World = {
@@ -88,6 +88,8 @@ export const workshop: World = {
       // And these through rules, keyed by the verb: “robot, push the button”.
       orders: {
         push: [{ if: 'target:button', then: 'robot_pushes' }, { say: ['The robot has no use for that.'] }],
+        // “robot, go to the dunes”: in a go rule, `direction:` is where it was told to go, as typed.
+        go: [{ if: 'direction:dunes', say: ['The robot looks at its treads, then at the sand, and stays put.'] }],
       },
     },
   },

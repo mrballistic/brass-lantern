@@ -22,6 +22,7 @@ import {
   resolvePronouns,
   scriptLines,
   setScriptFreeze,
+  andNames,
   splitCommands,
   statusText,
   TOO_LONG_REPLY,
@@ -38,6 +39,15 @@ import { cookiesReply, reportEvent, terminalTitle, type GameEvent, type GameOpti
 import { createCatalog, type Catalog } from './catalog.ts';
 import { createPersistenceService } from '../services/persistence.ts';
 import { readItem, writeItem } from '../services/storage.ts';
+
+const andNamesByWorld = new WeakMap<World, string[]>();
+
+/** The world’s names that contain “and”, worked out once per world. */
+function namesFor(world: World): string[] {
+  let names = andNamesByWorld.get(world);
+  if (!names) andNamesByWorld.set(world, (names = andNames(world)));
+  return names;
+}
 
 /** Used before any world cartridge is inserted, e.g. in a Z-machine-only build. */
 const EMPTY_WORLD: World = {
@@ -387,7 +397,7 @@ export function createGameStore(options: GameOptions, catalog: Catalog = createC
 
         // "get key and wallet", "take wallet then go outside": each piece runs
         // on its own, so each gets the LLM fallback if it misses.
-        const pieces = splitCommands(input, world.verbs);
+        const pieces = splitCommands(input, world.verbs, namesFor(world));
         for (const [i, command] of pieces.entries()) {
           // Store commands (RESTART above all) work even after the game has ended.
           if (this.storeCommand(command)) {

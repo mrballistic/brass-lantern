@@ -48,6 +48,7 @@ const RE = {
   climb: /^climb(?: (up|down))?(?: (?:the )?(.+))?$/i,
   take: /^(?:take|get|grab|pick up) (?:the )?(.+)$/i,
   drop: /^(?:drop|put down|leave) (?:the )?(.+)$/i,
+  follow: /^follow (?:the )?(.+)$/i,
   examine: /^(?:examine|inspect|look at|x) (?:the )?(.+)$/i,
   read: /^read (?:the )?(.+)$/i,
   // Zork's prepositions: PUT UNDER/BEHIND, THROW OFF/OVER, READ THROUGH, PUSH X dir / TO Y.
@@ -106,7 +107,7 @@ const BARE_VERBS: Record<string, string> = {
   take: 'take', get: 'take', grab: 'take', drop: 'drop', examine: 'examine', x: 'examine', inspect: 'examine',
   read: 'read', open: 'open', close: 'close', shut: 'close', lock: 'lock', unlock: 'unlock', put: 'put',
   give: 'give', wear: 'wear', use: 'use', search: 'search', smash: 'smash', break: 'smash', attack: 'attack',
-  kill: 'attack', fight: 'attack', stab: 'attack', throw: 'throw',
+  kill: 'attack', fight: 'attack', stab: 'attack', throw: 'throw', follow: 'follow',
 };
 
 const SINGLE_WORD: Record<string, ParsedAction> = {
@@ -155,6 +156,7 @@ const VERB_PATTERNS: ReadonlyArray<readonly [RegExp, string, ParsedAction['prep'
   [RE.take, 'take'],
   [RE.drop, 'drop'],
   [RE.search, 'search'],
+  [RE.follow, 'follow'],
   [RE.examine, 'examine'],
   [RE.read, 'read'],
   [RE.burn, 'burn'],
@@ -200,7 +202,7 @@ export const BUILT_IN_WORDS: ReadonlySet<string> = new Set([
   'push', 'pull', 'press', 'insert', 'put', 'slide', 'stick', 'feed', 'plug', 'attach', 'give', 'hand',
   'offer', 'return', 'wear', 'put on', 'close', 'shut', 'lock', 'unlock', 'place', 'set', 'remove',
   'search', 'look in', 'look inside', 'climb', 'go into', 'turn', 'switch', 'light', 'extinguish', 'douse', 'blow out', 'put out', 'board', 'disembark', 'get in', 'get out', 'get off', 'stand', 'burn', 'burn down', 'ignite', 'incinerate', 'talk', 'speak', 'chat', 'ask', 'question', 'tell', 'order', 'smash', 'destroy',
-  'break', 'kill', 'hit', 'attack', 'fight', 'stab', 'murder', 'slay', 'throw', 'toss', 'hurl', 'wreck', 'whack', 'beat', 'sit', 'sit down', 'relax', 'wait', 'z',
+  'break', 'kill', 'hit', 'attack', 'fight', 'stab', 'murder', 'slay', 'throw', 'toss', 'hurl', 'wreck', 'whack', 'beat', 'sit', 'sit down', 'relax', 'wait', 'z', 'follow',
   ...Object.keys(SINGLE_WORD),
   ...Object.keys(DIRECTIONS),
 ]);
@@ -380,11 +382,14 @@ function maskQuotes(s: string): string {
  * recognizes, or an object list after a list verb. Otherwise the clause stays
  * whole ("could you grab my keys and wallet") for the LLM to read in one go.
  */
-export function splitCommands(rawInput: string, verbs?: World['verbs']): string[] {
+export function splitCommands(rawInput: string, verbs?: World['verbs'], names?: readonly string[]): string[] {
   const clean = cleanInput(rawInput);
   if (clean === null) return [];
-  const input = stripTrailingStops(clean);
-  if (!input) return [];
+  const stripped = stripTrailingStops(clean);
+  if (!stripped) return [];
+  // A name that holds “and” (“lost and found”) stays whole: its spaces are masked while splitting
+  // and restored in every piece.
+  const input = maskNames(stripped, names);
   // A quoted phrase never splits (its contents are masked, length for length), and a text verb
   // takes everything after it: its words may hold full stops and “then”.
   const masked = maskQuotes(input);
@@ -398,7 +403,7 @@ export function splitCommands(rawInput: string, verbs?: World['verbs']): string[
   for (const [breakAt, next] of [...breaks, [masked.length, masked.length]]) {
     const clause = input.slice(start, breakAt);
     if (textVerb?.test(clause)) {
-      out.push(input.slice(start));
+      out.push(unmaskNames(input.slice(start)));
       return out;
     }
     if (clause) out.push(...splitClause(clause, verbs));
@@ -469,12 +474,46 @@ function orderInLine(input: string, verbs?: World['verbs']): ParsedAction | null
   return { action: 'order', target: head, indirect: m[2].trim() };
 }
 
-function splitClause(clause: string, verbs?: World['verbs']): string[] {
+const NAME_SPACE = '\u0001';
+
+/** The names in `names` (longest first) with their spaces swapped for a mask character. */
+function maskNames(input: string, names?: readonly string[]): string {
+  let out = input;
+  for (const name of names ?? []) {
+    const words = name.trim().split(/\s+/).filter(Boolean).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    if (words.length < 2) continue;
+    const re = new RegExp(`(?<![\\w])${words.join('\\s+')}(?![\\w])`, 'gi');
+    out = out.replace(re, (m) => m.replace(/\s/g, NAME_SPACE));
+  }
+  return out;
+}
+
+function unmaskNames(text: string): string {
+  return text.includes(NAME_SPACE) ? text.replaceAll(NAME_SPACE, ' ') : text;
+}
+
+/**
+ * Every item and NPC name and alias that contains “and”, lowercased and whitespace-collapsed, longest
+ * first. Hand it to `splitCommands` so “lost and found” isn’t read as two things.
+ */
+export function andNames(world: World): string[] {
+  const found = new Set<string>();
+  for (const thing of [...Object.values(world.items ?? {}), ...Object.values(world.npcs ?? {})]) {
+    for (const raw of [thing.name, ...(thing.aliases ?? [])]) {
+      const name = raw.toLowerCase().replace(/\s+/g, ' ').trim();
+      if (/\band\b/.test(name)) found.add(name);
+    }
+  }
+  return [...found].sort((a, b) => b.length - a.length);
+}
+
+function splitClause(masked: string, verbs?: World['verbs']): string[] {
+  const clause = unmaskNames(masked);
   if (orderInLine(clause, verbs)) return [clause];
   // “take all but the wallet and shirt” is one command.
   const all = /\b(?:all|everything)\b/i.exec(clause);
   if (all && /\b(?:but|except)\b/i.test(clause.slice(all.index + all[0].length))) return [clause];
-  const pieces = clause.split(LIST_BREAK).filter(Boolean);
+  const pieces = masked.split(LIST_BREAK).filter(Boolean).map(unmaskNames);
   if (pieces.length === 1) return [clause];
   const out: string[] = [];
   let listVerb: string | null = null;
@@ -482,7 +521,7 @@ function splitClause(clause: string, verbs?: World['verbs']): string[] {
     const parsed = strictParse(piece, verbs);
     if (parsed) {
       out.push(piece);
-      listVerb = LIST_VERBS[parsed.action] ?? null;
+      listVerb = Object.hasOwn(LIST_VERBS, parsed.action) ? LIST_VERBS[parsed.action] : null;
     } else if (listVerb) {
       out.push(`${listVerb} ${piece}`);
     } else {
@@ -496,14 +535,14 @@ function parse(rawInput: string, allowBareWord: boolean, verbs?: World['verbs'])
   const input = cleanInput(rawInput)?.toLowerCase();
   if (!input) return null;
 
-  if (input in SINGLE_WORD) return SINGLE_WORD[input];
+  if (Object.hasOwn(SINGLE_WORD, input)) return SINGLE_WORD[input];
   // A verb on its own (“take”): the engine asks what for.
-  if (input in BARE_VERBS) return { action: BARE_VERBS[input] };
+  if (Object.hasOwn(BARE_VERBS, input)) return { action: BARE_VERBS[input] };
   if (input === 'exit') return { action: 'go', target: 'out', exit: true };
   // STAND and a bare GET OUT are DISEMBARK by another road (Zork's V-STAND, TAKE OUT): no vehicle guess.
   if (/^stand(?:\s+up)?$/.test(input)) return { action: 'disembark', via: 'stand' };
   if (/^get\s+(?:out|off)$/.test(input)) return { action: 'disembark', via: 'out' };
-  if (input in DIRECTIONS) return { action: 'go', target: DIRECTIONS[input] };
+  if (Object.hasOwn(DIRECTIONS, input)) return { action: 'go', target: DIRECTIONS[input] };
   if (input === 'enter') return { action: 'enter' };
   {
     const m = RE.board.test(input) ? null : input.match(RE.climb);

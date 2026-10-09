@@ -7,7 +7,7 @@ const tokens = (s: string): string[] =>
 /**
  * Score token-prefix overlap between an input phrase and a candidate's tokens.
  * A needle token scores 1 if any haystack token equals it, starts with it (>=2 chars),
- * or it starts with a haystack token (>=2 chars). "cube" → "cubicle" scores; single-char
+ * or it starts with a haystack token (>=2 chars). "cubic" → "cubicle" scores ("cube" doesn't); single-char
  * needle tokens are ignored as noise.
  */
 function tokenPrefixScore(needleTokens: string[], haystackTokens: string[]): number {
@@ -22,6 +22,16 @@ function tokenPrefixScore(needleTokens: string[], haystackTokens: string[]): num
     }
   }
   return score;
+}
+
+/** Function words that may be typed but never have to match: no author can alias around them. */
+const FUNCTION_WORDS = new Set(['the', 'this', 'that', 'these', 'those', 'his', 'her', 'its', 'their', 'your', 'our', 'some', 'any', 'and']);
+
+/** Every typed word of three or more letters, bar the function words, must match one of the candidate’s tokens. */
+function coversAll(needleTokens: string[], haystack: string[]): boolean {
+  return needleTokens
+    .filter((t) => t.length >= 3 && !FUNCTION_WORDS.has(t))
+    .every((t) => tokenPrefixScore([t], haystack) > 0);
 }
 
 const DIGITS = /^\d+$/;
@@ -39,7 +49,8 @@ function byWholeNumber(needle: string, candidates: Array<{ id: string; name: str
  *  1) exact ID match (after normalize)
  *  2) exact display-name match
  *  3) substring match
- *  4) token-prefix overlap (handles "cube farm" → "cubicle_farm", "swingline" → "red Swingline stapler")
+ *  4) token-prefix overlap (handles "cubic farm" → "cubicle_farm", "swingline" → "red Swingline stapler"),
+ *     where every typed word of three or more letters must match one of the candidate’s tokens
  *
  * Returns the matched ID, or null if nothing plausibly matches.
  */
@@ -70,6 +81,7 @@ export function fuzzyMatch(
     let best: { id: string; score: number } | null = null;
     for (const c of candidates) {
       const haystackTokens = [...tokens(c.id), ...tokens(c.name)];
+      if (!coversAll(needleTokens, haystackTokens)) continue;
       const score = tokenPrefixScore(needleTokens, haystackTokens);
       if (score > 0 && (!best || score > best.score)) {
         best = { id: c.id, score };
@@ -85,17 +97,18 @@ export function fuzzyMatch(
  * one was meant. Tiers, first that matches wins:
  *  1) exact name or alias (and exact ID, which counts as one more name)
  *  2) substring of the ID, name or an alias
- *  3) the best token-prefix score
- * With `byId` (the intent server answers in IDs) an exact ID wins alone.
+ *  3) the best token-prefix score, among candidates that match every typed word of 3+ letters
+ * With `byId` (the intent server answers in IDs) an exact ID wins alone. With `selfWords`
+ * (ASK X ABOUT ME) ME, MYSELF, SELF and YOURSELF match only a candidate named exactly that.
  */
 export function fuzzyCandidates(
   input: string,
   candidates: Array<{ id: string; name: string; aliases?: string[] }>,
-  opts: { byId?: boolean } = {},
+  opts: { byId?: boolean; selfWords?: boolean } = {},
 ): string[] {
   const needle = normalize(input);
   if (!needle) return [];
-  const self = selfMatches(needle, candidates, opts.byId);
+  const self = selfMatches(needle, candidates, opts.byId, opts.selfWords);
   if (self) return self;
   if (DIGITS.test(needle)) return byWholeNumber(needle, candidates);
   const exactId = candidates.filter((c) => normalize(c.id) === needle);
@@ -110,7 +123,9 @@ export function fuzzyCandidates(
   let best = 0;
   let ids: string[] = [];
   for (const c of candidates) {
-    const score = tokenPrefixScore(needleTokens, [...tokens(c.id), ...words(c).flatMap(tokens)]);
+    const hay = [...tokens(c.id), ...words(c).flatMap(tokens)];
+    if (!coversAll(needleTokens, hay)) continue;
+    const score = tokenPrefixScore(needleTokens, hay);
     if (score > best) [best, ids] = [score, [c.id]];
     else if (score === best && score > 0) ids.push(c.id);
   }
@@ -144,7 +159,7 @@ export function fuzzyMatchExit(
     se: ['southeast'],
     sw: ['southwest'],
   };
-  const expanded = synonyms[needle] ?? [needle];
+  const expanded = Object.hasOwn(synonyms, needle) ? synonyms[needle] : [needle];
   for (const label of Object.keys(exits)) {
     const n = normalize(label);
     if (expanded.includes(n) || n === needle) return label;
@@ -156,7 +171,8 @@ export function fuzzyMatchExit(
     if (STRICT_DIRECTIONS.has(n)) continue; // also don't backwards-match labels that are pure directions
     if (n.includes(needle) || needle.includes(n)) return label;
   }
-  // Token-prefix fallback: "cube farm" → "cubicle_farm", "break" → "break_room".
+  // Token-prefix fallback: "cubic farm" → "cubicle_farm", "break" → "break_room".
+  // Every typed word of three or more letters must match a token of the label.
   // Pick the highest-scoring non-direction label.
   if (needle.length >= 2) {
     const needleTokens = tokens(needle);
@@ -164,7 +180,9 @@ export function fuzzyMatchExit(
     for (const label of Object.keys(exits)) {
       const n = normalize(label);
       if (STRICT_DIRECTIONS.has(n)) continue;
-      const score = tokenPrefixScore(needleTokens, tokens(n));
+      const hay = tokens(n);
+      if (!coversAll(needleTokens, hay)) continue;
+      const score = tokenPrefixScore(needleTokens, hay);
       if (score > 0 && (!best || score > best.score)) {
         best = { label, score };
       }
@@ -209,8 +227,8 @@ export function namesSelf(word: string, candidates: Candidate[], opts: { byId?: 
  * named exactly that, and the reserved IDs nothing when they come from the intent server.
  * Null when the word matches as any other.
  */
-function selfMatches(needle: string, candidates: Candidate[], byId?: boolean): string[] | null {
+function selfMatches(needle: string, candidates: Candidate[], byId?: boolean, selfWords?: boolean): string[] | null {
   if (byId && RESERVED.has(needle)) return [];
   if (!isSelfWord(needle)) return null;
-  return ALWAYS_SELF.test(needle) ? [] : candidates.filter((c) => namedExactly(needle, c)).map((c) => c.id);
+  return ALWAYS_SELF.test(needle) && !selfWords ? [] : candidates.filter((c) => namedExactly(needle, c)).map((c) => c.id);
 }

@@ -1,14 +1,15 @@
 import { captureLine, execute, initialState, openingLines } from '../../src/engine/engine';
-import { fallbackParse, splitCommands } from '../../src/engine/parser';
+import { andNames, fallbackParse, splitCommands } from '../../src/engine/parser';
 import type { World } from '../../src/types/world';
 
 /** Plays typed lines through the real parser and engine. Returns the state and the transcript. */
 export function play(world: World, lines: string[]) {
+  const names = andNames(world);
   const state = initialState(world);
   const log = [...openingLines(world, state)];
   for (const line of lines) {
     log.push(`> ${line}`);
-    for (const command of splitCommands(line, world.verbs)) {
+    for (const command of splitCommands(line, world.verbs, names)) {
       // A capture taking a piece ends the line, as in the store.
       const captured = captureLine(world, state, command);
       if (captured) {

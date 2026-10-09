@@ -87,7 +87,7 @@ export function contentsLines(world: World, state: GameState, id: string, depth 
   // Untouched things with a first-seen sentence describe themselves.
   const told = kids.filter((k) => firstSeen(world, state, k));
   for (const k of told) {
-    lines.push(world.items[k].initialDescription!);
+    lines.push(expandTemplate(world.items[k].initialDescription!, world, state));
     lines.push(...contentsLines(world, state, k, depth));
   }
   const rest = kids.filter((k) => !told.includes(k));
@@ -114,10 +114,10 @@ function surfaceAsFloor(world: World, state: GameState, id: string, outside: str
   const lines: string[] = [];
   let listed = false;
   for (const k of [...kids.filter(told), ...kids.filter((k) => !told(k))]) {
-    if (told(k)) lines.push(world.items[k].initialDescription!);
+    if (told(k)) lines.push(expandTemplate(world.items[k].initialDescription!, world, state));
     else {
       listed = true;
-      lines.push((world.items[k].roomDescription ?? `There is ${withArticle(world, k)} here${lightNote(world, state, k)}.`) + outside);
+      lines.push(expandTemplate(world.items[k].roomDescription ?? `There is ${withArticle(world, k)} here${lightNote(world, state, k)}.`, world, state) + outside);
     }
     lines.push(...contentsLines(world, state, k));
   }
@@ -133,7 +133,8 @@ export function lightNote(world: World, state: GameState, id: string): string {
 function itemSentence(world: World, state: GameState, id: string): string | undefined {
   const item = world.items[id];
   if (!item) return undefined;
-  return firstSeen(world, state, id) ? item.initialDescription : item.roomDescription;
+  const text = firstSeen(world, state, id) ? item.initialDescription : item.roomDescription;
+  return text === undefined ? undefined : expandTemplate(text, world, state);
 }
 
 /** What an item's room-sentence script says now (Zork's DESCFCN), if it has one that says anything. */
@@ -250,4 +251,24 @@ export function npcDescription(world: World, state: GameState, id: string): stri
   const npc = world.npcs[id];
   const text = scriptDescription(npc?.descriptionScript, world, state) ?? npc?.descriptions?.find((d) => evaluateCondition(d.if, state, world))?.text ?? npc?.description ?? id;
   return expandTemplate(text, world, state);
+}
+
+/**
+ * “The robot”: a character’s name with its article (`NPC.article`, default “the”; '' for a proper name),
+ * capitalized, for the start of a sentence (“The robot can’t go that way.”). Mid-sentence, use `npcthe`.
+ */
+export function npcThe(world: World, id: string): string {
+  const npc = world.npcs[id];
+  const a = npc.article ?? 'the';
+  return a ? `${a[0].toUpperCase()}${a.slice(1)} ${npc.name}` : npc.name;
+}
+
+/**
+ * “the robot”: the same, for the middle of a sentence, with the article lowercased
+ * (“You’d rather the robot came to you.”). At the start of a sentence, use `npcThe`.
+ */
+export function npcthe(world: World, id: string): string {
+  const npc = world.npcs[id];
+  const a = npc.article ?? 'the';
+  return a ? `${a.toLowerCase()} ${npc.name}` : npc.name;
 }

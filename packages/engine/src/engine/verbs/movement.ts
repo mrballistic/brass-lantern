@@ -1,10 +1,11 @@
 import type { GameState } from '../../types/game.ts';
 import type { Exit, World } from '../../types/world.ts';
 import { evaluateCondition } from '../conditions.ts';
+import { exitRefusal } from '../exits.ts';
 import { COMPASS, describeRoom, exitList, exitTarget } from '../describe.ts';
 import { fuzzyMatchExit } from '../fuzzy.ts';
 import { isSafeKey } from '../keys.ts';
-import { isAwake, isLit, isNpcHidden, isOpen, isWater, restTerrains, matchItem, nextPlacing, npcStateOf, npcsIn, onFootTerrains, pickItem, terrainOf, travelTerrains, visibleItems } from '../model.ts';
+import { isAwake, isLit, isNpcHidden, isWater, restTerrains, matchItem, nextPlacing, npcStateOf, npcsIn, onFootTerrains, pickItem, terrainOf, travelTerrains, visibleItems } from '../model.ts';
 import { handleBoard } from './vehicle.ts';
 import { runEventKey, runSteps, turnHalted, vehicleLine } from '../effects.ts';
 import { nextRandom } from '../rng.ts';
@@ -121,13 +122,9 @@ const refuse = (line: string): EngineResult => ({ ...ok([line]), fatal: true });
 
 /** Follow one exit. Every refusal comes before the move, so it changes nothing. */
 function followExit(exit: string | Exit, world: World, state: GameState): EngineResult {
-  if (typeof exit !== 'string') {
-    const refused = exit.denials?.find((d) => evaluateCondition(d.if, state, world));
-    if (refused) return refuse(refused.text);
-    if (exit.if && !evaluateCondition(exit.if, state, world)) return refuse(exit.denial ?? 'You can’t go that way.');
-    if (exit.door && !isOpen(world, state, exit.door)) return refuse(`The ${world.items[exit.door]?.name ?? exit.door} is closed.`);
-    if (!exit.to) return refuse(exit.denial ?? 'You can’t go that way.');
-  }
+  const why = exitRefusal(exit, world, state);
+  if (why !== null) return refuse(why);
+  if (typeof exit !== 'string' && !exit.to) return refuse(exit.denial ?? 'You can’t go that way.');
   const to = exitTarget(exit)!;
   // GOTO's own refusals aren't fatal (they RFALSE): the room's end routine still runs.
   const refused = vehicleRefusal(to, world, state);

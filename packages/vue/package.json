@@ -1,6 +1,6 @@
 {
   "name": "@brass-lantern/vue",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "author": "Todd Greco <mrballistic@gmail.com>",
   "description": "Brass Lantern for Vue: the CRT terminal, the game store, themes, and a mountGame helper.",
   "license": "MIT",
@@ -51,7 +51,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@brass-lantern/engine": "^2.0.0",
+    "@brass-lantern/engine": "^2.1.0",
     "ifvms": "1.1.6"
   },
   "peerDependencies": {

@@ -1,5 +1,37 @@
 # Changelog
 
+## 2.1.0 (2026-10-08)
+
+Fixes found while moving Office Space onto 2.0.0, plus engine items any world could hit. Saves are still format 2.0. Two changes reach existing worlds on purpose: name matching is stricter, and EXAMINE of a character needs light.
+
+### Added
+
+- **FOLLOW is a built-in verb.** Bare FOLLOW asks “What do you want to follow?”; FOLLOW *character* answers “You’d rather … came to you. Try *NAME*, FOLLOW ME.”; FOLLOW *thing* says “You can’t follow that.”. `instead.follow` rules answer first. “*X*, FOLLOW ME” now parses as an order with no world verb, so `orders.follow` rules fire. FOLLOW is in HELP, and `@brass-lantern/server` accepts `follow` from the model. A world that declared its own `follow` verb gets an audit report (“verb word … is a built-in”) and should drop it.
+- **`article` on characters.** Brass style starts the engine’s lines about a character with it (“The robot can’t go that way.”, FOLLOW’s reply). Default “the” (lowercased mid-sentence, as in FOLLOW’s reply); `''` for a proper name, so Floyd isn’t “The Floyd”. The bundled Gary (tutorial) and Madame Zora (fortune recipe) use `''`.
+- **Saves pick up new items.** Restoring a format 2.0 save puts any item the save has no place for (one a later version of the world added) where the world starts it. Items the player used up stay gone.
+- **`andNames(world)`** lists the world’s item and character names and aliases that contain “and”. `splitCommands` takes it as a third argument; `createGame` and the Vue terminal pass it for you.
+
+### Changed
+
+- **Name matching needs every typed word.** The last-resort tier of the matcher (word prefixes) now matches only when every typed word of three or more letters matches a word of the thing’s name, aliases or ID. Common determiners and possessives (this, that, his, your, some, …) are ignored, like “a”, “of” and “my”. “red ball” no longer finds a thing called only “ball”; add the alias (`aliases: ['red ball']`). This stops a name landing on a different thing that shares one word with it (“give smiley flair” reaching another flair). No Zork aliases were needed.
+- **EXAMINE of a character in the dark** says it’s too dark to see. Talking, giving, orders and fights in the dark are unchanged.
+- **LIGHT on something burning with no switch** (a `flaming` item that isn’t `switchable`) says “It’s already lit.” instead of “You can’t turn that on.”. Only `light` items that are on light a room, as before.
+- **`go: true` world verbs run `instead.go` rules**, so a room’s or vehicle’s GO rules see DRIVE and LAND too.
+- **`ctx.exits` respects `denials`.** The player’s moves, characters’ moves and scripts share one exit check.
+- **Templates expand in item listings.** `{var:NAME}` and `{number}` fill in an item’s `initialDescription` and `roomDescription` in room listings, contents, surfaces and when opening a container.
+- **The audit accepts any `direction:` word**, since an `orders.go` rule sees the place as typed (`direction:basement`).
+
+### Fixed
+
+- **ASK *X* ABOUT ME** (or MYSELF) reaches a topic keyed or aliased `me` or `myself`.
+- **Names that contain “and”** stay whole in a compound line: “take flair from lost and found” is one command.
+- **Words like “constructor” and “tostring”** are unknown words, not entries found on the parser’s tables’ prototypes.
+- **An answer to a question drops a leading “the”**, as an object in a command does (“Which do you mean…?” “the sword”).
+
+### Docs
+
+- Building worlds has new sections on how names are matched, orders and FOLLOW, darkness, and saves across versions of a world. The schema, commands, conditions, library and testing pages cover each change above.
+
 ## 2.0.0 (2026-10-07)
 
 Brass Lantern becomes a library. The repo is now an npm-workspaces monorepo that publishes three packages, and the demo site is their first user. Behavior does not change: the site looks and plays as it did at 1.13.0, and Zork I’s native world still matches `zork1.z3`.

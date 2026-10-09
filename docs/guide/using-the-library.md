@@ -152,6 +152,35 @@ rl.close();
 
 `createGame` has no LLM: input the parser can’t read gets the engine’s own reply.
 
+### Your own loop
+
+`createGame` and the Vue terminal do the splitting, parsing and running for you. If you drive the lower-level pieces yourself (`splitCommands`, `fallbackParse`, `execute`), pass `splitCommands` the world’s names that contain “and”, or it will cut “take flair from lost and found” in two. Only names and aliases count: “lost and found” stays whole if it’s an item’s or a character’s name or one of its aliases, not if it only appears in a description. `andNames(world)` builds that list; work it out once per world, not once per line:
+
+```ts
+import { andNames, execute, fallbackParse, initialState, splitCommands } from '@brass-lantern/engine';
+
+const names = andNames(world);   // e.g. ['lost and found box', 'lost and found'], from item and character names and aliases
+const state = initialState(world);
+
+function run(line: string): string[] {
+  const out: string[] = [];
+  for (const command of splitCommands(line, world.verbs, names)) {
+    const action = fallbackParse(command, world.verbs);
+    out.push(...(action ? execute(action, { world, state }).lines : ['I didn’t understand that.']));
+  }
+  return out;
+}
+```
+
+```ts
+splitCommands('take flair from lost and found and go north', world.verbs, names);
+// ['take flair from lost and found', 'go north']
+splitCommands('take flair from lost and found and go north', world.verbs);
+// ['take flair from lost', 'take found', 'go north']
+```
+
+`names` is optional, and a world with no such names gives an empty list, so leaving it out changes nothing for those worlds. That loop leaves out what `createGame` adds on top (questions and their answers, AGAIN, OOPS, UNDO, captures), so prefer `createGame` unless you need the pieces.
+
 ## The intent server
 
 Loose phrasing (“make that thing stop beeping”) can go to an LLM that maps it onto your verbs and IDs. It only classifies. See [The intent server](./intent-server) for the protocol; here is the wiring.
@@ -208,7 +237,7 @@ game.send('look');
 
 `auditWorld` finds the mistakes that only show up when someone walks into them: exits that go nowhere, events nothing defines, references to items that do not exist. Put it in your test suite beside a test that plays the winning route.
 
-The world format hasn’t changed since 1.13.0; worlds written for it run unchanged.
+Worlds written for 1.13.0 or later run on 2.1.0. Five things behave differently: a typed word the world doesn’t know now stops a name from matching (“red ball” no longer finds a thing called only “ball”; add an alias, see [How names are matched](./building-worlds/#how-names-are-matched)); EXAMINE of a character in the dark says it’s too dark; `ctx.exits` hides denied exits; `go: true` verbs meet `instead.go` rules; and LIGHT on something already burning says it’s already lit. The CHANGELOG’s 2.1.0 Changed section has the details. 2.1.0 adds an optional `article` on characters and the built-in FOLLOW; a world that declared its own `follow` verb should drop it (`auditWorld` reports the clash).
 
 ## Story files (Z-machine)
 

@@ -2,9 +2,10 @@ import type { GameState, ParsedAction } from '../../types/game.ts';
 import type { World } from '../../types/world.ts';
 import { whichQuestion } from '../ask.ts';
 import { evaluateCondition } from '../conditions.ts';
-import { exitTarget } from '../describe.ts';
+import { exitTarget, npcThe } from '../describe.ts';
+import { exitRefusal } from '../exits.ts';
 import { fuzzyCandidates, fuzzyMatchExit, isMeWord, isSelfWord, namesSelf } from '../fuzzy.ts';
-import { AskSignal, isAwake, isInside, isNpcHidden, isOpen, matchNpc, moveItem, needObject, nextPlacing, npcRoom, npcScope, npcsSeen, npcStateOf, pickItem, PLAYER } from '../model.ts';
+import { AskSignal, isAwake, isInside, isNpcHidden, matchNpc, moveItem, needObject, nextPlacing, npcRoom, npcScope, npcsSeen, npcStateOf, pickItem, PLAYER } from '../model.ts';
 import { fallbackParse, readsNumber } from '../parser.ts';
 import { miss, ok, type EngineResult } from '../result.ts';
 import { runEventKey, turnHalted } from '../effects.ts';
@@ -21,7 +22,9 @@ export function handleAsk(action: ParsedAction, world: World, state: GameState):
   if (!person.topics || !action.indirect) return handleTalk(action.target, world, state);
   const word = action.indirect.replace(/^(?:the|my|your|his|her|a|an)\s+/i, '');
   const candidates = Object.keys(person.topics).map((k) => ({ id: k, name: k, aliases: person.topicAliases?.[k] }));
-  const [key] = fuzzyCandidates(word, candidates);
+  // ME and MYSELF are one word here: a topic keyed or aliased either way answers both.
+  const askWords = isMeWord(word) ? [word, word.toLowerCase() === 'me' ? 'myself' : 'me'] : [word];
+  const key = askWords.map((w) => fuzzyCandidates(w, candidates, { selfWords: true })[0]).find(Boolean);
   const fallback = () => ok([person.noTopic ?? talkLine(world, state, npc)]);
   if (!key) return fallback();
   const topic = person.topics[key];
@@ -178,7 +181,7 @@ function obey(
   const item = ids.target && world.items[ids.target] ? ids.target : null;
   const holds = item !== null && isInside(state, item, npc);
   // Why it can't, by name: “The robot can’t take the dial.”
-  const who = `The ${person.name}`;
+  const who = npcThe(world, npc);
   const thing = item ? `the ${world.items[item].name}` : 'that';
   const lacks = () => miss(item ? `${who} doesn’t have ${thing}.` : `${who} can’t ${verb} that.`);
   switch (verb) {
@@ -225,12 +228,8 @@ function npcExit(dir: string | undefined, room: string, world: World, state: Gam
   const label = dir ? fuzzyMatchExit(dir, exits) : null;
   if (!label) return null;
   const exit = exits[label];
-  if (typeof exit !== 'string') {
-    const denied = exit.denials?.find((d) => evaluateCondition(d.if, state, world));
-    if (denied) return { refused: denied.text };
-    if (exit.if && !evaluateCondition(exit.if, state, world)) return { refused: exit.denial ?? 'You can’t go that way.' };
-    if (exit.door && !isOpen(world, state, exit.door)) return { refused: `The ${world.items[exit.door]?.name ?? exit.door} is closed.` };
-  }
+  const why = exitRefusal(exit, world, state);
+  if (why !== null) return { refused: why };
   const to = exitTarget(exit);
   return to && world.rooms[to] ? { to } : { refused: (typeof exit !== 'string' && exit.denial) || 'You can’t go that way.' };
 }

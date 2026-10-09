@@ -78,6 +78,7 @@ export function handleHelp(world: World, storeHelp = false): EngineResult {
     'TAKE <item>              Pick up an item (synonyms: GET, GRAB; TAKE ALL)',
     'DROP <item>              Drop an item from your inventory',
     'EXAMINE <item|npc>       Inspect (synonyms: INSPECT, LOOK AT, X)',
+    'FOLLOW <character>       To bring someone along: NAME, FOLLOW ME',
     'READ <thing>             Read what’s written on it (also READ … THROUGH <lens>)',
     'TURN ON / OFF <thing>    Lamps and the like (also LIGHT)',
     'TURN <thing> TO <n>      Set a dial or the like (also SET … TO)',

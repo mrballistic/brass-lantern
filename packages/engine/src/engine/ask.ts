@@ -28,9 +28,9 @@ export function whichQuestion(world: World, word: string, candidates: string[]):
 }
 
 export function whatQuestion(action: ParsedAction, slot: Ask['slot'], targetName?: string): string {
-  const verb = VERB_WORDS[action.action] ?? action.action.replace(/_/g, ' ');
+  const verb = (Object.hasOwn(VERB_WORDS, action.action) ? VERB_WORDS[action.action] : null) ?? action.action.replace(/_/g, ' ');
   if (slot === 'indirect' && targetName) {
-    return `What do you want to ${verb} the ${targetName} ${INDIRECT_PREP[action.action] ?? 'with'}?`;
+    return `What do you want to ${verb} the ${targetName} ${(Object.hasOwn(INDIRECT_PREP, action.action) ? INDIRECT_PREP[action.action] : null) ?? 'with'}?`;
   }
   return `What do you want to ${verb}?`;
 }

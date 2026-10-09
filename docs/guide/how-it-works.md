@@ -31,6 +31,7 @@ The store (`packages/vue/src/stores/game.ts`) runs every line through the same s
    - Within a clause, `and` and commas split only when every piece is a recognized command, or an object after a list verb: `get key and wallet` becomes `get key` and `take wallet`.
    - A clause that isn’t clearly a list (“could you grab my keys and wallet”) stays whole.
    - Anything inside quotes is masked first, so a quoted “. ” or “, ” never splits a line (`answer “a well. yes”` is one command). A text verb (SAY, ANSWER) takes the rest of the line, and ends it.
+   - Names that contain “and” (`andNames(world)`: every item and character name and alias with the word in it, longest first) are masked too, so `take flair from lost and found and go north` is two commands. The store and `createGame` work the list out once per world.
 
    Each command may be **captured** first: a room’s or the world’s `capture` (`captureLine` in `packages/engine/src/engine/engine.ts`) can take it before it’s parsed, which ends the line. Captured input never reaches the intent server.
 3. **The conversation.** `interpret` (`packages/engine/src/engine/conversation.ts`) looks at the command in the light of the last one:
@@ -55,7 +56,7 @@ The store (`packages/vue/src/stores/game.ts`) runs every line through the same s
 Step 7 runs the engine on the literal reading first, and possibly again on the LLM’s reading. That’s only safe because **a miss never changes the game**. When you add an engine handler, decide whether you can act before you touch any state. `packages/engine/tests/engine/engine-hooks.test.ts` checks this.
 :::
 
-The intent server sees the room by ID and name (`red_mug (red coffee mug)`), so its answer uses IDs the engine matches exactly. Everything still goes through the same fuzzy matcher (`packages/engine/src/engine/fuzzy.ts`: exact ID, then exact name, then substring, then token prefix), so a slightly-off answer still lands.
+The intent server sees the room by ID and name (`red_mug (red coffee mug)`), so its answer uses IDs the engine matches exactly. Everything still goes through the same fuzzy matcher (`packages/engine/src/engine/fuzzy.ts`: exact ID, then exact name, then substring, then token prefix), so a slightly-off answer still lands. The token-prefix tier needs every typed word of three or more letters to match a word of the candidate, so an extra word (“red ball” for a plain “ball”) misses rather than landing on something that merely shares a word.
 
 ## Cartridges and sessions
 
@@ -120,7 +121,7 @@ A *built-in* verb, with default behavior in the engine, is a change to the engin
 - the dispatcher in `packages/engine/src/engine/engine.ts` (wrapped in `withRules`), plus its HELP text;
 - `ACTION_VOCAB` in `packages/server/src/llm.ts`. Without that last one, the server throws away the LLM’s answer as an unknown verb.
 
-**Saves** are format 2.0. A 1.0 save (from before the object tree) is converted on load by `packages/engine/src/engine/migrate.ts`, so players keep their games.
+**Saves** are format 2.0. A 1.0 save (from before the object tree) is converted on load by `packages/engine/src/engine/migrate.ts`, so players keep their games. A 2.0 save that has no place for an item (one a later version of the world added) gets that item’s starting place; an item recorded as `null` (used up) stays gone.
 
 ## The terminal
 

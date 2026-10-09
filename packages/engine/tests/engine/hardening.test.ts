@@ -239,3 +239,17 @@ describe('reserved keys never reach Object.prototype', () => {
     expect(auditWorld(world).filter((p) => p.includes('reserved name'))).toEqual([]);
   });
 });
+
+describe('prototype words are just unknown words', () => {
+  for (const w of ['constructor', '__proto__', 'tostring', 'hasownproperty']) {
+    it(`“${w}” bare, as a direction, as a topic and as an order never throws`, () => {
+      const game = createGame(world, { seed: 1 });
+      for (const line of [w, `go ${w}`, `ask neighbor about ${w}`, `neighbor, ${w}`]) {
+        const reply = game.send(line);
+        expect(reply.lines.join(' ')).not.toContain('Something went wrong');
+      }
+      // A bare word is a movement guess if it is plain letters (as any unknown word is), else not parsed.
+      expect(fallbackParse(w)).toEqual(/^[a-z]/i.test(w) ? { action: 'go', target: w } : null);
+    });
+  }
+});

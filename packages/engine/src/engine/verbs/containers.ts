@@ -1,6 +1,7 @@
 import type { GameState } from '../../types/game.ts';
 import type { World } from '../../types/world.ts';
 import { contentsLines, listPhrase } from '../describe.ts';
+import { expandTemplate } from '../text.ts';
 import {
   canReachInside,
   closedAround,
@@ -72,7 +73,7 @@ export function handleOpen(target: string | undefined, world: World, state: Game
   // Zork's V-OPEN: one untouched thing with a first-seen sentence speaks for itself.
   const only = world.items[inside[0]];
   if (world.style === 'infocom' && inside.length === 1 && only?.initialDescription && !state.itemState[inside[0]]?.moved) {
-    return ok([`The ${item.name} opens.`, only.initialDescription], true);
+    return ok([`The ${item.name} opens.`, expandTemplate(only.initialDescription, world, state)], true);
   }
   return ok([`Opening the ${item.name} reveals ${listPhrase(world, inside)}.`], true);
 }

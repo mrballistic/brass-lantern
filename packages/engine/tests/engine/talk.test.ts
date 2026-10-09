@@ -118,3 +118,29 @@ describe('final review fixes (1.12.5)', () => {
     expect(fallbackParse('tell neighbor to ask about the fence')?.action).toBe('order');
   });
 });
+
+describe('ASK ABOUT ME', () => {
+  const askWorld = (npc: Partial<World['npcs'][string]>): World => ({
+    ...fixtureWorld,
+    npcs: { ...fixtureWorld.npcs, neighbor: { ...fixtureWorld.npcs.neighbor, ...npc } },
+  });
+  const ask = (world: World, word: string) =>
+    execute({ action: 'ask', target: 'neighbor', indirect: word }, { world, state: stateWith(world, { room: 'yard' }) });
+
+  it('reaches a topic keyed “me”', () => {
+    const world = askWorld({ topics: { me: '“You? You’re fine.”', job: '“Ugh.”' } });
+    expect(ask(world, 'me').lines.join(' ')).toContain('You’re fine');
+    expect(ask(world, 'myself').lines.join(' ')).toContain('You’re fine');
+  });
+
+  it('reaches a topic aliased “me”', () => {
+    const world = askWorld({ topics: { peter: '“Peter? Sure.”' }, topicAliases: { peter: ['me', 'myself'] } });
+    expect(ask(world, 'me').lines.join(' ')).toContain('Peter? Sure');
+    expect(ask(world, 'myself').lines.join(' ')).toContain('Peter? Sure');
+  });
+
+  it('with no such topic, ME falls to the noTopic line', () => {
+    const world = askWorld({ topics: { job: '“Ugh.”' }, noTopic: '“Couldn’t say.”' });
+    expect(ask(world, 'me').lines[0]).toBe('“Couldn’t say.”');
+  });
+});

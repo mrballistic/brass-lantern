@@ -89,7 +89,7 @@ Message-only exits aren’t listed unless `listExits` names them.
 | Field | Type | |
 |---|---|---|
 | `name` | string | Display name, and what event lines like `[Added to inventory: …]` match. Keep it unique. |
-| `aliases?` | string[] | Other words players might use. Matched, never shown. |
+| `aliases?` | string[] | Other words players might use. Matched, never shown. Every word of three or more letters a player types must be in the name, an alias or the ID, so add the descriptive words players will reach for: `aliases: ['red ball']`. See [How names are matched](../guide/building-worlds/#how-names-are-matched). |
 | `descriptionScript?` | script name | A script whose `say` lines are EXAMINE’s text, ahead of `description` (same rules as a room’s). See [Descriptions from state](#descriptions-from-state). |
 | `description` | string | EXAMINE. Leave it empty (`''`) and EXAMINE does what Zork does for an object with no text: a container lists what’s in it or says “The *name* is empty.”; anything else is “There’s nothing special about the *name*.” |
 | `portable` | boolean | Can it be taken? |
@@ -109,7 +109,7 @@ Message-only exits aren’t listed unless `listExits` names them.
 | `vehicle?` | `{ travels, restsOn?, landing?, leave?, arrive?, lookScript? }` | Something the player can get into and travel in. See [Vehicles](#vehicles). |
 | `onEnd?` | `{ if, then }[]` | A vehicle’s end routines: while the player is aboard they run instead of the room’s. |
 | `burnable?` | boolean | BURN can set it alight (Zork’s BURNBIT). |
-| `flaming?` | boolean | It can set things alight: always, or while it’s on if it switches (Zork’s FLAMEBIT). |
+| `flaming?` | boolean | It can set things alight: always, or while it’s on if it switches (Zork’s FLAMEBIT). LIGHT or TURN ON on one that isn’t `switchable` says “It’s already lit.” It gives light only if it also has `light` and is on. |
 | `treasure?` | number | What it’s worth (Zork’s TVALUE). The engine doesn’t read it; scripts and scoring can. |
 | `text?` | string | What READ shows. Default: the description. |
 | `initialDescription?` | string | Its own sentence in a room until first taken. |
@@ -190,12 +190,30 @@ verbs: {
 | `indirect?` | string[] | Prepositions that introduce a second object (`with`, `on`). |
 | `reply?` | string | When no rule applies. Default: “Nothing happens.” `{target}` is replaced by the object’s name, `{a target}` by its name with an article. |
 | `held?` | boolean | The object must be something you hold, or can see inside something you hold (Zork’s HELD): POUR WATER means the water in your bottle. |
-| `go?` | boolean | Treat it as GO: through the target exit, or the exit labeled with the verb’s ID. |
+| `go?` | boolean | Treat it as GO: through the target exit, or the exit labeled with the verb’s ID. `instead.go` rules (the vehicle’s, the room’s) answer it as they answer GO. |
 | `afterBuiltIns?` | boolean | Its words may be built-in words: it reads only lines no built-in verb reads, after them (Zork III’s bare TURN DIAL, where the engine’s TURN wants TO or WITH). |
 
 - A world verb does nothing by itself: give items or rooms `instead` rules for it.
 - With no target, it looks for a rule on the room, then on anything in reach (SNOOZE finds the alarm clock).
-- A word a built-in verb already uses (`take`, `open`, …) is ignored, unless the verb is `afterBuiltIns`; `auditWorld` reports any (“verb word … is a built-in”).
+- A word a built-in verb already uses (`take`, `open`, …) is ignored, unless the verb is `afterBuiltIns`; `auditWorld` reports any (“verb word … is a built-in”). Since 2.1.0 that includes `follow`: a world that declared its own FOLLOW should drop it, and its `orders.follow` rules keep working (see [Orders](#orders)).
+- A `go: true` verb meets the same `instead.go` rules as GO, so a rule that refuses to leave refuses walking and driving alike:
+
+```ts
+verbs: { drive: { words: ['drive', 'drive to'], target: 'optional', go: true } },
+rooms: {
+  garage: {
+    // …
+    instead: { go: [{ if: '!flag:gate_open', say: ['The gate is shut.'] }] },
+  },
+},
+```
+
+```
+> drive north
+The gate is shut.
+> north
+The gate is shut.
+```
 
 ## Style
 
@@ -254,7 +272,9 @@ A **move** is one of these turns: MOVES in the header and SCORE count them. Comm
 | `litIf?` | condition | While it holds, every room is lit (Zork’s ALWAYS-LIT, for a spirit). Mustn’t use `lit:`. |
 | `blunder?` | `EventStep[]` | Run when the player tries a direction with no exit in the dark. Zork’s grue: `[{ chance: 80, then: [{ die: '…' }], else: ['You can’t go that way.'] }]`. |
 
-In an unlit dark room you can only find what you’re carrying. Trying to act on anything else gets `tooDark`: an understood refusal, so the intent server isn’t asked to re-guess. Turning a light on or off says so (`fall`, or the room’s description).
+In an unlit dark room you can only find what you’re carrying. Trying to act on anything else gets `tooDark`: an understood refusal, so the intent server isn’t asked to re-guess. EXAMINE of a character who’s there gets it too (“It’s too dark to see.”); talking to a character, giving it things, ordering it and fighting it still work in the dark. Turning a light on or off says so (`fall`, or the room’s description).
+
+Only an item with `light` that is on lights a room. A `flaming` thing with no switch (a torch, a lit match) answers LIGHT with “It’s already lit.”, and gives no light by itself. If it should also light the room, give it `light: true` and switch it on with a `{ switch: 'torch', on: true }` effect.
 
 ## Death
 
@@ -284,7 +304,8 @@ The `die` effect uses it. Without a `death` block, dying prints the cause and en
 | Field | Type | |
 |---|---|---|
 | `name` | string | |
-| `description` | string | EXAMINE. |
+| `article?` | string | Brass style: the article in the engine’s lines that start with the character’s name (“The robot can’t go that way.”, FOLLOW’s reply). Default `'the'`; `''` for a proper name, so Floyd isn’t “The Floyd”. Mid-sentence it’s lowercased: “You’d rather the robot came to you.” See [Orders](#orders). |
+| `description` | string | EXAMINE. In an unlit dark room, EXAMINE of a character gets the [darkness](#darkness) reply. |
 | `onGive?` | `Record<item id, event>` | GIVE hands the item over and fires the event. |
 | `refuse?` | `Record<item id, string>` | Declines that item; the player keeps it. |
 | `refuseGift?` | string | Declines anything else. |
@@ -293,11 +314,11 @@ The `die` effect uses it. Without a `death` block, dying prints the cause and en
 | `descriptionScript?` | script name | A script whose `say` lines are that description, ahead of `descriptions`. |
 | `instead?`, `after?` | `Record<verb, Rule[]>` | Rules for verbs aimed at it: THROW X AT it, GIVE, TAKE, a world verb. |
 | `combat?` | `Combatant` | Makes it someone you can fight. See [Combat](#combat). |
-| `aliases?` | string[] | Other words for it (“robber”, “man”). |
+| `aliases?` | string[] | Other words for it (“robber”, “man”). Matched like an item’s: every word of three or more letters typed must be in the name, an alias or the ID. |
 | `scenery?` | boolean | Present but not listed: the room’s own description mentions it (Zork’s cyclops). `{ npcState, scenery }` changes it in play. |
 | `hidden?` | boolean | Starts hidden: in its room for scripts, but not seen, listed, matched or fought until revealed. |
 | `topics?` | `Record<topic, string or { if?, text }[]>` | ASK or TELL it ABOUT a topic. A list is tried in order; the first entry whose `if` holds answers. Text that names an event runs it. |
-| `topicAliases?` | `Record<topic, string[]>` | Other words for a topic. |
+| `topicAliases?` | `Record<topic, string[]>` | Other words for a topic. A topic keyed or aliased `me` or `myself` answers ASK *X* ABOUT ME and ABOUT MYSELF (either word reaches it). |
 | `noTopic?` | string | For a topic it has nothing on. Default: its TALK TO line. |
 | `refuseOrder?` | string | Its answer to an order. Default: “*Name* ignores you.” |
 | `orders?` | `Record<verb, Rule[]>` | Rules for orders, by the inner command’s verb. See [Orders](#orders). |
@@ -324,6 +345,8 @@ Characters’ places and states live in the game state (`npcs`), starting from t
    - **`give`**: “give me the key” moves it from the character to the player (the second object is the player).
 5. Otherwise `refuseOrder`, or “*Name* ignores you.”
 
+In brass style the why-lines in step 4 start with the character’s `article` (default “the”): “The robot can’t go that way.” Give a proper name `article: ''` and it reads “Floyd can’t go that way.”
+
 **An order to a character with `orders` or `obeys` ends the rest of the line** (Zork clears the typed-ahead commands), unless it was a miss. That includes an obeying character’s refusal, which takes a turn like any understood command. A character with neither answers orders only through `instead.order` and `refuseOrder`.
 
 **`heardFrom`** lists rooms from which the player can give a character orders while it’s somewhere else. Its orders are carried out where it stands (Zork III’s dungeon master, ordered from the cell while he stands on the parapet).
@@ -339,6 +362,41 @@ robot: {
   },
 },
 ```
+
+### FOLLOW
+
+FOLLOW is a built-in verb. With no rule of the world’s:
+
+- bare FOLLOW asks “What do you want to follow?”;
+- FOLLOW *character* points the player at the order form: “You’d rather Floyd came to you. Try FLOYD, FOLLOW ME.” (with `article: ''`);
+- FOLLOW *thing* says “You can’t follow that.”;
+- FOLLOW *something not here* is a miss, so the intent server may read it.
+
+An `instead.follow` rule on the character (or the room) answers FOLLOW *character* instead. **“*X*, FOLLOW ME”** is an order: it runs `orders.follow`, where ME is the player (`target:player`). The engine keeps no following state of its own, so a rule that agrees sets it with the `follow` effect, and the character then goes where the player goes ([Followers](#followers)):
+
+```ts
+floyd: {
+  name: 'Floyd',
+  article: '',
+  description: 'Floyd, a cheerful robot.',
+  orders: { follow: [{ if: 'target:player', then: 'floyd_tags_along' }] },
+},
+// events:
+floyd_tags_along: ['“Floyd go too!” he squeaks.', { follow: 'floyd' }],
+```
+
+```
+> follow floyd
+You’d rather Floyd came to you. Try FLOYD, FOLLOW ME.
+> floyd, follow me
+“Floyd go too!” he squeaks.
+> north
+📍 Study
+…
+Floyd follows you.
+```
+
+A character with no `orders.follow` rule answers “floyd, follow me” as any other order it has no rule for (step 5 above).
 
 ### Followers
 
@@ -412,11 +470,17 @@ dial: {
 | READ X THROUGH/WITH Y | `read`, with the second object | reads X |
 | PUSH X *direction*, PUSH X TO Y | `push`, `direction:DIR` / the second object | “You can’t push things to that.” |
 
-**ME.** ME and MYSELF in an object slot name the player; so do SELF and YOURSELF, unless something in sight (or someone here) is named or aliased that. Rules match them with `target:player` or `indirect:player` (and `with: 'player'`). The engine adds no replies of its own for ME: a verb aimed at it with no rule misses with the word typed (“You don’t see a “me” here.”), so a world says what Zork says (“You can’t tie anything to yourself.”) in a rule. The reserved ID `player` is never matched against a thing’s or character’s name (a “record player” is safe from TAKE ME); typed, “player” is an ordinary word. In an order, ME is the speaker (“robot, give me the key”) and YOURSELF the character (“robot, push yourself”).
+**ME.** ME and MYSELF in an object slot name the player; so do SELF and YOURSELF, unless something in sight (or someone here) is named or aliased that. Rules match them with `target:player` or `indirect:player` (and `with: 'player'`). The engine adds no replies of its own for ME: a verb aimed at it with no rule misses with the word typed (“You don’t see a “me” here.”), so a world says what Zork says (“You can’t tie anything to yourself.”) in a rule. The reserved ID `player` is never matched against a thing’s or character’s name (a “record player” is safe from TAKE ME); typed, “player” is an ordinary word. In an order, ME is the speaker (“robot, give me the key”) and YOURSELF the character (“robot, push yourself”). ASK *X* ABOUT ME (or MYSELF) reaches a topic keyed or aliased `me` or `myself`, and nothing else: `topicAliases: { you: ['me'] }` answers both.
 
 ## Descriptions from state
 
-- **Templates.** `{var:NAME}` (0 when unset) and `{number}` fill in from the game in any room, item or character description, a `descriptions` entry and an event line. A `{number}` with no number typed stays as written. Expanding reads the game and changes nothing.
+- **Templates.** `{var:NAME}` (0 when unset) and `{number}` fill in from the game in any room, item or character description, a `descriptions` entry, an event line, and an item’s `initialDescription` and `roomDescription` wherever they list it (the room, a container’s contents, a surface, opening a container). A `{number}` with no number typed stays as written. Expanding reads the game and changes nothing.
+
+  ```ts
+  tally: { name: 'tally board', description: 'Chalk marks.', portable: false, tags: [], roomDescription: 'A tally board on the wall reads {var:tally}.' },
+  ```
+
+  With `tally` at 3, LOOK lists “A tally board on the wall reads 3.”
 - **`descriptionScript`** on a room, item or character names a [script](#scripts) that builds the description from the game: its `say` lines, joined with newlines. It comes first, ahead of `descriptions`, `firstDescription` and `description`. It’s for descriptions a condition list can’t say: a grid of cells, a dial’s setting, a room that lists its own exits.
 - **`roomDescriptionScript`** on an item is its sentence in a room listing, ahead of its other sentences; it says everything itself, so no “(outside the boat)” follows and its contents aren’t listed (Zork’s DESCFCN).
 - **`vehicle.lookScript`** describes a vehicle from inside. See [Vehicles](#vehicles).
@@ -442,7 +506,7 @@ A script gets a read-only view of the game and returns ordinary steps, which the
 - `rooms()` in the world’s order, `visited(room)`, `tags(room)`, `lit(room?)`;
 - `children(place)`, what’s directly in a room, item or character, in listing order;
 - `test(condition)`, whether a [condition](./conditions-and-events#conditions) holds now, through the engine’s own parser (scripts never parse conditions themselves);
-- `exits(room)`, the exits the player could take from that room now (`{ direction, to }[]`): the exit’s `if` holds and its door is open;
+- `exits(room)`, the exits the player could take from that room now (`{ direction, to }[]`): no entry in its `denials` holds, its `if` holds and its door is open. It’s the same check the player’s moves and characters’ orders use, so a script never offers an exit GO would refuse;
 - `resolve(words, scope?)`, words read as an item the way the parser would: `'here'` (within reach, the default), `'held'` or `'all'`; null if none matches;
 - `number` and `text`, the number or the typed words in the command being run (TURN DIAL TO 4, SAY HELLO);
 - `treasure(id)`, an item’s `treasure` value or 0;

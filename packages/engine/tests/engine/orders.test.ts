@@ -256,9 +256,8 @@ describe('orders (6a)', () => {
     for (const input of ['robot, constructor', 'robot, tostring sock', 'robot, valueof', 'robot, hasownproperty me']) {
       const before = world(s);
       const r = run(s, input);
-      // A bare word is GO through no exit, which the robot can't do; the rest are refusals
-      // (CONSTRUCTOR is found on SINGLE_WORD's prototype by the parser's `in`: see the backlog).
-      expect(r.lines).toEqual([input === 'robot, valueof' ? 'The robot can’t go that way.' : 'robot ignores you.']);
+      // A bare word is GO through no exit, which the robot can't do; the rest are refusals.
+      expect(r.lines).toEqual([input === 'robot, valueof' || input === 'robot, constructor' ? 'The robot can’t go that way.' : 'robot ignores you.']);
       expect(world(s)).toBe(before);
     }
   });

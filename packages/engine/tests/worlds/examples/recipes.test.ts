@@ -159,10 +159,10 @@ describe('recipes', () => {
       You wound the guard.
       The club catches your shoulder.
       > attack guard with sword
-      The guard drops their weapon.
+      The club flies out of the guard’s hand.
       The guard gropes for his club.
       > attack guard with sword
-      The guard can’t defend themselves.
+      The guard can’t defend himself.
       The guard is dead.
       > diagnose
       [You have a light wound, which will be cured after 28 moves.]

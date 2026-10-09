@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createGameStore, setDownload } from '../../src/stores/game';
 import { MAX_INPUT_LENGTH, TOO_LONG_REPLY, inventoryOf } from '@brass-lantern/engine';
 import { toRaw } from 'vue';
+import type { World } from '@brass-lantern/engine';
 import { carry } from '../helpers/state';
 import { fixtureOptions, fixtureWorld } from '../fixtures/world';
 
@@ -53,6 +54,29 @@ describe('useGameStore', () => {
       expect(
         second.output.some((l) => l.text.includes('Session restored')),
       ).toBe(true);
+    });
+  });
+
+  describe('a name that contains “and”', () => {
+    it('stays whole when the line is split', async () => {
+      const world: World = {
+        ...fixtureWorld,
+        rooms: { ...fixtureWorld.rooms, bedroom: { ...fixtureWorld.rooms.bedroom, items: ['alarm', 'bed', 'lost_and_found'] } },
+        items: {
+          ...fixtureWorld.items,
+          lost_and_found: { name: 'lost and found box', aliases: ['lost and found'], description: 'A box.', portable: false, tags: [], container: {}, contains: ['flair'] },
+          flair: { name: 'flair', description: 'Piece of flair.', portable: true, tags: [] },
+        },
+      };
+      setActivePinia(createPinia());
+      const store = createGameStore({ ...fixtureOptions, cartridges: [{ ...fixtureOptions.cartridges[0], world }] })();
+      store.initialize();
+      const before = store.output.length;
+      await store.submit('take flair from lost and found');
+      expect(store.game.locations.flair).toBe('player');
+      const replies = store.output.slice(before).filter((l) => l.type !== 'input');
+      expect(replies).toHaveLength(1);
+      expect(replies[0].text).not.toMatch(/can’t|don’t|not/i);
     });
   });
 

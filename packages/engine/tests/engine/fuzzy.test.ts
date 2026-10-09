@@ -1,4 +1,4 @@
-import { fuzzyMatch, fuzzyMatchExit } from '../../src/engine/fuzzy';
+import { fuzzyCandidates, fuzzyMatch, fuzzyMatchExit } from '../../src/engine/fuzzy';
 
 describe('fuzzyMatch', () => {
   const candidates = [
@@ -103,15 +103,16 @@ describe('fuzzyMatchExit', () => {
 });
 
 describe('fuzzy token-prefix matching', () => {
-  it('resolves a token-prefix exit ("cube farm" → "cubicle_farm")', () => {
+  it('resolves a token-prefix exit ("cubic farm" → "cubicle_farm")', () => {
     const exits = {
       cubicles: 'cubicle_farm',
       cubicle_farm: 'cubicle_farm',
       break_room: 'break_room',
       east: 'cubicle_farm',
     };
-    // "cube" matches "cubicle" (prefix) AND "farm" matches "farm" → cubicle_farm scores 2.
-    expect(fuzzyMatchExit('cube farm', exits)).toBe('cubicle_farm');
+    // "cubic" is a prefix of "cubicle" and "farm" matches "farm" → cubicle_farm scores 2;
+    // "cubicles" has no token for "farm", so it is not a candidate.
+    expect(fuzzyMatchExit('cubic farm', exits)).toBe('cubicle_farm');
   });
 
   it('resolves a single-token prefix exit ("brk" too short, "brea" → "break_room")', () => {
@@ -135,5 +136,58 @@ describe('fuzzy token-prefix matching', () => {
       { id: 'expense_reports', name: 'expense reports' },
     ];
     expect(fuzzyMatch('swing', candidates)).toBe('red_mug');
+  });
+});
+
+describe('token tier needs every typed word', () => {
+  const pool = [
+    { id: 'piece_of_flair', name: 'I LOVE FLAIR button', aliases: ['flair', 'button'] },
+    { id: 'lost_found_flair', name: 'faded flair', aliases: ['flair'] },
+    { id: 'cubicle_farm', name: 'The Cubicle Farm' },
+    { id: 'red_stapler', name: 'red Swingline stapler', aliases: ['stapler'] },
+  ];
+  it('an extra word that names nothing in a candidate stops the match', () => {
+    expect(fuzzyCandidates('smiley flair', pool)).toEqual([]);
+  });
+  it('fewer words than the name still match', () => {
+    expect(fuzzyCandidates('cubic farm', pool)).toEqual(['cubicle_farm']);
+    expect(fuzzyCandidates('farm', pool)).toEqual(['cubicle_farm']);
+    expect(fuzzyCandidates('red stapler', pool)).toEqual(['red_stapler']);
+    expect(fuzzyCandidates('swingline', pool)).toEqual(['red_stapler']);
+  });
+  it('fuzzyMatch agrees', () => {
+    expect(fuzzyMatch('smiley flair', pool)).toBeNull();
+    expect(fuzzyMatch('cubic farm', pool)).toBe('cubicle_farm');
+    expect(fuzzyMatch('red stapler', pool)).toBe('red_stapler');
+  });
+  it('fuzzyMatchExit agrees', () => {
+    const exits = { cubicle_farm: 'cubicle_farm', lobby: 'main_lobby' };
+    expect(fuzzyMatchExit('smelly cubic farm', exits)).toBeNull();
+    expect(fuzzyMatchExit('cubic farm', exits)).toBe('cubicle_farm');
+    expect(fuzzyMatchExit('lobby', exits)).toBe('lobby');
+  });
+  it('words of one or two letters are not held to it', () => {
+    expect(fuzzyCandidates('a cubic farm', pool)).toEqual(['cubicle_farm']);
+  });
+});
+
+describe('determiners and possessives are not required words', () => {
+  const things = [
+    { id: 'ball', name: 'ball' },
+    { id: 'stapler', name: 'stapler' },
+    { id: 'lantern', name: 'brass lantern', aliases: ['lamp'] },
+  ];
+  it('this, his, your and the rest may be typed without blocking', () => {
+    expect(fuzzyCandidates('this ball', things)).toEqual(['ball']);
+    expect(fuzzyCandidates('his stapler', things)).toEqual(['stapler']);
+    expect(fuzzyCandidates('your lamp', things)).toEqual(['lantern']);
+    expect(fuzzyMatch('that ball', things)).toBe('ball');
+    expect(fuzzyMatch('some stapler', things)).toBe('stapler');
+    expect(fuzzyMatchExit('their lobby', { lobby: 'main_lobby' })).toBe('lobby');
+  });
+  it('an unknown descriptive word still blocks', () => {
+    expect(fuzzyCandidates('red ball', things)).toEqual([]);
+    expect(fuzzyCandidates('old brass lamp', things)).toEqual([]);
+    expect(fuzzyCandidates('this red ball', things)).toEqual([]);
   });
 });

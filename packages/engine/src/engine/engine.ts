@@ -1,5 +1,6 @@
 import type { GameState, ParsedAction } from '../types/game.ts';
 import type { EventStep, World } from '../types/world.ts';
+import { handleFollow } from './verbs/follow.ts';
 import { evaluateCondition } from './conditions.ts';
 import { describeRoom } from './describe.ts';
 import { AskSignal, initialLocations, inventoryOf, isLit, matchItem, matchNpc, needObject, pickItem, restoreState, setResolveById, snapshotState, takeActed, visibleItems } from './model.ts';
@@ -287,6 +288,8 @@ function dispatch(action: ParsedAction, world: World, state: GameState, storeHel
     case 'drop':
       if (action.target && ALL.test(action.target)) return handleAll(action, world, state);
       return withRules('drop', action, world, state, () => handleDrop(action.target, world, state));
+    case 'follow':
+      return withRules('follow', action, world, state, () => handleFollow(action, world, state));
     case 'examine':
       return withRules('examine', action, world, state, () => handleExamine(action.target, world, state));
     case 'use':
