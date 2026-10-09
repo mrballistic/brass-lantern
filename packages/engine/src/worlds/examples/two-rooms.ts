@@ -1,9 +1,9 @@
-import type { World } from '../../types/world.ts';
+import type { World } from '@brass-lantern/engine';
 
 /**
  * The smallest complete game: two rooms, a locked door, a hidden key and a
  * way to win. Built step by step in docs/guide/building-worlds/two-rooms.md;
- * tests/worlds/examples.test.ts plays it.
+ * tests/worlds/examples/two-rooms.test.ts plays it.
  */
 export const twoRooms: World = {
   // #region rooms

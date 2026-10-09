@@ -1,4 +1,4 @@
-import type { World } from '../../types/world.ts';
+import type { World } from '@brass-lantern/engine';
 
 /** Recipe: dark rooms, a lamp, and a death that isn't the end. See docs/guide/building-worlds/recipes.md. */
 export const darkness: World = {

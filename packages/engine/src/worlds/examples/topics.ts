@@ -1,4 +1,4 @@
-import type { World } from '../../types/world.ts';
+import type { World } from '@brass-lantern/engine';
 
 /** Recipe: topics and orders. See docs/guide/building-worlds/recipes.md. */
 export const topics: World = {
@@ -47,6 +47,8 @@ export const topics: World = {
           { text: 'lend_key' },
         ],
         dragons: '“Second floor, between the cookbooks and the tax law.”',
+        // ASK LIBRARIAN ABOUT ME (or MYSELF).
+        me: '“You look like someone with an overdue book.”',
       },
       topicAliases: { archive: ['the archive', 'archives', 'old letters', 'key'], books: ['book', 'shelves'] },
       noTopic: '“I couldn’t say, dear.”',

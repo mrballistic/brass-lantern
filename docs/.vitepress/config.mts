@@ -12,6 +12,8 @@ export default defineConfig({
   // Design notes and implementation plans live beside the docs but aren't part of the site.
   srcExclude: ['superpowers/**'],
   lastUpdated: true,
+  // A page that includes a whole example file shouldn’t show the `#region` markers its excerpts use.
+  markdown: { snippet: { stripRegionMarkers: 'all' } },
   head: [
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/brass-lantern/favicon.svg' }],
     ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],

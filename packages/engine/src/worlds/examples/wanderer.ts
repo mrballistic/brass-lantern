@@ -1,4 +1,4 @@
-import type { EventStep, World } from '../../types/world.ts';
+import type { EventStep, World } from '@brass-lantern/engine';
 
 /** Recipe: a character who wanders and steals. See docs/guide/building-worlds/recipes.md. */
 export const wanderer: World = {

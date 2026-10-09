@@ -1,4 +1,4 @@
-import type { World } from '../../types/world.ts';
+import type { World } from '@brass-lantern/engine';
 
 /** Recipe: a room that listens. See docs/guide/building-worlds/recipes.md. */
 export const echo: World = {
