@@ -320,7 +320,7 @@ export type CombatText =
   | 'notPerson'
   | 'notCombatant'
   | 'recovering'
-  | 'defenceless'
+  | 'defenseless'
   | 'dies'
   | 'regainsFeet'
   | 'stillHave'

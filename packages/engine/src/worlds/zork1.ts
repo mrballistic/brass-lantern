@@ -1214,7 +1214,7 @@ export const zork1: World = {
       exits: { down: 'cyclops_room' },
       items: ['chalice'],
       npcs: [],
-      // Zork's VALUE 25; and TREASURE-ROOM-FCN: the thief rushes to his lair's defence.
+      // Zork's VALUE 25; and TREASURE-ROOM-FCN: the thief rushes to his lair's defense.
       onEnter: [
         { if: '!flag:treasure_room_visited', then: 'treasure_room_points' },
         { if: 'alive:thief & awake:thief', then: 'thief_lair', repeat: true },

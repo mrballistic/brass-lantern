@@ -18,7 +18,7 @@ describe('resolveTheme', () => {
     expect(Object.keys(r.vars)).toHaveLength(13);
   });
 
-  it('crt-green has its own glows and system colour', () => {
+  it('crt-green has its own glows and system color', () => {
     const r = resolveTheme('crt-green', {}, {}, light);
     expect(r.classes).toEqual([]);
     expect(r.palette).toEqual(PALETTES.green);

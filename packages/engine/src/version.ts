@@ -1,2 +1,2 @@
 /** This engine's version (tests/engine/game.test.ts checks it against package.json). VERSION prints it. */
-export const ENGINE_VERSION = '2.1.0';
+export const ENGINE_VERSION = '2.1.1';

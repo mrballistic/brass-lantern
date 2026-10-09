@@ -67,7 +67,7 @@ export const workshop: World = {
     buggy: {
       name: 'dune buggy',
       aliases: ['buggy'],
-      description: 'A rattling dune buggy with fat tyres.',
+      description: 'A rattling dune buggy with fat tires.',
       portable: false,
       tags: [],
       // It travels on land and on sand; its `leave` lines are said as it drives off with you.

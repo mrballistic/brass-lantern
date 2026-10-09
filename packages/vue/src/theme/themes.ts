@@ -1,4 +1,4 @@
-// Themes: a palette (twelve colour roles) plus seven effect switches.
+// Themes: a palette (twelve color roles) plus seven effect switches.
 // Pure data and a pure resolver; useTheme.ts applies the result to the DOM.
 
 export type PaletteName = 'amber' | 'green' | 'light' | 'dark';
@@ -35,7 +35,7 @@ export interface Theme {
 
 export type ThemeName = 'crt-amber' | 'crt-green' | 'simple' | 'simple-light' | 'simple-dark';
 
-/** Every role is set explicitly: glows and the dim/system colours are not derived from fg. */
+/** Every role is set explicitly: glows and the dim/system colors are not derived from fg. */
 export const PALETTES: Record<PaletteName, Palette> = {
   // Equals the amber custom properties on .crt-shell in src/styles/crt.css.
   amber: {

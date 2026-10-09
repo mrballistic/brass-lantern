@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.1.1 (2026-10-09)
+
+American spelling throughout the docs, the example worlds and the game's own lines.
+
+### Changed
+
+- **The combat text key `defenceless` is now `defenseless`** (`World.combat.texts`). A world that set `texts.defenceless` must rename it.
+- HELP lists THEME as changing the color theme; the example worlds and the docs use American spelling (color, gray, tires, defense, canceled).
+
 ## 2.1.0 (2026-10-08)
 
 Fixes found while moving Office Space onto 2.0.0, plus engine items any world could hit. Saves are still format 2.0. Two changes reach existing worlds on purpose: name matching is stricter, and EXAMINE of a character needs light.
@@ -85,7 +94,7 @@ What's new for worlds that use it:
 
 A fast follow that works through the backlog.
 
-- **Robustness:** a script or capture that throws leaves the turn exactly as it found it, seed included, and the game says “[Something went wrong with that command. Nothing changed.]”; a `continue` rule is undone when the verb's default then misses or asks; leaving a vehicle silently, and a capture that only echoes, are counted right for saves and UNDO; WAIT's extra turns count down timers set on the first, and a cancelled timer no longer ends the wait.
+- **Robustness:** a script or capture that throws leaves the turn exactly as it found it, seed included, and the game says “[Something went wrong with that command. Nothing changed.]”; a `continue` rule is undone when the verb's default then misses or asks; leaving a vehicle silently, and a capture that only echoes, are counted right for saves and UNDO; WAIT's extra turns count down timers set on the first, and a canceled timer no longer ends the wait.
 - **Misses the intent server can read:** a second object that names nothing here (UNLOCK DOOR WITH XYZZY) is a miss before any rule fires; in the dark, aboard, GET OUT OF RAFT finds the raft; “tell bob to ask about x” is an order; BURN's refusal uses the right article outside Infocom style.
 - **Infocom style:** CLIMB DOWN *thing* walks only if the thing leads there (“The leaflet doesn’t lead downward.”); ENTER *thing* answers as Zork's V-THROUGH; READ's automatic take runs the thing's take rules; BURN wants the flame held and won't burn a character; TAKE X FROM Y with X held is “You already have that!”; a refused move skips the room's end routine; STAND and GET OUT don't guess the vehicle (STAND on foot: “You are already standing, I think.”); one vehicle at a time; a scripted move meets the vehicle checks; a character who arrives stays listed first until something else is put down; things on the kitchen table are “(outside the boat)” while aboard.
 - **`death.treasures: 'dark'`:** treasures carried at a death go to an unlit room (Zork's RANDOMIZE-OBJECTS).

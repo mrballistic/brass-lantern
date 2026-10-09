@@ -41,7 +41,7 @@ export const topics: World = {
       name: 'librarian',
       description: 'The librarian peers at you over her glasses.',
       topics: {
-        books: '“Shelved by colour. Don’t ask.”',
+        books: '“Shelved by color. Don’t ask.”',
         archive: [
           { if: 'has:brass_key', text: '“You have the key. Go on, then.”' },
           { text: 'lend_key' },

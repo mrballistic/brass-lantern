@@ -194,7 +194,7 @@ describe('recipes', () => {
       Present: librarian.
       Exits: north.
       > ask librarian about books
-      “Shelved by colour. Don’t ask.”
+      “Shelved by color. Don’t ask.”
       > ask librarian about dragons
       “Second floor, between the cookbooks and the tax law.”
       > ask librarian about the weather

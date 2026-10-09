@@ -82,7 +82,7 @@ describe('the shell is the one theme root', () => {
   });
 });
 
-describe('useTheme and the colour-scheme and motion preferences', () => {
+describe('useTheme and the color-scheme and motion preferences', () => {
   function stubMatchMedia(initial: Record<string, boolean>) {
     const listeners: Record<string, ((e: { matches: boolean }) => void)[]> = {};
     vi.stubGlobal('matchMedia', (q: string) => ({

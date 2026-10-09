@@ -62,9 +62,9 @@ describe('Infocom verbs (5a)', () => {
 
 describe('local globals give way (5a)', () => {
   it('a room’s scenery is matched only when nothing else is (Zork’s GLOBAL-CHECK)', () => {
-    const world: World = { ...w, items: { ...w.items, kite: { name: 'kite', aliases: ['sky'], description: 'A blue kite, sky-coloured.', portable: true, tags: [] } } };
+    const world: World = { ...w, items: { ...w.items, kite: { name: 'kite', aliases: ['sky'], description: 'A blue kite, sky-colored.', portable: true, tags: [] } } };
     const s = stateWith(world, { room: 'yard', carrying: ['kite'] });
-    expect(run(s, { action: 'examine', target: 'sky' }, world)).toEqual(['A blue kite, sky-coloured.']);
+    expect(run(s, { action: 'examine', target: 'sky' }, world)).toEqual(['A blue kite, sky-colored.']);
     const t = stateWith(world, { room: 'yard' });
     expect(run(t, { action: 'examine', target: 'sky' }, world).join(' ')).not.toMatch(/kite/);
   });
