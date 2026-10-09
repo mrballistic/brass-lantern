@@ -3,10 +3,10 @@
   <g font-family="'VT323', 'Courier New', monospace" fill="#FFB000">
     <text x="90" y="150" font-size="44" opacity="0.6">═══════════════════════════════</text>
     <text x="90" y="250" font-size="110" letter-spacing="6">BRASS LANTERN</text>
-    <text x="90" y="320" font-size="44" opacity="0.85">a text adventure engine</text>
+    <text x="90" y="320" font-size="44" opacity="0.85">a text adventure engine on npm</text>
     <text x="90" y="400" font-size="44" opacity="0.6">═══════════════════════════════</text>
-    <text x="90" y="500" font-size="44" fill="#88ffaa">&gt; light lantern</text>
-    <rect x="420" y="468" width="22" height="40" fill="#FFB000"/>
+    <text x="90" y="500" font-size="44" fill="#88ffaa">$ npm install @brass-lantern/engine</text>
+    <rect x="728" y="468" width="22" height="40" fill="#FFB000"/>
   </g>
   <g opacity="0.18">
     <rect width="1200" height="630" fill="url(#scan)"/>

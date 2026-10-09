@@ -2,10 +2,14 @@ import { defineConfig } from 'vitepress';
 import pkg from '../../package.json' with { type: 'json' };
 
 const repo = 'https://github.com/mrballistic/brass-lantern';
+/** The published site, for absolute share-card URLs (Open Graph needs them absolute). */
+const site = 'https://mrballistic.github.io/brass-lantern';
+const ogImage = `${site}/og-image.png`;
+const ogAlt = 'BRASS LANTERN: a text adventure engine on npm, amber CRT type on black.';
 
 export default defineConfig({
   title: 'Brass Lantern',
-  description: 'Classic parser text adventures in a CRT terminal: write your own worlds, or play Z-machine story files like Zork.',
+  description: 'An npm library for classic parser text adventures in a CRT terminal: write your own worlds, or play Z-machine story files like Zork.',
   // GitHub Pages project site. Change if you host the docs at a domain root.
   base: '/brass-lantern/',
   cleanUrls: true,
@@ -19,7 +23,32 @@ export default defineConfig({
     ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],
     ['link', { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' }],
     ['link', { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=VT323&display=swap' }],
+    // Share cards. Per-page title, description and URL come from transformHead below.
+    ['meta', { property: 'og:type', content: 'website' }],
+    ['meta', { property: 'og:site_name', content: 'Brass Lantern' }],
+    ['meta', { property: 'og:locale', content: 'en_US' }],
+    ['meta', { property: 'og:image', content: ogImage }],
+    ['meta', { property: 'og:image:type', content: 'image/png' }],
+    ['meta', { property: 'og:image:width', content: '1200' }],
+    ['meta', { property: 'og:image:height', content: '630' }],
+    ['meta', { property: 'og:image:alt', content: ogAlt }],
+    ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
+    ['meta', { name: 'twitter:image', content: ogImage }],
+    ['meta', { name: 'twitter:image:alt', content: ogAlt }],
   ],
+  // Each page shares as itself: its own title, description and address.
+  transformHead({ pageData, title, description }) {
+    const path = pageData.relativePath.replace(/(^|\/)index\.md$/, '$1').replace(/\.md$/, '');
+    const url = `${site}/${path}`;
+    return [
+      ['meta', { property: 'og:title', content: title }],
+      ['meta', { property: 'og:description', content: description }],
+      ['meta', { property: 'og:url', content: url }],
+      ['meta', { name: 'twitter:title', content: title }],
+      ['meta', { name: 'twitter:description', content: description }],
+      ['link', { rel: 'canonical', href: url }],
+    ];
+  },
   themeConfig: {
     // The owner's lantern mark (currentColor, so it follows the theme).
     logo: '/brand/lantern-mark-amber.svg',
