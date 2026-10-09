@@ -237,7 +237,7 @@ game.send('look');
 
 `auditWorld` finds the mistakes that only show up when someone walks into them: exits that go nowhere, events nothing defines, references to items that do not exist. Put it in your test suite beside a test that plays the winning route.
 
-Worlds written for 1.13.0 or later run on 2.1.0. Two things behave differently: a typed word the world doesn’t know now stops a name from matching (“red ball” no longer finds a thing called only “ball”; add an alias, see [How names are matched](./building-worlds/#how-names-are-matched)), and EXAMINE of a character in the dark says it’s too dark. 2.1.0 adds an optional `article` on characters and the built-in FOLLOW; a world that declared its own `follow` verb should drop it (`auditWorld` reports the clash).
+Worlds written for 1.13.0 or later run on 2.1.0. Five things behave differently: a typed word the world doesn’t know now stops a name from matching (“red ball” no longer finds a thing called only “ball”; add an alias, see [How names are matched](./building-worlds/#how-names-are-matched)); EXAMINE of a character in the dark says it’s too dark; `ctx.exits` hides denied exits; `go: true` verbs meet `instead.go` rules; and LIGHT on something already burning says it’s already lit. The CHANGELOG’s 2.1.0 Changed section has the details. 2.1.0 adds an optional `article` on characters and the built-in FOLLOW; a world that declared its own `follow` verb should drop it (`auditWorld` reports the clash).
 
 ## Story files (Z-machine)
 

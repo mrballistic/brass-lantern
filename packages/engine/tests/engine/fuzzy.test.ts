@@ -170,3 +170,24 @@ describe('token tier needs every typed word', () => {
     expect(fuzzyCandidates('a cubic farm', pool)).toEqual(['cubicle_farm']);
   });
 });
+
+describe('determiners and possessives are not required words', () => {
+  const things = [
+    { id: 'ball', name: 'ball' },
+    { id: 'stapler', name: 'stapler' },
+    { id: 'lantern', name: 'brass lantern', aliases: ['lamp'] },
+  ];
+  it('this, his, your and the rest may be typed without blocking', () => {
+    expect(fuzzyCandidates('this ball', things)).toEqual(['ball']);
+    expect(fuzzyCandidates('his stapler', things)).toEqual(['stapler']);
+    expect(fuzzyCandidates('your lamp', things)).toEqual(['lantern']);
+    expect(fuzzyMatch('that ball', things)).toBe('ball');
+    expect(fuzzyMatch('some stapler', things)).toBe('stapler');
+    expect(fuzzyMatchExit('their lobby', { lobby: 'main_lobby' })).toBe('lobby');
+  });
+  it('an unknown descriptive word still blocks', () => {
+    expect(fuzzyCandidates('red ball', things)).toEqual([]);
+    expect(fuzzyCandidates('old brass lamp', things)).toEqual([]);
+    expect(fuzzyCandidates('this red ball', things)).toEqual([]);
+  });
+});

@@ -76,7 +76,7 @@ The player’s words find a thing (or a character, or a topic) by trying, in ord
 
 1. **exactly** its name, an alias or its ID (`take brass lantern`);
 2. **part of** its name, an alias or its ID (`take lantern`, `take lant`);
-3. **its words**: every word of three or more letters the player typed matches the start of a word in its name, aliases or ID (`take lantern of brass`). Shorter words (`a`, `of`, `my`) are ignored.
+3. **its words**: every word of three or more letters the player typed matches the start of a word in its name, aliases or ID (`take lantern of brass`). Shorter words (`a`, `of`, `my`) are ignored, and so are common determiners and possessives (`this`, `that`, `his`, `your`, `some`, …): the player may type them, and they never have to match.
 
 If two things match equally, the game asks which one the player means.
 

@@ -24,9 +24,14 @@ function tokenPrefixScore(needleTokens: string[], haystackTokens: string[]): num
   return score;
 }
 
-/** Every typed word of three or more letters must match one of the candidate’s tokens. */
+/** Function words that may be typed but never have to match: no author can alias around them. */
+const FUNCTION_WORDS = new Set(['the', 'this', 'that', 'these', 'those', 'his', 'her', 'its', 'their', 'your', 'our', 'some', 'any', 'and']);
+
+/** Every typed word of three or more letters, bar the function words, must match one of the candidate’s tokens. */
 function coversAll(needleTokens: string[], haystack: string[]): boolean {
-  return needleTokens.filter((t) => t.length >= 3).every((t) => tokenPrefixScore([t], haystack) > 0);
+  return needleTokens
+    .filter((t) => t.length >= 3 && !FUNCTION_WORDS.has(t))
+    .every((t) => tokenPrefixScore([t], haystack) > 0);
 }
 
 const DIGITS = /^\d+$/;

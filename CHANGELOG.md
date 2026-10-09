@@ -13,7 +13,7 @@ Fixes found while moving Office Space onto 2.0.0, plus engine items any world co
 
 ### Changed
 
-- **Name matching needs every typed word.** The last-resort tier of the matcher (word prefixes) now matches only when every typed word of three or more letters matches a word of the thing’s name, aliases or ID. “red ball” no longer finds a thing called only “ball”; add the alias (`aliases: ['red ball']`). This stops a name landing on a different thing that shares one word with it (“give smiley flair” reaching another flair). No Zork aliases were needed.
+- **Name matching needs every typed word.** The last-resort tier of the matcher (word prefixes) now matches only when every typed word of three or more letters matches a word of the thing’s name, aliases or ID. Common determiners and possessives (this, that, his, your, some, …) are ignored, like “a”, “of” and “my”. “red ball” no longer finds a thing called only “ball”; add the alias (`aliases: ['red ball']`). This stops a name landing on a different thing that shares one word with it (“give smiley flair” reaching another flair). No Zork aliases were needed.
 - **EXAMINE of a character in the dark** says it’s too dark to see. Talking, giving, orders and fights in the dark are unchanged.
 - **LIGHT on something burning with no switch** (a `flaming` item that isn’t `switchable`) says “It’s already lit.” instead of “You can’t turn that on.”. Only `light` items that are on light a room, as before.
 - **`go: true` world verbs run `instead.go` rules**, so a room’s or vehicle’s GO rules see DRIVE and LAND too.
