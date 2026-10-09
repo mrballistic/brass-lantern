@@ -4,7 +4,7 @@ Each recipe is a small, complete world about one idea, in [`packages/engine/src/
 
 **How a recipe fits into a world.** A recipe is a whole world file, built like the [two-room game](./two-rooms): one `World` object with rooms, items, characters and events. The code blocks under each heading show the part of the file the recipe is about; the rest (the rooms around it, the events it names, its `seed`) is in **The whole world**, folded under the notes. To put an idea in your own game, copy the parts it shows into your world’s object, along with anything they name.
 
-**To play a recipe**, you don’t need to copy anything: every one ships with the engine under the name its file exports. Set up a project as in [Play it](./two-rooms#play-it) and run the commands from the transcript:
+**To play a recipe**, you don’t need to copy anything: every one ships with the engine under the name its file exports. Set up a project as in [Play it](./two-rooms#play-it) and type each `> ` line of a transcript, without the `> `:
 
 ```ts
 import { createGame } from '@brass-lantern/engine';
@@ -17,9 +17,15 @@ for (const command of ['take key', 'open jar', 'take key from jar']) {
 }
 ```
 
-A transcript starts after the game’s opening lines (`game.opening`). Where randomness matters, the world’s `seed` fixes it, so the same commands give the same replies every time.
+Each transcript starts from a new game (a fresh `createGame`), just after its opening lines (`game.opening`). Where randomness matters, the world’s `seed` fixes it, so the same commands give the same replies every time.
 
-**Rules** appear in every recipe. A rule is an object tried when something happens: `if` is a [condition](../../reference/conditions-and-events#conditions) that has to hold, `with` names the second object, `then` names an event to run and `say` prints lines instead. **`instead`** rules replace what a verb does; **`after`** rules run once it has worked. [Rules](../../reference/world-schema#rules) has the whole shape, and [Events and effects](../../reference/conditions-and-events#events-and-effects) lists the steps an event can take.
+**Rules** appear in every recipe. They hang off a verb (`instead: { examine: [ … ] }`), as a list:
+
+- **`instead`** rules replace what the verb does; **`after`** rules run once it has worked.
+- **A rule’s keys:** `if` is a [condition](../../reference/conditions-and-events#conditions) that has to hold; `with` names the second object it applies to (`unlock tin with key`); `then` names an event to run; `say` prints lines instead.
+- **The first rule that fits wins.** The list is tried in order, so put the specific rules before a catch-all `{ say: [ … ] }`. The thing’s own rules are asked before the room’s.
+
+[Rules](../../reference/world-schema#rules) has the whole shape, and [Events and effects](../../reference/conditions-and-events#events-and-effects) lists the steps an event can take.
 
 ## Containers and keys
 
@@ -188,6 +194,7 @@ An armory with a sword and an anvil too heavy to lift, and a guard who won’t l
 
 - **`carry`** turns on weight. Each item weighs its `size` (5 if unset) plus what’s inside it, and TAKE refuses what would go over `limit`.
 - **`combat`** on a character makes it someone you can fight with a `weapon`. The engine runs the fight: your strength against theirs, a seeded roll, and Zork’s tables of results. The guard’s `messages` are its blows at you; `world.combat` holds yours (short defaults here).
+- **The engine’s own fight lines say “they”** (“The guard drops their weapon.”), since it doesn’t know who a character is. The world’s own `combat` block (not the guard’s) replaces the two that would say it here, `messages.loseWeapon` and `texts.defenceless`, so the guard is “he” throughout.
 - **`holds`** gives the guard his club. While he has it he fights back; knock it away and `onBusy` runs instead of a swing.
 - **`awake:guard`** in the exit’s `denials` keeps the way shut until he’s dead or out cold.
 - **`seed`** (here `seed: 1`, in the whole world below) fixes the world’s random generator, so this transcript plays the same way every time. Leave it out and every game differs.
@@ -217,10 +224,10 @@ The guard’s club whistles past your head.
 You wound the guard.
 The club catches your shoulder.
 > attack guard with sword
-The guard drops their weapon.
+The club flies out of the guard’s hand.
 The guard gropes for his club.
 > attack guard with sword
-The guard can’t defend themselves.
+The guard can’t defend himself.
 The guard is dead.
 > diagnose
 [You have a light wound, which will be cured after 28 moves.]
@@ -258,7 +265,6 @@ A fortune teller who tells you one of three fortunes, then sticks to it.
 ```
 
 Reach for a script only when data can’t say it. Most behavior is rules, conditions and effects.
-
 
 ## Topics and orders
 
@@ -303,7 +309,7 @@ A cat who wanders three rooms and walks off with your sock.
 - **A daemon** runs after every turn the engine acts on. This one’s `if` (`alive:cat`) keeps the cat moving for as long as it lives, and its step is a script.
 - **The script decides; its steps act.** `ctx.npcIn` finds the cat, `ctx.roll` decides whether it moves, and `{ moveNpc }` moves it. Lines are printed only when the player can see the cat leave or arrive (`ctx.room()` is where the player is).
 - **`ctx.children(room)`** lists what’s on the floor there. `{ move: 'sock', to: 'cat' }` puts the sock in the cat’s keeping; a character’s holdings aren’t listed in a room.
-- The world’s **`seed`** (`seed: 4`) fixes the cat’s path, so the transcript below plays the same way every time: the cat stays in the kitchen for six turns, then comes to the hall. `ctx` is described under [Scripts](../../reference/world-schema#scripts).
+- The world’s **`seed`** (`seed: 4`) fixes the cat’s path, so the transcript below plays the same way every time: the cat stays in the kitchen for six turns, then comes to the hall and takes the sock, which starts on the hall floor. It keeps wandering after that (hall, kitchen, garden and round again), which is why it turns up in the kitchen behind you. `ctx` is described under [Scripts](../../reference/world-schema#scripts).
 
 ::: details The whole world: wanderer.ts
 <<< ../../../packages/engine/src/worlds/examples/wanderer.ts{ts}

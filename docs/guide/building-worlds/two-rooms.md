@@ -49,7 +49,7 @@ Each section below shows one part of that object, in order; put them inside the 
 
 ## The whole file
 
-The three parts, assembled. The sections above leave out only what goes around them: the import, a comment, and `export const twoRooms: World = {` with its closing `};`.
+The three parts, assembled. The sections above leave out only what goes around them: the import, a comment, and `export const twoRooms: World = {` with its closing `};`. (The file in the repo also has `// #region` comments marking the three parts for this page. They change nothing, and they’re left out here.)
 
 ::: details two-rooms.ts
 <<< ../../../packages/engine/src/worlds/examples/two-rooms.ts{ts}
@@ -83,7 +83,7 @@ for (const command of ['north', 'examine mat', 'take key', 'unlock door with key
 node play.ts
 ```
 
-Node runs TypeScript files as they are (`npx tsx play.ts` works too). `createGame` runs a world with no browser: `game.opening` is what the game says before the first command, and `game.send(line)` takes whatever a player would type and answers with its `lines`. No server or API key is needed. To skip the typing, import the shipped copy instead: `import { twoRooms } from '@brass-lantern/engine/worlds'`.
+Node 24 and later run TypeScript files as they are, no compiler needed (`npx tsx play.ts` works too). `createGame` runs a world with no browser: `game.opening` is what the game says before the first command, and `game.send(line)` takes whatever a player would type and answers with its `lines`. No server or API key is needed. To skip the typing, import the shipped copy instead: `import { twoRooms } from '@brass-lantern/engine/worlds'`.
 
 It prints this, word for word (the test checks the same transcript):
 
@@ -116,18 +116,21 @@ Taken: letter.
 Type RESTART to play again.
 ```
 
-**In the browser**, the same world goes in the CRT terminal. Add the terminal and its peers:
+**In the browser**, the same world plays in the terminal from `@brass-lantern/vue`: a styled window, like an old CRT screen, with the typing prompt, saves and the rest of what a player sees. The shortest way there is a new [Vite](https://vite.dev) app:
 
 ```bash
+npm create vite@latest my-game -- --template vanilla-ts
+cd my-game
 npm i @brass-lantern/engine @brass-lantern/vue vue pinia
 ```
 
-and mount it from your app’s entry file (a Vite app’s `src/main.ts`, say):
+The template already has an `index.html` with `<div id="app">` that loads `src/main.ts`. Copy `two-rooms.ts` into `src/`, then replace everything in `src/main.ts` with:
 
 ```ts
 import { mountGame } from '@brass-lantern/vue';
 import '@brass-lantern/vue/style.css';
-import { twoRooms } from './two-rooms';
+import './style.css';
+import { twoRooms } from './two-rooms.ts';
 
 mountGame('#app', {
   cartridges: [{ kind: 'world', id: 'two-rooms', title: 'TWO ROOMS', world: twoRooms }],
@@ -135,7 +138,23 @@ mountGame('#app', {
 });
 ```
 
-The game fills `#app`, so give that element a size. [Using the library](../using-the-library#put-a-game-on-a-page) covers sizing, themes and the rest of the options.
+and everything in `src/style.css` with:
+
+```css
+html, body, #app { height: 100%; margin: 0; overflow: hidden; }
+```
+
+```bash
+npm run dev
+```
+
+Open the address it prints and the game boots. What the options mean:
+
+- **`cartridges`** are the games on offer. A cartridge with `kind: 'world'` is a world like this one; `id` names it (in its saves, for one), and `title` is what the menu shows. With one cartridge there’s no menu: the terminal boots straight into it.
+- **`storagePrefix`** names everything the game keeps in the browser (saves, the player’s theme), so two games on one site don’t share saves.
+- **The game fills `#app`**, which is why `style.css` gives it the whole window.
+
+Vite tells TypeScript what a `.css` import is (the template’s `vite/client` types), and it accepts the `.ts` ending on `./two-rooms.ts`, as Node does. Outside Vite, [Using the library](../using-the-library#put-a-game-on-a-page) says what to declare for the stylesheet, and covers themes and the rest of the options.
 
 Players won’t type exactly the commands above. “Look under the mat” or “use the key on the door” aren’t commands the engine can act on by itself, so with the [intent server](../intent-server) running they can be mapped onto EXAMINE MAT and UNLOCK DOOR WITH KEY. Without it (as with `createGame`, which never uses it) the player gets a nudge to rephrase.
 

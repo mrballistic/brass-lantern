@@ -73,7 +73,12 @@ export const guard: World = {
       },
     },
   },
-  combat: { strength: { min: 2, max: 2 } },
+  combat: {
+    strength: { min: 2, max: 2 },
+    // The engine's own lines say “their” and “themselves”; these make the guard “he”.
+    messages: { loseWeapon: ['The club flies out of the guard’s hand.'] },
+    texts: { defenceless: 'The guard can’t defend himself.' },
+  },
   // #endregion guard
   dialogue: { guard: { default: '“Move along.”' } },
   flagLabels: {},
