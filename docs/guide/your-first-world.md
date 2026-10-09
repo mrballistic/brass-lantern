@@ -76,7 +76,7 @@ items: {
 }
 ```
 
-`name` is what players see; `aliases` are other words they might use. `portable: false` items stay put, and `refusal` is what trying to take one says.
+`name` is what players see; `aliases` are other words they might use. Every word of three or more letters a player types has to be in one of them (or the ID), so “metal drawer” finds nothing here until `metal drawer` is an alias; see [How names are matched](./building-worlds/#how-names-are-matched). `portable: false` items stay put, and `refusal` is what trying to take one says.
 
 The badge isn’t in any room: opening the drawer hands it over. **`onUse`** is a list of rules, and the first one whose conditions hold wins. Each rule can fire an event (`then`), print lines (`say`), require another item nearby (`with`), or test a condition (`if`). End with a plain `say` as the fallback. PUSH, PULL and PRESS mean USE, and OPEN falls back to use rules on anything that isn’t a container, so “open drawer” works.
 
@@ -102,7 +102,7 @@ dialogue: {
 },
 ```
 
-GIVE MUG TO GARY takes the mug and fires `gary_mug`. With only one person in the room, GIVE MUG is enough. **`refuse`** declines a specific item and lets the player keep it.
+GIVE MUG TO GARY takes the mug and fires `gary_mug`. With only one person in the room, GIVE MUG is enough. **`refuse`** declines a specific item and lets the player keep it. For a proper name like Gary, `article: ''` keeps the engine’s own lines about him (FOLLOW GARY, an order he can’t carry out) from saying “The Gary”.
 
 **Dialogue** maps conditions to lines; TALK TO uses the **last** entry whose condition holds, so list them from least to most advanced. Here, Gary’s advice only appears once he’s happy, which turns him into a hint.
 

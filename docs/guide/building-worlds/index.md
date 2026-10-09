@@ -48,7 +48,7 @@ With one cartridge the terminal boots straight into it; with several it shows a 
 
 1. **Write a little.** One room, one item, one rule.
 2. **Play it** in the browser, or in a test (below), which is faster.
-3. **Run the checks.** `auditWorld(myWorld)` lists effects naming things that don’t exist, exits to nowhere, unknown conditions and events, and IDs, flags or variables named `__proto__`, `constructor` or `prototype` (the engine ignores those names, so they can’t reach `Object.prototype`). Those mistakes fail silently in play, so make them fail loudly in a test: expect it to return `[]`.
+3. **Run the checks.** `auditWorld(myWorld)` lists effects naming things that don’t exist, exits to nowhere, unknown conditions and events, and IDs, flags or variables named `__proto__`, `constructor` or `prototype` (the engine ignores those names, so they can’t reach `Object.prototype`; a player who types one just gets the reply for a word the game doesn’t know). Those mistakes fail silently in play, so make them fail loudly in a test: expect it to return `[]`.
 
 A test that plays your world is a few lines:
 
@@ -69,6 +69,85 @@ it('can be won', () => {
 ```
 
 [Testing a world](../testing) covers the rest.
+
+## How names are matched
+
+The player’s words find a thing (or a character, or a topic) by trying, in order, and stopping at the first that finds anything:
+
+1. **exactly** its name, an alias or its ID (`take brass lantern`);
+2. **part of** its name, an alias or its ID (`take lantern`, `take lant`);
+3. **its words**: every word of three or more letters the player typed matches the start of a word in its name, aliases or ID (`take lantern of brass`). Shorter words (`a`, `of`, `my`) are ignored.
+
+If two things match equally, the game asks which one the player means.
+
+The third step is strict on purpose: **a word the world doesn’t know stops the match.** If the player types `take red ball` and the world calls the thing only “ball”, nothing matches, even though there is a ball right there:
+
+```
+> take red ball
+You don’t see a “red ball” here.
+```
+
+So when your description gives a thing a colour, a size or a material, put that word in its name or an alias. Either of these works:
+
+```ts
+ball: { name: 'ball', aliases: ['red ball'], description: 'A red rubber ball.', portable: true, tags: [] },
+ball: { name: 'red ball', description: 'A red rubber ball.', portable: true, tags: [] },
+```
+
+```
+> take red ball
+Taken: ball.
+```
+
+(Before 2.1.0 one matching word was enough, so `give smiley flair` could land on some *other* flair once the smiley one was gone. If a test of yours stops finding a thing after upgrading, this is why: add the alias.) Exits have no aliases: their labels are the words, so give an exit every label a player might type.
+
+## Characters: orders and FOLLOW
+
+A character can be told to do things: `robot, go east`, `floyd, follow me`. Its `orders` rules answer, keyed by the verb, and `obeys` lets it carry out GO, TAKE, DROP and GIVE by itself. [Orders](../../reference/world-schema#orders) has the whole story; [Orders, numbers and a buggy](./recipes#orders-numbers-and-a-buggy) is a worked example.
+
+FOLLOW is a built-in verb. `follow floyd` doesn’t make Floyd anything; it tells the player how to bring him along. `floyd, follow me` is an order, so the character decides, in an `orders.follow` rule:
+
+```ts
+floyd: {
+  name: 'Floyd',
+  article: '',
+  description: 'Floyd, a cheerful robot.',
+  orders: { follow: [{ if: 'target:player', then: 'floyd_tags_along' }] },
+},
+// in events:
+floyd_tags_along: ['“Floyd go too!” he squeaks.', { follow: 'floyd' }],
+```
+
+```
+> follow floyd
+You’d rather Floyd came to you. Try FLOYD, FOLLOW ME.
+> floyd, follow me
+“Floyd go too!” he squeaks.
+> north
+…
+Floyd follows you.
+```
+
+**`article: ''`** is for proper names. The engine’s own lines about a character start with “The” (“The robot can’t go that way.”); `''` makes them “Floyd can’t go that way.” rather than “The Floyd …”.
+
+An `instead.follow` rule on the character replaces the built-in reply to `follow floyd` (“Floyd is too quick for you.”).
+
+## Darkness
+
+A room with `dark: true` needs a light the player brings in: an item with `light: true` that is on. In the dark the player can use only what they carry: acting on anything else says “It’s too dark to see.” (`darkness.tooDark` changes the line), and so does EXAMINE of a character who’s there. Talking to characters, giving them things, ordering them and fighting them still work.
+
+```
+> examine troll
+It’s too dark to see.
+```
+
+A `flaming` item with no switch, such as a torch or a lit match, is already burning: LIGHT TORCH says “It’s already lit.” Being on fire doesn’t make it a light, though; give it `light: true` and switch it on with an effect if it should light rooms. [Darkness and death](./recipes#darkness-and-death) is a worked example, and [Darkness](../../reference/world-schema#darkness) lists the fields.
+
+## Saves and new versions of your world
+
+Players’ saves hold the whole game: where every item is, flags, variables. When you ship a new version of a world with **new items**, a save made before them has no place for them. On load, the engine puts each item the save doesn’t mention where the world starts it, so an older save sees the new things where you placed them. An item the player used up (moved to `null`) stays gone. The browser terminal does this on every load; if you keep saves yourself, pass them through `migrateSave(world, raw)` from `@brass-lantern/engine` to get the same.
+
+That covers new items only. Change where an existing item starts and old saves keep it where it was; rename an item’s ID and old saves treat it as new, putting it back at its start even if the player had taken it. Prefer adding to renaming.
 
 ## Style
 

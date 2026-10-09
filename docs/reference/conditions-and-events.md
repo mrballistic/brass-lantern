@@ -19,7 +19,7 @@ Conditions are strings, used by `requires`, exits (`if`, `denials`), room `descr
 | `var:NAME<op>N` | a numeric variable compared with `=`, `<`, `>`, `<=` or `>=` (unset is 0) |
 | `carrying<op>N` | how many things the player holds directly |
 | `target:ID`, `indirect:ID` | that slot of the command being run resolved to that ID (`player` for ME and MYSELF, and SELF or YOURSELF when nothing here is called that); false otherwise |
-| `direction:DIR` | the direction typed in `PUSH X NORTH` (compass, `up`, `down`) |
+| `direction:DIR` | the direction typed in `PUSH X NORTH` (compass, `up`, `down`), or, in an `orders.go` rule, the place the character was told to go, as typed: “milton, go to the basement” is `direction:basement`. Any lowercase word passes the audit |
 | `number:N`, `number<op>N` | the number typed in the command being run (`TURN DIAL TO 4`, `SET DIAL TO 776`); false when the command has none. A rule with `with: 'number'` matches that command |
 | `said:WORDS` | the words typed after a text verb (`target: 'text'`, e.g. `ANSWER A WELL`), compared as lowercase whole words with punctuation and quotes ignored; false when the command has none |
 | `heaviest<op>N` | the weight of the heaviest thing the player holds directly, counting what’s inside it (Zork’s narrow passage: `heaviest<=4`) |
@@ -76,6 +76,24 @@ An event is a named list of steps, run in order. A string is printed. An object 
 | `{ end: 'ending' }` | Plays an ending. See [Endings](./world-schema#endings). Nothing after it runs. |
 
 Effects print nothing unless they say so. An effect naming something that doesn’t exist does nothing in play, and `auditWorld` reports it. It also checks the events named by rules, `onEnter`, `onTake`, `onWear`, `onSmash`, `onGive`, daemons and the finale.
+
+### Templates
+
+`{var:NAME}` (the variable, 0 when unset) and `{number}` (the number typed in the command; left as written when there is none) fill in when a line is printed: event lines, descriptions, and an item’s `initialDescription` and `roomDescription` wherever the engine lists it (in the room, in a container or on a surface, or when opening a container shows it):
+
+```ts
+vars: { tally: 3 },
+items: {
+  tally: { name: 'tally board', description: 'Chalk marks.', portable: false, tags: [], roomDescription: 'A tally board on the wall reads {var:tally}.' },
+},
+```
+
+```
+> look
+📍 Hall
+A hall. The study is north.
+A tally board on the wall reads 3.
+```
 
 ### Bracket lines (the older form)
 

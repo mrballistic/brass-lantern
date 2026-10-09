@@ -11,14 +11,15 @@ The built-in verbs are fixed; a world gives them things to act on, and can add v
 | TAKE *item* | `get` `grab` `pick up` | |
 | DROP *item* | `put down` `leave` | |
 | TAKE ALL, DROP ALL, PUT ALL IN / ON *thing* | `everything`; `… but X and Y`, `… except X, Y` | One line per thing: “lamp: Taken.”. TAKE ALL takes what’s in reach and not inside something you carry (in Infocom style, what’s directly in the room, with a reason for anything that can’t be taken). |
-| EXAMINE *thing* | `x` `inspect` `look at` | Items and people, and what’s inside or on an item. |
+| EXAMINE *thing* | `x` `inspect` `look at` | Items and people, and what’s inside or on an item. In the dark you can’t examine people either (“It’s too dark to see.”). |
+| FOLLOW *person* | | Bare FOLLOW asks what to follow. With no rule of the world’s, a person (say, Floyd) gets “You’d rather Floyd came to you. Try FLOYD, FOLLOW ME.” and a thing “You can’t follow that.” To bring someone along, order them: *person*, FOLLOW ME. See [FOLLOW](./world-schema#follow). |
 | READ *thing* | | The item’s text. |
 | OPEN / CLOSE *thing* | `shut` | Containers and doors. |
 | LOCK / UNLOCK *thing* WITH *key* | | |
 | PUT *item* IN / ON *thing* | `insert`, `place`, `set` | Into an open container with room, or onto a surface. UNDER and BEHIND are asked of the world’s rules (in Infocom style, otherwise “You can’t do that.” / “That hiding place is too obvious.”). |
 | TAKE *item* FROM *thing* | `get … out of`, `remove … from` | |
 | LOOK IN *thing* | `search` | What’s inside. |
-| TURN ON / OFF *thing* | `switch on`, `light`; `extinguish`, `douse`, `blow out`, `put out` | Switchable items. |
+| TURN ON / OFF *thing* | `switch on`, `light`; `extinguish`, `douse`, `blow out`, `put out` | Switchable items. LIGHT on something already burning with no switch (a torch) says “It’s already lit.” |
 | BURN *thing* WITH *item* | `light … with`, `burn down`, `ignite`, `incinerate` | Something burnable, with something burning. The thing’s rules answer first (lighting candles with a match). |
 | TURN *thing* WITH *tool* | `to`, `for`; SET *thing* TO *x* | A rule on the thing decides; otherwise “This has no effect.” TURN ON … WITH … is TURN ON. The second object can be a number: TURN DIAL TO 4, SET YEAR TO 776 (digits up to 1000, or H:MM); with no rule for it, that answers “This has no effect.” in Infocom style, and elsewhere the intent server gets a turn. Digits that name something here (locker 12) are that thing, not the number. |
 | PLUG *thing* WITH *item* | | The same: a rule, or “This has no effect.” |
@@ -27,8 +28,8 @@ The built-in verbs are fixed; a world gives them things to act on, and can add v
 | USE *item* [ON *thing*] | `push` `pull` `press` `operate` `attach X to Y` | See [use rules](./world-schema#userule). OPEN and PUT fall back to an item’s use rules when it isn’t a container. |
 | GIVE *item* TO *person* | `hand` `offer` `return` | With one person present, GIVE *item* is enough. |
 | TALK TO *person* | `speak/chat with`, `question` | With one person present, TALK is enough. |
-| ASK *person* ABOUT *topic* | `tell … about …` | The person’s answer on that topic, if the world gives it [topics](./world-schema#npc); otherwise what TALK TO says. |
-| *person*, *command* | `tell/order/ask … to …` | An order (a bare TELL *person* is one too). A character the world lets obey carries out GO, TAKE, DROP and GIVE ME, or answers a rule (“robot, push the button”); others answer or ignore it. An order to such a character ends the rest of the line. |
+| ASK *person* ABOUT *topic* | `tell … about …` | The person’s answer on that topic, if the world gives it [topics](./world-schema#npc); otherwise what TALK TO says. ABOUT ME and ABOUT MYSELF reach a topic keyed or aliased `me` or `myself`. |
+| *person*, *command* | `tell/order/ask … to …` | An order (a bare TELL *person* is one too). *person*, FOLLOW ME is one too, answered by the character’s `orders.follow` rules. A character the world lets obey carries out GO, TAKE, DROP and GIVE ME, or answers a rule (“robot, push the button”); others answer or ignore it. An order to such a character ends the rest of the line. |
 | WEAR *item* | `put on` | |
 | SMASH *thing* [WITH *item*] | `break` `destroy` `wreck` `whack` `beat` | |
 | ATTACK *someone* WITH *weapon* | `kill` `hit` `fight` `stab` | At a character who fights, combat; at anything else, SMASH (in a world without combat). In Infocom style, `kill troll` picks the one weapon you hold, or asks. |
@@ -67,9 +68,11 @@ The built-in verbs are fixed; a world gives them things to act on, and can add v
 
 **ME:** `me` and `myself` mean you where a thing is expected, and so do `self` and `yourself` unless something here is called that. In an order, “robot, give me the key” hands it to you, and “robot, push yourself” means the robot. A world decides what, if anything, happens; with nothing to say, the reply is the usual one for a word that names nothing here (“You don’t see a “me” here.”).
 
-**Chaining:** `take key and wallet`, `north then look`, `west. take lamp.` Each piece runs separately (and gets its own intent-server retry if it misses).
+**Chaining:** `take key and wallet`, `north then look`, `west. take lamp.` Each piece runs separately (and gets its own intent-server retry if it misses). A name that contains “and” stays whole: in a world with a “lost and found” box, `take flair from lost and found and go north` is two commands, not three.
 
 **Pronouns:** `it`, `them` and `that` mean the last thing you acted on, as in `take the mug then give it to gary`; `him` and `her` mean the last person.
+
+**Names:** every word of three or more letters you type has to be in the thing’s name or one of its other words: `take red ball` doesn’t find a thing the world calls only “ball”. Shorter words are ignored, and a word can be shortened (`lant` for lantern). See [How names are matched](../guide/building-worlds/#how-names-are-matched).
 
 **Questions:** when a word matches more than one thing, the game asks which (“Which do you mean: the wooden door or the trap door?”, or in Infocom style “Which door do you mean, the wooden door or the trap door?”), and when a verb is missing its object, what (“What do you want to take?”). Answer with just the missing words (`trap`, `the sword`), or type a new command to move on. Questions take no game time, and answers are never sent to the intent server.
 
