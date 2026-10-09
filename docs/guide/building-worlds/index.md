@@ -105,6 +105,29 @@ Taken: ball.
 
 A character can be told to do things: `robot, go east`, `floyd, follow me`. Its `orders` rules answer, keyed by the verb, and `obeys` lets it carry out GO, TAKE, DROP and GIVE by itself. [Orders](../../reference/world-schema#orders) has the whole story; [Orders, numbers and a buggy](./recipes#orders-numbers-and-a-buggy) is a worked example.
 
+In an `orders.go` rule, **`direction:`** is the place the character was told to go, as the player typed it. The robot in that recipe won’t drive onto sand by itself:
+
+```ts
+robot: {
+  name: 'robot',
+  description: 'A squat robot on treads, with one clamp for an arm.',
+  obeys: ['go', 'take'],
+  obeyReplies: { go: 'Whirr, click!', take: 'Click!' },
+  orders: {
+    go: [{ if: 'direction:dunes', say: ['The robot looks at its treads, then at the sand, and stays put.'] }],
+  },
+},
+```
+
+```
+> robot, go to the dunes
+The robot looks at its treads, then at the sand, and stays put.
+> robot, go east
+Whirr, click!
+```
+
+“Go to the dunes” matches `direction:dunes`, so the rule answers. “Go east” matches no rule, so the robot obeys. The word is compared as typed (lowercase, without “to the”), so `direction:east` works for compass directions too.
+
 FOLLOW is a built-in verb. `follow floyd` doesn’t make Floyd anything; it tells the player how to bring him along. `floyd, follow me` is an order, so the character decides, in an `orders.follow` rule:
 
 ```ts
@@ -146,6 +169,39 @@ A `flaming` item with no switch, such as a torch or a lit match, is already burn
 ## Saves and new versions of your world
 
 Players’ saves hold the whole game: where every item is, flags, variables. When you ship a new version of a world with **new items**, a save made before them has no place for them. On load, the engine puts each item the save doesn’t mention where the world starts it, so an older save sees the new things where you placed them. An item the player used up (moved to `null`) stays gone. The browser terminal does this on every load; if you keep saves yourself, pass them through `migrateSave(world, raw)` from `@brass-lantern/engine` to get the same.
+
+Say version 1 of the two-room game has nothing in the hall but the side table, and version 2 adds an umbrella. All you do is add it, as you would to a new world:
+
+```ts
+// Version 1
+hall: { name: 'Hall', /* … */ items: ['side_table'], /* … */ },
+
+// Version 2: the umbrella is new
+hall: { name: 'Hall', /* … */ items: ['side_table', 'umbrella'], /* … */ },
+// and in items:
+umbrella: { name: 'umbrella', description: 'A black umbrella, still damp.', portable: true, tags: [] },
+```
+
+A player who saved in the hall under version 1 restores under version 2 and finds it there:
+
+```
+> look
+📍 Hall
+A dusty hall that smells of old books. The front door is south.
+You can see: umbrella.
+Sitting on the side table is:
+  A letter
+Exits: south.
+```
+
+In the save itself, `migrateSave` fills in the one place the old save was missing, and leaves everything else alone:
+
+```ts
+// before: version 1’s save has no umbrella
+locations: { doormat: 'porch', key: 'player', side_table: 'hall', letter: 'side_table', /* … */ }
+// after migrateSave(version2, save): the umbrella starts where version 2 puts it
+locations: { doormat: 'porch', key: 'player', side_table: 'hall', letter: 'side_table', /* … */ umbrella: 'hall' }
+```
 
 That covers new items only. Change where an existing item starts and old saves keep it where it was; rename an item’s ID and old saves treat it as new, putting it back at its start even if the player had taken it. Prefer adding to renaming.
 

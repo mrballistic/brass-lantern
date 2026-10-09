@@ -68,7 +68,7 @@ The built-in verbs are fixed; a world gives them things to act on, and can add v
 
 **ME:** `me` and `myself` mean you where a thing is expected, and so do `self` and `yourself` unless something here is called that. In an order, “robot, give me the key” hands it to you, and “robot, push yourself” means the robot. A world decides what, if anything, happens; with nothing to say, the reply is the usual one for a word that names nothing here (“You don’t see a “me” here.”).
 
-**Chaining:** `take key and wallet`, `north then look`, `west. take lamp.` Each piece runs separately (and gets its own intent-server retry if it misses). A name that contains “and” stays whole: in a world with a “lost and found” box, `take flair from lost and found and go north` is two commands, not three.
+**Chaining:** `take key and wallet`, `north then look`, `west. take lamp.` Each piece runs separately (and gets its own intent-server retry if it misses). A name that contains “and” stays whole: in a world where “lost and found” is a thing’s name or one of its aliases, `take flair from lost and found and go north` is two commands, not three. Words that only appear in a description don’t count.
 
 **Pronouns:** `it`, `them` and `that` mean the last thing you acted on, as in `take the mug then give it to gary`; `him` and `her` mean the last person.
 

@@ -253,14 +253,20 @@ export function npcDescription(world: World, state: GameState, id: string): stri
   return expandTemplate(text, world, state);
 }
 
-/** “The robot”: a character’s name with its article (`NPC.article`, default “the”; '' for a proper name). */
+/**
+ * “The robot”: a character’s name with its article (`NPC.article`, default “the”; '' for a proper name),
+ * capitalized, for the start of a sentence (“The robot can’t go that way.”). Mid-sentence, use `npcthe`.
+ */
 export function npcThe(world: World, id: string): string {
   const npc = world.npcs[id];
   const a = npc.article ?? 'the';
   return a ? `${a[0].toUpperCase()}${a.slice(1)} ${npc.name}` : npc.name;
 }
 
-/** “the robot”: the same, for the middle of a sentence (the article lowercased). */
+/**
+ * “the robot”: the same, for the middle of a sentence, with the article lowercased
+ * (“You’d rather the robot came to you.”). At the start of a sentence, use `npcThe`.
+ */
 export function npcthe(world: World, id: string): string {
   const npc = world.npcs[id];
   const a = npc.article ?? 'the';

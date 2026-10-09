@@ -154,12 +154,12 @@ rl.close();
 
 ### Your own loop
 
-`createGame` and the Vue terminal do the splitting, parsing and running for you. If you drive the lower-level pieces yourself (`splitCommands`, `fallbackParse`, `execute`), pass `splitCommands` the world’s names that contain “and”, or it will cut “take flair from lost and found” in two. `andNames(world)` builds that list; work it out once per world, not once per line:
+`createGame` and the Vue terminal do the splitting, parsing and running for you. If you drive the lower-level pieces yourself (`splitCommands`, `fallbackParse`, `execute`), pass `splitCommands` the world’s names that contain “and”, or it will cut “take flair from lost and found” in two. Only names and aliases count: “lost and found” stays whole if it’s an item’s or a character’s name or one of its aliases, not if it only appears in a description. `andNames(world)` builds that list; work it out once per world, not once per line:
 
 ```ts
 import { andNames, execute, fallbackParse, initialState, splitCommands } from '@brass-lantern/engine';
 
-const names = andNames(world);   // e.g. ['lost and found box', 'lost and found']
+const names = andNames(world);   // e.g. ['lost and found box', 'lost and found'], from item and character names and aliases
 const state = initialState(world);
 
 function run(line: string): string[] {
