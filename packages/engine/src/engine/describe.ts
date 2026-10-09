@@ -259,3 +259,10 @@ export function npcThe(world: World, id: string): string {
   const a = npc.article ?? 'the';
   return a ? `${a[0].toUpperCase()}${a.slice(1)} ${npc.name}` : npc.name;
 }
+
+/** “the robot”: the same, for the middle of a sentence (the article lowercased). */
+export function npcthe(world: World, id: string): string {
+  const npc = world.npcs[id];
+  const a = npc.article ?? 'the';
+  return a ? `${a.toLowerCase()} ${npc.name}` : npc.name;
+}

@@ -18,6 +18,7 @@ export const fortune: World = {
   npcs: {
     madame: {
       name: 'Madame Zora',
+      article: '',
       description: 'Madame Zora peers at you over the crystal ball.',
       instead: { consult: [{ then: 'reading' }] },
     },

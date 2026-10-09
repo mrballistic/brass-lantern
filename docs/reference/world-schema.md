@@ -304,7 +304,7 @@ The `die` effect uses it. Without a `death` block, dying prints the cause and en
 | Field | Type | |
 |---|---|---|
 | `name` | string | |
-| `article?` | string | Brass style: the article in the engine’s lines that start with the character’s name (“The robot can’t go that way.”, FOLLOW’s reply). Default `'the'`; `''` for a proper name, so Floyd isn’t “The Floyd”. See [Orders](#orders). |
+| `article?` | string | Brass style: the article in the engine’s lines that start with the character’s name (“The robot can’t go that way.”, FOLLOW’s reply). Default `'the'`; `''` for a proper name, so Floyd isn’t “The Floyd”. Mid-sentence it’s lowercased: “You’d rather the robot came to you.” See [Orders](#orders). |
 | `description` | string | EXAMINE. In an unlit dark room, EXAMINE of a character gets the [darkness](#darkness) reply. |
 | `onGive?` | `Record<item id, event>` | GIVE hands the item over and fires the event. |
 | `refuse?` | `Record<item id, string>` | Declines that item; the player keeps it. |

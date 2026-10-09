@@ -102,7 +102,7 @@ dialogue: {
 },
 ```
 
-GIVE MUG TO GARY takes the mug and fires `gary_mug`. With only one person in the room, GIVE MUG is enough. **`refuse`** declines a specific item and lets the player keep it. For a proper name like Gary, `article: ''` keeps the engine’s own lines about him (FOLLOW GARY, an order he can’t carry out) from saying “The Gary”.
+GIVE MUG TO GARY takes the mug and fires `gary_mug`. With only one person in the room, GIVE MUG is enough. **`refuse`** declines a specific item and lets the player keep it. Gary is a proper name, so he has `article: ''`: the engine’s own lines about him (FOLLOW GARY, an order he can’t carry out) say “Gary”, not “the Gary”.
 
 **Dialogue** maps conditions to lines; TALK TO uses the **last** entry whose condition holds, so list them from least to most advanced. Here, Gary’s advice only appears once he’s happy, which turns him into a hint.
 

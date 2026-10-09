@@ -26,10 +26,14 @@ describe('FOLLOW (2.1.0)', () => {
     expect(text(world, 'follow')).toContain('What do you want to follow?');
   });
   it('FOLLOW a character with no rule points at the order form', () => {
-    expect(text(world, 'follow samir')).toBe('You’d rather The Samir came to you. Try SAMIR, FOLLOW ME.');
+    expect(text(world, 'follow samir')).toBe('You’d rather the Samir came to you. Try SAMIR, FOLLOW ME.');
   });
   it('FOLLOW a character with article "" uses the bare name', () => {
     expect(text(withNpc(world, 'samir', { article: '' }), 'follow samir')).toBe('You’d rather Samir came to you. Try SAMIR, FOLLOW ME.');
+  });
+  it('FOLLOW a character with a custom article lowercases it mid-sentence', () => {
+    const w = withNpc(world, 'samir', { name: 'robot', aliases: ['samir'], article: 'Your' });
+    expect(text(w, 'follow robot')).toBe('You’d rather your robot came to you. Try ROBOT, FOLLOW ME.');
   });
   it('FOLLOW a thing', () => {
     expect(text(world, 'follow lamp')).toBe('You can’t follow that.');

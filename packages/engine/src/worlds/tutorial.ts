@@ -94,6 +94,7 @@ export const tutorial: World = {
   npcs: {
     gary: {
       name: 'Gary',
+      article: '',
       description: 'Gary from Accounts. He has opinions about the water cooler.',
       onGive: { mug: 'gary_mug' },
       refuse: { badge: '“That’s your badge, man. Keep your badge.”' },

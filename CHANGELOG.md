@@ -7,7 +7,7 @@ Fixes found while moving Office Space onto 2.0.0, plus engine items any world co
 ### Added
 
 - **FOLLOW is a built-in verb.** Bare FOLLOW asks “What do you want to follow?”; FOLLOW *character* answers “You’d rather … came to you. Try *NAME*, FOLLOW ME.”; FOLLOW *thing* says “You can’t follow that.”. `instead.follow` rules answer first. “*X*, FOLLOW ME” now parses as an order with no world verb, so `orders.follow` rules fire. FOLLOW is in HELP, and `@brass-lantern/server` accepts `follow` from the model. A world that declared its own `follow` verb gets an audit report (“verb word … is a built-in”) and should drop it.
-- **`article` on characters.** Brass style starts the engine’s lines about a character with it (“The robot can’t go that way.”, FOLLOW’s reply). Default “the”; `''` for a proper name, so Floyd isn’t “The Floyd”.
+- **`article` on characters.** Brass style starts the engine’s lines about a character with it (“The robot can’t go that way.”, FOLLOW’s reply). Default “the” (lowercased mid-sentence, as in FOLLOW’s reply); `''` for a proper name, so Floyd isn’t “The Floyd”. The bundled Gary (tutorial) and Madame Zora (fortune recipe) use `''`.
 - **Saves pick up new items.** Restoring a format 2.0 save puts any item the save has no place for (one a later version of the world added) where the world starts it. Items the player used up stay gone.
 - **`andNames(world)`** lists the world’s item and character names and aliases that contain “and”. `splitCommands` takes it as a third argument; `createGame` and the Vue terminal pass it for you.
 
