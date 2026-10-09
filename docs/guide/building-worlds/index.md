@@ -87,7 +87,7 @@ The third step is strict on purpose: **a word the world doesn’t know stops the
 You don’t see a “red ball” here.
 ```
 
-So when your description gives a thing a colour, a size or a material, put that word in its name or an alias. Either of these works:
+So when your description gives a thing a color, a size or a material, put that word in its name or an alias. Either of these works:
 
 ```ts
 ball: { name: 'ball', aliases: ['red ball'], description: 'A red rubber ball.', portable: true, tags: [] },

@@ -194,7 +194,7 @@ An armory with a sword and an anvil too heavy to lift, and a guard who won’t l
 
 - **`carry`** turns on weight. Each item weighs its `size` (5 if unset) plus what’s inside it, and TAKE refuses what would go over `limit`.
 - **`combat`** on a character makes it someone you can fight with a `weapon`. The engine runs the fight: your strength against theirs, a seeded roll, and Zork’s tables of results. The guard’s `messages` are its blows at you; `world.combat` holds yours (short defaults here).
-- **The engine’s own fight lines say “they”** (“The guard drops their weapon.”), since it doesn’t know who a character is. The world’s own `combat` block (not the guard’s) replaces the two that would say it here, `messages.loseWeapon` and `texts.defenceless`, so the guard is “he” throughout.
+- **The engine’s own fight lines say “they”** (“The guard drops their weapon.”), since it doesn’t know who a character is. The world’s own `combat` block (not the guard’s) replaces the two that would say it here, `messages.loseWeapon` and `texts.defenseless`, so the guard is “he” throughout.
 - **`holds`** gives the guard his club. While he has it he fights back; knock it away and `onBusy` runs instead of a swing.
 - **`awake:guard`** in the exit’s `denials` keeps the way shut until he’s dead or out cold.
 - **`seed`** (here `seed: 1`, in the whole world below) fixes the world’s random generator, so this transcript plays the same way every time. Leave it out and every game differs.
@@ -285,7 +285,7 @@ A librarian who answers questions, and won’t be bossed about.
 
 ```
 > ask librarian about books
-“Shelved by colour. Don’t ask.”
+“Shelved by color. Don’t ask.”
 > ask librarian about me
 “You look like someone with an overdue book.”
 > ask librarian about the weather

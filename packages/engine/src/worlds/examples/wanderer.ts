@@ -13,7 +13,7 @@ export const wanderer: World = {
     sock: { name: 'sock', description: 'A single woolly sock.', portable: true, tags: [] },
   },
   npcs: {
-    cat: { name: 'cat', description: 'A grey cat with opinions.', holds: [] },
+    cat: { name: 'cat', description: 'A gray cat with opinions.', holds: [] },
   },
   // #region cat
   // The cat's turn: a daemon that runs a script after every turn the engine acts on.

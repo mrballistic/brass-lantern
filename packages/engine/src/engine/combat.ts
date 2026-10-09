@@ -78,7 +78,7 @@ const ZORK_TEXT: Record<CombatText, string> = {
   notPerson: 'I’ve known strange people, but fighting a {defender}?',
   notCombatant: '{defender} won’t fight you.',
   recovering: 'You are still recovering from that last blow, so your attack is ineffective.',
-  defenceless: 'The {how} {defender} cannot defend himself: He dies.',
+  defenseless: 'The {how} {defender} cannot defend himself: He dies.',
   dies: 'Almost as soon as the {defender} breathes his last breath, a cloud of sinister black fog envelops him, and when the fog lifts, the carcass has disappeared.',
   regainsFeet: 'The {defender} slowly regains his feet.',
   stillHave: 'Fortunately, you still have a {weapon}.',
@@ -92,7 +92,7 @@ const BRASS_TEXT: Record<CombatText, string> = {
   notPerson: 'You can only fight people.',
   notCombatant: '{defender} won’t fight you.',
   recovering: 'You’re still reeling from that last blow.',
-  defenceless: 'The {defender} can’t defend themselves.',
+  defenseless: 'The {defender} can’t defend themselves.',
   dies: 'The {defender} is dead.',
   regainsFeet: 'The {defender} gets back up.',
   stillHave: 'You still have the {weapon}.',
@@ -171,7 +171,7 @@ export function heroBlow(world: World, state: GameState, npc: string, weapon: st
   const lines: string[] = [];
   let result: BlowResult;
   if (!theirs || def < 0) {
-    lines.push(combatText(world, 'defenceless', { ...fields, how: def < 0 ? 'unconscious' : 'unarmed' }));
+    lines.push(combatText(world, 'defenseless', { ...fields, how: def < 0 ? 'unconscious' : 'unarmed' }));
     result = 'killed';
   } else {
     result = blow(state, att, def);

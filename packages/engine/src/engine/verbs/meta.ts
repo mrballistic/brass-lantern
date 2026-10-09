@@ -118,7 +118,7 @@ export function handleHelp(world: World, storeHelp = false): EngineResult {
           'RESTORE <name>           Go back to a named save',
           'LOAD                     Go back to the autosave',
           'RESTART                  Wipe save and start over',
-          'THEME [name]             List or change the colour theme',
+          'THEME [name]             List or change the color theme',
           'BLOOM ON|OFF             Screen glow',
           'EFFECTS ON|OFF           All screen effects',
           'COOKIES                  Analytics settings',

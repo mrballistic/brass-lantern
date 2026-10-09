@@ -12,8 +12,8 @@ function query(q: string): MediaQueryList | null {
 }
 
 /**
- * Resolves a theme and applies its effect classes and colour variables to `root`.
- * Re-applies when the theme, overrides, or the player's colour-scheme and
+ * Resolves a theme and applies its effect classes and color variables to `root`.
+ * Re-applies when the theme, overrides, or the player's color-scheme and
  * reduced-motion preferences change. Variables live on the element, so two
  * terminals on one page keep their own.
  */
