@@ -97,6 +97,10 @@ export default defineConfig({
     socialLinks: [{ icon: 'github', link: repo }],
     editLink: { pattern: `${repo}/edit/main/docs/:path`, text: 'Edit this page on GitHub' },
     search: { provider: 'local' },
-    footer: { message: `Brass Lantern v${pkg.version} · Released under the MIT License.`, copyright: 'Copyright © 2026 Todd Greco' },
+    footer: {
+      // A quiet nod to where the name comes from.
+      message: `Brass Lantern v${pkg.version} · Released under the MIT License. · <a href="https://www.ifwiki.org/Brass_lantern">Why a brass lantern?</a>`,
+      copyright: 'Copyright © 2026 Todd Greco',
+    },
   },
 });
