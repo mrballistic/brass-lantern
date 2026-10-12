@@ -17,8 +17,8 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@brass-lantern/engine": "2.1.1",
-    "@brass-lantern/vue": "2.1.1",
+    "@brass-lantern/engine": "2.2.0",
+    "@brass-lantern/vue": "2.2.0",
     "pinia": "^4.0.3",
     "vue": "^3.5.43"
   },
