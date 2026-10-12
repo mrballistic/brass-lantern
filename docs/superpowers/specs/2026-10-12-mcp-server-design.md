@@ -1,6 +1,6 @@
 # Brass Lantern 2.3.0: an MCP server for coding agents
 
-**Status:** draft for the owner’s review (2026-10-12). Decisions marked **(proposed)** are recommendations, not yet approved.
+**Status:** approved 2026-10-12. The owner took the recommendations: the decisions once marked “proposed” stand, and the open questions are settled as recommended (name `@brass-lantern/mcp` / `brass-lantern-mcp`, stateless `play`, the project’s own engine first, the `docs` tool included).
 
 ## Goal
 
@@ -20,7 +20,7 @@ Success looks like this: an agent in Claude Code (or any MCP client), given only
 ## 1. The package
 
 - `packages/mcp`, published as `@brass-lantern/mcp`, ESM, Node 24 (matching the server package). Binary: `brass-lantern-mcp`.
-- Dependencies: `@modelcontextprotocol/sdk` (the official TypeScript SDK; tools are declared with its zod schemas), `@brass-lantern/engine` (`^2.3.0`), and **`jiti`** for loading a `.ts` world without a build step **(proposed)**. The alternatives are requiring a compiled `.js` world, which agents rarely have, or `tsx` as a loader, which is heavier and changes process-wide hooks.
+- Dependencies: `@modelcontextprotocol/sdk` (the official TypeScript SDK; tools are declared with its zod schemas), `@brass-lantern/engine` (`^2.3.0`), and **`jiti`** for loading a `.ts` world without a build step. The alternatives are requiring a compiled `.js` world, which agents rarely have, or `tsx` as a loader, which is heavier and changes process-wide hooks.
 - Setup in a client, documented for Claude Code with a generic JSON snippet for others:
   ```json
   { "mcpServers": { "brass-lantern": { "command": "npx", "args": ["-y", "@brass-lantern/mcp"] } } }
@@ -32,7 +32,7 @@ Success looks like this: an agent in Claude Code (or any MCP client), given only
 Every engine tool takes `path` (a `.ts`, `.mts`, `.js` or `.mjs` module) and an optional `export` (an export name).
 
 - **Which export:** the named one. If none is named: the default export if it’s world-shaped, otherwise the only world-shaped named export. Several candidates is an error that lists their names. World-shaped means an object with `rooms`, `items`, `npcs` and `startRoom`.
-- **Which engine (proposed):** the engine **the world’s own project resolves** (`createRequire(path)` → `@brass-lantern/engine`), so an agent auditing a 2.2 project gets 2.2’s rules. The server’s bundled engine is the fallback when the project has none. Every engine tool reports the version it used.
+- **Which engine:** the engine **the world’s own project resolves** (`createRequire(path)` → `@brass-lantern/engine`), so an agent auditing a 2.2 project gets 2.2’s rules. The server’s bundled engine is the fallback when the project has none. Every engine tool reports the version it used.
 - **Fresh every call:** the module is loaded fresh each time (no module cache), so an edit is seen on the next call.
 - **Errors are results, not crashes:** a syntax error, a missing file or a throwing module comes back as an error result naming the file and the message. The server keeps running.
 
@@ -43,10 +43,10 @@ All replies are plain text an agent can read, with the structured parts as compa
 1. **`audit_world { path, export? }`**: runs `auditWorld`. Returns the problems, one per line, or “No problems.” Also reports the world’s size (room, item, NPC and event counts) and the engine version used.
 2. **`play { path, export?, commands: string[], seed? }`**: a fresh game (seeded; default seed 1, so runs repeat exactly), then each command through `Game.send`, the same path the browser takes minus the LLM.
    - Returns a transcript (the opening lines, then `> command` and the reply lines for each) and the final state: room, inventory, flags set, score and moves, and game over or not.
-   - Stateless **(proposed)**: each call replays from the start. Worlds are deterministic under a seed, replay is fast, and nothing has to be cleaned up. Sessions can come later if agents need them.
+   - Stateless: each call replays from the start. Worlds are deterministic under a seed, replay is fast, and nothing has to be cleaned up. Sessions can come later if agents need them.
    - Caps: 500 commands per call; output trimmed past 2,000 lines, with a note.
    - Lines the regex parser can’t read are reported as “not understood (the intent server would see this)”, since there is no LLM here.
-3. **`docs { page?, query? }`** **(proposed)**: the documentation for the engine version in use, from the same per-page markdown `llms.txt` points at, bundled into the package at build.
+3. **`docs { page?, query? }`**: the documentation for the engine version in use, from the same per-page markdown `llms.txt` points at, bundled into the package at build.
    - No arguments: the index.
    - `page` (for example `reference/world-schema`): that page.
    - `query`: the matching sections (headings plus their text), best first, capped.
@@ -81,9 +81,9 @@ The generator from PR #27 moves from `docs/.vitepress/llms.ts` to `scripts/llms.
   - README and getting-started links.
   - CHANGELOG.
 
-## Open questions for the owner
+## Settled questions
 
-1. Package name `@brass-lantern/mcp` and binary `brass-lantern-mcp`?
-2. Stateless `play` (replay each call) for now, with sessions only if agents need them?
-3. Use the project’s own engine when it has one, rather than always the bundled one?
-4. Include the `docs` tool, or rely on `llms.txt` alone?
+1. Package `@brass-lantern/mcp`, binary `brass-lantern-mcp`.
+2. `play` is stateless (replays each call); sessions only if agents need them.
+3. The world’s project’s engine first, the bundled one as fallback.
+4. The `docs` tool ships.
