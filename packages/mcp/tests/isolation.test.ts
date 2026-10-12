@@ -10,12 +10,17 @@ import { createServer, inProcessRunner } from '../src/server.ts';
 const FIXTURES = resolve(import.meta.dirname, 'fixtures');
 let client: Client;
 
-beforeAll(async () => {
-  const server = createServer({ version: '0.0.0-test', cwd: FIXTURES, timeoutMs: 1500, timeoutHint: 'Raise the limit with --timeout <seconds>.' });
+/** A client wired to `server` over an in-memory transport. */
+async function connect(server: ReturnType<typeof createServer>): Promise<Client> {
   const [serverSide, clientSide] = InMemoryTransport.createLinkedPair();
   await server.connect(serverSide);
-  client = new Client({ name: 'test', version: '1' });
-  await client.connect(clientSide);
+  const c = new Client({ name: 'test', version: '1' });
+  await c.connect(clientSide);
+  return c;
+}
+
+beforeAll(async () => {
+  client = await connect(createServer({ version: '0.0.0-test', cwd: FIXTURES, timeoutMs: 1500, timeoutHint: 'Raise the limit with --timeout <seconds>.' }));
 });
 afterAll(() => client.close());
 afterEach(() => vi.restoreAllMocks());
@@ -55,15 +60,19 @@ describe('a world runs in its own worker', () => {
     await stillWorks();
   });
   it('a dozen calls at once all answer, with no listener warning', async () => {
+    // Its own server with a generous deadline: twelve workers starting together (each loading tsx and
+    // the engine's source, in the repo) can outlast the 1.5 s the loop tests use on a small CI runner.
+    const busy = await connect(createServer({ version: '0.0.0-test', cwd: FIXTURES, timeoutMs: 30_000 }));
     const warnings: string[] = [];
     const onWarning = (w: Error) => warnings.push(w.name);
     process.on('warning', onWarning);
     try {
-      const results = await Promise.all(Array.from({ length: 12 }, () => client.callTool({ name: 'audit_world', arguments: { path: 'noisy.ts' } })));
-      expect(results.every((r) => !r.isError)).toBe(true);
+      const results = await Promise.all(Array.from({ length: 12 }, () => busy.callTool({ name: 'audit_world', arguments: { path: 'noisy.ts' } })));
+      expect(results.filter((r) => r.isError).map(text)).toEqual([]);
       await new Promise((r) => setTimeout(r, 700));
     } finally {
       process.off('warning', onWarning);
+      await busy.close();
     }
     expect(warnings).not.toContain('MaxListenersExceededWarning');
   });
