@@ -152,6 +152,43 @@ try {
     check('mcp: the stdio server runs from the installed package', false, error.stderr || String(error));
   }
 
+  // A world that loops forever must time out (here after 2 s), not hang the server, and the
+  // server must still answer afterwards.
+  try {
+    writeFileSync(
+      join(app, 'loops.ts'),
+      `export default {
+  startRoom: 'hall',
+  rooms: { hall: { name: 'Hall', description: 'A hall.', descriptionScript: 'spin', exits: {}, items: [], npcs: [], onEnter: [] } },
+  items: {}, npcs: {}, events: {}, dialogue: {}, flagLabels: {},
+  scripts: { spin: () => { for (;;) {} } },
+};
+`,
+    );
+    const out = node(
+      app,
+      `const { Client } = await import('@modelcontextprotocol/sdk/client/index.js');
+       const { StdioClientTransport } = await import('@modelcontextprotocol/sdk/client/stdio.js');
+       const client = new Client({ name: 'smoke', version: '1' });
+       await client.connect(new StdioClientTransport({ command: process.execPath, args: ['node_modules/@brass-lantern/mcp/dist/cli.js', '--timeout', '2'], cwd: process.cwd() }));
+       const start = Date.now();
+       const loops = await client.callTool({ name: 'play', arguments: { path: 'loops.ts', commands: ['look'] } });
+       const ms = Date.now() - start;
+       const after = await client.callTool({ name: 'play', arguments: { path: 'world.ts', commands: ['look'] } });
+       await client.close();
+       console.log(JSON.stringify({ isError: loops.isError === true, text: loops.content[0].text, ms, after: after.content[0].text }));`,
+    );
+    const result = JSON.parse(out.split('\n').at(-1));
+    check(
+      'mcp: a looping world times out instead of hanging',
+      result.isError && result.text.includes('didn’t finish within 2 s') && result.ms < 10_000,
+      `${result.ms} ms: ${result.text}`,
+    );
+    check('mcp: a normal call still works after a timeout', result.after.includes('> look'), result.after);
+  } catch (error) {
+    check('mcp: a looping world times out instead of hanging', false, error.stderr || String(error));
+  }
+
   try {
     const out = node(
       app,

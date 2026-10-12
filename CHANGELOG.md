@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.3.1 (2026-10-12)
+
+- **`audit_world` and `play` run in a worker thread with a time limit** (10 s by default, `--timeout <seconds>` to change it). A world that loops forever now returns an error instead of hanging the server, and one that crashes or calls `process.exit()` ends only its own call. This supersedes the 2.3.0 note that there was no per-call timeout.
+- A world’s stdout (`process.stdout.write`, its own `node:console`) goes to stderr and can no longer corrupt the protocol. Writing to file descriptor 1 directly still can.
+- A project engine that is installed but broken (a missing entry file, say) is now reported with a note instead of being swapped for the bundled one silently.
+- `createServer`’s `bundled` option is deprecated: the default worker runner imports its own engine. To run in-process with your engine (without the time limit), pass `runJob: inProcessRunner(engine)`.
+- `@brass-lantern/engine`, `/vue` and `/server`: no changes beyond the version.
+
 ## 2.3.0 (2026-10-12)
 
 - **`@brass-lantern/mcp`**, a new package: a local Model Context Protocol server for coding agents. `audit_world` audits a world file, `play` runs commands in a fresh seeded game and returns the transcript and final state (including the score), and `docs` serves this version’s documentation. It uses the world’s own project’s engine when it has one, and always reports which engine it used. World files are re-read on every call, and must be inside the directory the server started in or one passed with `--root`. A world whose script loops forever hangs the server until the client restarts it, and one that calls `process.exit()` ends it; there is no per-call timeout yet. To embed it, the package exports `createServer` and `quietStdout`. See [Coding agents](https://mrballistic.github.io/brass-lantern/guide/coding-agents).
