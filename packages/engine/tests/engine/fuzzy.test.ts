@@ -1,4 +1,4 @@
-import { fuzzyCandidates, fuzzyMatch, fuzzyMatchExit } from '../../src/engine/fuzzy';
+import { fuzzyCandidates, fuzzyMatch, fuzzyMatchExit, rankCandidates, RANK } from '../../src/engine/fuzzy';
 
 describe('fuzzyMatch', () => {
   const candidates = [
@@ -189,5 +189,40 @@ describe('determiners and possessives are not required words', () => {
     expect(fuzzyCandidates('red ball', things)).toEqual([]);
     expect(fuzzyCandidates('old brass lamp', things)).toEqual([]);
     expect(fuzzyCandidates('this red ball', things)).toEqual([]);
+  });
+});
+
+describe('ranks', () => {
+  const c = [
+    { id: 'neighbor', name: 'Neighbor' },
+    { id: 'neighbors_mug', name: 'Neighbor’s coffee mug', aliases: ['mug'] },
+    { id: 'neighbor_banner', name: 'banner' },
+    { id: 'mailbox', name: 'tin box' },
+  ];
+  const others = c.slice(1);
+  it('an exact name beats an item that only contains it', () => {
+    expect(rankCandidates('neighbor', c)).toEqual({ rank: RANK.exact, ids: ['neighbor'] });
+  });
+  it('a whole word of a name is rank 2', () => {
+    expect(rankCandidates('coffee', c)).toEqual({ rank: RANK.nameWord, ids: ['neighbors_mug'] });
+  });
+  it('a word of an ID and a part of a name tie at rank 3', () => {
+    expect(rankCandidates('neighbor', others)).toEqual({ rank: RANK.idWordOrNamePart, ids: ['neighbors_mug', 'neighbor_banner'] });
+  });
+  it('a part of an ID is rank 4', () => {
+    expect(rankCandidates('mail', c)).toEqual({ rank: RANK.idPart, ids: ['mailbox'] });
+  });
+  it('word starts are rank 5', () => {
+    expect(rankCandidates('coff mug', c)).toEqual({ rank: RANK.wordStart, ids: ['neighbors_mug'] });
+  });
+  it('nothing is rank 0', () => {
+    expect(rankCandidates('trombone', c)).toEqual({ rank: 0, ids: [] });
+  });
+  it('fuzzyCandidates returns the best rank’s IDs', () => {
+    expect(fuzzyCandidates('neighbor', c)).toEqual(['neighbor']);
+    expect(fuzzyCandidates('neighbor', others)).toEqual(['neighbors_mug', 'neighbor_banner']);
+  });
+  it('coarse folds ranks 2–4 into one tie (the 2.1 substring tier)', () => {
+    expect(rankCandidates('banner', [{ id: 'flag', name: 'flag banner' }, { id: 'banner_pole', name: 'pole' }], { coarse: true }).ids).toEqual(['flag', 'banner_pole']);
   });
 });
