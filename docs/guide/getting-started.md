@@ -65,4 +65,8 @@ export const storagePrefix = 'brass-lantern';
 
 Add your own world as a cartridge (and remove the others if you like: with one cartridge there’s no menu). [Building worlds](./building-worlds/) walks through writing one, from two rooms up; [Playing story files](./z-machine) covers Z-machine cartridges.
 
+## For coding agents
+
+The docs also come as plain markdown for agents and LLM tools. [llms.txt](https://mrballistic.github.io/brass-lantern/llms.txt) indexes every page, each page has a `.md` copy beside it, and [llms-full.txt](https://mrballistic.github.io/brass-lantern/llms-full.txt) is all of it in one file, with the example worlds’ code inlined. Point an agent at llms-full.txt and it has the schema, the conditions, the effects and the recipes in one read.
+
 Working on Brass Lantern itself? [CONTRIBUTING.md](https://github.com/mrballistic/brass-lantern/blob/main/CONTRIBUTING.md) has the checks to run before a pull request.
