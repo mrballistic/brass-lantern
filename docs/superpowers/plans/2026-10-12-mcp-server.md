@@ -868,7 +868,7 @@ describe('the MCP server', () => {
   it('play drives the tutorial (path relative to cwd, by export name)', async () => {
     const r = await client.callTool({
       name: 'play',
-      arguments: { path: '../../engine/src/worlds/tutorial.ts', export: 'tutorial', commands: ['open drawer', 'take stapler', 'north', 'take mug and give mug to gary', 'talk to gary', 'north', 'smash machine with stapler'] },
+      arguments: { path: '../../../engine/src/worlds/tutorial.ts', export: 'tutorial', commands: ['open drawer', 'take stapler', 'north', 'take mug and give mug to gary', 'talk to gary', 'north', 'smash machine with stapler'] },
     });
     expect(text(r)).toContain('"gameOver": true');
   });
