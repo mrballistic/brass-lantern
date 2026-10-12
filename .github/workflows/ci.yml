@@ -42,11 +42,11 @@ jobs:
       - name: Test (with coverage thresholds)
         run: npm run test:coverage -w "$WORKSPACE"
       # In the repo the packages resolve to their sources, so tests and the
-      # site need no build. The vue package's declarations are built against
-      # the engine's, so the engine builds first there.
+      # site need no build. The vue and mcp packages' declarations are built
+      # against the engine's, so the engine builds first for both.
       - name: Build
         run: |
-          if [ "$WORKSPACE" = "@brass-lantern/vue" ]; then npm run build -w @brass-lantern/engine; fi
+          if [ "$WORKSPACE" = "@brass-lantern/vue" ] || [ "$WORKSPACE" = "@brass-lantern/mcp" ]; then npm run build -w @brass-lantern/engine; fi
           npm run build -w "$WORKSPACE" --if-present
 
       # The Gemini key lives only on the server. Fail loudly if anything that
