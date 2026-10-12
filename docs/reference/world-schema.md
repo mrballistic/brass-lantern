@@ -36,7 +36,7 @@ Every field a world can use. The source of truth is [`packages/engine/src/types/
 | `endings?` | `Record<id, …>` | Named endings for the `end` effect. See [Endings](#endings). |
 | `style?` | `'brass'` or `'infocom'` | Output conventions. See [Style](#style). Default `'brass'`. |
 | `emptyInventory?` | string | INVENTORY with nothing carried. Default: “You are empty-handed.” |
-| `smashRefusal?` | string | SMASH where nothing can be smashed. |
+| `smashRefusal?` | string | SMASH where nothing can be smashed, or at a person. |
 | `title?` | string | The game’s full title, for VERSION and Infocom-style transcripts (“ZORK I: The Great Underground Empire”). |
 | `credits?` | string[] | Lines VERSION prints after the title. |
 | `carry?` | `Carry` | Carrying weight. Without it there’s no limit. See [Weight](#weight). |

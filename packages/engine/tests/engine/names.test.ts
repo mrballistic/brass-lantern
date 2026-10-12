@@ -280,3 +280,31 @@ describe('BURN and THROW … AT rank people with objects', () => {
     expect(execute({ action: 'burn', target: 'banner', indirect: 'torch' }, { world: fiery, state: s }).lines).toEqual(['You can’t burn a banner.']);
   });
 });
+
+describe('ATTACK and SMASH without combat rank people too', () => {
+  const peaceful: World = { ...world, combat: undefined, npcs: { ...world.npcs, guard: { ...world.npcs.guard, combat: undefined } } };
+  const run = (verb: string, target: string) => {
+    const s = stateWith(peaceful, { room: 'yard' });
+    const before = structuredClone(s.locations);
+    const r = execute({ action: verb, target }, { world: peaceful, state: s });
+    return { r, s, before };
+  };
+  it('ATTACK and SMASH a person: an understood refusal that changes nothing', () => {
+    for (const verb of ['attack', 'smash']) {
+      const { r, s, before } = run(verb, 'neighbor');
+      expect(r.ask).toBeUndefined();
+      expect(r.lines).toEqual(['Violence isn’t the answer to this one.']);
+      expect(s.locations).toEqual(before);
+    }
+  });
+  it('a misspelled person: the tease, then the same line', () => {
+    const { r } = run('attack', 'neighbr');
+    expect(r.lines).toEqual(['“neighbr”? You mean the Neighbor.', 'Violence isn’t the answer to this one.']);
+  });
+  it('an object still smashes as before', () => {
+    const s = stateWith(peaceful, { room: 'bedroom' });
+    const r = execute({ action: 'attack', target: 'alarm clock' }, { world: peaceful, state: s });
+    expect(r.lines[0]).toBe('🔨 You smash the alarm clock.');
+    expect(s.locations.alarm).toBeNull();
+  });
+});

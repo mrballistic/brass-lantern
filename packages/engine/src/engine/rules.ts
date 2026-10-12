@@ -119,6 +119,7 @@ const TARGET_RANKED = new Map<string, 'items' | 'people'>([
   ['attack', 'people'],
   ['follow', 'people'],
   ['burn', 'items'],
+  ['smash', 'people'],
 ]);
 
 /** Verbs that hand something to someone (or aim it at them): their second object ranks people first (pickThing). */

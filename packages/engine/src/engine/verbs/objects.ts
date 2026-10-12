@@ -149,7 +149,11 @@ export function handleSmash(
 ): EngineResult {
   const finale = world.finale;
   const reach = reachableItems(world, state);
-  const itemId = target ? pickItem(target, reach, world, 'target', state) : null;
+  // Objects and people ranked together, people first on a tie (ATTACK without combat comes here).
+  const found = target ? pickThing(target, reach, world, state, { prefer: 'people' }) : null;
+  // A person with no rule for it (withRules ran theirs): an understood refusal, nothing changes.
+  if (found?.npc) return ok([world.smashRefusal ?? 'Violence isn’t the answer to this one.']);
+  const itemId = found?.item ?? null;
   const item = itemId ? world.items[itemId] : null;
 
   if (finale && itemId === finale.item) {

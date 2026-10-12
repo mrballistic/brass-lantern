@@ -160,12 +160,14 @@ describe('combat: the player’s blow', () => {
     }
   });
 
-  it('in a world without combat, attacking a person is SMASH, as before (a miss the LLM can retry)', () => {
+  it('in a world without combat, attacking a person is SMASH: an understood refusal (2.2)', () => {
     const s = stateWith(fixtureWorld, { room: 'yard' });
     carry(s, 'bat');
-    expect(execute({ action: 'attack', target: 'neighbor', indirect: 'bat' }, { world: fixtureWorld, state: s })).toEqual(
-      execute({ action: 'smash', target: 'neighbor', indirect: 'bat' }, { world: fixtureWorld, state: structuredClone(s) }),
-    );
+    const copy = structuredClone(s);
+    const attacked = execute({ action: 'attack', target: 'neighbor', indirect: 'bat' }, { world: fixtureWorld, state: s });
+    expect(attacked).toEqual(execute({ action: 'smash', target: 'neighbor', indirect: 'bat' }, { world: fixtureWorld, state: copy }));
+    expect(attacked.understood).not.toBe(false);
+    expect(attacked.lines[0]).toBe('Violence isn’t the answer to this one.');
   });
 
   it('in a world with combat, someone who doesn’t fight says so before any weapon check', () => {
