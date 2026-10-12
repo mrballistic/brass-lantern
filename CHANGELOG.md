@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.2.0 (2026-10-12)
+
+- **Names match the way players type them.** Matches are ranked (exact; a whole word of a name; a word of the ID or part of a name; part of the ID; word starts), and objects and people are compared together (EXAMINE, ATTACK, SMASH, BURN, FOLLOW, and the person in GIVE, SHOW and THROW … AT), so EXAMINE LUMBERGH finds Lumbergh, not his mug or his drawer. A cut-short name goes to the nearer whole word: EXAMINE LUMBERG is Lumbergh too. In a world without combat, ATTACK or SMASH at a person is refused (“Violence isn’t the answer to this one.”, or the world’s `smashRefusal`) rather than missed, and BURN at a person gets “You can’t burn a …” in brass style as in Infocom’s.
+- **Close misspellings match** in brass style (5+ letters, 80% alike), and a world can tease the player once per thing with the new `typoReplies`. Infocom style never guesses.
+- **GIVE <someone> <item>** parses, and keeps the person if the engine has to ask which item. The person in GIVE/SHOW … TO and THROW … AT wins a tie with a thing. Answering a which-question no longer loses a misspelling in the command’s other object.
+- **WEAR takes first** when the thing is in sight but not held and can be worn (`onWear`).
+- **BOTH** answers “Which do you mean?”: each, for TAKE, DROP and PUT; otherwise “One at a time: …?”.
+- Which-questions honor an empty `article` (“Lumbergh’s coffee mug”, not “the Lumbergh’s coffee mug”).
+
 ## 2.1.1 (2026-10-09)
 
 American spelling throughout the docs, the example worlds and the game's own lines.

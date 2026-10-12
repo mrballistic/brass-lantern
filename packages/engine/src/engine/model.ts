@@ -1,7 +1,7 @@
 import type { GameState, ItemState, NpcState, Place } from '../types/game.ts';
 import type { Item, World } from '../types/world.ts';
 import { evaluateCondition } from './conditions.ts';
-import { fuzzyCandidates, fuzzyMatch, isSelfWord, namesSelf } from './fuzzy.ts';
+import { compareRanked, fuzzyCandidates, fuzzyMatch, isSelfWord, namesSelf, RANK, rankCandidates } from './fuzzy.ts';
 import { isSafeKey } from './keys.ts';
 
 /** The place that means “carried by the player”. Reserved: no room or item may use it. */
@@ -212,8 +212,12 @@ export function matchItem(target: string, ids: string[], world: World): string |
 export function matchNpc(target: string, world: World, state: GameState): string | null {
   const present = npcsSeen(world, state, state.currentRoom);
   // Names and aliases, through the one fuzzy matcher.
-  const [id = null] = fuzzyCandidates(target, npcCandidates(present, world), { byId: byIdTurns.has(state) });
-  if (id) noteActed(state, 'npc', id);
+  const ranked = rankCandidates(target, npcCandidates(present, world), { byId: byIdTurns.has(state), typos: typosOn(world, state) });
+  const id = ranked.ids[0] ?? null;
+  if (id) {
+    noteActed(state, 'npc', id);
+    if (ranked.rank === RANK.typo && ranked.typed) noteTypo(state, id, ranked.typed);
+  }
   return id;
 }
 
@@ -226,6 +230,11 @@ export interface Acted {
 
 const actedThisTurn = new WeakMap<GameState, Acted>();
 
+// Commands the intent server produced name things by ID; those resolve by ID first.
+const byIdTurns = new WeakSet<GameState>();
+// By-ID turns whose IDs came from the player's answer to a question (ParsedAction.fromAnswer).
+const answerTurns = new WeakSet<GameState>();
+
 function noteActed(state: GameState, slot: keyof Acted, id: string): void {
   const acted = actedThisTurn.get(state) ?? {};
   acted[slot] = id;
@@ -236,6 +245,29 @@ export function takeActed(state: GameState): Acted {
   const acted = actedThisTurn.get(state) ?? {};
   actedThisTurn.delete(state);
   return acted;
+}
+
+/**
+ * Typos are guessed in brass style only (Zork never guesses), and never for the intent server's IDs.
+ * An answer to a question resolves by ID too, but the slot it didn't fill is still the player's words.
+ */
+export function typosOn(world: World, state?: GameState): boolean {
+  return world.style !== 'infocom' && !(state && byIdTurns.has(state) && !answerTurns.has(state));
+}
+
+const typosThisTurn = new WeakMap<GameState, Array<{ id: string; typed: string }>>();
+
+function noteTypo(state: GameState, id: string, typed: string): void {
+  const list = typosThisTurn.get(state) ?? [];
+  if (!list.some((t) => t.id === id)) list.push({ id, typed });
+  typosThisTurn.set(state, list);
+}
+
+/** What this turn resolved by typo (as typed), read once. */
+export function takeTypos(state: GameState): Array<{ id: string; typed: string }> {
+  const list = typosThisTurn.get(state) ?? [];
+  typosThisTurn.delete(state);
+  return list;
 }
 
 export function isOpen(world: World, state: GameState, id: string): boolean {
@@ -383,12 +415,17 @@ export class AskSignal extends Error {
   }
 }
 
-// Commands the intent server produced name things by ID; those resolve by ID first.
-const byIdTurns = new WeakSet<GameState>();
-
-export function setResolveById(state: GameState, on: boolean): void {
+/** Resolve this turn's words by ID first (`fromAnswer`: the IDs are the player's answer, see typosOn). */
+export function setResolveById(state: GameState, on: boolean, fromAnswer = false): void {
   if (on) byIdTurns.add(state);
   else byIdTurns.delete(state);
+  if (on && fromAnswer) answerTurns.add(state);
+  else answerTurns.delete(state);
+}
+
+/** The candidates pickItem and pickThing rank items by: name and aliases kept apart, so an exact name stays exact. */
+function pickCandidates(ids: string[], world: World): Array<{ id: string; name: string; aliases?: string[] }> {
+  return ids.map((id) => ({ id, name: world.items[id]?.name ?? id, aliases: world.items[id]?.aliases }));
 }
 
 /**
@@ -397,14 +434,18 @@ export function setResolveById(state: GameState, on: boolean): void {
  * is safe because handlers resolve before they change anything.
  */
 export function pickItem(target: string, ids: string[], world: World, slot: 'target' | 'indirect' = 'target', state?: GameState): string | null {
-  const candidates = ids.map((id) => ({ id, name: world.items[id]?.name ?? id, aliases: world.items[id]?.aliases }));
-  let found = [...new Set(fuzzyCandidates(target, candidates, { byId: state ? byIdTurns.has(state) : false }))];
+  const candidates = pickCandidates(ids, world);
+  const ranked = rankCandidates(target, candidates, { byId: state ? byIdTurns.has(state) : false, typos: typosOn(world, state) });
+  let found = [...new Set(ranked.ids)];
   if (found.length === 0) return null;
   // In Infocom style a room's scenery (Zork's local globals) only counts when nothing else matches.
   const fixtures = state && world.style === 'infocom' ? (world.rooms[state.currentRoom]?.scenery ?? []) : [];
   if (found.length > 1 && found.some((id) => !fixtures.includes(id))) found = found.filter((id) => !fixtures.includes(id));
   if (found.length === 1) {
-    if (state) noteActed(state, slot, found[0]);
+    if (state) {
+      noteActed(state, slot, found[0]);
+      if (ranked.rank === RANK.typo && ranked.typed) noteTypo(state, found[0], ranked.typed);
+    }
     return found[0];
   }
   const word = target.trim().split(/\s+/).at(-1) ?? target;
@@ -439,6 +480,33 @@ export function namesThing(word: string, world: World, state: GameState): boolea
 /** A second object: ME (see namesPlayer) is the player, else as pickItem. */
 export function pickSecond(target: string, ids: string[], world: World, state?: GameState): string | null {
   return state && namesPlayer(target, world, state) ? PLAYER : pickItem(target, ids, world, 'indirect', state);
+}
+
+/** A thing or a person, whichever the word names more strongly. */
+export type Thing = { item: string; npc?: undefined } | { npc: string; item?: undefined };
+
+/**
+ * Resolves a word against objects (`itemIds`) and the people here together: the stronger rank wins;
+ * on a tie, `prefer` decides (objects by default). Several equally good objects still ask (AskSignal).
+ */
+export function pickThing(
+  word: string,
+  itemIds: string[],
+  world: World,
+  state: GameState,
+  opts: { slot?: 'target' | 'indirect'; prefer?: 'items' | 'people' } = {},
+): Thing | null {
+  const fuzzyOpts = { byId: byIdTurns.has(state), typos: typosOn(world, state) };
+  const items = rankCandidates(word, pickCandidates(itemIds, world), fuzzyOpts);
+  const people = rankCandidates(word, npcCandidates(npcsSeen(world, state, state.currentRoom), world), fuzzyOpts);
+  const order = compareRanked(people, items);
+  const peopleWin = people.rank > 0 && (items.rank === 0 || order < 0 || (order === 0 && opts.prefer === 'people'));
+  if (peopleWin) {
+    const npc = matchNpc(word, world, state);
+    if (npc) return { npc };
+  }
+  const item = items.rank > 0 ? pickItem(word, itemIds, world, opts.slot ?? 'target', state) : null;
+  return item ? { item } : null;
 }
 
 /** A verb is missing an object: ask for it. */

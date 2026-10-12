@@ -280,7 +280,7 @@ describe('useGameStore', () => {
       store.initialize();
       store.game.currentRoom = 'living';
       mockIntent({ action: 'unknown' });
-      await store.submit('take wollet');
+      await store.submit('take wxllxt');
       expect(store.game.locations.wallet).toBe('living');
       await store.submit('oops wallet');
       expect(store.game.locations.wallet).toBe('player');

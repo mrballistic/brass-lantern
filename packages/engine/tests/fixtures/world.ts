@@ -224,6 +224,8 @@ export const fixtureWorld: World = {
     { min: 40, title: 'Master' },
   ],
 
+  typoReplies: ['“{typed}”? You mean {name}.'],
+
   verbs: {
     snooze: {
       words: ['snooze', 'hit snooze', 'hit the snooze button', 'press snooze'],

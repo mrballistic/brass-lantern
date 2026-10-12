@@ -1,5 +1,6 @@
 import type { ParsedAction } from '../types/game.ts';
 import type { World } from '../types/world.ts';
+import { npcthe } from './describe.ts';
 import type { Ask } from './result.ts';
 
 // How the engine words its questions back to the player.
@@ -15,8 +16,15 @@ const VERB_WORDS: Record<string, string> = {
 /** Second-object questions: “unlock the chest with”, “put the lamp in”. */
 const INDIRECT_PREP: Record<string, string> = { unlock: 'with', lock: 'with', put: 'in', give: 'to', use: 'on' };
 
-function listThe(world: World, ids: string[]): string {
-  const names = ids.map((id) => `the ${world.items[id]?.name ?? id}`);
+/** “the brass key”; a name whose article is '' stands alone; a character takes its own article. */
+export function theName(world: World, id: string): string {
+  const item = world.items[id];
+  if (!item && world.npcs[id]) return npcthe(world, id);
+  return item?.article === '' ? item.name : `the ${item?.name ?? id}`;
+}
+
+export function listThe(world: World, ids: string[]): string {
+  const names = ids.map((id) => theName(world, id));
   if (names.length === 2) return `${names[0]} or ${names[1]}`;
   return `${names.slice(0, -1).join(', ')}, or ${names.at(-1)}`;
 }

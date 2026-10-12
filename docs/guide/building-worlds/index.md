@@ -72,15 +72,20 @@ it('can be won', () => {
 
 ## How names are matched
 
-The player’s words find a thing (or a character, or a topic) by trying, in order, and stopping at the first that finds anything:
+The player’s words find a thing (or a character, or a topic) by trying these, strongest first, and taking the best that finds anything:
 
 1. **exactly** its name, an alias or its ID (`take brass lantern`);
-2. **part of** its name, an alias or its ID (`take lantern`, `take lant`);
-3. **its words**: every word of three or more letters the player typed matches the start of a word in its name, aliases or ID (`take lantern of brass`). Shorter words (`a`, `of`, `my`) are ignored, and so are common determiners and possessives (`this`, `that`, `his`, `your`, `some`, …): the player may type them, and they never have to match.
+2. **a whole word** of its name or alias (`take lantern`);
+3. **a whole word of its ID**, or **part of** its name (`take lant`);
+4. **part of** its ID;
+5. **word starts**: every word of three or more letters the player typed matches the start of a word in its name, aliases or ID (`take lantern of brass`). Shorter words (`a`, `of`, `my`) are ignored, and so are common determiners and possessives (`this`, `that`, `his`, `your`, `some`, …): the player may type them, and they never have to match;
+6. in brass style only, **a close misspelling**: a typed word of five or more letters that is at least 80% alike (the start of a longer word counts too), so `lunberg` finds Lumbergh. Among misspellings, a close match to a whole word of the name beats one found only through an ID word or a word’s start.
 
-If two things match equally, the game asks which one the player means.
+Objects and people are compared together, so `examine lumbergh` finds Lumbergh rather than his mug. On a tie, EXAMINE prefers objects; ATTACK, FOLLOW and the person in GIVE/SHOW … TO prefer people; other verbs look at objects first. If two things match equally well, the game asks “Which do you mean?”.
 
-The third step is strict on purpose: **a word the world doesn’t know stops the match.** If the player types `take red ball` and the world calls the thing only “ball”, nothing matches, even though there is a ball right there:
+Infocom style never guesses misspellings, and neither do turns the intent server answers. In brass style a world can tease the player, once per thing, with [`typoReplies`](../../reference/world-schema#world).
+
+The word-start step is strict on purpose: **a word the world doesn’t know stops the match.** If the player types `take red ball` and the world calls the thing only “ball”, nothing matches, even though there is a ball right there (in brass style, a close misspelling of a word that *is* there still matches):
 
 ```
 > take red ball

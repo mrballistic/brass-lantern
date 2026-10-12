@@ -51,6 +51,8 @@ export interface GameState {
   /** The vehicle the player is in (Zork's VEHBIT), if any. */
   aboard?: string;
   currentRoom: string;
+  /** Things already teased for a misspelling (`World.typoReplies`), in order. */
+  typoMocked?: string[];
   /** Every item's parent. Inventory and room contents are derived from it. */
   locations: Record<string, Place>;
   itemState: Record<string, ItemState>;
@@ -105,6 +107,8 @@ export interface ParsedAction {
   prep?: 'in' | 'on' | 'under' | 'behind' | 'off' | 'over' | 'through';
   /** TAKE ALL BUT …: the words after BUT/EXCEPT. */
   except?: string[];
+  /** ALL restricted to these IDs, in this order: the answer BOTH to a which-question. */
+  only?: string[];
   /** DISEMBARK reached by STAND or a bare GET OUT/OFF: Zork guesses the vehicle only for DISEMBARK itself. */
   via?: 'stand' | 'out';
   /** CLIMB UP / CLIMB DOWN a thing, or PUSH X north: the direction. */
@@ -117,6 +121,11 @@ export interface ParsedAction {
   text?: string;
   /** The targets are IDs (the intent server's answer), so they resolve by ID first. */
   byId?: boolean;
+  /**
+   * Set with `byId` when the IDs come from the player's answer to a question, not the intent server:
+   * the slot that wasn't asked about is still the player's own words, so it may still match a misspelling.
+   */
+  fromAnswer?: boolean;
 }
 
 export interface SavedState {

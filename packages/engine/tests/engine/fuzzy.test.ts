@@ -1,4 +1,4 @@
-import { fuzzyCandidates, fuzzyMatch, fuzzyMatchExit } from '../../src/engine/fuzzy';
+import { compareRanked, fuzzyCandidates, fuzzyMatch, fuzzyMatchExit, rankCandidates, RANK, editDistance, typoSimilarity } from '../../src/engine/fuzzy';
 
 describe('fuzzyMatch', () => {
   const candidates = [
@@ -189,5 +189,124 @@ describe('determiners and possessives are not required words', () => {
     expect(fuzzyCandidates('red ball', things)).toEqual([]);
     expect(fuzzyCandidates('old brass lamp', things)).toEqual([]);
     expect(fuzzyCandidates('this red ball', things)).toEqual([]);
+  });
+});
+
+describe('ranks', () => {
+  const c = [
+    { id: 'neighbor', name: 'Neighbor' },
+    { id: 'neighbors_mug', name: 'Neighbor’s coffee mug', aliases: ['mug'] },
+    { id: 'neighbor_banner', name: 'banner' },
+    { id: 'mailbox', name: 'tin box' },
+  ];
+  const others = c.slice(1);
+  it('an exact name beats an item that only contains it', () => {
+    expect(rankCandidates('neighbor', c)).toEqual({ rank: RANK.exact, ids: ['neighbor'] });
+  });
+  it('a whole word of a name is rank 2', () => {
+    expect(rankCandidates('coffee', c)).toEqual({ rank: RANK.nameWord, ids: ['neighbors_mug'] });
+  });
+  it('a word of an ID and a part of a name tie at rank 3', () => {
+    expect(rankCandidates('neighbor', others)).toMatchObject({ rank: RANK.idWordOrNamePart, ids: ['neighbors_mug', 'neighbor_banner'] });
+  });
+  it('a part of an ID is rank 4', () => {
+    expect(rankCandidates('mail', c)).toEqual({ rank: RANK.idPart, ids: ['mailbox'] });
+  });
+  it('word starts are rank 5', () => {
+    expect(rankCandidates('coff mug', c)).toMatchObject({ rank: RANK.wordStart, ids: ['neighbors_mug'] });
+  });
+  it('nothing is rank 0', () => {
+    expect(rankCandidates('trombone', c)).toEqual({ rank: 0, ids: [] });
+  });
+  it('fuzzyCandidates returns the best rank’s IDs', () => {
+    expect(fuzzyCandidates('neighbor', c)).toEqual(['neighbor']);
+    expect(fuzzyCandidates('neighbor', others)).toEqual(['neighbors_mug', 'neighbor_banner']);
+  });
+});
+
+describe('typos', () => {
+  const lumbergh = [{ id: 'lumbergh', name: 'Bill Lumbergh' }];
+  it('measures edits, swaps included', () => {
+    expect(editDistance('lunbergh', 'lumbergh')).toBe(1);
+    expect(editDistance('nieghbor', 'neighbor')).toBe(1);
+    expect(editDistance('ab', 'ba')).toBe(1);
+    expect(typoSimilarity('lunberg', 'lumbergh')).toBeCloseTo(6 / 7);
+  });
+  it('a close misspelling of 5+ letters is rank 6, with the word as typed', () => {
+    expect(rankCandidates('Lunbergh', lumbergh, { typos: true })).toEqual({ rank: RANK.typo, ids: ['lumbergh'], typed: 'Lunbergh', typoKey: [1, 0.875, 0.875] });
+    expect(rankCandidates('lunberg', lumbergh, { typos: true }).ids).toEqual(['lumbergh']);
+    expect(rankCandidates('bnner', [{ id: 'banner', name: 'banner' }], { typos: true }).ids).toEqual(['banner']);
+  });
+  it('only when asked (the engine’s typosOn decides; it never asks for the intent server’s IDs)', () => {
+    expect(rankCandidates('lunbergh', lumbergh)).toEqual({ rank: 0, ids: [] });
+    expect(rankCandidates('lunbergh', lumbergh, { typos: false, byId: true })).toEqual({ rank: 0, ids: [] });
+    // An answer's turn resolves by ID yet still guesses the other slot's misspelling.
+    expect(rankCandidates('lunbergh', lumbergh, { typos: true, byId: true }).ids).toEqual(['lumbergh']);
+  });
+  it('leaves short words and far-off words alone', () => {
+    expect(rankCandidates('shrt', [{ id: 'shirt', name: 'shirt' }], { typos: true }).rank).toBe(0);
+    expect(rankCandidates('banar', [{ id: 'banner', name: 'banner' }], { typos: true }).rank).toBe(0);
+  });
+  it('every word must still match: a misspelling can’t carry a word that names nothing', () => {
+    const keys = [{ id: 'rusty_key', name: 'rusty key' }, { id: 'brass_key', name: 'brass key' }];
+    expect(rankCandidates('rustty key', keys, { typos: true })).toMatchObject({ rank: RANK.typo, ids: ['rusty_key'] });
+    expect(rankCandidates('brasss lamp', keys, { typos: true }).rank).toBe(0);
+  });
+  it('equally close misspellings tie', () => {
+    expect(rankCandidates('xatter', [{ id: 'hatter', name: 'hatter' }, { id: 'batter', name: 'batter' }], { typos: true }).ids).toEqual(['hatter', 'batter']);
+  });
+  it('an earlier rank always wins over a typo', () => {
+    expect(rankCandidates('bil lumberg', lumbergh, { typos: true }).rank).toBe(RANK.wordStart);
+  });
+  it('a misspelled name word beats a name part or an ID word', () => {
+    const neighbor = [
+      { id: 'neighbor', name: 'Neighbor' },
+      { id: 'neighbors_mug', name: 'Neighbor’s coffee mug', aliases: ['mug'] },
+      { id: 'neighbor_banner', name: 'banner' },
+    ];
+    expect(rankCandidates('nieghbor', neighbor, { typos: true }).ids).toEqual(['neighbor']);
+    const office = [
+      { id: 'lumbergh', name: 'Bill Lumbergh' },
+      { id: 'lumberghs_mug', name: 'Lumbergh’s coffee mug' },
+      { id: 'lumbergh_drawer', name: 'desk drawer' },
+    ];
+    expect(rankCandidates('lunberg', office, { typos: true }).ids).toEqual(['lumbergh']);
+  });
+});
+
+describe('compareRanked', () => {
+  it('a lower rank is stronger', () => {
+    expect(compareRanked({ rank: RANK.nameWord, ids: ['a'] }, { rank: RANK.idWordOrNamePart, ids: ['b'] })).toBeLessThan(0);
+    expect(compareRanked({ rank: RANK.idWordOrNamePart, ids: ['a'] }, { rank: RANK.nameWord, ids: ['b'] })).toBeGreaterThan(0);
+    expect(compareRanked({ rank: RANK.nameWord, ids: ['a'] }, { rank: RANK.nameWord, ids: ['b'] })).toBe(0);
+  });
+  it('no match loses to anything', () => {
+    expect(compareRanked({ rank: 0, ids: [] }, { rank: RANK.typo, ids: ['b'], typoKey: [0, 0.8, 0.8] })).toBeGreaterThan(0);
+    expect(compareRanked({ rank: RANK.wordStart, ids: ['a'] }, { rank: 0, ids: [] })).toBeLessThan(0);
+    expect(compareRanked({ rank: 0, ids: [] }, { rank: 0, ids: [] })).toBe(0);
+  });
+  it('two typos order by their key', () => {
+    const name = { rank: RANK.typo, ids: ['a'], typoKey: [1, 0.875, 0.875] as [number, number, number] };
+    const part = { rank: RANK.typo, ids: ['b'], typoKey: [1, 0.875, 0.778] as [number, number, number] };
+    const id = { rank: RANK.typo, ids: ['c'], typoKey: [0, 0.9, 0.9] as [number, number, number] };
+    expect(compareRanked(name, part)).toBeLessThan(0);
+    expect(compareRanked(id, part)).toBeGreaterThan(0);
+    expect(compareRanked(name, { ...name, typoKey: [1, 0.875 + 1e-12, 0.875] })).toBe(0);
+  });
+  it('ranks 3 and 5 order by closeness: the nearer whole word wins', () => {
+    const person = rankCandidates('neighbo', [{ id: 'neighbor', name: 'Neighbor' }]);
+    const mug = rankCandidates('neighbo', [{ id: 'neighbors_mug', name: 'Neighbor’s coffee mug', aliases: ['mug'] }]);
+    expect(person).toMatchObject({ rank: RANK.idWordOrNamePart, ids: ['neighbor'] });
+    expect(person.closeness).toBeCloseTo(7 / 8);
+    expect(mug.closeness).toBeCloseTo(7 / 9);
+    expect(compareRanked(person, mug)).toBeLessThan(0);
+    expect(compareRanked(mug, person)).toBeGreaterThan(0);
+    const near = rankCandidates('lumberg mu', [{ id: 'a', name: 'Lumbergh mug' }]);
+    const far = rankCandidates('lumberg mu', [{ id: 'b', name: 'Lumberghs mug' }]);
+    expect(near.rank).toBe(RANK.wordStart);
+    expect(compareRanked(near, far)).toBeLessThan(0);
+    expect(compareRanked({ rank: RANK.wordStart, ids: ['a'], closeness: 0.5 }, { rank: RANK.wordStart, ids: ['b'], closeness: 0.5 + 1e-12 })).toBe(0);
+    // A tie within one pool still asks.
+    expect(rankCandidates('neighbo', [{ id: 'a', name: 'neighbors mug' }, { id: 'b', name: 'neighbor mug' }]).ids).toEqual(['a', 'b']);
   });
 });

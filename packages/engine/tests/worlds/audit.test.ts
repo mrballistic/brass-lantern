@@ -101,3 +101,17 @@ describe('world audit', () => {
     expect(auditWorld(w)).toContain('“number” is reserved; no room, item or character may use it');
   });
 });
+
+it('flags an empty typoReplies and unknown placeholders', () => {
+  expect(auditWorld({ ...fixtureWorld, typoReplies: [] })).toContain('typoReplies is empty: leave it out for silent corrections');
+  expect(auditWorld({ ...fixtureWorld, typoReplies: ['{typed} → {nam}'] })).toContain('typoReplies[0]: unknown placeholder “{nam}”');
+  expect(auditWorld({ ...fixtureWorld, typoReplies: ['“{typed}”? {name}, unclosed {brace'] }).filter((p) => p.startsWith('typoReplies'))).toEqual([]);
+});
+
+it('reads typoReplies placeholders in linear time (no regex on world text)', () => {
+  const hostile = `${'{{|'.repeat(20000)}{typed}`;
+  const started = performance.now();
+  const problems = auditWorld({ ...fixtureWorld, typoReplies: [hostile] }).filter((p) => p.startsWith('typoReplies'));
+  expect(performance.now() - started).toBeLessThan(500);
+  expect(problems.length).toBeGreaterThan(0);
+});

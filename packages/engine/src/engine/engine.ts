@@ -3,12 +3,13 @@ import type { EventStep, World } from '../types/world.ts';
 import { handleFollow } from './verbs/follow.ts';
 import { evaluateCondition } from './conditions.ts';
 import { describeRoom } from './describe.ts';
-import { AskSignal, initialLocations, inventoryOf, isLit, matchItem, matchNpc, needObject, pickItem, restoreState, setResolveById, snapshotState, takeActed, visibleItems } from './model.ts';
+import { AskSignal, initialLocations, inventoryOf, isCarried, isLit, matchItem, matchNpc, needObject, pickItem, restoreState, setResolveById, snapshotState, takeActed, takeTypos, visibleItems } from './model.ts';
 import { whatQuestion, whichQuestion } from './ask.ts';
 import { darknessFalls, tooDark } from './light.ts';
 import { beginTick, beginTurn, darkLineSaid, lineStop, runConditional, runSteps, setEffectHooks, turnFree, turnHalted } from './effects.ts';
 import { seedFor } from './rng.ts';
 import { afterTurn, fuseFired } from './time.ts';
+import { typoReply } from './typos.ts';
 import { die } from './death.ts';
 import { runEnding } from './endings.ts';
 import { miss, ok, zorkDefault, type EngineResult } from './result.ts';
@@ -20,7 +21,7 @@ import { withRules } from './rules.ts';
 import { handleWorldVerb } from './verbs/world-verbs.ts';
 import { handleAll } from './verbs/all.ts';
 import { handleClose, handleLock, handleOpen, handlePut, handleSearch, handleTakeFrom, handleUnlock } from './verbs/containers.ts';
-import { handleGive, handleTalk } from './verbs/people.ts';
+import { handleGive, handleTalk, splitGiveRecipient } from './verbs/people.ts';
 import { handleAttack, handleThrow } from './verbs/attack.ts';
 import { handleBurn, handleNoEffect } from './verbs/burn.ts';
 import { handleBoard, handleDisembark } from './verbs/vehicle.ts';
@@ -173,15 +174,21 @@ function executeTurn(action: ParsedAction, deps: EngineDeps): EngineResult {
   const litBefore = isLit(world, state);
   let result: EngineResult;
   takeActed(state);
-  setResolveById(state, Boolean(action.byId));
+  takeTypos(state);
+  setResolveById(state, Boolean(action.byId), Boolean(action.fromAnswer));
+  // GIVE PERSON THING becomes GIVE THING TO PERSON before anything runs, so a question it raises
+  // carries the split action (and the answer keeps the recipient).
+  const acting = action.action === 'give' ? splitGiveRecipient(action, world, state) : action;
   try {
-    result = dispatch(action, world, state, deps.storeHelp);
+    result = dispatch(acting, world, state, deps.storeHelp);
   } catch (e) {
     if (!(e instanceof AskSignal)) throw e;
-    result = askResult(e.ask, action, world, state);
+    result = askResult(e.ask, acting, world, state);
   } finally {
     setResolveById(state, false);
   }
+  const typos = takeTypos(state);
+  const missed = result.understood === false;
   result = { ...result, acted: takeActed(state) };
   if (turnFree(state) && result.understood !== false) result = { ...result, free: true };
   // You can't find things in the dark: an understood refusal, so the LLM isn't asked to re-guess.
@@ -190,6 +197,9 @@ function executeTurn(action: ParsedAction, deps: EngineDeps): EngineResult {
     // Like a parser failure in Zork: no time passes.
     result = { ...ok([tooDark(world)]), free: true };
   }
+  // A misspelled name the engine matched anyway: the world may tease the player, once per thing.
+  // (A miss rewritten as “too dark” above was still a miss: it records nothing.)
+  if (!missed && result.understood !== false && !result.ask && typos.length > 0) result = typoReply(result, typos, world, state);
   if (result.understood === false || state.gameOver || result.free) return result;
   // No clock, but M-END still runs (Zork's main loop: the end routine for every verb, CLOCKER not for these).
   if (result.clockless) {
@@ -236,6 +246,21 @@ function executeTurn(action: ParsedAction, deps: EngineDeps): EngineResult {
   const changed = before !== stateKey(state);
   if (later.length === 0 && !changed) return result;
   return { ...result, lines: [...result.lines, ...later], mutated: true };
+}
+
+/**
+ * WEAR of a thing in sight but not held: TAKE it first, rules and all (Infocom's implicit take).
+ * Null when it's held, not here, can't be carried or can't be worn; otherwise the take's result and whether it's now held.
+ */
+function takeFirst(action: ParsedAction, world: World, state: GameState): { held: boolean; result: EngineResult; id: string } | null {
+  if (!action.target) return null;
+  const carried = inventoryOf(world, state);
+  if (pickItem(action.target, carried, world, 'target', state)) return null;
+  const id = pickItem(action.target, visibleItems(world, state).filter((i) => !carried.includes(i)), world, 'target', state);
+  // Only what can be worn (onWear) is taken first; anything else answers as before.
+  if (!id || !world.items[id]?.portable || !world.items[id].onWear) return null;
+  const result = withRules('take', { action: 'take', target: action.target }, world, state, () => handleTake(action.target, world, state));
+  return { held: isCarried(state, id), result, id };
 }
 
 function dispatch(action: ParsedAction, world: World, state: GameState, storeHelp = false): EngineResult {
@@ -312,8 +337,19 @@ function dispatch(action: ParsedAction, world: World, state: GameState, storeHel
       return withRules('put', action, world, state, () => handlePut(action.target, action.indirect, world, state, action.prep));
     case 'search':
       return withRules('search', action, world, state, () => handleSearch(action.target, world, state));
-    case 'wear':
-      return withRules('wear', action, world, state, () => handleWear(action.target, world, state));
+    case 'wear': {
+      const saved = snapshotState(state);
+      const taken = takeFirst(action, world, state);
+      if (taken && !taken.held) return taken.result;
+      const worn = withRules('wear', action, world, state, () => handleWear(action.target, world, state));
+      if (!taken) return worn;
+      if (worn.understood === false) {
+        restoreState(state, saved);
+        return worn;
+      }
+      const takeLines = taken.result.lines.filter((l) => !/^Taken[.:]/.test(l));
+      return { ...worn, lines: [`(first taking the ${world.items[taken.id].name})`, ...takeLines, ...worn.lines], mutated: true };
+    }
     case 'talk':
       return withRules('talk', action, world, state, () => handleTalk(action.target, world, state));
     case 'give':

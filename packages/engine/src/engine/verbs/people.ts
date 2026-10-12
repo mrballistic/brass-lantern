@@ -1,9 +1,10 @@
-import type { GameState } from '../../types/game.ts';
+import type { GameState, ParsedAction } from '../../types/game.ts';
 import type { World } from '../../types/world.ts';
 import { evaluateCondition } from '../conditions.ts';
-import { inventoryOf, matchNpc, moveItem, needObject, npcsSeen, pickItem } from '../model.ts';
+import { inventoryOf, matchNpc, moveItem, needObject, npcsSeen, pickItem, typosOn } from '../model.ts';
 import { miss, ok, type EngineResult } from '../result.ts';
 import { runEventKey } from '../effects.ts';
+import { rankCandidates } from '../fuzzy.ts';
 
 export function handleTalk(target: string | undefined, world: World, state: GameState): EngineResult {
   const present = npcsSeen(world, state, state.currentRoom);
@@ -59,4 +60,24 @@ export function handleGive(
   }
   moveItem(state, itemId, null);
   return ok(runEventKey(event, world, state), true);
+}
+
+/**
+ * GIVE LUMBERGH THE REPORT: when what follows GIVE isn't something carried, but its first words name
+ * someone here and the rest (less a leading THE) something carried, it's GIVE the rest TO them.
+ */
+export function splitGiveRecipient(action: ParsedAction, world: World, state: GameState): ParsedAction {
+  // The intent server's IDs are never split; an answer's are (its other words are the player's).
+  if (!action.target || action.indirect || (action.byId && !action.fromAnswer)) return action;
+  const typos = typosOn(world, state);
+  const carried = inventoryOf(world, state).map((id) => ({ id, name: world.items[id]?.name ?? id, aliases: world.items[id]?.aliases }));
+  if (rankCandidates(action.target, carried, { typos }).rank > 0) return action;
+  const people = npcsSeen(world, state, state.currentRoom).map((id) => ({ id, name: world.npcs[id]?.name ?? id, aliases: world.npcs[id]?.aliases }));
+  const words = action.target.trim().split(/\s+/);
+  for (let n = words.length - 1; n >= 1; n--) {
+    const person = words.slice(0, n).join(' ');
+    const rest = words.slice(n).join(' ').replace(/^the\s+/i, '');
+    if (rest && rankCandidates(person, people, { typos }).rank > 0 && rankCandidates(rest, carried, { typos }).rank > 0) return { ...action, target: rest, indirect: person };
+  }
+  return action;
 }

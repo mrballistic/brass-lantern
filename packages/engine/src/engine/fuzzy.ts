@@ -34,6 +34,8 @@ function coversAll(needleTokens: string[], haystack: string[]): boolean {
     .every((t) => tokenPrefixScore([t], haystack) > 0);
 }
 
+type Candidate = { id: string; name: string; aliases?: string[] };
+
 const DIGITS = /^\d+$/;
 
 /**
@@ -44,81 +46,187 @@ function byWholeNumber(needle: string, candidates: Array<{ id: string; name: str
   return candidates.filter((c) => [c.id, c.name, ...(c.aliases ?? [])].some((w) => tokens(w).includes(needle))).map((c) => c.id);
 }
 
-/**
- * Match an input string against a set of candidate IDs, using:
- *  1) exact ID match (after normalize)
- *  2) exact display-name match
- *  3) substring match
- *  4) token-prefix overlap (handles "cubic farm" → "cubicle_farm", "swingline" → "red Swingline stapler"),
- *     where every typed word of three or more letters must match one of the candidate’s tokens
- *
- * Returns the matched ID, or null if nothing plausibly matches.
- */
-export function fuzzyMatch(
-  input: string,
-  candidates: Array<{ id: string; name: string }>,
-): string | null {
-  if (!input) return null;
-  const needle = normalize(input);
-  if (!needle) return null;
-  const self = selfMatches(needle, candidates);
-  if (self) return self[0] ?? null;
-  if (DIGITS.test(needle)) return byWholeNumber(needle, candidates)[0] ?? null;
+/** How strongly a candidate matches, strongest first. 0 is no match. */
+export const RANK = { exact: 1, nameWord: 2, idWordOrNamePart: 3, idPart: 4, wordStart: 5, typo: 6 } as const;
 
-  for (const c of candidates) {
-    if (normalize(c.id) === needle) return c.id;
-  }
-  for (const c of candidates) {
-    if (normalize(c.name) === needle) return c.id;
-  }
-  for (const c of candidates) {
-    if (normalize(c.id).includes(needle) || normalize(c.name).includes(needle)) {
-      return c.id;
+/** The best rank any candidate reached, the candidates tied at it, and (for a typo) the word as the player typed it. */
+export interface Ranked {
+  rank: number;
+  ids: string[];
+  typed?: string;
+  /** Rank 6 only: [every typo matched a name or alias word (1/0), summed similarity, summed whole-word similarity]. */
+  typoKey?: [number, number, number];
+  /**
+   * Ranks 3 and 5 only: how near a typed word comes to a whole name or alias word of the tied candidates
+   * (the best `1 − edits ÷ the longer length`), so “neighbo” is nearer “Neighbor” than “Neighbor’s coffee mug”.
+   */
+  closeness?: number;
+}
+
+const NONE: Ranked = { rank: 0, ids: [] };
+
+/** Does `hay` contain `run` as consecutive whole words? */
+const containsRun = (hay: string[], run: string[]): boolean =>
+  run.length > 0 && hay.some((_, i) => run.every((t, j) => hay[i + j] === t));
+
+/** A close misspelling: this alike or more (1 − edits ÷ the longer length). */
+export const TYPO_SIMILARITY = 0.8;
+/** Shorter typed words never count as misspellings: “bat” must not become “cat”. */
+export const TYPO_MIN_LENGTH = 5;
+
+/** Optimal string alignment distance: substitutions, insertions, deletions and adjacent swaps. */
+export function editDistance(a: string, b: string): number {
+  const d: number[][] = Array.from({ length: a.length + 1 }, (_, i) => Array.from({ length: b.length + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0)));
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost);
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
     }
   }
-  if (needle.length > 2) {
-    const needleTokens = tokens(needle);
-    let best: { id: string; score: number } | null = null;
-    for (const c of candidates) {
-      const haystackTokens = [...tokens(c.id), ...tokens(c.name)];
-      if (!coversAll(needleTokens, haystackTokens)) continue;
-      const score = tokenPrefixScore(needleTokens, haystackTokens);
-      if (score > 0 && (!best || score > best.score)) {
-        best = { id: c.id, score };
-      }
-    }
-    if (best) return best.id;
+  return d[a.length][b.length];
+}
+
+/** How alike a typed word is to a word, or to that word's start cut to the typed length (“lunberg” → “lumberg”): 0 to 1. */
+export function typoSimilarity(typed: string, word: string): number {
+  const sim = (a: string, b: string) => 1 - editDistance(a, b) / Math.max(a.length, b.length);
+  return Math.max(sim(typed, word), word.length > typed.length ? sim(typed, word.slice(0, typed.length)) : 0);
+}
+
+/** Floats closer than this compare equal (summed similarities). */
+const EPSILON = 1e-9;
+
+/** Compares typo keys element by element: positive when `a` is stronger. */
+function compareKeys(a: readonly number[], b: readonly number[]): number {
+  for (let i = 0; i < a.length; i++) {
+    if (Math.abs(a[i] - b[i]) > EPSILON) return a[i] - b[i];
   }
-  return null;
+  return 0;
+}
+
+/** The best typo match of `t` among `hay`: similarity (prefix cut allowed), then whole-word similarity. */
+function bestTypo(t: string, hay: string[]): [number, number] {
+  const whole = (h: string) => 1 - editDistance(t, h) / Math.max(t.length, h.length);
+  let best: [number, number] = [0, 0];
+  for (const h of hay) {
+    const pair: [number, number] = [typoSimilarity(t, h), whole(h)];
+    if (compareKeys(pair, best) > 0) best = pair;
+  }
+  return best;
 }
 
 /**
- * Every candidate that ties for the best match, so the engine can ask which
- * one was meant. Tiers, first that matches wins:
- *  1) exact name or alias (and exact ID, which counts as one more name)
- *  2) substring of the ID, name or an alias
- *  3) the best token-prefix score, among candidates that match every typed word of 3+ letters
- * With `byId` (the intent server answers in IDs) an exact ID wins alone. With `selfWords`
- * (ASK X ABOUT ME) ME, MYSELF, SELF and YOURSELF match only a candidate named exactly that.
+ * Rank 6: each typed word of 3+ letters matches a candidate word exactly, by its start, or (5+ letters) as a close
+ * misspelling. As ranks 2–4 put names before IDs and whole words before parts, the strongest key wins:
+ * misspelled name or alias words over ID words, then the summed similarity, then the summed whole-word similarity.
  */
-export function fuzzyCandidates(
+function typoRank(input: string, needleTokens: string[], candidates: Candidate[], words: (c: Candidate) => string[]): Ranked {
+  const checked = needleTokens.filter((t) => t.length >= 3 && !FUNCTION_WORDS.has(t));
+  let best: [number, number, number] | undefined;
+  let ids: string[] = [];
+  let typo: string | undefined;
+  for (const c of candidates) {
+    const nameHay = words(c).flatMap(tokens);
+    const idHay = tokens(c.id);
+    const hay = [...idHay, ...nameHay];
+    let fromName = 1;
+    let score = 0;
+    let whole = 0;
+    let first: string | undefined;
+    let fits = true;
+    for (const t of checked) {
+      if (tokenPrefixScore([t], hay) > 0) continue;
+      if (t.length < TYPO_MIN_LENGTH) {
+        fits = false;
+        break;
+      }
+      const byName = bestTypo(t, nameHay);
+      const byId = bestTypo(t, idHay);
+      const pick = byName[0] >= TYPO_SIMILARITY ? byName : byId;
+      if (pick[0] < TYPO_SIMILARITY) {
+        fits = false;
+        break;
+      }
+      if (pick !== byName) fromName = 0;
+      score += pick[0];
+      whole += pick[1];
+      first ??= t;
+    }
+    if (!fits || !first) continue;
+    const key: [number, number, number] = [fromName, score, whole];
+    const order = best ? compareKeys(key, best) : 1;
+    if (order > 0) [best, ids, typo] = [key, [c.id], first];
+    else if (order === 0) ids.push(c.id);
+  }
+  if (ids.length === 0 || !typo || !best) return NONE;
+  const typed = input.trim().split(/\s+/).find((w) => normalize(w) === typo) ?? typo;
+  return { rank: RANK.typo, ids, typed, typoKey: best };
+}
+
+/**
+ * Orders two results: negative when `a` is the stronger match. No match is weakest; a lower rank is stronger;
+ * typos by their key; ranks 3 and 5 by closeness.
+ */
+export function compareRanked(a: Ranked, b: Ranked): number {
+  if (a.rank !== b.rank) {
+    if (a.rank === 0) return 1;
+    if (b.rank === 0) return -1;
+    return a.rank - b.rank;
+  }
+  if (a.rank === RANK.typo && a.typoKey && b.typoKey) return compareKeys(b.typoKey, a.typoKey);
+  if (a.closeness !== undefined && b.closeness !== undefined) return compareKeys([b.closeness], [a.closeness]);
+  return 0;
+}
+
+/** The best whole-word similarity between any typed word and any name or alias word of `ids` (no prefix cut). */
+function closenessOf(needleTokens: string[], ids: string[], candidates: Candidate[], words: (c: Candidate) => string[]): number {
+  let best = 0;
+  for (const c of candidates) {
+    if (!ids.includes(c.id)) continue;
+    for (const h of words(c).flatMap(tokens)) {
+      for (const t of needleTokens) best = Math.max(best, 1 - editDistance(t, h) / Math.max(t.length, h.length));
+    }
+  }
+  return best;
+}
+
+/**
+ * Ranks `candidates` against what the player typed (see RANK): exact name, alias or ID; a whole word of a
+ * name or alias; a whole word of the ID or part of a name; part of the ID; word starts (every typed word of
+ * three or more letters matching); with `typos`, a close misspelling (the caller decides when: the
+ * engine's typosOn turns them off for the intent server's IDs). ME, digits and (with `byId`) exact IDs keep their precedence ahead of the ranks.
+ */
+export function rankCandidates(
   input: string,
-  candidates: Array<{ id: string; name: string; aliases?: string[] }>,
-  opts: { byId?: boolean; selfWords?: boolean } = {},
-): string[] {
+  candidates: Candidate[],
+  opts: { byId?: boolean; selfWords?: boolean; typos?: boolean } = {},
+): Ranked {
   const needle = normalize(input);
-  if (!needle) return [];
+  if (!needle) return NONE;
   const self = selfMatches(needle, candidates, opts.byId, opts.selfWords);
-  if (self) return self;
-  if (DIGITS.test(needle)) return byWholeNumber(needle, candidates);
+  if (self) return self.length > 0 ? { rank: RANK.exact, ids: self } : NONE;
+  if (DIGITS.test(needle)) {
+    const ids = byWholeNumber(needle, candidates);
+    return ids.length > 0 ? { rank: RANK.exact, ids } : NONE;
+  }
   const exactId = candidates.filter((c) => normalize(c.id) === needle);
-  if (exactId.length > 0 && (opts.byId || needle.includes('_'))) return [exactId[0].id];
-  const words = (c: { id: string; name: string; aliases?: string[] }) => [c.name, ...(c.aliases ?? [])].map(normalize);
-  const exact = candidates.filter((c) => normalize(c.id) === needle || words(c).includes(needle));
-  if (exact.length > 0) return exact.map((c) => c.id);
-  const sub = candidates.filter((c) => normalize(c.id).includes(needle) || words(c).some((w) => w.includes(needle)));
-  if (sub.length > 0) return sub.map((c) => c.id);
-  if (needle.length <= 2) return [];
+  if (exactId.length > 0 && (opts.byId || needle.includes('_'))) return { rank: RANK.exact, ids: [exactId[0].id] };
+  const words = (c: Candidate) => [c.name, ...(c.aliases ?? [])].map(normalize);
+  const run = tokens(needle);
+  const nameWord = (c: Candidate) => words(c).some((w) => containsRun(tokens(w), run));
+  const idWordOrNamePart = (c: Candidate) => containsRun(tokens(c.id), run) || words(c).some((w) => w.includes(needle));
+  const idPart = (c: Candidate) => normalize(c.id).includes(needle);
+  const tiers: Array<[number, (c: Candidate) => boolean]> = [
+    [RANK.exact, (c) => normalize(c.id) === needle || words(c).includes(needle)],
+    [RANK.nameWord, nameWord],
+    [RANK.idWordOrNamePart, idWordOrNamePart],
+    [RANK.idPart, idPart],
+  ];
+  for (const [rank, test] of tiers) {
+    const ids = candidates.filter(test).map((c) => c.id);
+    if (ids.length > 0) return rank === RANK.idWordOrNamePart ? { rank, ids, closeness: closenessOf(run, ids, candidates, words) } : { rank, ids };
+  }
+  if (needle.length <= 2) return NONE;
   const needleTokens = tokens(needle);
   let best = 0;
   let ids: string[] = [];
@@ -129,7 +237,31 @@ export function fuzzyCandidates(
     if (score > best) [best, ids] = [score, [c.id]];
     else if (score === best && score > 0) ids.push(c.id);
   }
-  return ids;
+  if (ids.length > 0) return { rank: RANK.wordStart, ids, closeness: closenessOf(needleTokens, ids, candidates, words) };
+  if (!opts.typos) return NONE;
+  return typoRank(input, needleTokens, candidates, words);
+}
+
+/**
+ * Match an input string against a set of candidates by the best rank (see `rankCandidates`).
+ * Returns the first matched ID, or null if nothing plausibly matches.
+ */
+export function fuzzyMatch(input: string, candidates: Array<{ id: string; name: string; aliases?: string[] }>): string | null {
+  if (!input) return null;
+  return rankCandidates(input, candidates).ids[0] ?? null;
+}
+
+/**
+ * Every candidate that ties for the best rank, so the engine can ask which one was meant (see
+ * `rankCandidates`). With `byId` (the intent server answers in IDs) an exact ID wins alone. With
+ * `selfWords` (ASK X ABOUT ME) ME, MYSELF, SELF and YOURSELF match only a candidate named exactly that.
+ */
+export function fuzzyCandidates(
+  input: string,
+  candidates: Array<{ id: string; name: string; aliases?: string[] }>,
+  opts: { byId?: boolean; selfWords?: boolean; typos?: boolean } = {},
+): string[] {
+  return rankCandidates(input, candidates, opts).ids;
 }
 
 /** Direction words that should only match exits by EXACT label (no substring/fuzzy). */
@@ -203,8 +335,6 @@ export const isMeWord = (word: string): boolean => ALWAYS_SELF.test(normalize(wo
 
 /** IDs the engine reserves: the player, and a number typed where an object goes. */
 const RESERVED = new Set(['player', 'number']);
-
-type Candidate = { id: string; name: string; aliases?: string[] };
 
 /** A candidate named or aliased exactly `needle` (or with that ID). */
 const namedExactly = (needle: string, c: Candidate): boolean =>
