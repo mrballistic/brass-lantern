@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.2.0 (2026-10-12)
+
+- **Names match the way players type them.** Matches are ranked (exact; a whole word of a name; a word of the ID or part of a name; part of the ID; word starts), and objects and people are compared together, so EXAMINE LUMBERGH finds Lumbergh, not his mug or his drawer.
+- **Close misspellings match** in brass style (5+ letters, 80% alike), and a world can tease the player once per thing with the new `typoReplies`. Infocom style never guesses.
+- **GIVE <someone> <item>** parses. The person in GIVE/SHOW … TO wins a tie with a thing.
+- **WEAR takes first** when the thing is in sight but not held.
+- **BOTH** answers “Which do you mean?”: each, for TAKE, DROP and PUT; otherwise “One at a time: …?”.
+- Which-questions honor an empty `article` (“Lumbergh’s coffee mug”, not “the Lumbergh’s coffee mug”).
+
 ## 2.1.1 (2026-10-09)
 
 American spelling throughout the docs, the example worlds and the game's own lines.

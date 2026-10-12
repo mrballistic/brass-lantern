@@ -1,6 +1,6 @@
 {
   "name": "@brass-lantern/server",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "author": "Todd Greco <mrballistic@gmail.com>",
   "description": "Optional intent server for brass-lantern: one Express route that asks Gemini to map loose player input onto the engine’s verbs.",
   "license": "MIT",
@@ -71,13 +71,13 @@
     "@types/node": "^24.12.0",
     "@types/supertest": "^7.2.1",
     "eslint": "^10.12.0",
+    "express": "^5.2.1",
     "globals": "^17.0.0",
     "supertest": "^7.3.1",
     "tsx": "^4.23.15",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.71.0",
-    "vitest": "^5.0.3",
-    "express": "^5.2.1"
+    "vitest": "^5.0.3"
   },
   "publishConfig": {
     "access": "public",

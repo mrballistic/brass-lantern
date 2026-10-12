@@ -26,11 +26,11 @@ The built-in verbs are fixed; a world gives them things to act on, and can add v
 | BOARD *vehicle* | `get in`, `climb in`, `sit in` | Into a vehicle on the ground here. See [vehicles](./world-schema#vehicles). |
 | DISEMBARK [*vehicle*] | `get out`, `get off`, `stand` | Out again, if it’s safe. EXIT on its own does this while you’re aboard, and is a direction (out) otherwise. |
 | USE *item* [ON *thing*] | `push` `pull` `press` `operate` `attach X to Y` | See [use rules](./world-schema#userule). OPEN and PUT fall back to an item’s use rules when it isn’t a container. |
-| GIVE *item* TO *person* | `hand` `offer` `return` | With one person present, GIVE *item* is enough. |
+| GIVE *item* TO *person* | `hand` `offer` `return` | With one person present, GIVE *item* is enough. `GIVE <someone> <item>` works too (`GIVE LUMBERGH THE REPORT`). |
 | TALK TO *person* | `speak/chat with`, `question` | With one person present, TALK is enough. |
 | ASK *person* ABOUT *topic* | `tell … about …` | The person’s answer on that topic, if the world gives it [topics](./world-schema#npc); otherwise what TALK TO says. ABOUT ME and ABOUT MYSELF reach a topic keyed or aliased `me` or `myself`. |
 | *person*, *command* | `tell/order/ask … to …` | An order (a bare TELL *person* is one too). *person*, FOLLOW ME is one too, answered by the character’s `orders.follow` rules. A character the world lets obey carries out GO, TAKE, DROP and GIVE ME, or answers a rule (“robot, push the button”); others answer or ignore it. An order to such a character ends the rest of the line. |
-| WEAR *item* | `put on` | |
+| WEAR *item* | `put on` | A thing in sight but not held is taken first: (first taking the shirt). |
 | SMASH *thing* [WITH *item*] | `break` `destroy` `wreck` `whack` `beat` | |
 | ATTACK *someone* WITH *weapon* | `kill` `hit` `fight` `stab` | At a character who fights, combat; at anything else, SMASH (in a world without combat). In Infocom style, `kill troll` picks the one weapon you hold, or asks. |
 | THROW *item* [AT *target*] | `toss` `hurl`; OFF, OVER | A rule on the target decides; otherwise it lands on the floor. OFF and OVER, with no rule: Zork’s refusal in Infocom style; elsewhere the intent server gets a turn. |
@@ -74,6 +74,6 @@ The built-in verbs are fixed; a world gives them things to act on, and can add v
 
 **Names:** every word of three or more letters you type has to be in the thing’s name or one of its other words: `take red ball` doesn’t find a thing the world calls only “ball”. Shorter words are ignored, and a word can be shortened (`lant` for lantern). See [How names are matched](../guide/building-worlds/#how-names-are-matched).
 
-**Questions:** when a word matches more than one thing, the game asks which (“Which do you mean: the wooden door or the trap door?”, or in Infocom style “Which door do you mean, the wooden door or the trap door?”), and when a verb is missing its object, what (“What do you want to take?”). Answer with just the missing words (`trap`, `the sword`), or type a new command to move on. Questions take no game time, and answers are never sent to the intent server.
+**Questions:** when a word matches more than one thing, the game asks which (“Which do you mean: the wooden door or the trap door?”, or in Infocom style “Which door do you mean, the wooden door or the trap door?”), and when a verb is missing its object, what (“What do you want to take?”). Answer with just the missing words (`trap`, `the sword`), or type a new command to move on. Answer BOTH (or ALL, EACH) to act on each, for TAKE, DROP and PUT. Questions take no game time, and answers are never sent to the intent server.
 
 **Keys:** Up and Down step through your last 100 commands, keeping whatever you’d started typing. Enter on an empty line, or any letter, finishes the text that’s typing out.

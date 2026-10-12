@@ -14,6 +14,7 @@ Every field a world can use. The source of truth is [`packages/engine/src/types/
 | `dialogue` | `Record<npc id, Dialogue>` | What TALK TO says. |
 | `events` | `Record<id, EventStep[]>` | Lines and [effects](./conditions-and-events#events-and-effects). `intro` plays when a new game starts. |
 | `flagLabels` | `Record<label, flag id>` | Maps the lowercased label in `[Flag set: …]` lines to a flag ID. |
+| `typoReplies?` | string[] | Lines said when a misspelled name is matched anyway (brass style only), once per thing, taken in turn. `{typed}` is the word as typed, `{name}` the thing’s name with its article. Leave it out and corrections are silent. Example: `“{typed}”? You mean {name}.` |
 | `hints?` | `Hint[]` | HINT shows the first whose condition holds. |
 | `scoring?` | `{ flag, points }[]` or `{ if, points }[]` | SCORE sums points for set flags, plus conditions that hold right now (a treasure in the case), plus the `score` variable. |
 | `maxScore?` | number | The total SCORE reports. Default: the sum of `scoring`. |
