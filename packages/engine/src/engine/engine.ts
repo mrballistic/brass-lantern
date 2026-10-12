@@ -250,14 +250,15 @@ function executeTurn(action: ParsedAction, deps: EngineDeps): EngineResult {
 
 /**
  * WEAR of a thing in sight but not held: TAKE it first, rules and all (Infocom's implicit take).
- * Null when it's held, not here, or can't be carried; otherwise the take's result and whether it's now held.
+ * Null when it's held, not here, can't be carried or can't be worn; otherwise the take's result and whether it's now held.
  */
 function takeFirst(action: ParsedAction, world: World, state: GameState): { held: boolean; result: EngineResult; id: string } | null {
   if (!action.target) return null;
   const carried = inventoryOf(world, state);
   if (pickItem(action.target, carried, world, 'target', state)) return null;
   const id = pickItem(action.target, visibleItems(world, state).filter((i) => !carried.includes(i)), world, 'target', state);
-  if (!id || !world.items[id]?.portable) return null;
+  // Only what can be worn (onWear) is taken first; anything else answers as before.
+  if (!id || !world.items[id]?.portable || !world.items[id].onWear) return null;
   const result = withRules('take', { action: 'take', target: action.target }, world, state, () => handleTake(action.target, world, state));
   return { held: isCarried(state, id), result, id };
 }

@@ -194,13 +194,12 @@ function closenessOf(needleTokens: string[], ids: string[], candidates: Candidat
  * Ranks `candidates` against what the player typed (see RANK): exact name, alias or ID; a whole word of a
  * name or alias; a whole word of the ID or part of a name; part of the ID; word starts (every typed word of
  * three or more letters matching); with `typos`, a close misspelling (the caller decides when: the
- * engine's typosOn turns them off for the intent server's IDs). `coarse` folds ranks 2–4 into one
- * tier, as 2.1 matched. ME, digits and (with `byId`) exact IDs keep their precedence ahead of the ranks.
+ * engine's typosOn turns them off for the intent server's IDs). ME, digits and (with `byId`) exact IDs keep their precedence ahead of the ranks.
  */
 export function rankCandidates(
   input: string,
   candidates: Candidate[],
-  opts: { byId?: boolean; selfWords?: boolean; typos?: boolean; coarse?: boolean } = {},
+  opts: { byId?: boolean; selfWords?: boolean; typos?: boolean } = {},
 ): Ranked {
   const needle = normalize(input);
   if (!needle) return NONE;
@@ -219,13 +218,9 @@ export function rankCandidates(
   const idPart = (c: Candidate) => normalize(c.id).includes(needle);
   const tiers: Array<[number, (c: Candidate) => boolean]> = [
     [RANK.exact, (c) => normalize(c.id) === needle || words(c).includes(needle)],
-    ...(opts.coarse
-      ? [[RANK.nameWord, (c: Candidate) => nameWord(c) || idWordOrNamePart(c) || idPart(c)] as [number, (c: Candidate) => boolean]]
-      : ([
-          [RANK.nameWord, nameWord],
-          [RANK.idWordOrNamePart, idWordOrNamePart],
-          [RANK.idPart, idPart],
-        ] as Array<[number, (c: Candidate) => boolean]>)),
+    [RANK.nameWord, nameWord],
+    [RANK.idWordOrNamePart, idWordOrNamePart],
+    [RANK.idPart, idPart],
   ];
   for (const [rank, test] of tiers) {
     const ids = candidates.filter(test).map((c) => c.id);

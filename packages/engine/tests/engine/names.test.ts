@@ -159,11 +159,14 @@ describe('GIVE PERSON THING', () => {
     return game.send(line);
   };
   it('reads the person first', () => {
-    expect(play('give neighbor wallet').understood).not.toBe(false);
-    expect(play('give neighbor the wallet').lines.join(' ')).not.toContain('aren’t carrying');
+    for (const line of ['give neighbor wallet', 'give neighbor the wallet']) {
+      const r = play(line);
+      expect(r.understood).not.toBe(false);
+      expect(r.lines).toContain('💼 The neighbor takes the wallet.');
+    }
   });
   it('with a misspelled person', () => {
-    expect(play('give nieghbor wallet').lines.join(' ')).not.toContain('aren’t carrying');
+    expect(play('give nieghbor wallet').lines).toContain('💼 The neighbor takes the wallet.');
   });
   it('leaves GIVE THING alone', () => {
     const s = stateWith(world, { room: 'yard', carrying: ['wallet'] });
@@ -189,6 +192,13 @@ describe('WEAR takes first', () => {
     const before = structuredClone(s);
     expect(execute({ action: 'wear', target: 'shirt' }, { world: w, state: s }).lines).toEqual(['Not yours to take.']);
     expect(s.locations).toEqual(before.locations);
+  });
+  it('only what can be worn: a wallet on the floor stays there', () => {
+    const s = stateWith(world, { room: 'living' });
+    const r = execute({ action: 'wear', target: 'wallet' }, { world, state: s });
+    expect(r.lines).toEqual(['You aren’t carrying a “wallet”.']);
+    expect(r.understood).toBe(false);
+    expect(s.locations.wallet).toBe('living');
   });
   it('carried: as before', () => {
     const s = stateWith(world, { room: 'living', carrying: ['shirt'] });

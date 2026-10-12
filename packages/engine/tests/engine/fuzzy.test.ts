@@ -222,9 +222,6 @@ describe('ranks', () => {
     expect(fuzzyCandidates('neighbor', c)).toEqual(['neighbor']);
     expect(fuzzyCandidates('neighbor', others)).toEqual(['neighbors_mug', 'neighbor_banner']);
   });
-  it('coarse folds ranks 2–4 into one tie (the 2.1 substring tier)', () => {
-    expect(rankCandidates('banner', [{ id: 'flag', name: 'flag banner' }, { id: 'banner_pole', name: 'pole' }], { coarse: true }).ids).toEqual(['flag', 'banner_pole']);
-  });
 });
 
 describe('typos', () => {
