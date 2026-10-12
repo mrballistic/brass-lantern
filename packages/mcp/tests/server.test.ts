@@ -1,4 +1,4 @@
-import { mkdtempSync } from 'node:fs';
+import { mkdirSync, readFileSync, mkdtempSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import * as bundled from '@brass-lantern/engine';
@@ -9,16 +9,22 @@ import { bundleDocs } from '../scripts/bundle-docs.ts';
 import { createServer } from '../src/server.ts';
 
 const FIXTURES = resolve(import.meta.dirname, 'fixtures');
+const ENGINE_WORLDS = resolve(import.meta.dirname, '../../engine/src/worlds');
 let client: Client;
+
+async function connect(options: Partial<Parameters<typeof createServer>[0]> & { docsDir: string; cwd: string }): Promise<Client> {
+  const server = createServer({ bundled, version: '0.0.0-test', ...options });
+  const [serverSide, clientSide] = InMemoryTransport.createLinkedPair();
+  await server.connect(serverSide);
+  const c = new Client({ name: 'test', version: '1' });
+  await c.connect(clientSide);
+  return c;
+}
 
 beforeAll(async () => {
   const docsDir = mkdtempSync(join(tmpdir(), 'bl-mcp-server-docs-'));
   bundleDocs(docsDir);
-  const server = createServer({ bundled, docsDir, cwd: FIXTURES, version: '0.0.0-test' });
-  const [serverSide, clientSide] = InMemoryTransport.createLinkedPair();
-  await server.connect(serverSide);
-  client = new Client({ name: 'test', version: '1' });
-  await client.connect(clientSide);
+  client = await connect({ docsDir, cwd: FIXTURES, roots: [FIXTURES, ENGINE_WORLDS] });
 });
 afterAll(() => client.close());
 
@@ -51,7 +57,7 @@ describe('the MCP server', () => {
     expect(text(bad)).toMatch(/^broken\.ts: /);
     const thrower = await client.callTool({ name: 'play', arguments: { path: 'throws.ts', commands: ['look'] } });
     expect(thrower.isError).toBe(true);
-    expect(text(thrower)).toMatch(/The engine threw: .*kaboom/);
+    expect(text(thrower)).toMatch(/^World: default in .*throws\.ts\nEngine: @brass-lantern\/engine .*\n\nThe engine threw: .*kaboom/);
     const ok = await client.callTool({ name: 'audit_world', arguments: { path: 'default-world.ts' } });
     expect(ok.isError).toBeFalsy();
   });
@@ -61,5 +67,43 @@ describe('the MCP server', () => {
   });
   it('docs answers from the bundle', async () => {
     expect(text(await client.callTool({ name: 'docs', arguments: { page: 'reference/world-schema' } }))).toContain('typoReplies');
+  });
+  it('docs read failure is an error result', async () => {
+    const c = await connect({ docsDir: join(tmpdir(), 'bl-mcp-no-such-docs'), cwd: FIXTURES });
+    const r = await c.callTool({ name: 'docs', arguments: {} });
+    expect(r.isError).toBe(true);
+    expect(text(r)).toMatch(/docs bundle couldn’t be read/);
+    await c.close();
+  });
+});
+
+describe('allowed roots', () => {
+  const docsDir = tmpdir();
+  const audit = async (c: Client, path: string) => c.callTool({ name: 'audit_world', arguments: { path } });
+  const outside = mkdtempSync(join(tmpdir(), 'bl-mcp-outside-'));
+  writeFileSync(join(outside, 'w.ts'), readFileSync(join(FIXTURES, 'default-world.ts')));
+  const inside = mkdtempSync(join(tmpdir(), 'bl-mcp-inside-'));
+  mkdirSync(join(inside, 'sub'));
+  symlinkSync(join(outside, 'w.ts'), join(inside, 'link.ts'));
+  symlinkSync(outside, join(inside, 'dir'));
+  writeFileSync(join(inside, 'sub', 'ok.ts'), readFileSync(join(FIXTURES, 'default-world.ts')));
+
+  it('refuses an absolute path outside the roots', async () => {
+    const r = await audit(await connect({ docsDir, cwd: inside }), join(outside, 'w.ts'));
+    expect(r.isError).toBe(true);
+    expect(text(r)).toMatch(/outside the allowed directories .*--root <dir>/);
+  });
+  it('refuses a ../ escape', async () => {
+    const r = await audit(await connect({ docsDir, cwd: join(inside, 'sub') }), `../../${outside.split('/').pop()}/w.ts`);
+    expect(text(r)).toMatch(/outside the allowed directories/);
+  });
+  it('refuses a symlink that points outside', async () => {
+    const c = await connect({ docsDir, cwd: inside });
+    expect(text(await audit(c, 'link.ts'))).toMatch(/outside the allowed directories/);
+    expect(text(await audit(c, 'dir/w.ts'))).toMatch(/outside the allowed directories/);
+  });
+  it('accepts paths inside the root and inside an extra root', async () => {
+    expect((await audit(await connect({ docsDir, cwd: inside }), 'sub/ok.ts')).isError).toBeFalsy();
+    expect((await audit(await connect({ docsDir, cwd: inside, roots: [inside, outside] }), join(outside, 'w.ts'))).isError).toBeFalsy();
   });
 });

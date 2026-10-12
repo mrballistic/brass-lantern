@@ -1,9 +1,11 @@
+import { realpathSync } from 'node:fs';
+import { isAbsolute, relative, resolve } from 'node:path';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { docsReport, readDocs } from './docs.ts';
 import { resolveEngine, type Engine } from './engine.ts';
 import { loadWorld, WorldLoadError, type LoadedWorld } from './load.ts';
-import { auditReport, MAX_COMMANDS, playReport } from './tools.ts';
+import { auditReport, header, MAX_COMMANDS, playReport } from './tools.ts';
 import type { ResolvedEngine } from './engine.ts';
 
 export interface ServerOptions {
@@ -13,6 +15,8 @@ export interface ServerOptions {
   docsDir: string;
   /** Relative world paths resolve against this (the client’s launch directory). */
   cwd: string;
+  /** Worlds must live inside one of these directories (symlinks resolved). Default: [cwd]. */
+  roots?: string[];
   version: string;
 }
 
@@ -25,15 +29,39 @@ const EXPORT = z.string().min(1).optional().describe('Which export is the world.
 export function createServer(options: ServerOptions): McpServer {
   const server = new McpServer({ name: 'brass-lantern', version: options.version });
 
+  const real = (p: string): string => {
+    try {
+      return realpathSync(p);
+    } catch {
+      return p;
+    }
+  };
+  const roots = (options.roots ?? [options.cwd]).map((r) => real(resolve(options.cwd, r)));
+  const allowed = (path: string): boolean => {
+    const file = real(resolve(options.cwd, path));
+    return roots.some((root) => {
+      const rel = relative(root, file);
+      return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
+    });
+  };
+
   /** Loads the world and its engine, runs `report`, and turns any failure into an error result. */
   async function withWorld(path: string, exportName: string | undefined, report: (loaded: LoadedWorld, resolved: ResolvedEngine) => string): Promise<Result> {
+    if (!allowed(path)) return reply(`${path}: outside the allowed directories (${roots.join(', ')}). Start the server with --root <dir> to allow another.`, true);
+    let loaded: LoadedWorld;
     try {
-      const loaded = await loadWorld(path, exportName, options.cwd);
-      const resolved = await resolveEngine(loaded.file, options.bundled);
-      return reply(report(loaded, resolved));
+      loaded = await loadWorld(path, exportName, options.cwd);
     } catch (error) {
       if (error instanceof WorldLoadError) return reply(error.message, true);
-      return reply(`The engine threw: ${error instanceof Error ? error.message : String(error)}`, true);
+      return reply(`The world couldn’t be loaded: ${error instanceof Error ? error.message : String(error)}`, true);
+    }
+    let resolved: ResolvedEngine | undefined;
+    try {
+      resolved = await resolveEngine(loaded.file, options.bundled);
+      return reply(report(loaded, resolved));
+    } catch (error) {
+      const lines = resolved ? [...header(loaded, resolved), ''] : [];
+      return reply(`${lines.join('\n')}${lines.length ? '\n' : ''}The engine threw: ${error instanceof Error ? error.message : String(error)}`, true);
     }
   }
 
@@ -66,7 +94,7 @@ export function createServer(options: ServerOptions): McpServer {
     'docs',
     {
       title: 'Brass Lantern documentation',
-      description: 'The docs for this version: with no arguments, the index of pages; with “page”, one page’s markdown (e.g. reference/world-schema); with “query”, the best-matching sections.',
+      description: 'The docs for this version: with no arguments, the index of pages; with “page”, one page’s markdown (e.g. reference/world-schema); with “query”, the best-matching sections. If both are given, “page” wins.',
       inputSchema: {
         page: z.string().optional().describe('A page path from the index, e.g. reference/world-schema or guide/building-worlds/recipes.'),
         query: z.string().optional().describe('Words to search the docs for, e.g. "timers fuses".'),

@@ -8,7 +8,7 @@ export const MAX_LINES = 2000;
 const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 /** The lines every engine tool opens with: which world, which engine. */
-function header(loaded: LoadedWorld, resolved: ResolvedEngine): string[] {
+export function header(loaded: LoadedWorld, resolved: ResolvedEngine): string[] {
   const whose = resolved.source === 'project' ? 'the project’s' : 'bundled with the MCP server';
   return [
     `World: ${loaded.exportName} in ${loaded.file}`,
