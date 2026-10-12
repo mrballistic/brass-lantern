@@ -50,6 +50,8 @@ export function handleAll(action: ParsedAction, world: World, state: GameState):
   // TAKE ALL FROM something not here: a miss, so the intent server can read it.
   if (verb === 'take' && action.indirect && !pickItem(action.indirect, visibleItems(world, state), world, 'indirect', state)) return miss(`You don’t see a “${action.indirect}” here.`);
   let ids = covered(verb, action, world, state);
+  // BOTH, answering “which do you mean”: just the things asked about, in the order asked.
+  if (action.only) ids = action.only.filter((id) => ids.includes(id));
   const named = ids.map((id) => ({ id, name: world.items[id]?.name ?? id, aliases: world.items[id]?.aliases }));
   // EXCEPT words that match nothing are ignored, as in Zork.
   const excepted = new Set((action.except ?? []).flatMap((word) => fuzzyCandidates(word, named)));

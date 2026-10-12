@@ -195,3 +195,24 @@ describe('WEAR takes first', () => {
     expect(execute({ action: 'wear', target: 'shirt' }, { world, state: s }).lines[0]).not.toBe('(first taking the loud shirt)');
   });
 });
+
+describe('answering “both”', () => {
+  it('TAKE: takes each', () => {
+    const game = createGame(world, { seed: 1 });
+    game.state.currentRoom = 'living';
+    expect(game.send('take key').lines[0]).toMatch(/^Which do you mean/);
+    const lines = game.send('both').lines.join('\n');
+    expect(lines).toContain('brass key');
+    expect(lines).toContain('rusty key');
+    expect(game.state.locations.key).toBe('player');
+    expect(game.state.locations.rusty_key).toBe('player');
+  });
+  it('GIVE: one at a time, and the question stays open', () => {
+    const game = createGame(world, { seed: 1 });
+    game.state.currentRoom = 'yard';
+    Object.assign(game.state.locations, { key: 'player', rusty_key: 'player' });
+    expect(game.send('give key to neighbor').lines[0]).toMatch(/^Which do you mean/);
+    expect(game.send('both').lines).toEqual(['One at a time: the brass key or the rusty key?']);
+    expect(game.send('rusty').lines.join(' ')).not.toContain('One at a time');
+  });
+});

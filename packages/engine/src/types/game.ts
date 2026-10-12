@@ -107,6 +107,8 @@ export interface ParsedAction {
   prep?: 'in' | 'on' | 'under' | 'behind' | 'off' | 'over' | 'through';
   /** TAKE ALL BUT …: the words after BUT/EXCEPT. */
   except?: string[];
+  /** ALL restricted to these IDs, in this order: the answer BOTH to a which-question. */
+  only?: string[];
   /** DISEMBARK reached by STAND or a bare GET OUT/OFF: Zork guesses the vehicle only for DISEMBARK itself. */
   via?: 'stand' | 'out';
   /** CLIMB UP / CLIMB DOWN a thing, or PUSH X north: the direction. */

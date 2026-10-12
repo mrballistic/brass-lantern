@@ -1,5 +1,6 @@
 import type { GameState, ParsedAction } from '../types/game.ts';
 import type { World } from '../types/world.ts';
+import { listThe } from './ask.ts';
 import { fuzzyCandidates } from './fuzzy.ts';
 import { BUILT_IN_WORDS, TOO_LONG_REPLY, cleanInput, strictParse } from './parser.ts';
 import type { Ask, EngineResult } from './result.ts';
@@ -48,6 +49,10 @@ function fill(action: ParsedAction, slot: Ask['slot'], value: string, byId: bool
   return byId ? { ...filled, byId: true } : filled;
 }
 
+const BOTH = /^(?:both|all|each)(?: of them)?$/i;
+/** Verbs whose ALL can take the answer BOTH. */
+const BOTH_VERBS = new Set(['take', 'drop', 'put']);
+
 /** Turns a line into a step, answering a pending question if it is an answer. */
 export function interpret(input: string, conv: Conversation, world: World, _state: GameState): Step {
   // Cleaned (one space between words) and capped like every parser entry; a line over the cap changes nothing.
@@ -77,6 +82,13 @@ export function interpret(input: string, conv: Conversation, world: World, _stat
   // An answer drops a leading THE, as the parser does for an object in a command.
   const answer = input.trim().replace(/^the\s+/i, '');
   if (pending.kind === 'which') {
+    if (BOTH.test(answer)) {
+      if (pending.slot === 'target' && BOTH_VERBS.has(pending.action.action)) {
+        return { run: { ...pending.action, target: 'all', only: pending.candidates }, viaAnswer: true };
+      }
+      conv.pending = pending;
+      return { reply: [`One at a time: ${listThe(world, pending.candidates)}?`] };
+    }
     const candidates = pending.candidates.map((id) => ({ id, name: world.items[id]?.name ?? id, aliases: world.items[id]?.aliases }));
     const found = fuzzyCandidates(answer, candidates);
     if (found.length === 1) return { run: fill(pending.action, pending.slot, found[0], true), viaAnswer: true };
