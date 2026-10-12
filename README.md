@@ -112,6 +112,7 @@ npm run dev
 - [Conditions and events](https://mrballistic.github.io/brass-lantern/reference/conditions-and-events)
 - [Player commands](https://mrballistic.github.io/brass-lantern/reference/commands)
 - [Cartridges and storage](https://mrballistic.github.io/brass-lantern/reference/cartridges)
+- For agents and LLM tools: [llms.txt](https://mrballistic.github.io/brass-lantern/llms.txt) and [llms-full.txt](https://mrballistic.github.io/brass-lantern/llms-full.txt), the whole docs as markdown
 
 They live in `docs/`; `npm run docs:dev` serves them locally.
 
