@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { execute } from '../../src/engine/engine';
+import { listThe, theName } from '../../src/engine/ask';
 import { fuzzyCandidates } from '../../src/engine/fuzzy';
 import { stateWith } from '../helpers/state';
 import { fixtureWorld as world } from '../fixtures/world';
@@ -54,5 +55,18 @@ describe('questions', () => {
     const s = stateWith(world, { room: 'living' });
     execute({ action: 'take', target: 'key', byId: true }, { world, state: s });
     expect(s.locations.key).toBe('player');
+  });
+});
+
+describe('which-lists use each name’s article', () => {
+  const w = {
+    ...world,
+    items: { ...world.items, mug: { name: 'Neighbor’s coffee mug', article: '', description: 'A mug.', portable: true, tags: [] } },
+  };
+  it('no “the” before a name with an empty article, and characters use theirs', () => {
+    expect(theName(w, 'mug')).toBe('Neighbor’s coffee mug');
+    expect(theName(w, 'key')).toBe('the brass key');
+    expect(theName(w, 'guard')).toBe('the guard');
+    expect(listThe(w, ['mug', 'key'])).toBe('Neighbor’s coffee mug or the brass key');
   });
 });
