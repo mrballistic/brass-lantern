@@ -1,7 +1,7 @@
 import type { GameState, ParsedAction } from '../../types/game.ts';
 import type { World } from '../../types/world.ts';
 import { combatText, heroBlow } from '../combat.ts';
-import { inventoryOf, isCarried, itemStateOf, matchNpc, moveItem, needObject, pickItem, visibleItems } from '../model.ts';
+import { inventoryOf, isCarried, itemStateOf, matchNpc, moveItem, needObject, pickItem, pickThing, visibleItems } from '../model.ts';
 import { miss, ok, type EngineResult } from '../result.ts';
 import { BARE_HANDS, withRules } from '../rules.ts';
 
@@ -22,13 +22,14 @@ export function handleAttack(action: ParsedAction, world: World, state: GameStat
       return result.understood === false ? result : { ...result, lines: [`(with the ${world.items[held[0]].name})`, ...result.lines] };
     }
   }
-  const npc = matchNpc(action.target, world, state);
-  if (!npc) {
-    const thing = pickItem(action.target, visibleItems(world, state), world, 'target', state);
-    if (!thing) return miss(`You don’t see a “${action.target}” here.`);
+  const found = pickThing(action.target, visibleItems(world, state), world, state, { prefer: 'people' });
+  if (!found) return miss(`You don’t see a “${action.target}” here.`);
+  if (found.npc === undefined) {
+    const thing = found.item;
     // Its own attack rule answers first; otherwise Zork's refusal.
     return withRules('attack', action, world, state, () => ok([combatText(world, 'notPerson', { defender: world.items[thing].name })]));
   }
+  const npc = found.npc;
   return withRules('attack', action, world, state, () => attackNpc(npc, action.indirect, world, state));
 }
 

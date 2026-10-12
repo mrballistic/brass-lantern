@@ -2,7 +2,7 @@ import type { GameState, ParsedAction } from '../types/game.ts';
 import type { Item, NPC, Room, Rule, World } from '../types/world.ts';
 import { evaluateCondition } from './conditions.ts';
 import { readsNumber } from './parser.ts';
-import { heldItems, inventoryOf, matchNpc, namesPlayer, namesThing, pickItem, pickSecond, PLAYER, reachableItems, restoreState, snapshotState, visibleItems } from './model.ts';
+import { heldItems, inventoryOf, namesPlayer, namesThing, pickThing, PLAYER, reachableItems, restoreState, snapshotState, visibleItems } from './model.ts';
 import { setCommand } from './scripts.ts';
 import { runEventKey, turnHalted } from './effects.ts';
 import { miss, ok, type EngineResult } from './result.ts';
@@ -134,11 +134,18 @@ export function withRules(
   const typed = (word?: string) => readsNumber(action, word) && !namesThing(word!, world, state);
   // Resolve the target the way the verb's handler will, so the rules that fire
   // belong to the item the verb actually acts on.
-  const target = typed(action.target) ? 'number' : me(action.target) ? PLAYER : action.target ? pickItem(action.target, targetScope(verb, world, state), world, 'target', state) : null;
-  const indirect = typed(action.indirect) ? 'number' : action.indirect ? pickSecond(action.indirect, visibleItems(world, state), world, state) : null;
+  // GIVE and SHOW hand something to someone: a person named there beats a thing named the same.
+  const preferPeople = verb === 'give' || verb === 'show';
+  const targetThing = typed(action.target) || me(action.target) || !action.target ? null : pickThing(action.target, targetScope(verb, world, state), world, state, { slot: 'target' });
+  const target = typed(action.target) ? 'number' : me(action.target) ? PLAYER : (targetThing?.item ?? null);
+  const indirectThing =
+    typed(action.indirect) || me(action.indirect) || !action.indirect
+      ? null
+      : pickThing(action.indirect, visibleItems(world, state), world, state, { slot: 'indirect', prefer: preferPeople ? 'people' : 'items' });
+  const indirect = typed(action.indirect) ? 'number' : me(action.indirect) ? PLAYER : (indirectThing?.item ?? null);
   // Words that aren't items may name characters, whose rules count too.
-  const targetNpc = !target && action.target ? matchNpc(action.target, world, state) : null;
-  const indirectNpc = !indirect && action.indirect ? matchNpc(action.indirect, world, state) : null;
+  const targetNpc = targetThing?.npc ?? null;
+  const indirectNpc = indirectThing?.npc ?? null;
   const npcs = [targetNpc, indirectNpc].filter((id): id is string => Boolean(id));
   // A second object that names nothing here (no thing, no character): a miss, before any rule
   // could fire as though no tool had been named (UNLOCK DOOR WITH XYZZY).

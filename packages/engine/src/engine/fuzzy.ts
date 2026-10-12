@@ -54,6 +54,8 @@ export interface Ranked {
   rank: number;
   ids: string[];
   typed?: string;
+  /** Rank 6 only: [every typo matched a name or alias word (1/0), summed similarity, summed whole-word similarity]. */
+  typoKey?: [number, number, number];
 }
 
 const NONE: Ranked = { rank: 0, ids: [] };
@@ -86,34 +88,85 @@ export function typoSimilarity(typed: string, word: string): number {
   return Math.max(sim(typed, word), word.length > typed.length ? sim(typed, word.slice(0, typed.length)) : 0);
 }
 
-/** Rank 6: each typed word of 3+ letters matches a candidate word exactly, by its start, or (5+ letters) as a close misspelling. */
+/** Floats closer than this compare equal (summed similarities). */
+const EPSILON = 1e-9;
+
+/** Compares typo keys element by element: positive when `a` is stronger. */
+function compareKeys(a: readonly number[], b: readonly number[]): number {
+  for (let i = 0; i < a.length; i++) {
+    if (Math.abs(a[i] - b[i]) > EPSILON) return a[i] - b[i];
+  }
+  return 0;
+}
+
+/** The best typo match of `t` among `hay`: similarity (prefix cut allowed), then whole-word similarity. */
+function bestTypo(t: string, hay: string[]): [number, number] {
+  const whole = (h: string) => 1 - editDistance(t, h) / Math.max(t.length, h.length);
+  let best: [number, number] = [0, 0];
+  for (const h of hay) {
+    const pair: [number, number] = [typoSimilarity(t, h), whole(h)];
+    if (compareKeys(pair, best) > 0) best = pair;
+  }
+  return best;
+}
+
+/**
+ * Rank 6: each typed word of 3+ letters matches a candidate word exactly, by its start, or (5+ letters) as a close
+ * misspelling. As ranks 2–4 put names before IDs and whole words before parts, the strongest key wins:
+ * misspelled name or alias words over ID words, then the summed similarity, then the summed whole-word similarity.
+ */
 function typoRank(input: string, needleTokens: string[], candidates: Candidate[], words: (c: Candidate) => string[]): Ranked {
   const checked = needleTokens.filter((t) => t.length >= 3 && !FUNCTION_WORDS.has(t));
-  let best = 0;
+  let best: [number, number, number] | undefined;
   let ids: string[] = [];
   let typo: string | undefined;
   for (const c of candidates) {
-    const hay = [...tokens(c.id), ...words(c).flatMap(tokens)];
+    const nameHay = words(c).flatMap(tokens);
+    const idHay = tokens(c.id);
+    const hay = [...idHay, ...nameHay];
+    let fromName = 1;
     let score = 0;
+    let whole = 0;
     let first: string | undefined;
     let fits = true;
     for (const t of checked) {
       if (tokenPrefixScore([t], hay) > 0) continue;
-      const sim = t.length < TYPO_MIN_LENGTH ? 0 : Math.max(0, ...hay.map((h) => typoSimilarity(t, h)));
-      if (sim < TYPO_SIMILARITY) {
+      if (t.length < TYPO_MIN_LENGTH) {
         fits = false;
         break;
       }
-      score += sim;
+      const byName = bestTypo(t, nameHay);
+      const byId = bestTypo(t, idHay);
+      const pick = byName[0] >= TYPO_SIMILARITY ? byName : byId;
+      if (pick[0] < TYPO_SIMILARITY) {
+        fits = false;
+        break;
+      }
+      if (pick !== byName) fromName = 0;
+      score += pick[0];
+      whole += pick[1];
       first ??= t;
     }
     if (!fits || !first) continue;
-    if (score > best) [best, ids, typo] = [score, [c.id], first];
-    else if (score === best) ids.push(c.id);
+    const key: [number, number, number] = [fromName, score, whole];
+    const order = best ? compareKeys(key, best) : 1;
+    if (order > 0) [best, ids, typo] = [key, [c.id], first];
+    else if (order === 0) ids.push(c.id);
   }
-  if (ids.length === 0 || !typo) return NONE;
+  if (ids.length === 0 || !typo || !best) return NONE;
   const typed = input.trim().split(/\s+/).find((w) => normalize(w) === typo) ?? typo;
-  return { rank: RANK.typo, ids, typed };
+  return { rank: RANK.typo, ids, typed, typoKey: best };
+}
+
+/** Orders two results: negative when `a` is the stronger match. No match is weakest; a lower rank is stronger; typos by their key. */
+export function compareRanked(a: Ranked, b: Ranked): number {
+  if (a.rank !== b.rank) {
+    if (a.rank === 0) return 1;
+    if (b.rank === 0) return -1;
+    return a.rank - b.rank;
+  }
+  if (a.rank === RANK.typo && a.typoKey && b.typoKey) return compareKeys(b.typoKey, a.typoKey);
+  return 0;
 }
 
 /**

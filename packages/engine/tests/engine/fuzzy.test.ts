@@ -1,4 +1,4 @@
-import { fuzzyCandidates, fuzzyMatch, fuzzyMatchExit, rankCandidates, RANK, editDistance, typoSimilarity } from '../../src/engine/fuzzy';
+import { compareRanked, fuzzyCandidates, fuzzyMatch, fuzzyMatchExit, rankCandidates, RANK, editDistance, typoSimilarity } from '../../src/engine/fuzzy';
 
 describe('fuzzyMatch', () => {
   const candidates = [
@@ -236,7 +236,7 @@ describe('typos', () => {
     expect(typoSimilarity('lunberg', 'lumbergh')).toBeCloseTo(6 / 7);
   });
   it('a close misspelling of 5+ letters is rank 6, with the word as typed', () => {
-    expect(rankCandidates('Lunbergh', lumbergh, { typos: true })).toEqual({ rank: RANK.typo, ids: ['lumbergh'], typed: 'Lunbergh' });
+    expect(rankCandidates('Lunbergh', lumbergh, { typos: true })).toEqual({ rank: RANK.typo, ids: ['lumbergh'], typed: 'Lunbergh', typoKey: [1, 0.875, 0.875] });
     expect(rankCandidates('lunberg', lumbergh, { typos: true }).ids).toEqual(['lumbergh']);
     expect(rankCandidates('bnner', [{ id: 'banner', name: 'banner' }], { typos: true }).ids).toEqual(['banner']);
   });
@@ -258,5 +258,40 @@ describe('typos', () => {
   });
   it('an earlier rank always wins over a typo', () => {
     expect(rankCandidates('bil lumberg', lumbergh, { typos: true }).rank).toBe(RANK.wordStart);
+  });
+  it('a misspelled name word beats a name part or an ID word', () => {
+    const neighbor = [
+      { id: 'neighbor', name: 'Neighbor' },
+      { id: 'neighbors_mug', name: 'Neighbor’s coffee mug', aliases: ['mug'] },
+      { id: 'neighbor_banner', name: 'banner' },
+    ];
+    expect(rankCandidates('nieghbor', neighbor, { typos: true }).ids).toEqual(['neighbor']);
+    const office = [
+      { id: 'lumbergh', name: 'Bill Lumbergh' },
+      { id: 'lumberghs_mug', name: 'Lumbergh’s coffee mug' },
+      { id: 'lumbergh_drawer', name: 'desk drawer' },
+    ];
+    expect(rankCandidates('lunberg', office, { typos: true }).ids).toEqual(['lumbergh']);
+  });
+});
+
+describe('compareRanked', () => {
+  it('a lower rank is stronger', () => {
+    expect(compareRanked({ rank: RANK.nameWord, ids: ['a'] }, { rank: RANK.idWordOrNamePart, ids: ['b'] })).toBeLessThan(0);
+    expect(compareRanked({ rank: RANK.idWordOrNamePart, ids: ['a'] }, { rank: RANK.nameWord, ids: ['b'] })).toBeGreaterThan(0);
+    expect(compareRanked({ rank: RANK.nameWord, ids: ['a'] }, { rank: RANK.nameWord, ids: ['b'] })).toBe(0);
+  });
+  it('no match loses to anything', () => {
+    expect(compareRanked({ rank: 0, ids: [] }, { rank: RANK.typo, ids: ['b'], typoKey: [0, 0.8, 0.8] })).toBeGreaterThan(0);
+    expect(compareRanked({ rank: RANK.wordStart, ids: ['a'] }, { rank: 0, ids: [] })).toBeLessThan(0);
+    expect(compareRanked({ rank: 0, ids: [] }, { rank: 0, ids: [] })).toBe(0);
+  });
+  it('two typos order by their key', () => {
+    const name = { rank: RANK.typo, ids: ['a'], typoKey: [1, 0.875, 0.875] as [number, number, number] };
+    const part = { rank: RANK.typo, ids: ['b'], typoKey: [1, 0.875, 0.778] as [number, number, number] };
+    const id = { rank: RANK.typo, ids: ['c'], typoKey: [0, 0.9, 0.9] as [number, number, number] };
+    expect(compareRanked(name, part)).toBeLessThan(0);
+    expect(compareRanked(id, part)).toBeGreaterThan(0);
+    expect(compareRanked(name, { ...name, typoKey: [1, 0.875 + 1e-12, 0.875] })).toBe(0);
   });
 });

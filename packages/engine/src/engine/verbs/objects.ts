@@ -3,7 +3,7 @@ import type { Item, World } from '../../types/world.ts';
 import { evaluateCondition } from '../conditions.ts';
 import { contentsLines, describeRoom, lightNote, listedName, npcDescription, scriptDescription } from '../describe.ts';
 import { expandTemplate } from '../text.ts';
-import { closedAround, inventoryOf, isCarried, isHeld, isOpen, itemStateOf, matchItem, isLit, matchNpc, moveItem, needObject, pickItem, pickSecond, PLAYER, reachableItems, visibleItems } from '../model.ts';
+import { closedAround, inventoryOf, isCarried, isHeld, isOpen, itemStateOf, matchItem, isLit, moveItem, needObject, pickItem, pickSecond, pickThing, PLAYER, reachableItems, visibleItems } from '../model.ts';
 import { miss, ok, type EngineResult } from '../result.ts';
 import { runEventKey } from '../effects.ts';
 import { afterRuleLines, applyRule, findRule } from '../rules.ts';
@@ -75,7 +75,8 @@ export function handleDrop(target: string | undefined, world: World, state: Game
 
 export function handleExamine(target: string | undefined, world: World, state: GameState): EngineResult {
   if (!target) needObject();
-  const matchedItem = pickItem(target, visibleItems(world, state), world, 'target', state);
+  const thing = pickThing(target, visibleItems(world, state), world, state);
+  const matchedItem = thing?.item ?? null;
   if (matchedItem) {
     const item = world.items[matchedItem];
     const contents = contentsLines(world, state, matchedItem);
@@ -97,7 +98,7 @@ export function handleExamine(target: string | undefined, world: World, state: G
     return ok([expandTemplate(item?.description ?? 'It’s nondescript.', world, state), ...contents]);
   }
 
-  const matchedNpc = matchNpc(target, world, state);
+  const matchedNpc = thing?.npc ?? null;
   // In the dark you can't see who's there: the same miss as an unknown name, which executeTurn turns into the darkness line.
   if (matchedNpc && isLit(world, state)) return ok([npcDescription(world, state, matchedNpc)]);
 
