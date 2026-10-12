@@ -60,7 +60,7 @@ Every field a world can use. The source of truth is [`packages/engine/src/types/
 | `listExits?` | label[] | What the exit line shows, in order; each gets the compass direction that leads the same way. Omit to list every label. |
 | `items` | item ID[] | Items in the room at the start. |
 | `npcs` | NPC ID[] | |
-| `onEnter` | `{ if, then, repeat? }[]` | Events fired on arrival when the condition holds: once per game, or every time with `repeat: true`. |
+| `onEnter` | `{ if?, then, repeat? }[]` | Events fired on arrival when the condition holds: once per game, or every time with `repeat: true`. Leave out `if` and it always fires. |
 | `requires?` | condition | Must hold to enter. |
 | `denial?` | string | Shown when `requires` fails. |
 | `scenery?` | item ID[] | Items present here without being in the room: a door shared by two rooms, a window, the sky. Examinable and usable, never listed or taken. |

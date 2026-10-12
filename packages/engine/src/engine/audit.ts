@@ -70,7 +70,7 @@ export function auditWorld(world: World): string[] {
       if (kind === 'end' && !world.endings?.[target as string]) problems.push(`${where}: end names no ending “${target}”`);
       if (kind === 'unvisit' && !isRoom(target as string)) problems.push(`${where}: unvisit names no room “${target}”`);
       if (kind === 'if') {
-        for (const p of conditionProblems(target as string, world)) problems.push(`${where} (if): ${p}`);
+        for (const p of conditionProblems(target as string | undefined, world)) problems.push(`${where} (if): ${p}`);
         checkSteps((e.then as EventStep[]) ?? [], `${where} (if)`);
         checkSteps((e.else as EventStep[]) ?? [], `${where} (if)`);
       }
@@ -135,7 +135,7 @@ export function auditWorld(world: World): string[] {
   const checkTable = (table: RuleTable | undefined, kind: string, where: string) => {
     for (const [verb, rules] of Object.entries(table ?? {})) checkRules(rules, `${where} ${kind}.${verb}`);
   };
-  const checkTriggers = (triggers: Array<{ if: string; then: string }>, where: string) => {
+  const checkTriggers = (triggers: Array<{ if?: string; then: string }>, where: string) => {
     for (const t of triggers) {
       checkEvent(t.then, where);
       checkCondition(t.if, where);

@@ -108,7 +108,8 @@ export interface Exit {
 }
 
 export interface EventTrigger {
-  if: string;
+  /** Omitted: always (once, unless `repeat`). */
+  if?: string;
   then: string;
   /** Fire every time the condition holds, not just once per game. */
   repeat?: boolean;

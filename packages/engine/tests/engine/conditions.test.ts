@@ -87,12 +87,12 @@ describe('evaluateCondition', () => {
   });
 
   describe('edge cases', () => {
-    it('returns false for an empty string', () => {
-      expect(evaluateCondition('', makeState())).toBe(false);
+    it('holds for an empty string (a missing condition always holds)', () => {
+      expect(evaluateCondition('', makeState())).toBe(true);
     });
 
-    it('returns false for whitespace-only', () => {
-      expect(evaluateCondition('   ', makeState())).toBe(false);
+    it('holds for whitespace-only', () => {
+      expect(evaluateCondition('   ', makeState())).toBe(true);
     });
 
     it('trims surrounding whitespace before evaluating', () => {

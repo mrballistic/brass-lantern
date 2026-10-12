@@ -3,6 +3,7 @@
 ## 2.3.0 (2026-10-12)
 
 - **`@brass-lantern/mcp`**, a new package: a local Model Context Protocol server for coding agents. `audit_world` audits a world file, `play` runs commands in a fresh seeded game and returns the transcript and final state (including the score), and `docs` serves this version’s documentation. It uses the world’s own project’s engine when it has one, and always reports which engine it used. World files are re-read on every call, and must be inside the directory the server started in or one passed with `--root`. A world whose script loops forever hangs the server until the client restarts it; there is no per-call timeout yet. See [Coding agents](https://mrballistic.github.io/brass-lantern/guide/coding-agents).
+- A trigger (`onEnter` and the like) may leave out `if`: it then always fires. Before, a missing condition passed the audit but crashed the turn.
 - The docs come as markdown for agents too: `llms.txt`, `llms-full.txt` and a `.md` copy of every page.
 - `@brass-lantern/engine` exports `currentScore(world, state)`, the game’s current score, now public API (the MCP server’s `play` uses it).
 - `@brass-lantern/vue` and `/server`: no changes beyond the version.

@@ -54,11 +54,21 @@ function heaviest(state: GameState, world?: World): number {
   return Math.max(0, ...held.map((id) => weightOf(world, state, id)));
 }
 
-export function evaluateCondition(condition: string, state: GameState, world?: World): boolean {
+/**
+ * Whether a condition holds. A missing or blank condition always holds, as an
+ * omitted `if` does on a rule or a trigger; a blank part inside an `&` list
+ * (a stray `&`) never does.
+ */
+export function evaluateCondition(condition: string | undefined, state: GameState, world?: World): boolean {
+  if (condition === undefined || condition === null || !String(condition).trim()) return true;
+  return holds(condition, state, world);
+}
+
+function holds(condition: string, state: GameState, world?: World): boolean {
   // "flag:a & !flag:b": every part must hold.
   if (condition.includes('&')) {
     const parts = condition.split('&');
-    return parts.every((part) => evaluateCondition(part, state, world));
+    return parts.every((part) => holds(part, state, world));
   }
   const trimmed = condition.trim();
   if (!trimmed) return false;
@@ -165,8 +175,9 @@ export function evaluateCondition(condition: string, state: GameState, world?: W
  * What's wrong with a condition string, for the world audit: unknown kinds,
  * and items, rooms or places that don't exist. Empty when it's sound.
  */
-export function conditionProblems(condition: string, world: World): string[] {
+export function conditionProblems(condition: string | undefined, world: World): string[] {
   const problems: string[] = [];
+  if (condition === undefined || condition === null || !String(condition).trim()) return problems;
   for (const part of condition.split('&')) {
     const body = part.trim().replace(/^!/, '');
     if (/^(?:var:\w+|carrying|heaviest|score|number)\s*(<=|>=|=|<|>)\s*-?\d+$/.test(body)) continue;
