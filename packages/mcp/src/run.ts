@@ -3,11 +3,15 @@ import type { Job, JobResult } from './job.ts';
 
 /** How long a world gets by default: 10 s. */
 export const DEFAULT_TIMEOUT_MS = 10_000;
+/** The longest delay setTimeout honors (2^31 − 1 ms, about 24.8 days); past it, Node fires after 1 ms. */
+export const MAX_TIMEOUT_MS = 2_147_483_647;
 
 // From source (tests, the repo) the worker is TypeScript and the engine resolves to its source;
 // published, both are plain JavaScript in dist/.
 const fromSource = import.meta.url.endsWith('.ts');
 const WORKER_URL = new URL(fromSource ? './worker.ts' : './worker.js', import.meta.url);
+// Published, the worker deliberately gets no flags: an empty execArgv stops it inheriting the
+// server's own (process.execArgv), which a world's worker has no business running under.
 const EXEC_ARGV = fromSource ? ['--import', 'tsx', '--conditions=@brass-lantern/source'] : [];
 
 /** How long a worker that has answered may linger before it is stopped. */
@@ -20,11 +24,15 @@ const seconds = (ms: number) => String(Number((ms / 1000).toFixed(3)));
  * crashes or writes to stdout can't freeze, end or corrupt the server. The worker's stdout and
  * stderr go to this process's stderr. Never rejects: every outcome is a result.
  */
-export function runInWorker(job: Job, { timeoutMs = DEFAULT_TIMEOUT_MS }: { timeoutMs?: number } = {}): Promise<JobResult> {
+export function runInWorker(job: Job, { timeoutMs: requested = DEFAULT_TIMEOUT_MS }: { timeoutMs?: number } = {}): Promise<JobResult> {
+  // NaN means the default; anything past setTimeout's limit (Infinity included) is capped.
+  const timeoutMs = Number.isNaN(requested) ? DEFAULT_TIMEOUT_MS : Math.min(Math.max(requested, 1), MAX_TIMEOUT_MS);
   return new Promise((resolve) => {
     const worker = new Worker(WORKER_URL, { workerData: job, stdout: true, stderr: true, execArgv: EXEC_ARGV });
-    worker.stdout.pipe(process.stderr, { end: false });
-    worker.stderr.pipe(process.stderr, { end: false });
+    // Forwarded chunk by chunk rather than piped, so concurrent calls add no listeners to stderr.
+    const forward = (chunk: Buffer) => process.stderr.write(chunk);
+    worker.stdout.on('data', forward);
+    worker.stderr.on('data', forward);
     let settled = false;
     const settle = (result: JobResult, grace = GRACE_MS) => {
       if (settled) return;
@@ -44,6 +52,6 @@ export function runInWorker(job: Job, { timeoutMs = DEFAULT_TIMEOUT_MS }: { time
       settle(typeof result?.text === 'string' ? { text: result.text, isError: result.isError === true } : { isError: true, text: 'The world crashed: its worker sent something other than a result.' }),
     );
     worker.on('error', (error) => settle({ isError: true, text: `The world crashed: ${error instanceof Error ? error.message : String(error)}` }));
-    worker.on('exit', (code) => settle({ isError: true, text: `The world ended the process (exit code ${code}) before answering; a world shouldn’t call process.exit().` }));
+    worker.on('exit', (code) => settle({ isError: true, text: `The world ended before answering (exit code ${code}); a world shouldn’t call process.exit() or leave a top-level await pending.` }));
   });
 }

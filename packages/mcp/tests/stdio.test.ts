@@ -84,4 +84,12 @@ describe('parseTimeout', () => {
       expect(warn).toHaveBeenCalledWith('brass-lantern-mcp: --timeout needs a positive number of seconds; using 10');
     }
   });
+  it('a value above 2147483 s (setTimeout’s limit) is capped with a warning', () => {
+    const warn = vi.fn();
+    expect(parseTimeout(['--timeout', '3000000'], warn)).toBe(2_147_483_647);
+    expect(warn).toHaveBeenCalledWith('brass-lantern-mcp: --timeout is capped at 2147483 seconds');
+    const quiet = vi.fn();
+    expect(parseTimeout(['--timeout', '2147483'], quiet)).toBe(2_147_483_000);
+    expect(quiet).not.toHaveBeenCalled();
+  });
 });

@@ -121,4 +121,4 @@ Each `audit_world` and `play` call runs in its own worker thread, with a deadlin
 - A world that calls `process.exit()` ends only its worker; the call returns an error, and the server keeps answering. So does a world that crashes.
 - Whatever a world writes to stdout (`console.log`, `process.stdout.write`, its own `Console`) goes to the server’s stderr, so it can’t break the protocol.
 
-The worker is not a sandbox either: it runs with the server’s permissions, and a world that writes straight to file descriptor 1 (`fs.writeSync(1, …)`) still reaches the protocol stream.
+The worker is not a sandbox either: it runs with the server’s permissions, and a world that writes straight to file descriptor 1 (`fs.writeSync(1, …)`) still reaches the protocol stream. In a worker `process.chdir()` and `process.abort()` throw, but `process.kill(process.pid)` still ends the whole server, and there is no memory limit per world.

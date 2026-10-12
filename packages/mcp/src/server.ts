@@ -5,7 +5,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { docsReport, readDocs } from './docs.ts';
 import type { Engine } from './engine.ts';
-import type { Job, JobResult } from './job.ts';
+import { runJob as runJobWith, type Job, type JobResult } from './job.ts';
 import { DEFAULT_TIMEOUT_MS, runInWorker } from './run.ts';
 import { MAX_COMMANDS } from './tools.ts';
 
@@ -15,8 +15,9 @@ export type { Job, JobResult } from './job.ts';
 
 export interface ServerOptions {
   /**
-   * The engine to use when a world’s project has none of its own. The default runner ignores it:
-   * its worker imports this package’s own @brass-lantern/engine (an engine can’t cross threads).
+   * @deprecated Only used by a custom runJob; pass `runJob: inProcessRunner(engine)` to run
+   * in-process with your engine (without the timeout). The default runner’s worker imports this
+   * package’s own @brass-lantern/engine (an engine can’t cross threads).
    */
   bundled?: Engine;
   /** Where the docs bundle is. Default: the one shipped with this package (dist/docs). */
@@ -40,6 +41,16 @@ const reply = (text: string, isError = false): Result => ({ content: [{ type: 't
 
 const PATH = z.string().min(1).describe('The world module: a .ts, .mts, .js or .mjs file, relative to the directory the server was started in, or absolute.');
 const EXPORT = z.string().min(1).optional().describe('Which export is the world. Default: the default export, else the only world-shaped export.');
+
+/**
+ * A runJob that runs each call in this thread with `engine` as the fallback engine: the 2.3.0
+ * behavior. No timeout and no isolation, so a world that loops forever freezes the server.
+ */
+export function inProcessRunner(engine: Engine): (job: Job) => Promise<JobResult> {
+  return (job) => runJobWith(job, engine);
+}
+
+let bundledNoted = false;
 
 /**
  * The brass-lantern MCP server, unconnected: pass it a transport. Stdout-based transports also
@@ -69,6 +80,10 @@ export function createServer(options: ServerOptions): McpServer {
     });
   };
 
+  if (options.bundled && !options.runJob && !bundledNoted) {
+    bundledNoted = true;
+    process.stderr.write('brass-lantern-mcp: the bundled option is ignored (each call runs in a worker with this package’s engine); pass runJob: inProcessRunner(engine) to use your engine in-process.\n');
+  }
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const runJob = options.runJob ?? ((job: Job) => runInWorker(job, { timeoutMs }));
 

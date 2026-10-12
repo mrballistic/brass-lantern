@@ -34,17 +34,21 @@ export function parseRoots(args: readonly string[], cwd: string, warn: (message:
 
 /**
  * How long one audit_world or play call may run, in milliseconds: `--timeout <seconds>` (the last
- * one wins), else 10 s. A missing, non-numeric or non-positive value is ignored with a warning.
+ * one wins), else 10 s. A missing, non-numeric or non-positive value is ignored with a warning;
+ * one past setTimeout's limit (2147483 s, about 24.8 days) is capped at it, with a warning.
  */
 export function parseTimeout(args: readonly string[], warn: (message: string) => void = (m) => process.stderr.write(`${m}\n`)): number {
   const DEFAULT = 10_000;
+  const MAX_MS = 2_147_483_647;
   let ms = DEFAULT;
   for (let i = 0; i < args.length; i++) {
     if (args[i] !== '--timeout') continue;
     const value = args[i + 1];
     const seconds = value === undefined || value.trim() === '' ? NaN : Number(value);
-    if (Number.isFinite(seconds) && seconds > 0) ms = seconds * 1000;
-    else warn(`brass-lantern-mcp: --timeout needs a positive number of seconds; using ${DEFAULT / 1000}`);
+    if (Number.isFinite(seconds) && seconds > 0) {
+      ms = Math.min(seconds * 1000, MAX_MS);
+      if (seconds * 1000 > MAX_MS) warn(`brass-lantern-mcp: --timeout is capped at ${Math.floor(MAX_MS / 1000)} seconds`);
+    } else warn(`brass-lantern-mcp: --timeout needs a positive number of seconds; using ${DEFAULT / 1000}`);
     i += 1;
   }
   return ms;

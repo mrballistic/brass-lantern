@@ -27,8 +27,9 @@ export function isWorldShaped(value: unknown): value is World {
  * Bare specifiers (packages) are never touched, whatever their real path: a symlinked package
  * (workspaces, npm link) has no /node_modules/ in its resolved URL, and re-instantiating it per
  * load would leak its whole graph. So packages stay cached and are not reloaded; each call keeps
- * one generation of the world's own project files for the life of the process. The hook only
- * touches modules whose importer carries the query; nothing else in the process is affected.
+ * one generation of the world's own project files for as long as the loader lives. The server
+ * loads each world in a fresh worker thread, so there the hook and those modules last one call.
+ * The hook only touches modules whose importer carries the query; nothing else is affected.
  */
 const FRESH_HOOK = `
 export async function resolve(specifier, context, next) {
