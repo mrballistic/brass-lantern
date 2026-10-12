@@ -16,6 +16,19 @@ const EFFECT_KINDS = new Set([
   'if', 'unvisit', 'free', 'stopLine', 'noDarkLine', 'unlist', 'relist', 'touch', 'look', 'board', 'disembark', 'moveVehicle',
 ]);
 
+/** The `{…}` placeholders in a line, found by one left-to-right scan (no regex: world text is input, and must stay linear). */
+function placeholders(line: string): string[] {
+  const found: string[] = [];
+  let from = 0;
+  for (let open = line.indexOf('{', from); open !== -1; open = line.indexOf('{', from)) {
+    const close = line.indexOf('}', open + 1);
+    if (close === -1) break;
+    found.push(line.slice(open + 1, close));
+    from = close + 1;
+  }
+  return found;
+}
+
 export function auditWorld(world: World): string[] {
   const problems: string[] = [];
   const isItem = (id: string) => id in world.items;
@@ -247,7 +260,7 @@ export function auditWorld(world: World): string[] {
   if (world.typoReplies !== undefined) {
     if (world.typoReplies.length === 0) problems.push('typoReplies is empty: leave it out for silent corrections');
     world.typoReplies.forEach((line, i) => {
-      for (const m of line.matchAll(/\{([^}]*)\}/g)) if (m[1] !== 'typed' && m[1] !== 'name') problems.push(`typoReplies[${i}]: unknown placeholder “{${m[1]}}”`);
+      for (const name of placeholders(line)) if (name !== 'typed' && name !== 'name') problems.push(`typoReplies[${i}]: unknown placeholder “{${name}}”`);
     });
   }
   return problems;
