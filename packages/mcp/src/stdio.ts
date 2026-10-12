@@ -33,6 +33,24 @@ export function parseRoots(args: readonly string[], cwd: string, warn: (message:
 }
 
 /**
+ * How long one audit_world or play call may run, in milliseconds: `--timeout <seconds>` (the last
+ * one wins), else 10 s. A missing, non-numeric or non-positive value is ignored with a warning.
+ */
+export function parseTimeout(args: readonly string[], warn: (message: string) => void = (m) => process.stderr.write(`${m}\n`)): number {
+  const DEFAULT = 10_000;
+  let ms = DEFAULT;
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] !== '--timeout') continue;
+    const value = args[i + 1];
+    const seconds = value === undefined || value.trim() === '' ? NaN : Number(value);
+    if (Number.isFinite(seconds) && seconds > 0) ms = seconds * 1000;
+    else warn(`brass-lantern-mcp: --timeout needs a positive number of seconds; using ${DEFAULT / 1000}`);
+    i += 1;
+  }
+  return ms;
+}
+
+/**
  * A world can throw after its tool call has returned (a timer, a stray promise). Node's default
  * would end the server mid-session; instead, log the error to stderr and keep serving. Returns a
  * function that removes the handlers.

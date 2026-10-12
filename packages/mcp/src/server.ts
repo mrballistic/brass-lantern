@@ -4,16 +4,21 @@ import { fileURLToPath } from 'node:url';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { docsReport, readDocs } from './docs.ts';
-import { resolveEngine, type Engine } from './engine.ts';
-import { loadWorld, WorldLoadError, type LoadedWorld } from './load.ts';
-import { auditReport, header, MAX_COMMANDS, playReport } from './tools.ts';
-import type { ResolvedEngine } from './engine.ts';
+import type { Engine } from './engine.ts';
+import type { Job, JobResult } from './job.ts';
+import { DEFAULT_TIMEOUT_MS, runInWorker } from './run.ts';
+import { MAX_COMMANDS } from './tools.ts';
 
 export { quietStdout } from './stdio.ts';
 
+export type { Job, JobResult } from './job.ts';
+
 export interface ServerOptions {
-  /** The engine to use when a world’s project has none of its own. */
-  bundled: Engine;
+  /**
+   * The engine to use when a world’s project has none of its own. The default runner ignores it:
+   * its worker imports this package’s own @brass-lantern/engine (an engine can’t cross threads).
+   */
+  bundled?: Engine;
   /** Where the docs bundle is. Default: the one shipped with this package (dist/docs). */
   docsDir?: string;
   /** Relative world paths resolve against this (the client’s launch directory). */
@@ -21,6 +26,13 @@ export interface ServerOptions {
   /** Worlds must live inside one of these directories (symlinks resolved). Default: [cwd]. */
   roots?: string[];
   version: string;
+  /** How long one audit_world or play call may run before its worker is stopped. Default 10 s. */
+  timeoutMs?: number;
+  /**
+   * Runs one audit_world or play call. Default: a fresh worker thread per call with the deadline
+   * above, so a world can’t freeze, end or write over the server.
+   */
+  runJob?: (job: Job) => Promise<JobResult>;
 }
 
 type Result = { content: Array<{ type: 'text'; text: string }>; isError?: boolean };
@@ -57,24 +69,14 @@ export function createServer(options: ServerOptions): McpServer {
     });
   };
 
-  /** Loads the world and its engine, runs `report`, and turns any failure into an error result. */
-  async function withWorld(path: string, exportName: string | undefined, report: (loaded: LoadedWorld, resolved: ResolvedEngine) => string): Promise<Result> {
-    if (!allowed(path)) return reply(`${path}: outside the allowed directories (${roots.join(', ')}). Start the server with --root <dir> to allow another.`, true);
-    let loaded: LoadedWorld;
-    try {
-      loaded = await loadWorld(path, exportName, options.cwd);
-    } catch (error) {
-      if (error instanceof WorldLoadError) return reply(error.message, true);
-      return reply(`The world couldn’t be loaded: ${error instanceof Error ? error.message : String(error)}`, true);
-    }
-    let resolved: ResolvedEngine | undefined;
-    try {
-      resolved = await resolveEngine(loaded.file, options.bundled);
-      return reply(report(loaded, resolved));
-    } catch (error) {
-      const lines = resolved ? [...header(loaded, resolved), ''] : [];
-      return reply(`${lines.join('\n')}${lines.length ? '\n' : ''}The engine threw: ${error instanceof Error ? error.message : String(error)}`, true);
-    }
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const runJob = options.runJob ?? ((job: Job) => runInWorker(job, { timeoutMs }));
+
+  /** Checks the roots here (an outside path never reaches the runner), then runs the job. */
+  async function withWorld(job: Job): Promise<Result> {
+    if (!allowed(job.path)) return reply(`${job.path}: outside the allowed directories (${roots.join(', ')}). Start the server with --root <dir> to allow another.`, true);
+    const result = await runJob(job);
+    return reply(result.text, result.isError);
   }
 
   server.registerTool(
@@ -84,7 +86,7 @@ export function createServer(options: ServerOptions): McpServer {
       description: 'Checks a world file the way the engine’s auditWorld does: exits that go nowhere, conditions that don’t parse, effects naming things that don’t exist, unmapped flag labels and more. Reports the engine version used.',
       inputSchema: { path: PATH, export: EXPORT },
     },
-    ({ path, export: exportName }) => withWorld(path, exportName, auditReport),
+    ({ path, export: exportName }) => withWorld({ op: 'audit', path, exportName, cwd: options.cwd }),
   );
 
   server.registerTool(
@@ -99,7 +101,7 @@ export function createServer(options: ServerOptions): McpServer {
         seed: z.number().int().optional().describe('Random seed. Default 1.'),
       },
     },
-    ({ path, export: exportName, commands, seed }) => withWorld(path, exportName, (loaded, resolved) => playReport(loaded, resolved, commands, seed)),
+    ({ path, export: exportName, commands, seed }) => withWorld({ op: 'play', path, exportName, cwd: options.cwd, commands, seed }),
   );
 
   server.registerTool(

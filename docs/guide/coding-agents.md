@@ -109,12 +109,16 @@ The “not understood by the parser” note marks input the regex parser can’t
 
 The server audits and plays a world with the engine the world’s own project uses, so a project on 2.2 is checked by 2.2’s rules. It looks for `@brass-lantern/engine` from the world file. If the project has none, the server uses the engine bundled with it, and the reply says “bundled with the MCP server” without further comment. If the project’s engine is found but can’t be used (it can’t be resolved or fails to import, or lacks `createGame` or `auditWorld`), the server falls back to the bundled one and adds a note saying why. Every reply states the engine version and whose it is, so you always know what you were checked against.
 
-A world file is re-read on every call, so an edit shows on the next one. That covers `.ts` and `.mts` worlds and the project files they import (loaded with no module cache), and `.mjs` and `.js` worlds along with the project files they import. Packages a world imports stay cached and are not reloaded.
+A world file is re-read on every call, so an edit shows on the next one: each `audit_world` and `play` call runs in a fresh worker thread, which loads the world, the project files it imports and the packages it uses from scratch.
 
 ### Safety and limits
 
 The server **runs the world module it is pointed at**, with your permissions, the same way your test runner runs your tests. Point it at code you trust. It speaks only over local stdio and makes no network calls of its own. A world file is only loaded when it is inside the directory the server started in or one you passed with `--root`, compared after resolving symlinks; anything else is refused with a message naming `--root`. That check confines which world file is loaded, not what the module then imports or does: any module inside an allowed directory can be run. It is not a sandbox.
 
-A world’s console output (`console.log`, `dir`, `table` and the rest) goes to stderr, so it can’t break the protocol.
+Each `audit_world` and `play` call runs in its own worker thread, with a deadline:
 
-Two limits to know: a world whose script loops forever hangs the server until the client restarts it, and a world that calls `process.exit()` ends the server the same way. There is no per-call timeout yet.
+- A world that takes longer than 10 seconds (a script that loops forever, say) is stopped, and the call returns an error saying so. Start the server with `--timeout <seconds>` to allow longer.
+- A world that calls `process.exit()` ends only its worker; the call returns an error, and the server keeps answering. So does a world that crashes.
+- Whatever a world writes to stdout (`console.log`, `process.stdout.write`, its own `Console`) goes to the server’s stderr, so it can’t break the protocol.
+
+The worker is not a sandbox either: it runs with the server’s permissions, and a world that writes straight to file descriptor 1 (`fs.writeSync(1, …)`) still reaches the protocol stream.

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { keepRunningOnCrash, parseRoots, quietStdout } from '../src/stdio.ts';
+import { keepRunningOnCrash, parseRoots, parseTimeout, quietStdout } from '../src/stdio.ts';
 
 describe('quietStdout', () => {
   let restore: (() => void) | undefined;
@@ -64,5 +64,24 @@ describe('keepRunningOnCrash', () => {
     expect(process.listenerCount('unhandledRejection')).toBe(before.rej);
     expect(log).toHaveBeenNthCalledWith(1, 'brass-lantern-mcp: uncaught exception:', expect.objectContaining({ message: 'late boom' }));
     expect(log).toHaveBeenNthCalledWith(2, 'brass-lantern-mcp: unhandled rejection:', 'nope');
+  });
+});
+
+describe('parseTimeout', () => {
+  it('defaults to 10 s', () => {
+    expect(parseTimeout([], vi.fn())).toBe(10_000);
+  });
+  it('reads --timeout <seconds> as milliseconds', () => {
+    const warn = vi.fn();
+    expect(parseTimeout(['--root', 'x', '--timeout', '2.5'], warn)).toBe(2500);
+    expect(parseTimeout(['--timeout', '30'], warn)).toBe(30_000);
+    expect(warn).not.toHaveBeenCalled();
+  });
+  it('an invalid or missing value is ignored with a warning', () => {
+    for (const args of [['--timeout'], ['--timeout', '0'], ['--timeout', '-1'], ['--timeout', 'soon'], ['--timeout', 'Infinity']]) {
+      const warn = vi.fn();
+      expect(parseTimeout(args, warn)).toBe(10_000);
+      expect(warn).toHaveBeenCalledWith('brass-lantern-mcp: --timeout needs a positive number of seconds; using 10');
+    }
   });
 });
