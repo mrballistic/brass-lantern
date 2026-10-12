@@ -1,7 +1,10 @@
 import { existsSync } from 'node:fs';
+import { register } from 'node:module';
 import { extname, isAbsolute, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import type { World } from '@brass-lantern/engine';
 import { createJiti } from 'jiti';
+import { createJiti as createNativeJiti } from 'jiti/native';
 
 /** The module kinds a world can be written as. */
 export const WORLD_EXTENSIONS: readonly string[] = ['.ts', '.mts', '.js', '.mjs'];
@@ -14,6 +17,50 @@ export function isWorldShaped(value: unknown): value is World {
   if (typeof value !== 'object' || value === null) return false;
   const v = value as Record<string, unknown>;
   return ['rooms', 'items', 'npcs'].every((key) => typeof v[key] === 'object' && v[key] !== null) && typeof v.startRoom === 'string';
+}
+
+/**
+ * jiti hands native ES modules (.mjs, and .js in a "type": "module" package) to Node's loader,
+ * which caches by URL, so jiti's own moduleCache: false can't refresh them. Those files are
+ * imported natively under a unique ?bl= query instead, and this resolve hook carries the query
+ * onto every project file they import in turn, so a helper edit is seen too. The hook only
+ * touches modules whose importer carries the query; nothing else in the process is affected.
+ */
+const FRESH_HOOK = `
+export async function resolve(specifier, context, next) {
+  const result = await next(specifier, context);
+  const parent = context.parentURL;
+  const query = parent && /[?&]bl=\\d+/.exec(parent);
+  if (query && result.url.startsWith('file:') && !result.url.includes('/node_modules/') && !result.url.includes('?')) {
+    return { ...result, url: result.url + '?' + query[0].replace(/^&/, '') };
+  }
+  return result;
+}`;
+// jiti/native is a plain import() living in node_modules, so a bundler or test runner (Vitest's
+// module runner rewrites an import() in our own source) can't route it around the loader hook.
+const native = createNativeJiti(import.meta.url);
+let hookRegistered = false;
+let generation = 0;
+
+async function importNativeFresh(file: string): Promise<Record<string, unknown>> {
+  if (!hookRegistered) {
+    register(`data:text/javascript,${encodeURIComponent(FRESH_HOOK)}`);
+    hookRegistered = true;
+  }
+  return (await native.import(`${pathToFileURL(file).href}?bl=${++generation}`)) as Record<string, unknown>;
+}
+
+function jitiImport(file: string): Promise<unknown> {
+  return createJiti(import.meta.url, { moduleCache: false, fsCache: false, tryNative: false }).import(file);
+}
+
+/** Native and fresh; a file only jiti can read (ES syntax in a CommonJS-typed .js) falls back to jiti. */
+async function importModule(file: string): Promise<unknown> {
+  try {
+    return await importNativeFresh(file);
+  } catch {
+    return jitiImport(file);
+  }
 }
 
 export interface LoadedWorld {
@@ -36,7 +83,7 @@ export async function loadWorld(path: string, exportName: string | undefined, cw
   if (!existsSync(file)) throw new WorldLoadError(`${path}: no such file (looked in ${cwd})`);
   let mod: Record<string, unknown>;
   try {
-    mod = (await createJiti(import.meta.url, { moduleCache: false, fsCache: false }).import(file)) as Record<string, unknown>;
+    mod = (await (extname(file) === '.mjs' || extname(file) === '.js' ? importModule(file) : jitiImport(file))) as Record<string, unknown>;
   } catch (error) {
     throw new WorldLoadError(`${path}: ${error instanceof Error ? error.message.split('\n')[0] : String(error)}`);
   }

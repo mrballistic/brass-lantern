@@ -17,14 +17,14 @@ describe('loadWorld', () => {
     expect((await loadWorld('two-worlds.ts', 'b', FIXTURES)).exportName).toBe('b');
   });
   it('several worlds and no name: an error naming them', async () => {
-    await expect(loadWorld('two-worlds.ts', undefined, FIXTURES)).rejects.toThrow(/several worlds \(a, b\)/);
+    await expect(loadWorld('two-worlds.ts', undefined, FIXTURES)).rejects.toThrow(/^two-worlds\.ts: several worlds \(a, b\)/);
   });
   it('an export that is not a world, or missing, is an error', async () => {
-    await expect(loadWorld('default-world.ts', 'notAWorld', FIXTURES)).rejects.toThrow(/isn’t a world/);
-    await expect(loadWorld('default-world.ts', 'nope', FIXTURES)).rejects.toThrow(/no export “nope”/);
+    await expect(loadWorld('default-world.ts', 'notAWorld', FIXTURES)).rejects.toThrow(/^default-world\.ts: .*isn’t a world/);
+    await expect(loadWorld('default-world.ts', 'nope', FIXTURES)).rejects.toThrow(/^default-world\.ts: no export “nope”/);
   });
   it('no world at all is an error listing the exports', async () => {
-    await expect(loadWorld('no-world.ts', undefined, FIXTURES)).rejects.toThrow(/no world-shaped export \(exports: x\)/);
+    await expect(loadWorld('no-world.ts', undefined, FIXTURES)).rejects.toThrow(/^no-world\.ts: no world-shaped export \(exports: x\)/);
   });
   it('a syntax error comes back as a WorldLoadError naming the file', async () => {
     const error = await loadWorld('broken.ts', undefined, FIXTURES).catch((e: unknown) => e);
@@ -33,7 +33,7 @@ describe('loadWorld', () => {
   });
   it('a missing file says where it looked; a non-module extension is refused', async () => {
     await expect(loadWorld('missing.ts', undefined, FIXTURES)).rejects.toThrow(`missing.ts: no such file (looked in ${FIXTURES})`);
-    await expect(loadWorld('world.json', undefined, FIXTURES)).rejects.toThrow(/\.ts, \.mts, \.js or \.mjs/);
+    await expect(loadWorld('world.json', undefined, FIXTURES)).rejects.toThrow(/^world\.json: .*\.ts, \.mts, \.js or \.mjs/);
   });
   it('sees an edit, in the world or a file it imports, on the next call', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'bl-mcp-'));
@@ -45,6 +45,19 @@ describe('loadWorld', () => {
       "export const HALL = { name: 'Great Hall', description: 'A hall.', exits: {}, items: [], npcs: [], onEnter: [] };\n",
     );
     expect((await loadWorld('uses-helper.ts', undefined, dir)).world.rooms.hall.name).toBe('Great Hall');
+  });
+  it('sees an edit to a .mjs world, and to a .mjs helper it imports, on the next call', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'bl-mcp-'));
+    const room = (name: string) => `export const HALL = { name: '${name}', description: 'A hall.', exits: {}, items: [], npcs: [], onEnter: [] };\n`;
+    const world = (extra: string) =>
+      `import { HALL } from './helper.mjs';\nexport default { startRoom: 'hall', rooms: { hall: HALL }, items: {}, npcs: {}, flagLabels: {}${extra} };\n`;
+    writeFileSync(join(dir, 'helper.mjs'), room('Hall'));
+    writeFileSync(join(dir, 'w.mjs'), world(''));
+    expect((await loadWorld('w.mjs', undefined, dir)).world.rooms.hall.name).toBe('Hall');
+    writeFileSync(join(dir, 'helper.mjs'), room('Great Hall'));
+    expect((await loadWorld('w.mjs', undefined, dir)).world.rooms.hall.name).toBe('Great Hall');
+    writeFileSync(join(dir, 'w.mjs'), world(", startRoomNote: 'edited'"));
+    expect((await loadWorld('w.mjs', undefined, dir)).world).toHaveProperty('startRoomNote', 'edited');
   });
   it('loads a real world that imports from the engine (the tutorial source)', async () => {
     const tutorial = resolve(import.meta.dirname, '../../engine/src/worlds/tutorial.ts');
