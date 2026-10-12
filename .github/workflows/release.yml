@@ -1,4 +1,4 @@
-# Publishes @brass-lantern/engine, /vue and /server to npm when a v* tag is
+# Publishes @brass-lantern/engine, /mcp, /server and /vue to npm when a v* tag is
 # pushed. The tag must be on main and must equal the version in every package.
 #
 # Publishing uses npm trusted publishing: no token. GitHub's OIDC identity for

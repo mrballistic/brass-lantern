@@ -418,7 +418,7 @@ void router;
   };
   writeFileSync(join(app, 'tsconfig.bundler.json'), JSON.stringify(bundler, null, 2));
   const bundlerErrors = tsc(app, 'tsconfig.bundler.json');
-  check('types: all three packages resolve under Bundler (strict, no skipLibCheck)', bundlerErrors === '', bundlerErrors);
+  check('types: the three library packages resolve under Bundler (strict, no skipLibCheck)', bundlerErrors === '', bundlerErrors);
 
   // Under NodeNext, unresolvable relative specifiers in the vue package's
   // .d.ts would make its types silently `any`; the expected errors catch that.

@@ -8,7 +8,7 @@ It comes with five cartridges: **Snack Attack**, a three-room world that exists 
 
 ## Use it in your app
 
-Brass Lantern is on npm as three packages: the engine, a Vue terminal and an optional intent server. [Using the library](./using-the-library) covers installing them, mounting a game, themes, running headless in Node and wiring the intent server.
+Brass Lantern is on npm as three library packages (the engine, a Vue terminal and an optional intent server) plus an MCP server for coding agents. [Using the library](./using-the-library) covers installing them, mounting a game, themes, running headless in Node and wiring the intent server.
 
 ```bash
 npm i @brass-lantern/engine @brass-lantern/vue vue pinia

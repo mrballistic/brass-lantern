@@ -30,7 +30,7 @@ It uses the world’s own project’s engine when it has one, and every reply sa
 
 ## Safety
 
-It runs the world module it is pointed at, with your permissions, like your test runner. It is local stdio only and makes no network calls.
+It runs the world module it is pointed at, with your permissions, like your test runner. It is local stdio only and makes no network calls. The allowed-directories check confines which world file is loaded, not what that module imports or does: any module inside an allowed directory can be run. It is not a sandbox.
 
 ## Docs
 

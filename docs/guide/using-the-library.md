@@ -1,6 +1,6 @@
 # Using the library
 
-Brass Lantern is three npm packages. Use them to put a game in your own app, run one headless in Node, or add the intent server to a backend you already have.
+Brass Lantern is three library packages, plus an MCP server for coding agents ([Coding agents](./coding-agents)). Use the libraries to put a game in your own app, run one headless in Node, or add the intent server to a backend you already have.
 
 | Package | What it is | Needs |
 |---|---|---|
@@ -8,7 +8,7 @@ Brass Lantern is three npm packages. Use them to put a game in your own app, run
 | `@brass-lantern/vue` | The CRT terminal, the game store, themes and `mountGame`. | `vue` 3.5+, `pinia` 4 |
 | `@brass-lantern/server` | The intent server as `parseIntent` and, for Express, `intentRoute`. | A Gemini key; `express` 5 for the route |
 
-All three are ESM with TypeScript declarations. On Node 24 and later every entry also loads with `require()` except one: `@brass-lantern/engine/zmachine/session` uses top-level `await` (to check for `ifvms` first), so `require()` throws `ERR_REQUIRE_ASYNC_MODULE`; load it with `import()`, which is how a browser app wants it anyway.
+All three libraries are ESM with TypeScript declarations. On Node 24 and later every entry also loads with `require()` except one: `@brass-lantern/engine/zmachine/session` uses top-level `await` (to check for `ifvms` first), so `require()` throws `ERR_REQUIRE_ASYNC_MODULE`; load it with `import()`, which is how a browser app wants it anyway.
 
 TypeScript 5.0 or later works with `moduleResolution` set to `bundler`, `node16` or `nodenext`. The engine’s public types mention `fetch` and `Storage`, so your project needs the DOM lib or `@types/node`. Vue 3.5’s own type declarations need TypeScript 5.4 or later unless you set `skipLibCheck`, so a project using `@brass-lantern/vue` wants 5.4 or later anyway.
 
@@ -151,6 +151,8 @@ rl.close();
 `createGame` handles RESTART (a fresh game, with the same `seed`) and UNDO (one turn at a time, up to 50) itself; `game.state` is always the game now, so read it after `send` rather than keeping the object. VERSION names the engine (`ENGINE_VERSION`) and the world. There is nowhere to keep a save or a transcript in plain Node, so SAVE, RESTORE, LOAD, SCRIPT and UNSCRIPT say they aren’t available and change nothing; a host that can store them handles those words before calling `send`. HELP lists only the commands that work here.
 
 `createGame` has no LLM: input the parser can’t read gets the engine’s own reply.
+
+`currentScore(world, game.state)` is the score SCORE reports: the world’s `scoring` entries that hold, plus its `score` variable.
 
 ### Your own loop
 

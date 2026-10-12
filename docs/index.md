@@ -7,7 +7,7 @@ hero:
   image:
     src: /brand/lantern-mark-amber.svg
     alt: The Brass Lantern mark, an amber lantern
-  tagline: Three packages for classic parser games in a CRT terminal. Write your own world as data, mount it on a page, or load a Z-machine story file. The demo plays the Zork trilogy.
+  tagline: Three library packages for classic parser games in a CRT terminal, plus an MCP server for coding agents. Write your own world as data, mount it on a page, or load a Z-machine story file. The demo plays the Zork trilogy.
   actions:
     - theme: brand
       text: Install
@@ -50,13 +50,14 @@ features:
 npm install @brass-lantern/engine @brass-lantern/vue vue pinia
 ```
 
-## Three packages
+## Three library packages, plus an MCP server
 
 | Package | What it is |
 |---|---|
 | [`@brass-lantern/engine`](https://www.npmjs.com/package/@brass-lantern/engine) | The game itself: parser, rules, saves and the Z-machine bridge. Runs anywhere, no DOM. |
 | [`@brass-lantern/vue`](https://www.npmjs.com/package/@brass-lantern/vue) | The CRT terminal, themes and `mountGame`, as a Vue 3 component. |
 | [`@brass-lantern/server`](https://www.npmjs.com/package/@brass-lantern/server) | Optional. An Express route that lets players type like people, through Gemini. |
+| [`@brass-lantern/mcp`](https://www.npmjs.com/package/@brass-lantern/mcp) | Optional. A local MCP server that lets a coding agent audit and play the world it’s writing ([Coding agents](/guide/coding-agents)). |
 
 ## A game on a page
 

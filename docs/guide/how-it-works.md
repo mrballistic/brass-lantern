@@ -1,6 +1,6 @@
 # How it works
 
-Three parts, kept deliberately apart, and shipped as three npm packages ([Using the library](./using-the-library)): the engine and parser are `@brass-lantern/engine`, the terminal and stores are `@brass-lantern/vue`, and the intent server is `@brass-lantern/server`. The engine imports no Vue, Pinia or browser globals, so the same turn loop runs in a browser, in Node (`createGame`) and in tests.
+Three parts, kept deliberately apart, and shipped as three library packages ([Using the library](./using-the-library)), plus an MCP server for coding agents ([Coding agents](./coding-agents)): the engine and parser are `@brass-lantern/engine`, the terminal and stores are `@brass-lantern/vue`, and the intent server is `@brass-lantern/server`. The engine imports no Vue, Pinia or browser globals, so the same turn loop runs in a browser, in Node (`createGame`) and in tests.
 
 This page is a tour of the internals. File paths are in the [repo](https://github.com/mrballistic/brass-lantern), for readers of the source; nothing here is needed to use the packages.
 
