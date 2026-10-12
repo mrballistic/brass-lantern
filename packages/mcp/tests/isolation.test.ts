@@ -107,10 +107,16 @@ describe('runInWorker deadlines', () => {
     expect((await runInWorker(loops, { timeoutMs: 300 })).text).toBe('The world didn’t finish within 0.3 s (a script may loop forever). Raise the server’s timeout.');
     expect((await runInWorker(loops, { timeoutMs: 300, timeoutHint: 'Use a bigger one.' })).text).toMatch(/ Use a bigger one\.$/);
   });
+  // `new Worker` throws synchronously for a URL it refuses outright (here: not file:), which only the
+  // try/catch around the constructor turns into a result.
   it('a worker that can’t start is a result, not a rejection', async () => {
+    const r = await runInWorker(job, { workerUrl: new URL('https://example.com/worker.js') });
+    expect(r).toEqual({ isError: true, text: expect.stringMatching(/^The world runner couldn’t start: /) });
+  });
+  // A worker file that doesn't exist fails asynchronously (an 'error' event), through the crash path.
+  it('a missing worker file is a crash result', async () => {
     const r = await runInWorker(job, { workerUrl: new URL('file:///nonexistent/worker.js') });
-    expect(r.isError).toBe(true);
-    expect(r.text).toMatch(/^The world runner couldn’t start: |^The world crashed: /);
+    expect(r).toEqual({ isError: true, text: expect.stringMatching(/^The world crashed: /) });
   });
   it('createServer rejects a timeout that is not a positive number', () => {
     for (const timeoutMs of [0, -5, Number.NaN]) {
