@@ -213,6 +213,47 @@ describe('answering “both”', () => {
     Object.assign(game.state.locations, { key: 'player', rusty_key: 'player' });
     expect(game.send('give key to neighbor').lines[0]).toMatch(/^Which do you mean/);
     expect(game.send('both').lines).toEqual(['One at a time: the brass key or the rusty key?']);
-    expect(game.send('rusty').lines.join(' ')).not.toContain('One at a time');
+    const last = game.send('rusty').lines.join(' ');
+    expect(last).not.toContain('One at a time');
+    // The neighbor refuses the brass key with “Keep your key.”; “No thanks.” is the reply to the rusty key.
+    expect(last).toContain('No thanks.');
+    expect(last).not.toContain('Keep your key.');
+  });
+  it('TAKE: each in the order the question listed them', () => {
+    const game = createGame(world, { seed: 1 });
+    game.state.currentRoom = 'living';
+    const ask = game.send('take key').lines[0];
+    const lines = game.send('both').lines;
+    const order = (ask.indexOf('brass') < ask.indexOf('rusty')) ? ['brass key', 'rusty key'] : ['rusty key', 'brass key'];
+    const at = (n: string) => lines.findIndex((l) => l.startsWith(`${n}:`));
+    expect(at(order[0])).toBeGreaterThanOrEqual(0);
+    expect(at(order[0])).toBeLessThan(at(order[1]));
+  });
+  it('DROP: drops each', () => {
+    const game = createGame(world, { seed: 1 });
+    game.state.currentRoom = 'living';
+    Object.assign(game.state.locations, { key: 'player', rusty_key: 'player' });
+    expect(game.send('drop key').lines[0]).toMatch(/^Which do you mean/);
+    game.send('both');
+    expect(game.state.locations.key).toBe('living');
+    expect(game.state.locations.rusty_key).toBe('living');
+  });
+  it('TAKE in Infocom style: keys in an open container are both taken', () => {
+    const w: World = {
+      ...world,
+      style: 'infocom',
+      rooms: { ...world.rooms, living: { ...world.rooms.living, dark: false, items: ['box'] } },
+      items: {
+        ...world.items,
+        box: { name: 'box', description: 'A box.', portable: false, tags: [], container: { openable: true, open: true } },
+      },
+    };
+    const game = createGame(w, { seed: 1 });
+    game.state.currentRoom = 'living';
+    Object.assign(game.state.locations, { key: 'box', rusty_key: 'box', box: 'living' });
+    expect(game.send('take key').lines[0]).toMatch(/^Which/);
+    game.send('both');
+    expect(game.state.locations.key).toBe('player');
+    expect(game.state.locations.rusty_key).toBe('player');
   });
 });
