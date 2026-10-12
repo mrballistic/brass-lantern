@@ -207,13 +207,13 @@ describe('ranks', () => {
     expect(rankCandidates('coffee', c)).toEqual({ rank: RANK.nameWord, ids: ['neighbors_mug'] });
   });
   it('a word of an ID and a part of a name tie at rank 3', () => {
-    expect(rankCandidates('neighbor', others)).toEqual({ rank: RANK.idWordOrNamePart, ids: ['neighbors_mug', 'neighbor_banner'] });
+    expect(rankCandidates('neighbor', others)).toMatchObject({ rank: RANK.idWordOrNamePart, ids: ['neighbors_mug', 'neighbor_banner'] });
   });
   it('a part of an ID is rank 4', () => {
     expect(rankCandidates('mail', c)).toEqual({ rank: RANK.idPart, ids: ['mailbox'] });
   });
   it('word starts are rank 5', () => {
-    expect(rankCandidates('coff mug', c)).toEqual({ rank: RANK.wordStart, ids: ['neighbors_mug'] });
+    expect(rankCandidates('coff mug', c)).toMatchObject({ rank: RANK.wordStart, ids: ['neighbors_mug'] });
   });
   it('nothing is rank 0', () => {
     expect(rankCandidates('trombone', c)).toEqual({ rank: 0, ids: [] });
@@ -295,5 +295,21 @@ describe('compareRanked', () => {
     expect(compareRanked(name, part)).toBeLessThan(0);
     expect(compareRanked(id, part)).toBeGreaterThan(0);
     expect(compareRanked(name, { ...name, typoKey: [1, 0.875 + 1e-12, 0.875] })).toBe(0);
+  });
+  it('ranks 3 and 5 order by closeness: the nearer whole word wins', () => {
+    const person = rankCandidates('neighbo', [{ id: 'neighbor', name: 'Neighbor' }]);
+    const mug = rankCandidates('neighbo', [{ id: 'neighbors_mug', name: 'Neighbor’s coffee mug', aliases: ['mug'] }]);
+    expect(person).toMatchObject({ rank: RANK.idWordOrNamePart, ids: ['neighbor'] });
+    expect(person.closeness).toBeCloseTo(7 / 8);
+    expect(mug.closeness).toBeCloseTo(7 / 9);
+    expect(compareRanked(person, mug)).toBeLessThan(0);
+    expect(compareRanked(mug, person)).toBeGreaterThan(0);
+    const near = rankCandidates('lumberg mu', [{ id: 'a', name: 'Lumbergh mug' }]);
+    const far = rankCandidates('lumberg mu', [{ id: 'b', name: 'Lumberghs mug' }]);
+    expect(near.rank).toBe(RANK.wordStart);
+    expect(compareRanked(near, far)).toBeLessThan(0);
+    expect(compareRanked({ rank: RANK.wordStart, ids: ['a'], closeness: 0.5 }, { rank: RANK.wordStart, ids: ['b'], closeness: 0.5 + 1e-12 })).toBe(0);
+    // A tie within one pool still asks.
+    expect(rankCandidates('neighbo', [{ id: 'a', name: 'neighbors mug' }, { id: 'b', name: 'neighbor mug' }]).ids).toEqual(['a', 'b']);
   });
 });

@@ -56,6 +56,11 @@ export interface Ranked {
   typed?: string;
   /** Rank 6 only: [every typo matched a name or alias word (1/0), summed similarity, summed whole-word similarity]. */
   typoKey?: [number, number, number];
+  /**
+   * Ranks 3 and 5 only: how near a typed word comes to a whole name or alias word of the tied candidates
+   * (the best `1 − edits ÷ the longer length`), so “neighbo” is nearer “Neighbor” than “Neighbor’s coffee mug”.
+   */
+  closeness?: number;
 }
 
 const NONE: Ranked = { rank: 0, ids: [] };
@@ -158,7 +163,10 @@ function typoRank(input: string, needleTokens: string[], candidates: Candidate[]
   return { rank: RANK.typo, ids, typed, typoKey: best };
 }
 
-/** Orders two results: negative when `a` is the stronger match. No match is weakest; a lower rank is stronger; typos by their key. */
+/**
+ * Orders two results: negative when `a` is the stronger match. No match is weakest; a lower rank is stronger;
+ * typos by their key; ranks 3 and 5 by closeness.
+ */
 export function compareRanked(a: Ranked, b: Ranked): number {
   if (a.rank !== b.rank) {
     if (a.rank === 0) return 1;
@@ -166,7 +174,20 @@ export function compareRanked(a: Ranked, b: Ranked): number {
     return a.rank - b.rank;
   }
   if (a.rank === RANK.typo && a.typoKey && b.typoKey) return compareKeys(b.typoKey, a.typoKey);
+  if (a.closeness !== undefined && b.closeness !== undefined) return compareKeys([b.closeness], [a.closeness]);
   return 0;
+}
+
+/** The best whole-word similarity between any typed word and any name or alias word of `ids` (no prefix cut). */
+function closenessOf(needleTokens: string[], ids: string[], candidates: Candidate[], words: (c: Candidate) => string[]): number {
+  let best = 0;
+  for (const c of candidates) {
+    if (!ids.includes(c.id)) continue;
+    for (const h of words(c).flatMap(tokens)) {
+      for (const t of needleTokens) best = Math.max(best, 1 - editDistance(t, h) / Math.max(t.length, h.length));
+    }
+  }
+  return best;
 }
 
 /**
@@ -208,7 +229,7 @@ export function rankCandidates(
   ];
   for (const [rank, test] of tiers) {
     const ids = candidates.filter(test).map((c) => c.id);
-    if (ids.length > 0) return { rank, ids };
+    if (ids.length > 0) return rank === RANK.idWordOrNamePart ? { rank, ids, closeness: closenessOf(run, ids, candidates, words) } : { rank, ids };
   }
   if (needle.length <= 2) return NONE;
   const needleTokens = tokens(needle);
@@ -221,7 +242,7 @@ export function rankCandidates(
     if (score > best) [best, ids] = [score, [c.id]];
     else if (score === best && score > 0) ids.push(c.id);
   }
-  if (ids.length > 0) return { rank: RANK.wordStart, ids };
+  if (ids.length > 0) return { rank: RANK.wordStart, ids, closeness: closenessOf(needleTokens, ids, candidates, words) };
   if (!opts.typos) return NONE;
   return typoRank(input, needleTokens, candidates, words);
 }

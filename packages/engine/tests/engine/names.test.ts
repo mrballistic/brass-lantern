@@ -340,3 +340,20 @@ describe('a misspelled object survives answering a question', () => {
     expect(execute({ action: 'give', target: 'rusty_key', indirect: 'nieghbor', byId: true }, { world, state: s }).understood).toBe(false);
   });
 });
+
+describe('a cut-short name lands on the nearer whole word', () => {
+  it('EXAMINE NEIGHBO: the Neighbor, not Neighbor’s coffee mug', () => {
+    const s = stateWith(world, { room: 'yard' });
+    expect(execute({ action: 'examine', target: 'neighbo' }, { world, state: s }).lines).toEqual(['Your neighbor, leaning on the fence.']);
+  });
+  it('EXAMINE LUMBERG: Bill Lumbergh, not Lumbergh’s coffee mug', () => {
+    const office: World = {
+      ...world,
+      rooms: { ...world.rooms, yard: { ...world.rooms.yard, items: [...fixtureWorld.rooms.yard.items, 'lumbergh_mug'], npcs: ['lumbergh'] } },
+      items: { ...world.items, lumbergh_mug: { name: 'Lumbergh’s coffee mug', article: '', description: 'Property of Bill Lumbergh.', portable: true, tags: [] } },
+      npcs: { ...world.npcs, lumbergh: { name: 'Bill Lumbergh', description: 'Yeah. Hi.' } },
+    };
+    const s = stateWith(office, { room: 'yard' });
+    expect(execute({ action: 'examine', target: 'lumberg' }, { world: office, state: s }).lines).toEqual(['Yeah. Hi.']);
+  });
+});
