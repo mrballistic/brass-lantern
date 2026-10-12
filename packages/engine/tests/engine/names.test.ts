@@ -317,6 +317,20 @@ describe('ATTACK and SMASH without combat rank people too', () => {
     expect(r.lines[0]).toBe('🔨 You smash the alarm clock.');
     expect(s.locations.alarm).toBeNull();
   });
+  // 2.2.1: the refusal is for worlds without combat. With combat, SMASH at a person stays a miss
+  // (as Zork's BREAK THIEF was), so the intent server can read it as an attack.
+  it('in a world with combat, SMASH at a person is a miss that changes nothing', () => {
+    const fighting: World = { ...world, combat: {} };
+    for (const [room, who] of [['yard', 'neighbor'], ['shed', 'guard']]) {
+      const s = stateWith(fighting, { room });
+      const before = structuredClone(s);
+      const r = execute({ action: 'smash', target: who }, { world: fighting, state: s });
+      expect(r.understood, who).toBe(false);
+      expect(r.lines).toEqual([`You don’t see a “${who}” worth smashing.`]);
+      expect(r.ask).toBeUndefined();
+      expect(s).toEqual(before);
+    }
+  });
 });
 
 describe('a misspelled object survives answering a question', () => {
