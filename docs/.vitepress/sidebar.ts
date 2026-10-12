@@ -10,6 +10,7 @@ export const sidebar: Array<{ text: string; items: Array<{ text: string; link: s
     items: [
       { text: 'Getting started', link: '/guide/getting-started' },
       { text: 'Using the library', link: '/guide/using-the-library' },
+      { text: 'Coding agents', link: '/guide/coding-agents' },
       { text: 'Playing story files (Zork)', link: '/guide/z-machine' },
       { text: 'Porting Zork', link: '/guide/porting-zork' },
       { text: 'How it works', link: '/guide/how-it-works' },

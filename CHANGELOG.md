@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.3.0 (2026-10-12)
+
+- **`@brass-lantern/mcp`**, a new package: a local Model Context Protocol server for coding agents. `audit_world` audits a world file, `play` runs commands in a fresh seeded game and returns the transcript and final state (including the score), and `docs` serves this version’s documentation. It uses the world’s own project’s engine when it has one, and always reports which engine it used. World files are re-read on every call, and must be inside the directory the server started in or one passed with `--root`. A world whose script loops forever hangs the server until the client restarts it; there is no per-call timeout yet. See [Coding agents](https://mrballistic.github.io/brass-lantern/guide/coding-agents).
+- The docs come as markdown for agents too: `llms.txt`, `llms-full.txt` and a `.md` copy of every page.
+- `@brass-lantern/engine` exports `currentScore(world, state)`, the game’s current score, now public API (the MCP server’s `play` uses it).
+- `@brass-lantern/vue` and `/server`: no changes beyond the version.
+
 ## 2.2.1 (2026-10-12)
 
 - **SMASH at a person is refused only in worlds without combat.** 2.2.0 refused it everywhere, so in Zork BREAK THIEF answered “Violence isn’t the answer to this one.”, a line from another game. In a world with combat it is a miss again (“You don’t see a “thief” worth smashing.”), as before 2.2.0, so the intent server can read it another way. Worlds without combat (Office Space’s HIT LUMBERGH) keep the 2.2.0 refusal.

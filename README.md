@@ -45,7 +45,7 @@ Both kinds sit side by side as **cartridges**. With more than one, the terminal 
 
 ## Use it as a library
 
-Version 2.0 ships as three npm packages: `@brass-lantern/engine` (worlds, parser, turn loop, Z-machine runtime), `@brass-lantern/vue` (the CRT terminal, themes and `mountGame`) and `@brass-lantern/server` (the intent server). Put a game in your own app:
+Brass Lantern ships as four npm packages: `@brass-lantern/engine` (worlds, parser, turn loop, Z-machine runtime), `@brass-lantern/vue` (the CRT terminal, themes and `mountGame`) `@brass-lantern/server` (the intent server) and `@brass-lantern/mcp` (a local MCP server that lets coding agents audit and play your worlds). Put a game in your own app:
 
 ```bash
 npm i @brass-lantern/engine @brass-lantern/vue vue pinia
@@ -100,6 +100,7 @@ npm run dev
 
 - [Getting started](https://mrballistic.github.io/brass-lantern/guide/getting-started)
 - [Using the library](https://mrballistic.github.io/brass-lantern/guide/using-the-library)
+- [Coding agents](https://mrballistic.github.io/brass-lantern/guide/coding-agents)
 - [Building worlds](https://mrballistic.github.io/brass-lantern/guide/building-worlds/)
 - [Recipes](https://mrballistic.github.io/brass-lantern/guide/building-worlds/recipes)
 - [Playing story files](https://mrballistic.github.io/brass-lantern/guide/z-machine)
