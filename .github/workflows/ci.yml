@@ -21,6 +21,7 @@ jobs:
           - "@brass-lantern/engine"
           - "@brass-lantern/vue"
           - "@brass-lantern/server"
+          - "@brass-lantern/mcp"
           - brass-lantern-site
     env:
       WORKSPACE: ${{ matrix.workspace }}

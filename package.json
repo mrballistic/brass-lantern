@@ -25,7 +25,7 @@
   "scripts": {
     "dev": "npm run dev -w brass-lantern-site",
     "build": "npm run build -w brass-lantern-site",
-    "build:packages": "npm run build -w @brass-lantern/engine && npm run build -w @brass-lantern/server && npm run build -w @brass-lantern/vue",
+    "build:packages": "npm run build -w @brass-lantern/engine && npm run build -w @brass-lantern/mcp && npm run build -w @brass-lantern/server && npm run build -w @brass-lantern/vue",
     "preview": "npm run preview -w brass-lantern-site",
     "type-check": "npm run type-check --workspaces",
     "lint": "eslint .",

@@ -1,0 +1,13 @@
+{
+  // Type-check only (no rootDir): scripts/bundle-docs.ts imports the shared generator from outside the package.
+  // tsconfig.base.json supplies customConditions, so the engine's types are read from its source.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "noEmit": true,
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force"
+  },
+  "include": ["src/**/*.ts", "tests/**/*.ts", "scripts/**/*.ts"],
+  "exclude": ["tests/fixtures/broken.ts"]
+}
