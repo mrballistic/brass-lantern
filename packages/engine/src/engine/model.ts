@@ -232,6 +232,8 @@ const actedThisTurn = new WeakMap<GameState, Acted>();
 
 // Commands the intent server produced name things by ID; those resolve by ID first.
 const byIdTurns = new WeakSet<GameState>();
+// By-ID turns whose IDs came from the player's answer to a question (ParsedAction.fromAnswer).
+const answerTurns = new WeakSet<GameState>();
 
 function noteActed(state: GameState, slot: keyof Acted, id: string): void {
   const acted = actedThisTurn.get(state) ?? {};
@@ -245,9 +247,12 @@ export function takeActed(state: GameState): Acted {
   return acted;
 }
 
-/** Typos are guessed in brass style only (Zork never guesses), and never for the intent server's IDs. */
-function typosOn(world: World, state?: GameState): boolean {
-  return world.style !== 'infocom' && !(state && byIdTurns.has(state));
+/**
+ * Typos are guessed in brass style only (Zork never guesses), and never for the intent server's IDs.
+ * An answer to a question resolves by ID too, but the slot it didn't fill is still the player's words.
+ */
+export function typosOn(world: World, state?: GameState): boolean {
+  return world.style !== 'infocom' && !(state && byIdTurns.has(state) && !answerTurns.has(state));
 }
 
 const typosThisTurn = new WeakMap<GameState, Array<{ id: string; typed: string }>>();
@@ -410,9 +415,12 @@ export class AskSignal extends Error {
   }
 }
 
-export function setResolveById(state: GameState, on: boolean): void {
+/** Resolve this turn's words by ID first (`fromAnswer`: the IDs are the player's answer, see typosOn). */
+export function setResolveById(state: GameState, on: boolean, fromAnswer = false): void {
   if (on) byIdTurns.add(state);
   else byIdTurns.delete(state);
+  if (on && fromAnswer) answerTurns.add(state);
+  else answerTurns.delete(state);
 }
 
 /** The candidates pickItem and pickThing rank items by: name and aliases kept apart, so an exact name stays exact. */

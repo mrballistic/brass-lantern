@@ -308,3 +308,35 @@ describe('ATTACK and SMASH without combat rank people too', () => {
     expect(s.locations.alarm).toBeNull();
   });
 });
+
+describe('a misspelled object survives answering a question', () => {
+  const keys = (w: World = world) => {
+    const game = createGame(w, { seed: 1 });
+    game.state.currentRoom = 'yard';
+    Object.assign(game.state.locations, { key: 'player', rusty_key: 'player' });
+    return game;
+  };
+  it('GIVE THING TO PERSON: the misspelled person is kept, and teased once', () => {
+    const game = keys();
+    expect(game.send('give key to nieghbor').lines[0]).toMatch(/^Which do you mean/);
+    const lines = game.send('rusty').lines;
+    expect(lines).toContain('“No thanks.”');
+    expect(lines.filter((l) => l.includes('You mean')).length).toBe(1);
+  });
+  it('GIVE PERSON THING: the recipient is kept through the question', () => {
+    const crowded: World = {
+      ...world,
+      rooms: { ...world.rooms, yard: { ...world.rooms.yard, npcs: [...world.rooms.yard.npcs, 'mailman'] } },
+      npcs: { ...world.npcs, mailman: { name: 'mailman', description: 'The mailman.', refuseGift: '“Not my job.”' } },
+    };
+    const game = keys(crowded);
+    expect(game.send('give nieghbor key').lines[0]).toMatch(/^Which do you mean/);
+    const lines = game.send('rusty').lines;
+    expect(lines).toContain('“No thanks.”');
+    expect(lines.join(' ')).not.toContain('whom');
+  });
+  it('an intent-server turn still never guesses typos', () => {
+    const s = stateWith(world, { room: 'yard', carrying: ['rusty_key'] });
+    expect(execute({ action: 'give', target: 'rusty_key', indirect: 'nieghbor', byId: true }, { world, state: s }).understood).toBe(false);
+  });
+});

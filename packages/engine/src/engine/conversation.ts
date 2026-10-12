@@ -46,7 +46,8 @@ export type Step =
 
 function fill(action: ParsedAction, slot: Ask['slot'], value: string, byId: boolean): ParsedAction {
   const filled = { ...action, [slot]: value };
-  return byId ? { ...filled, byId: true } : filled;
+  // The answered slot is now an ID; the other is still the player's words (fromAnswer keeps its typos).
+  return byId ? { ...filled, byId: true, fromAnswer: true } : filled;
 }
 
 const BOTH = /^(?:both|all|each)(?: of them)?$/i;

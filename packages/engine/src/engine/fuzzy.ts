@@ -172,7 +172,8 @@ export function compareRanked(a: Ranked, b: Ranked): number {
 /**
  * Ranks `candidates` against what the player typed (see RANK): exact name, alias or ID; a whole word of a
  * name or alias; a whole word of the ID or part of a name; part of the ID; word starts (every typed word of
- * three or more letters matching); with `typos`, a close misspelling. `coarse` folds ranks 2–4 into one
+ * three or more letters matching); with `typos`, a close misspelling (the caller decides when: the
+ * engine's typosOn turns them off for the intent server's IDs). `coarse` folds ranks 2–4 into one
  * tier, as 2.1 matched. ME, digits and (with `byId`) exact IDs keep their precedence ahead of the ranks.
  */
 export function rankCandidates(
@@ -221,7 +222,7 @@ export function rankCandidates(
     else if (score === best && score > 0) ids.push(c.id);
   }
   if (ids.length > 0) return { rank: RANK.wordStart, ids };
-  if (!opts.typos || opts.byId) return NONE;
+  if (!opts.typos) return NONE;
   return typoRank(input, needleTokens, candidates, words);
 }
 

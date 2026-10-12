@@ -175,12 +175,15 @@ function executeTurn(action: ParsedAction, deps: EngineDeps): EngineResult {
   let result: EngineResult;
   takeActed(state);
   takeTypos(state);
-  setResolveById(state, Boolean(action.byId));
+  setResolveById(state, Boolean(action.byId), Boolean(action.fromAnswer));
+  // GIVE PERSON THING becomes GIVE THING TO PERSON before anything runs, so a question it raises
+  // carries the split action (and the answer keeps the recipient).
+  const acting = action.action === 'give' ? splitGiveRecipient(action, world, state) : action;
   try {
-    result = dispatch(action, world, state, deps.storeHelp);
+    result = dispatch(acting, world, state, deps.storeHelp);
   } catch (e) {
     if (!(e instanceof AskSignal)) throw e;
-    result = askResult(e.ask, action, world, state);
+    result = askResult(e.ask, acting, world, state);
   } finally {
     setResolveById(state, false);
   }
@@ -348,10 +351,8 @@ function dispatch(action: ParsedAction, world: World, state: GameState, storeHel
     }
     case 'talk':
       return withRules('talk', action, world, state, () => handleTalk(action.target, world, state));
-    case 'give': {
-      const give = splitGiveRecipient(action, world, state);
-      return withRules('give', give, world, state, () => handleGive(give.target, give.indirect, world, state));
-    }
+    case 'give':
+      return withRules('give', action, world, state, () => handleGive(action.target, action.indirect, world, state));
     case 'inventory':
       return handleInventory(world, state);
     case 'smash':

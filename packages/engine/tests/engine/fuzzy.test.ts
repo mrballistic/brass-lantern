@@ -240,9 +240,11 @@ describe('typos', () => {
     expect(rankCandidates('lunberg', lumbergh, { typos: true }).ids).toEqual(['lumbergh']);
     expect(rankCandidates('bnner', [{ id: 'banner', name: 'banner' }], { typos: true }).ids).toEqual(['banner']);
   });
-  it('only when asked', () => {
+  it('only when asked (the engine’s typosOn decides; it never asks for the intent server’s IDs)', () => {
     expect(rankCandidates('lunbergh', lumbergh)).toEqual({ rank: 0, ids: [] });
-    expect(rankCandidates('lunbergh', lumbergh, { typos: true, byId: true })).toEqual({ rank: 0, ids: [] });
+    expect(rankCandidates('lunbergh', lumbergh, { typos: false, byId: true })).toEqual({ rank: 0, ids: [] });
+    // An answer's turn resolves by ID yet still guesses the other slot's misspelling.
+    expect(rankCandidates('lunbergh', lumbergh, { typos: true, byId: true }).ids).toEqual(['lumbergh']);
   });
   it('leaves short words and far-off words alone', () => {
     expect(rankCandidates('shrt', [{ id: 'shirt', name: 'shirt' }], { typos: true }).rank).toBe(0);

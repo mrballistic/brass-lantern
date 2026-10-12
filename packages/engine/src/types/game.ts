@@ -121,6 +121,11 @@ export interface ParsedAction {
   text?: string;
   /** The targets are IDs (the intent server's answer), so they resolve by ID first. */
   byId?: boolean;
+  /**
+   * Set with `byId` when the IDs come from the player's answer to a question, not the intent server:
+   * the slot that wasn't asked about is still the player's own words, so it may still match a misspelling.
+   */
+  fromAnswer?: boolean;
 }
 
 export interface SavedState {
