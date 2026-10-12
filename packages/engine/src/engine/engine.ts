@@ -21,7 +21,7 @@ import { withRules } from './rules.ts';
 import { handleWorldVerb } from './verbs/world-verbs.ts';
 import { handleAll } from './verbs/all.ts';
 import { handleClose, handleLock, handleOpen, handlePut, handleSearch, handleTakeFrom, handleUnlock } from './verbs/containers.ts';
-import { handleGive, handleTalk } from './verbs/people.ts';
+import { handleGive, handleTalk, splitGiveRecipient } from './verbs/people.ts';
 import { handleAttack, handleThrow } from './verbs/attack.ts';
 import { handleBurn, handleNoEffect } from './verbs/burn.ts';
 import { handleBoard, handleDisembark } from './verbs/vehicle.ts';
@@ -323,8 +323,10 @@ function dispatch(action: ParsedAction, world: World, state: GameState, storeHel
       return withRules('wear', action, world, state, () => handleWear(action.target, world, state));
     case 'talk':
       return withRules('talk', action, world, state, () => handleTalk(action.target, world, state));
-    case 'give':
-      return withRules('give', action, world, state, () => handleGive(action.target, action.indirect, world, state));
+    case 'give': {
+      const give = splitGiveRecipient(action, world, state);
+      return withRules('give', give, world, state, () => handleGive(give.target, give.indirect, world, state));
+    }
     case 'inventory':
       return handleInventory(world, state);
     case 'smash':

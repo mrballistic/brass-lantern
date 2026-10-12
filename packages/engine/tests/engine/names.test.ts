@@ -150,3 +150,26 @@ describe('typo replies', () => {
     expect(game.send('x nieghbor').lines[0]).toBe('“nieghbor”? You mean the Neighbor.');
   });
 });
+
+describe('GIVE PERSON THING', () => {
+  const play = (line: string) => {
+    const game = createGame(world, { seed: 1 });
+    game.state.currentRoom = 'yard';
+    Object.assign(game.state.locations, { wallet: 'player' });
+    return game.send(line);
+  };
+  it('reads the person first', () => {
+    expect(play('give neighbor wallet').understood).not.toBe(false);
+    expect(play('give neighbor the wallet').lines.join(' ')).not.toContain('aren’t carrying');
+  });
+  it('with a misspelled person', () => {
+    expect(play('give nieghbor wallet').lines.join(' ')).not.toContain('aren’t carrying');
+  });
+  it('leaves GIVE THING alone', () => {
+    const s = stateWith(world, { room: 'yard', carrying: ['wallet'] });
+    expect(execute({ action: 'give', target: 'wallet' }, { world, state: s }).understood).not.toBe(false);
+  });
+  it('no split fits: today’s reply', () => {
+    expect(play('give neighbor trombone').lines.join(' ')).toContain('aren’t carrying');
+  });
+});
