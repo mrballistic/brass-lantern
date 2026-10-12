@@ -30,6 +30,11 @@ describe('conditionProblems', () => {
     expect(conditionProblems('number:4', fixtureWorld)).toEqual([]);
     expect(conditionProblems('number<=x', fixtureWorld)).not.toEqual([]);
   });
+  it('reports a stray & (a blank part), which evaluateCondition treats as false', () => {
+    expect(conditionProblems('flag:a &', fixtureWorld)).toEqual(['unknown condition “”']);
+    expect(conditionProblems('& flag:a', fixtureWorld)).toEqual(['unknown condition “”']);
+    expect(evaluateCondition('flag:a &', makeState({ flags: { a: true } }))).toBe(false);
+  });
 });
 
 describe('evaluateCondition', () => {
