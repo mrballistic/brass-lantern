@@ -14,7 +14,7 @@
 
 - Repo `~/current_work/brass-lantern`, branch `mcp-server` (already holds the spec). The engine, vue and server packages change only where a task says so.
 - Local and stdio only: no network listener, no remote transport, no telemetry. The server never writes to stdout except through the MCP transport (log with `console.error` if ever needed).
-- Lockstep versions: every `package.json` in the repo (root, `packages/*`, `apps/*`) is 2.3.0 by the end. Until the release task, the new package is 2.2.0 and depends on `@brass-lantern/engine` `^2.2.0` so workspace linking works.
+- Lockstep versions: every `package.json` in the repo (root, `packages/*`, `apps/*`) is 2.3.0 by the end. Until the release task, the new package is 2.2.1 (the workspace’s current version) and depends on `@brass-lantern/engine` `^2.2.0` so workspace linking works.
 - Errors are results, not crashes: a bad path, a syntax error, a throwing module or a throwing engine call comes back as an `isError: true` text result. The server keeps running.
 - Engine tools report the engine version they used and whether it was the project’s or the bundled one.
 - `play`: default seed 1, at most 500 commands per call, output trimmed past 2,000 lines with a note.
@@ -55,7 +55,7 @@
 ```json
 {
   "name": "@brass-lantern/mcp",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "author": "Todd Greco <mrballistic@gmail.com>",
   "description": "A Model Context Protocol server for brass-lantern: lets a coding agent audit, play and read the docs for the text-adventure world it is writing.",
   "license": "MIT",
