@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { docsReport, readDocs } from './docs.ts';
 import type { Engine } from './engine.ts';
 import { runJob as runJobWith, type Job, type JobResult } from './job.ts';
-import { DEFAULT_TIMEOUT_MS, runInWorker } from './run.ts';
+import { DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS, runInWorker } from './run.ts';
 import { MAX_COMMANDS } from './tools.ts';
 
 export { quietStdout } from './stdio.ts';
@@ -27,8 +27,14 @@ export interface ServerOptions {
   /** Worlds must live inside one of these directories (symlinks resolved). Default: [cwd]. */
   roots?: string[];
   version: string;
-  /** How long one audit_world or play call may run before its worker is stopped. Default 10 s. */
+  /**
+   * How long one audit_world or play call may run before its worker is stopped, in milliseconds.
+   * Default 10 s. Must be a positive number (createServer throws a RangeError otherwise); past
+   * 2147483647 (about 24.8 days, setTimeout’s limit) it is capped.
+   */
   timeoutMs?: number;
+  /** The last sentence of the timeout message, saying how to raise the limit. Default: “Raise the server’s timeout.” */
+  timeoutHint?: string;
   /**
    * Runs one audit_world or play call. Default: a fresh worker thread per call with the deadline
    * above, so a world can’t freeze, end or write over the server.
@@ -85,7 +91,9 @@ export function createServer(options: ServerOptions): McpServer {
     process.stderr.write('brass-lantern-mcp: the bundled option is ignored (each call runs in a worker with this package’s engine); pass runJob: inProcessRunner(engine) to use your engine in-process.\n');
   }
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-  const runJob = options.runJob ?? ((job: Job) => runInWorker(job, { timeoutMs }));
+  if (!(timeoutMs > 0)) throw new RangeError(`timeoutMs must be a positive number of milliseconds (it is capped at ${MAX_TIMEOUT_MS})`);
+  const { timeoutHint } = options;
+  const runJob = options.runJob ?? ((job: Job) => runInWorker(job, { timeoutMs, timeoutHint }));
 
   /** Checks the roots here (an outside path never reaches the runner), then runs the job. */
   async function withWorld(job: Job): Promise<Result> {

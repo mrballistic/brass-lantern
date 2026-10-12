@@ -22,13 +22,23 @@ const seconds = (ms: number) => String(Number((ms / 1000).toFixed(3)));
 /**
  * Runs a job in a fresh worker thread, so a world that loops forever, calls process.exit(),
  * crashes or writes to stdout can't freeze, end or corrupt the server. The worker's stdout and
- * stderr go to this process's stderr. Never rejects: every outcome is a result.
+ * stderr go to this process's stderr. Never rejects: every outcome (a worker that can't even
+ * start included) is a result. `timeoutHint` ends the timeout message; `workerUrl` is for tests.
  */
-export function runInWorker(job: Job, { timeoutMs: requested = DEFAULT_TIMEOUT_MS }: { timeoutMs?: number } = {}): Promise<JobResult> {
+export function runInWorker(
+  job: Job,
+  { timeoutMs: requested = DEFAULT_TIMEOUT_MS, timeoutHint = 'Raise the server’s timeout.', workerUrl = WORKER_URL }: { timeoutMs?: number; timeoutHint?: string; workerUrl?: URL } = {},
+): Promise<JobResult> {
   // NaN means the default; anything past setTimeout's limit (Infinity included) is capped.
   const timeoutMs = Number.isNaN(requested) ? DEFAULT_TIMEOUT_MS : Math.min(Math.max(requested, 1), MAX_TIMEOUT_MS);
   return new Promise((resolve) => {
-    const worker = new Worker(WORKER_URL, { workerData: job, stdout: true, stderr: true, execArgv: EXEC_ARGV });
+    let worker: Worker;
+    try {
+      worker = new Worker(workerUrl, { workerData: job, stdout: true, stderr: true, execArgv: EXEC_ARGV });
+    } catch (error) {
+      resolve({ isError: true, text: `The world runner couldn’t start: ${error instanceof Error ? error.message : String(error)}` });
+      return;
+    }
     // Forwarded chunk by chunk rather than piped, so concurrent calls add no listeners to stderr.
     const forward = (chunk: Buffer) => process.stderr.write(chunk);
     worker.stdout.on('data', forward);
@@ -45,7 +55,7 @@ export function runInWorker(job: Job, { timeoutMs: requested = DEFAULT_TIMEOUT_M
       else setTimeout(() => void worker.terminate(), grace).unref();
     };
     const timer = setTimeout(
-      () => settle({ isError: true, text: `The world didn’t finish within ${seconds(timeoutMs)} s (a script may loop forever). Raise the limit with --timeout <seconds>.` }, 0),
+      () => settle({ isError: true, text: `The world didn’t finish within ${seconds(timeoutMs)} s (a script may loop forever). ${timeoutHint}` }, 0),
       timeoutMs,
     );
     worker.on('message', (result: Partial<JobResult> | null) =>

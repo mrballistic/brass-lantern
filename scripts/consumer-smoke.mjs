@@ -190,6 +190,7 @@ try {
     check('mcp: a normal call still works after a timeout', result.after.includes('> look'), result.after);
   } catch (error) {
     check('mcp: a looping world times out instead of hanging', false, error.stderr || String(error));
+    check('mcp: a normal call still works after a timeout', false, 'not reached: the timeout check failed');
   }
 
   try {

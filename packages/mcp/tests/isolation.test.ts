@@ -11,7 +11,7 @@ const FIXTURES = resolve(import.meta.dirname, 'fixtures');
 let client: Client;
 
 beforeAll(async () => {
-  const server = createServer({ version: '0.0.0-test', cwd: FIXTURES, timeoutMs: 1500 });
+  const server = createServer({ version: '0.0.0-test', cwd: FIXTURES, timeoutMs: 1500, timeoutHint: 'Raise the limit with --timeout <seconds>.' });
   const [serverSide, clientSide] = InMemoryTransport.createLinkedPair();
   await server.connect(serverSide);
   client = new Client({ name: 'test', version: '1' });
@@ -101,6 +101,23 @@ describe('runInWorker deadlines', () => {
   });
   it('NaN means the default', async () => {
     expect((await runInWorker(job, { timeoutMs: Number.NaN })).isError).toBe(false);
+  });
+  it('the timeout message ends with a generic hint unless one is given', async () => {
+    const loops = { op: 'play' as const, path: 'loops.ts', cwd: FIXTURES, commands: ['look'] };
+    expect((await runInWorker(loops, { timeoutMs: 300 })).text).toBe('The world didn’t finish within 0.3 s (a script may loop forever). Raise the server’s timeout.');
+    expect((await runInWorker(loops, { timeoutMs: 300, timeoutHint: 'Use a bigger one.' })).text).toMatch(/ Use a bigger one\.$/);
+  });
+  it('a worker that can’t start is a result, not a rejection', async () => {
+    const r = await runInWorker(job, { workerUrl: new URL('file:///nonexistent/worker.js') });
+    expect(r.isError).toBe(true);
+    expect(r.text).toMatch(/^The world runner couldn’t start: |^The world crashed: /);
+  });
+  it('createServer rejects a timeout that is not a positive number', () => {
+    for (const timeoutMs of [0, -5, Number.NaN]) {
+      expect(() => createServer({ version: '0', cwd: FIXTURES, timeoutMs })).toThrow(RangeError);
+    }
+    expect(() => createServer({ version: '0', cwd: FIXTURES, timeoutMs: 0 })).toThrow('timeoutMs must be a positive number of milliseconds (it is capped at 2147483647)');
+    expect(() => createServer({ version: '0', cwd: FIXTURES, timeoutMs: Infinity })).not.toThrow();
   });
 });
 

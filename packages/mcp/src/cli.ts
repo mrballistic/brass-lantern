@@ -16,5 +16,5 @@ keepRunningOnCrash();
 const roots = parseRoots(process.argv.slice(2), process.cwd());
 // --timeout <seconds> bounds one audit_world or play call (default 10).
 const timeoutMs = parseTimeout(process.argv.slice(2));
-const server = createServer({ roots, cwd: process.cwd(), timeoutMs, version: pkg.version });
+const server = createServer({ roots, cwd: process.cwd(), timeoutMs, timeoutHint: 'Raise the limit with --timeout <seconds>.', version: pkg.version });
 await server.connect(new StdioServerTransport());

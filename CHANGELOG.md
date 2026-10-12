@@ -2,7 +2,7 @@
 
 ## 2.3.1 (2026-10-12)
 
-- **`audit_world` and `play` run in a worker thread with a time limit** (10 s by default, `--timeout <seconds>` to change it). A world that loops forever now returns an error instead of hanging the server, and one that crashes or calls `process.exit()` ends only its own call. This supersedes the 2.3.0 note that there was no per-call timeout.
+- **`audit_world` and `play` run in a worker thread with a time limit** (10 s by default, `--timeout <seconds>` to change it). A world that loops forever now returns an error instead of hanging the server, and one that crashes or calls `process.exit()` ends only its own call; a stray late throw or unhandled rejection from a world now fails that call (“The world crashed: …”), where 2.3.0 logged it and answered. This supersedes the 2.3.0 note that there was no per-call timeout.
 - A world’s stdout (`process.stdout.write`, its own `node:console`) goes to stderr and can no longer corrupt the protocol. Writing to file descriptor 1 directly still can.
 - A project engine that is installed but broken (a missing entry file, say) is now reported with a note instead of being swapped for the bundled one silently.
 - `createServer`’s `bundled` option is deprecated: the default worker runner imports its own engine. To run in-process with your engine (without the time limit), pass `runJob: inProcessRunner(engine)`.

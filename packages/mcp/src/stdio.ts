@@ -1,5 +1,6 @@
 import { Console } from 'node:console';
 import { resolve } from 'node:path';
+import { DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS } from './run.ts';
 
 /**
  * Stdout carries the MCP protocol, so a world's console output (at load or while a script runs)
@@ -38,8 +39,8 @@ export function parseRoots(args: readonly string[], cwd: string, warn: (message:
  * one past setTimeout's limit (2147483 s, about 24.8 days) is capped at it, with a warning.
  */
 export function parseTimeout(args: readonly string[], warn: (message: string) => void = (m) => process.stderr.write(`${m}\n`)): number {
-  const DEFAULT = 10_000;
-  const MAX_MS = 2_147_483_647;
+  const DEFAULT = DEFAULT_TIMEOUT_MS;
+  const MAX_MS = MAX_TIMEOUT_MS;
   let ms = DEFAULT;
   for (let i = 0; i < args.length; i++) {
     if (args[i] !== '--timeout') continue;
