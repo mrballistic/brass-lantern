@@ -4,11 +4,12 @@ Guidance for AI coding agents working in this repo. Humans: see CONTRIBUTING.md 
 
 ## What this is
 
-Brass Lantern: a text-adventure engine with a CRT terminal, shipped as three npm packages from an npm-workspaces monorepo, plus the demo site that uses them.
+Brass Lantern: a text-adventure engine with a CRT terminal, shipped as four npm packages from an npm-workspaces monorepo, plus the demo site that uses them.
 
 - `packages/engine` (`@brass-lantern/engine`): the engine (`src/engine/`), the world schema (`src/types/world.ts`), the Z-machine runtime (`src/zmachine/`), the bundled worlds (`src/worlds/`, Snack Attack is the tutorial) and the headless `createGame` / `auditWorld`. It imports no Vue, Pinia or browser globals (`tests/boundary.test.ts` checks).
 - `packages/vue` (`@brass-lantern/vue`): the terminal components, the stores (`src/stores/session.ts` routes input to the menu, a native world via `game.ts`, or a story via `zgame.ts`), themes (`src/theme/`), `src/styles/crt.css` (scoped to `.crt-shell`, which fills its container: no page-level rules or `position: fixed`, `tests/components/css-scope.test.ts` checks; the site's page rules are `apps/site/src/site.css`) and `mountGame` (`src/mount.ts`), which renders `<BrassLantern>` for one `GameOptions`.
 - `packages/server` (`@brass-lantern/server`): `parseIntent` and `intentRoute` (`src/lib.ts`, `src/express.ts`), which read no environment, plus the repo's own Express app (`src/index.ts`, `src/config.ts`), which does and is not published.
+- `packages/mcp` (`@brass-lantern/mcp`): a local stdio MCP server for coding agents (`audit_world`, `play`, `docs`). `src/server.ts` is `createServer`, `src/cli.ts` the `brass-lantern-mcp` binary; it loads world modules fresh (`src/load.ts`), prefers the world project's own engine (`src/engine.ts`) and serves a docs bundle built by `scripts/bundle-docs.ts` from the shared `scripts/llms.ts`.
 - `apps/site` (`brass-lantern-site`, private): the demo. `src/app.config.ts` lists the cartridges (native worlds and Zork I-III in `public/stories/`), `src/main.ts` calls `mountGame`, and consent and analytics live here, not in the library.
 - `docs/` (VitePress) stays at the repo root. Everything is version 2.0.0; in the repo the packages resolve to their sources through the `@brass-lantern/source` export condition, so tests and the site need no build.
 

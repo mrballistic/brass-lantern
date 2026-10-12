@@ -122,11 +122,21 @@ export function summaryOf(markdown: string): string {
   return (paragraph ?? '').replace(/\s+/g, ' ').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
 }
 
-/** Writes llms.txt, llms-full.txt and a .md copy of every page into the built site. */
-export function writeLlms(opts: LlmsOptions): void {
+export interface LlmsRendered {
+  /** llms.txt. */
+  index: string;
+  /** llms-full.txt. */
+  full: string;
+  /** Each sidebar page (and Home), as standalone markdown; `relative` is its source path, e.g. 'guide/testing.md'. */
+  pages: Array<{ relative: string; title: string; markdown: string }>;
+}
+
+/** Renders llms.txt, llms-full.txt and every page, and fails on anything left unresolved. Writes nothing. */
+export function renderLlms(opts: Omit<LlmsOptions, 'outDir'>): LlmsRendered {
   const index: string[] = [`# ${opts.title}`, '', `> ${opts.description}`, ''];
   index.push(`The whole documentation in one file: [llms-full.txt](${opts.site}/llms-full.txt)`, '');
   const full: string[] = [`# ${opts.title}`, '', `> ${opts.description}`, ''];
+  const rendered: LlmsRendered['pages'] = [];
   const pages = [{ text: 'Start here', items: [{ title: 'Home', link: '/' }] }, ...opts.sections];
   for (const section of pages) {
     index.push(`## ${section.text}`, '');
@@ -135,8 +145,7 @@ export function writeLlms(opts: LlmsOptions): void {
       const file = join(opts.srcDir, relative);
       const pageUrl = `${opts.site}${page.link}`;
       const markdown = standalone(readFileSync(file, 'utf8'), file, pageUrl, opts.site);
-      mkdirSync(dirname(join(opts.outDir, relative)), { recursive: true });
-      writeFileSync(join(opts.outDir, relative), markdown);
+      rendered.push({ relative, title: page.title, markdown });
       const summary = summaryOf(markdown);
       index.push(`- [${page.title}](${opts.site}/${relative})${summary ? `: ${summary}` : ''}`);
       full.push('---', '', `Source: ${pageUrl}`, '', markdown);
@@ -152,6 +161,17 @@ export function writeLlms(opts: LlmsOptions): void {
   if (leftovers.length > 0) throw new Error(`llms: unresolved markdown in llms-full.txt:\n${leftovers.join('\n')}`);
   const offSite = [...all.matchAll(/https:\/\/mrballistic\.github\.io\/[^\s)]*/g)].map((m) => m[0]).filter((url) => !url.startsWith(`${opts.site}/`));
   if (offSite.length > 0) throw new Error(`llms: links outside ${opts.site}:\n${offSite.join('\n')}`);
-  writeFileSync(join(opts.outDir, 'llms.txt'), index.join('\n'));
-  writeFileSync(join(opts.outDir, 'llms-full.txt'), all);
+  return { index: index.join('\n'), full: all, pages: rendered };
+}
+
+/** Writes llms.txt, llms-full.txt and a .md copy of every page into the built site. */
+export function writeLlms(opts: LlmsOptions): void {
+  const { outDir, ...rest } = opts;
+  const rendered = renderLlms(rest);
+  for (const page of rendered.pages) {
+    mkdirSync(dirname(join(outDir, page.relative)), { recursive: true });
+    writeFileSync(join(outDir, page.relative), page.markdown);
+  }
+  writeFileSync(join(outDir, 'llms.txt'), rendered.index);
+  writeFileSync(join(outDir, 'llms-full.txt'), rendered.full);
 }

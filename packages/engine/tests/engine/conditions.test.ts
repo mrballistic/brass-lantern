@@ -30,6 +30,11 @@ describe('conditionProblems', () => {
     expect(conditionProblems('number:4', fixtureWorld)).toEqual([]);
     expect(conditionProblems('number<=x', fixtureWorld)).not.toEqual([]);
   });
+  it('reports a stray & (a blank part), which evaluateCondition treats as false', () => {
+    expect(conditionProblems('flag:a &', fixtureWorld)).toEqual(['unknown condition “”']);
+    expect(conditionProblems('& flag:a', fixtureWorld)).toEqual(['unknown condition “”']);
+    expect(evaluateCondition('flag:a &', makeState({ flags: { a: true } }))).toBe(false);
+  });
 });
 
 describe('evaluateCondition', () => {
@@ -87,12 +92,12 @@ describe('evaluateCondition', () => {
   });
 
   describe('edge cases', () => {
-    it('returns false for an empty string', () => {
-      expect(evaluateCondition('', makeState())).toBe(false);
+    it('holds for an empty string (a missing condition always holds)', () => {
+      expect(evaluateCondition('', makeState())).toBe(true);
     });
 
-    it('returns false for whitespace-only', () => {
-      expect(evaluateCondition('   ', makeState())).toBe(false);
+    it('holds for whitespace-only', () => {
+      expect(evaluateCondition('   ', makeState())).toBe(true);
     });
 
     it('trims surrounding whitespace before evaluating', () => {

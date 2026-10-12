@@ -17,7 +17,7 @@ if (!semver.valid(version)) {
 }
 
 let failures = 0;
-for (const pkg of ['engine', 'server', 'vue']) {
+for (const pkg of ['engine', 'mcp', 'server', 'vue']) {
   const manifest = JSON.parse(readFileSync(join(ROOT, 'packages', pkg, 'package.json'), 'utf8'));
   for (const field of ['dependencies', 'peerDependencies', 'optionalDependencies']) {
     for (const [dep, range] of Object.entries(manifest[field] ?? {})) {

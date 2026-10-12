@@ -1,0 +1,90 @@
+import type { World } from '@brass-lantern/engine';
+import type { ResolvedEngine } from './engine.ts';
+import type { LoadedWorld } from './load.ts';
+
+export const MAX_COMMANDS = 500;
+export const MAX_LINES = 2000;
+/** How many of a long transcript’s last lines survive the cut. */
+const TAIL_LINES = 200;
+
+const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+/** The lines every engine tool opens with: which world, which engine. */
+export function header(loaded: LoadedWorld, resolved: ResolvedEngine): string[] {
+  const whose = resolved.source === 'project' ? 'the project’s' : 'bundled with the MCP server';
+  return [
+    `World: ${loaded.exportName} in ${loaded.file}`,
+    `Engine: @brass-lantern/engine ${resolved.version} (${whose})`,
+    ...(resolved.note ? [`Note: ${resolved.note}`] : []),
+  ];
+}
+
+export function auditReport(loaded: LoadedWorld, resolved: ResolvedEngine): string {
+  const w = loaded.world;
+  const problems = resolved.engine.auditWorld(w);
+  const size = [
+    count(Object.keys(w.rooms).length, 'room', 'rooms'),
+    count(Object.keys(w.items).length, 'item', 'items'),
+    count(Object.keys(w.npcs).length, 'character', 'characters'),
+    count(Object.keys(w.events ?? {}).length, 'event', 'events'),
+  ].join(', ');
+  return [
+    ...header(loaded, resolved),
+    `Size: ${size}`,
+    '',
+    problems.length === 0 ? 'No problems.' : `${count(problems.length, 'problem', 'problems')}:`,
+    ...problems.map((p) => `- ${p}`),
+  ].join('\n');
+}
+
+/** The pieces of a typed line the regex parser can’t read (what the intent server would be asked about). */
+function unread(resolved: ResolvedEngine, world: World, line: string): string[] {
+  const { splitCommands, fallbackParse, andNames } = resolved.engine;
+  if (!splitCommands || !fallbackParse) return [];
+  return splitCommands(line, world.verbs, andNames?.(world)).filter((piece) => !fallbackParse(piece, world.verbs));
+}
+
+export function playReport(loaded: LoadedWorld, resolved: ResolvedEngine, commands: string[], seed = 1): string {
+  const world = loaded.world;
+  const game = resolved.engine.createGame(world, { seed });
+  const run = commands.slice(0, MAX_COMMANDS);
+  const transcript: string[] = [...game.opening];
+  let awaiting = false;
+  let ran = 0;
+  let over = game.state.gameOver;
+  for (const command of run) {
+    if (over) break;
+    transcript.push(`> ${command}`);
+    // An answer to “Which do you mean?” isn’t a command, so it isn’t checked as one.
+    const missed = awaiting ? [] : unread(resolved, world, command);
+    if (missed.length > 0) {
+      transcript.push(`[not understood by the parser: ${missed.map((p) => `“${p}”`).join(', ')}. With the intent server running, an LLM would get a chance to read it.]`);
+    }
+    const reply = game.send(command);
+    transcript.push(...reply.lines);
+    awaiting = reply.awaiting;
+    over = reply.gameOver;
+    ran += 1;
+  }
+  // Over the cap, keep the opening and the ending (where the run finished), and cut the middle.
+  const shown =
+    transcript.length > MAX_LINES
+      ? [...transcript.slice(0, MAX_LINES - TAIL_LINES), `[… ${transcript.length - MAX_LINES} lines cut (over ${MAX_LINES}) …]`, ...transcript.slice(-TAIL_LINES)]
+      : transcript;
+  const s = game.state;
+  const state = {
+    room: `${world.rooms[s.currentRoom]?.name ?? s.currentRoom} (${s.currentRoom})`,
+    inventory: Object.entries(s.locations ?? {})
+      .filter(([, place]) => place === 'player')
+      .map(([id]) => world.items[id]?.name ?? id),
+    flags: Object.keys(s.flags).filter((f) => s.flags[f]).sort(),
+    score: resolved.engine.currentScore?.(world, s) ?? s.vars?.score ?? null,
+    moves: s.moveCount,
+    gameOver: s.gameOver,
+  };
+  const notes = [
+    ...(commands.length > MAX_COMMANDS ? [`Only the first ${MAX_COMMANDS} commands ran.`] : []),
+    ...(over && ran < run.length ? [`Game over after ${ran} of ${run.length} commands.`] : []),
+  ];
+  return [...header(loaded, resolved), `Seed: ${seed}`, '', ...shown, '', ...notes, 'Final state:', '```json', JSON.stringify(state, null, 2), '```'].join('\n');
+}

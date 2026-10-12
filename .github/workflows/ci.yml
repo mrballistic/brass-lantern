@@ -21,6 +21,7 @@ jobs:
           - "@brass-lantern/engine"
           - "@brass-lantern/vue"
           - "@brass-lantern/server"
+          - "@brass-lantern/mcp"
           - brass-lantern-site
     env:
       WORKSPACE: ${{ matrix.workspace }}
@@ -41,11 +42,11 @@ jobs:
       - name: Test (with coverage thresholds)
         run: npm run test:coverage -w "$WORKSPACE"
       # In the repo the packages resolve to their sources, so tests and the
-      # site need no build. The vue package's declarations are built against
-      # the engine's, so the engine builds first there.
+      # site need no build. The vue and mcp packages' declarations are built
+      # against the engine's, so the engine builds first for both.
       - name: Build
         run: |
-          if [ "$WORKSPACE" = "@brass-lantern/vue" ]; then npm run build -w @brass-lantern/engine; fi
+          if [ "$WORKSPACE" = "@brass-lantern/vue" ] || [ "$WORKSPACE" = "@brass-lantern/mcp" ]; then npm run build -w @brass-lantern/engine; fi
           npm run build -w "$WORKSPACE" --if-present
 
       # The Gemini key lives only on the server. Fail loudly if anything that
@@ -73,7 +74,7 @@ jobs:
           cache: npm
 
       - run: npm ci
-      # Builds the three packages, packs them as `npm publish` would, installs
+      # Builds the four packages, packs them as `npm publish` would, installs
       # the tarballs into a scratch project and uses them from Node and tsc,
       # then builds two Vite apps from them and checks them in a browser (the
       # runner's Chrome, or Playwright's Chromium).

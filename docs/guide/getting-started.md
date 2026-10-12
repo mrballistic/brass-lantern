@@ -8,7 +8,7 @@ It comes with five cartridges: **Snack Attack**, a three-room world that exists 
 
 ## Use it in your app
 
-Brass Lantern is on npm as three packages: the engine, a Vue terminal and an optional intent server. [Using the library](./using-the-library) covers installing them, mounting a game, themes, running headless in Node and wiring the intent server.
+Brass Lantern is on npm as three library packages (the engine, a Vue terminal and an optional intent server) plus an MCP server for coding agents. [Using the library](./using-the-library) covers installing them, mounting a game, themes, running headless in Node and wiring the intent server.
 
 ```bash
 npm i @brass-lantern/engine @brass-lantern/vue vue pinia
@@ -67,6 +67,6 @@ Add your own world as a cartridge (and remove the others if you like: with one c
 
 ## For coding agents
 
-The docs also come as plain markdown for agents and LLM tools. [llms.txt](https://mrballistic.github.io/brass-lantern/llms.txt) indexes every page, each page has a `.md` copy beside it, and [llms-full.txt](https://mrballistic.github.io/brass-lantern/llms-full.txt) is all of it in one file, with the example worlds’ code inlined. Point an agent at llms-full.txt and it has the schema, the conditions, the effects and the recipes in one read.
+The docs also come as plain markdown for agents and LLM tools. [llms.txt](https://mrballistic.github.io/brass-lantern/llms.txt) indexes every page, each page has a `.md` copy beside it, and [llms-full.txt](https://mrballistic.github.io/brass-lantern/llms-full.txt) is all of it in one file, with the example worlds’ code inlined. Point an agent at llms-full.txt and it has the schema, the conditions, the effects and the recipes in one read. There is also a local MCP server that lets an agent audit and play the world it is writing; [Coding agents](./coding-agents) covers both.
 
 Working on Brass Lantern itself? [CONTRIBUTING.md](https://github.com/mrballistic/brass-lantern/blob/main/CONTRIBUTING.md) has the checks to run before a pull request.

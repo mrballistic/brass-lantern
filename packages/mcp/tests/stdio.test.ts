@@ -1,0 +1,68 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { keepRunningOnCrash, parseRoots, quietStdout } from '../src/stdio.ts';
+
+describe('quietStdout', () => {
+  let restore: (() => void) | undefined;
+  afterEach(() => {
+    restore?.();
+    restore = undefined;
+    vi.restoreAllMocks();
+  });
+  it('sends every console method to stderr, never stdout', () => {
+    const out = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    const err = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    restore = quietStdout();
+    console.log('a');
+    console.info('b');
+    console.debug('c');
+    console.warn('d');
+    console.dir({ a: 1 });
+    console.dirxml({ b: 2 });
+    console.table([1]);
+    console.trace('t');
+    const written = err.mock.calls.map((c) => String(c[0])).join('');
+    restore();
+    restore = undefined;
+    expect(out).not.toHaveBeenCalled();
+    expect(written).toContain('a');
+    expect(written).toContain('{ a: 1 }');
+  });
+  it('restores the console', () => {
+    const before = console;
+    const before_log = console.log;
+    quietStdout()();
+    expect(console).toBe(before);
+    expect(console.log).toBe(before_log);
+  });
+});
+
+describe('parseRoots', () => {
+  it('starts with cwd and adds each --root, resolved against it', () => {
+    const warn = vi.fn();
+    expect(parseRoots(['--root', 'a', '--root', '/b'], '/w', warn)).toEqual(['/w', '/w/a', '/b']);
+    expect(warn).not.toHaveBeenCalled();
+  });
+  it('a --root with no directory is ignored with a warning', () => {
+    const warn = vi.fn();
+    expect(parseRoots(['--root'], '/w', warn)).toEqual(['/w']);
+    expect(warn).toHaveBeenCalledWith('brass-lantern-mcp: --root needs a directory; ignored');
+  });
+});
+
+describe('keepRunningOnCrash', () => {
+  it('logs an uncaught exception or unhandled rejection to stderr and keeps the process alive', () => {
+    const before = { ex: process.listenerCount('uncaughtException'), rej: process.listenerCount('unhandledRejection') };
+    const log = vi.fn();
+    const remove = keepRunningOnCrash(log);
+    expect(process.listenerCount('uncaughtException')).toBe(before.ex + 1);
+    expect(process.listenerCount('unhandledRejection')).toBe(before.rej + 1);
+    const handlers = { ex: process.listeners('uncaughtException').at(-1)!, rej: process.listeners('unhandledRejection').at(-1)! };
+    (handlers.ex as (e: Error) => void)(new Error('late boom'));
+    (handlers.rej as (r: unknown) => void)('nope');
+    remove();
+    expect(process.listenerCount('uncaughtException')).toBe(before.ex);
+    expect(process.listenerCount('unhandledRejection')).toBe(before.rej);
+    expect(log).toHaveBeenNthCalledWith(1, 'brass-lantern-mcp: uncaught exception:', expect.objectContaining({ message: 'late boom' }));
+    expect(log).toHaveBeenNthCalledWith(2, 'brass-lantern-mcp: unhandled rejection:', 'nope');
+  });
+});

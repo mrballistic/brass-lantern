@@ -2,7 +2,7 @@
 
 ## Conditions
 
-Conditions are strings, used by `requires`, exits (`if`, `denials`), room `descriptions`, `onEnter`, rules (`instead`, `after`, `onUse`), dialogue keys, hints, scoring, daemons, the finale’s epilogue and ambient lines. One parser handles all of them.
+Conditions are strings, used by `requires`, exits (`if`, `denials`), room `descriptions`, `onEnter`, rules (`instead`, `after`, `onUse`), dialogue keys, hints, scoring, daemons, the finale’s epilogue and ambient lines. One parser handles all of them. A missing or blank condition always holds, so a trigger (`onEnter` and the like) may leave out `if`.
 
 | Condition | True when |
 |---|---|

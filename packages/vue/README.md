@@ -34,4 +34,4 @@ Players can type THEME, BLOOM ON|OFF and EFFECTS ON|OFF, at the menu, in native 
 
 ## Docs
 
-[Using the library](https://mrballistic.github.io/brass-lantern/guide/using-the-library) is the guide for all three packages; the [docs](https://mrballistic.github.io/brass-lantern/) cover worlds, story files and the intent server. Source and issues: [github.com/mrballistic/brass-lantern](https://github.com/mrballistic/brass-lantern). MIT licensed.
+[Using the library](https://mrballistic.github.io/brass-lantern/guide/using-the-library) is the guide for the three library packages ([Coding agents](https://mrballistic.github.io/brass-lantern/guide/coding-agents) covers the MCP server); the [docs](https://mrballistic.github.io/brass-lantern/) cover worlds, story files and the intent server. Source and issues: [github.com/mrballistic/brass-lantern](https://github.com/mrballistic/brass-lantern). MIT licensed.
