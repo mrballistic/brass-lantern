@@ -36,9 +36,10 @@ function check(name, ok, detail = '') {
   if (!ok) failures += 1;
 }
 
-function run(cmd, args, cwd, { quiet = true } = {}) {
+function run(cmd, args, cwd, { quiet = true, timeout } = {}) {
   return execFileSync(cmd, args, {
     cwd,
+    ...(timeout ? { timeout } : {}),
     encoding: 'utf8',
     stdio: quiet ? ['ignore', 'pipe', 'pipe'] : 'inherit',
     env: { ...process.env, npm_config_audit: 'false', npm_config_fund: 'false', npm_config_update_notifier: 'false' },
@@ -46,8 +47,8 @@ function run(cmd, args, cwd, { quiet = true } = {}) {
 }
 
 /** Runs a Node ESM snippet in the scratch project; resolves to its stdout, or throws with stderr. */
-function node(cwd, code) {
-  return run(process.execPath, ['--input-type=module', '-e', code], cwd).trim();
+function node(cwd, code, options) {
+  return run(process.execPath, ['--input-type=module', '-e', code], cwd, options).trim();
 }
 
 function tsc(cwd, project) {
@@ -172,11 +173,13 @@ try {
        const client = new Client({ name: 'smoke', version: '1' });
        await client.connect(new StdioClientTransport({ command: process.execPath, args: ['node_modules/@brass-lantern/mcp/dist/cli.js', '--timeout', '2'], cwd: process.cwd() }));
        const start = Date.now();
-       const loops = await client.callTool({ name: 'play', arguments: { path: 'loops.ts', commands: ['look'] } });
+       const stuck = new Promise((_, reject) => setTimeout(() => reject(new Error('callTool did not return within 15 s')), 15000));
+       const loops = await Promise.race([client.callTool({ name: 'play', arguments: { path: 'loops.ts', commands: ['look'] } }), stuck]);
        const ms = Date.now() - start;
        const after = await client.callTool({ name: 'play', arguments: { path: 'world.ts', commands: ['look'] } });
        await client.close();
        console.log(JSON.stringify({ isError: loops.isError === true, text: loops.content[0].text, ms, after: after.content[0].text }));`,
+      { timeout: 60_000 },
     );
     const result = JSON.parse(out.split('\n').at(-1));
     check(
