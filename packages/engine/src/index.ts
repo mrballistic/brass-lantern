@@ -6,6 +6,7 @@
 export { createGame, runTurn, type EngineReply, type Game, type TurnResult } from './engine/game.ts';
 export { ENGINE_VERSION } from './version.ts';
 export { auditWorld } from './engine/audit.ts';
+export { currentScore } from './engine/score.ts';
 
 // The lower-level engine, for UIs that run their own loop.
 export {
