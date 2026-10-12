@@ -173,7 +173,7 @@ try {
        const client = new Client({ name: 'smoke', version: '1' });
        await client.connect(new StdioClientTransport({ command: process.execPath, args: ['node_modules/@brass-lantern/mcp/dist/cli.js', '--timeout', '2'], cwd: process.cwd() }));
        const start = Date.now();
-       const stuck = new Promise((_, reject) => setTimeout(() => reject(new Error('callTool did not return within 15 s')), 15000));
+       const stuck = new Promise((_, reject) => setTimeout(() => reject(new Error('callTool did not return within 15 s')), 15000).unref());
        const loops = await Promise.race([client.callTool({ name: 'play', arguments: { path: 'loops.ts', commands: ['look'] } }), stuck]);
        const ms = Date.now() - start;
        const after = await client.callTool({ name: 'play', arguments: { path: 'world.ts', commands: ['look'] } });
