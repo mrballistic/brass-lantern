@@ -3,7 +3,7 @@ import type { EventStep, World } from '../types/world.ts';
 import { handleFollow } from './verbs/follow.ts';
 import { evaluateCondition } from './conditions.ts';
 import { describeRoom } from './describe.ts';
-import { AskSignal, initialLocations, inventoryOf, isLit, matchItem, matchNpc, needObject, pickItem, restoreState, setResolveById, snapshotState, takeActed, takeTypos, visibleItems } from './model.ts';
+import { AskSignal, initialLocations, inventoryOf, isCarried, isLit, matchItem, matchNpc, needObject, pickItem, restoreState, setResolveById, snapshotState, takeActed, takeTypos, visibleItems } from './model.ts';
 import { whatQuestion, whichQuestion } from './ask.ts';
 import { darknessFalls, tooDark } from './light.ts';
 import { beginTick, beginTurn, darkLineSaid, lineStop, runConditional, runSteps, setEffectHooks, turnFree, turnHalted } from './effects.ts';
@@ -245,6 +245,20 @@ function executeTurn(action: ParsedAction, deps: EngineDeps): EngineResult {
   return { ...result, lines: [...result.lines, ...later], mutated: true };
 }
 
+/**
+ * WEAR of a thing in sight but not held: TAKE it first, rules and all (Infocom's implicit take).
+ * Null when it's held, not here, or can't be carried; otherwise the take's result and whether it's now held.
+ */
+function takeFirst(action: ParsedAction, world: World, state: GameState): { held: boolean; result: EngineResult; id: string } | null {
+  if (!action.target) return null;
+  const carried = inventoryOf(world, state);
+  if (pickItem(action.target, carried, world, 'target', state)) return null;
+  const id = pickItem(action.target, visibleItems(world, state).filter((i) => !carried.includes(i)), world, 'target', state);
+  if (!id || !world.items[id]?.portable) return null;
+  const result = withRules('take', { action: 'take', target: action.target }, world, state, () => handleTake(action.target, world, state));
+  return { held: isCarried(state, id), result, id };
+}
+
 function dispatch(action: ParsedAction, world: World, state: GameState, storeHelp = false): EngineResult {
   switch (action.action) {
     case 'go':
@@ -319,8 +333,19 @@ function dispatch(action: ParsedAction, world: World, state: GameState, storeHel
       return withRules('put', action, world, state, () => handlePut(action.target, action.indirect, world, state, action.prep));
     case 'search':
       return withRules('search', action, world, state, () => handleSearch(action.target, world, state));
-    case 'wear':
-      return withRules('wear', action, world, state, () => handleWear(action.target, world, state));
+    case 'wear': {
+      const saved = snapshotState(state);
+      const taken = takeFirst(action, world, state);
+      if (taken && !taken.held) return taken.result;
+      const worn = withRules('wear', action, world, state, () => handleWear(action.target, world, state));
+      if (!taken) return worn;
+      if (worn.understood === false) {
+        restoreState(state, saved);
+        return worn;
+      }
+      const takeLines = taken.result.lines.filter((l) => !/^Taken[.:]/.test(l));
+      return { ...worn, lines: [`(first taking the ${world.items[taken.id].name})`, ...takeLines, ...worn.lines], mutated: true };
+    }
     case 'talk':
       return withRules('talk', action, world, state, () => handleTalk(action.target, world, state));
     case 'give': {

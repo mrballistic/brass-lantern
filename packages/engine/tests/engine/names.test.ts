@@ -173,3 +173,25 @@ describe('GIVE PERSON THING', () => {
     expect(play('give neighbor trombone').lines.join(' ')).toContain('aren’t carrying');
   });
 });
+
+describe('WEAR takes first', () => {
+  it('takes it from the floor, then wears it', () => {
+    const s = stateWith(world, { room: 'living' });
+    const r = execute({ action: 'wear', target: 'shirt' }, { world, state: s });
+    expect(r.lines[0]).toBe('(first taking the loud shirt)');
+    expect(r.lines).not.toContain('Taken: loud shirt.');
+    expect(s.locations.shirt).toBe('player');
+    expect(s.firedEvents).toContain('wear_shirt');
+  });
+  it('a refused take changes nothing', () => {
+    const w: World = { ...world, items: { ...world.items, shirt: { ...world.items.shirt, instead: { take: [{ say: ['Not yours to take.'] }] } } } };
+    const s = stateWith(w, { room: 'living' });
+    const before = structuredClone(s);
+    expect(execute({ action: 'wear', target: 'shirt' }, { world: w, state: s }).lines).toEqual(['Not yours to take.']);
+    expect(s.locations).toEqual(before.locations);
+  });
+  it('carried: as before', () => {
+    const s = stateWith(world, { room: 'living', carrying: ['shirt'] });
+    expect(execute({ action: 'wear', target: 'shirt' }, { world, state: s }).lines[0]).not.toBe('(first taking the loud shirt)');
+  });
+});
