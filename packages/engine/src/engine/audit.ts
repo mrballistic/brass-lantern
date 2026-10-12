@@ -244,5 +244,11 @@ export function auditWorld(world: World): string[] {
   }
   if (!isRoom(world.startRoom)) problems.push(`startRoom “${world.startRoom}” isn’t a room`);
   for (const w of verbClashes(world.verbs)) problems.push(`verb word “${w}” is a built-in`);
+  if (world.typoReplies !== undefined) {
+    if (world.typoReplies.length === 0) problems.push('typoReplies is empty: leave it out for silent corrections');
+    world.typoReplies.forEach((line, i) => {
+      for (const m of line.matchAll(/\{([^}]*)\}/g)) if (m[1] !== 'typed' && m[1] !== 'name') problems.push(`typoReplies[${i}]: unknown placeholder “{${m[1]}}”`);
+    });
+  }
   return problems;
 }

@@ -3,12 +3,13 @@ import type { EventStep, World } from '../types/world.ts';
 import { handleFollow } from './verbs/follow.ts';
 import { evaluateCondition } from './conditions.ts';
 import { describeRoom } from './describe.ts';
-import { AskSignal, initialLocations, inventoryOf, isLit, matchItem, matchNpc, needObject, pickItem, restoreState, setResolveById, snapshotState, takeActed, visibleItems } from './model.ts';
+import { AskSignal, initialLocations, inventoryOf, isLit, matchItem, matchNpc, needObject, pickItem, restoreState, setResolveById, snapshotState, takeActed, takeTypos, visibleItems } from './model.ts';
 import { whatQuestion, whichQuestion } from './ask.ts';
 import { darknessFalls, tooDark } from './light.ts';
 import { beginTick, beginTurn, darkLineSaid, lineStop, runConditional, runSteps, setEffectHooks, turnFree, turnHalted } from './effects.ts';
 import { seedFor } from './rng.ts';
 import { afterTurn, fuseFired } from './time.ts';
+import { typoReply } from './typos.ts';
 import { die } from './death.ts';
 import { runEnding } from './endings.ts';
 import { miss, ok, zorkDefault, type EngineResult } from './result.ts';
@@ -173,6 +174,7 @@ function executeTurn(action: ParsedAction, deps: EngineDeps): EngineResult {
   const litBefore = isLit(world, state);
   let result: EngineResult;
   takeActed(state);
+  takeTypos(state);
   setResolveById(state, Boolean(action.byId));
   try {
     result = dispatch(action, world, state, deps.storeHelp);
@@ -190,6 +192,9 @@ function executeTurn(action: ParsedAction, deps: EngineDeps): EngineResult {
     // Like a parser failure in Zork: no time passes.
     result = { ...ok([tooDark(world)]), free: true };
   }
+  // A misspelled name the engine matched anyway: the world may tease the player, once per thing.
+  const typos = takeTypos(state);
+  if (result.understood !== false && !result.ask && typos.length > 0) result = typoReply(result, typos, world, state);
   if (result.understood === false || state.gameOver || result.free) return result;
   // No clock, but M-END still runs (Zork's main loop: the end routine for every verb, CLOCKER not for these).
   if (result.clockless) {

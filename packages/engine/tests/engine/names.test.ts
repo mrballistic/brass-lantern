@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { execute } from '../../src/engine/engine';
 import { stateWith } from '../helpers/state';
+import { createGame } from '../../src/engine/game';
+import { restoreState, snapshotState } from '../../src/engine/model';
 import { fixtureWorld } from '../fixtures/world';
 import type { World } from '../../src/types/world';
 
@@ -82,5 +84,46 @@ describe('objects rank by their own name and aliases', () => {
       const s = stateWith(w, { room: 'yard' });
       expect(execute({ action: 'follow', target: 'ned' }, { world: w, state: s }).lines).toEqual(['You can’t follow that.']);
     }
+  });
+});
+
+describe('typo replies', () => {
+  const w: World = { ...world, typoReplies: ['“{typed}”? You mean {name}.', 'Close enough: {name}.'] };
+  it('reply once per thing, in rotation, ahead of the command’s lines', () => {
+    const s = stateWith(w, { room: 'yard' });
+    const first = execute({ action: 'examine', target: 'nieghbor' }, { world: w, state: s });
+    expect(first.lines).toEqual(['“nieghbor”? You mean the Neighbor.', 'Your neighbor, leaning on the fence.']);
+    expect(s.typoMocked).toEqual(['neighbor']);
+    // The fixture's ambient line may follow; the point is that no second tease leads.
+    expect(execute({ action: 'examine', target: 'nieghbor' }, { world: w, state: s }).lines[0]).toBe('Your neighbor, leaning on the fence.');
+    s.currentRoom = 'shed';
+    expect(execute({ action: 'examine', target: 'gaurd' }, { world: w, state: s }).lines[0]).toBe('Close enough: the guard.');
+  });
+  it('silent without typoReplies', () => {
+    const quiet: World = { ...world, typoReplies: undefined };
+    const s = stateWith(quiet, { room: 'yard' });
+    expect(execute({ action: 'examine', target: 'nieghbor' }, { world: quiet, state: s }).lines).toEqual(['Your neighbor, leaning on the fence.']);
+    expect(s.typoMocked).toBeUndefined();
+  });
+  it('a command that misses records nothing', () => {
+    const s = stateWith(w, { room: 'yard' });
+    const r = execute({ action: 'give', target: 'wallet', indirect: 'nieghbor' }, { world: w, state: s });
+    expect(r.understood).toBe(false);
+    expect(s.typoMocked).toBeUndefined();
+  });
+  it('typoMocked survives a snapshot round-trip (UNDO, saves)', () => {
+    const s = stateWith(w, { room: 'yard' });
+    const snap = snapshotState(s);
+    execute({ action: 'examine', target: 'nieghbor' }, { world: w, state: s });
+    const after = snapshotState(s);
+    restoreState(s, snap);
+    expect(s.typoMocked).toBeUndefined();
+    restoreState(s, after);
+    expect(s.typoMocked).toEqual(['neighbor']);
+  });
+  it('works through createGame', () => {
+    const game = createGame(w, { seed: 1 });
+    game.state.currentRoom = 'yard';
+    expect(game.send('x nieghbor').lines[0]).toBe('“nieghbor”? You mean the Neighbor.');
   });
 });

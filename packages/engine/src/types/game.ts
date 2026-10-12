@@ -51,6 +51,8 @@ export interface GameState {
   /** The vehicle the player is in (Zork's VEHBIT), if any. */
   aboard?: string;
   currentRoom: string;
+  /** Things already teased for a misspelling (`World.typoReplies`), in order. */
+  typoMocked?: string[];
   /** Every item's parent. Inventory and room contents are derived from it. */
   locations: Record<string, Place>;
   itemState: Record<string, ItemState>;

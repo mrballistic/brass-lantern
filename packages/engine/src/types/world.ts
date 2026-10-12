@@ -489,6 +489,12 @@ export interface World {
   idle?: string;
   /** Replies for input nobody could understand, rotated so they don’t repeat. */
   confused?: string[];
+  /**
+   * Said when a name the player misspelled is matched anyway (brass style), the first time each thing is
+   * reached that way: one line ahead of the command's own, taken in turn. `{typed}` is the word as typed,
+   * `{name}` the thing's name with its article. Leave it out and corrections are silent.
+   */
+  typoReplies?: string[];
   /** The win condition. See Finale. */
   finale?: Finale;
   /** Lines that interrupt on a timer while a condition holds (a ringing phone). */
