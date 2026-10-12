@@ -1,5 +1,6 @@
 import { realpathSync } from 'node:fs';
 import { isAbsolute, relative, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { docsReport, readDocs } from './docs.ts';
@@ -8,11 +9,13 @@ import { loadWorld, WorldLoadError, type LoadedWorld } from './load.ts';
 import { auditReport, header, MAX_COMMANDS, playReport } from './tools.ts';
 import type { ResolvedEngine } from './engine.ts';
 
+export { quietStdout } from './stdio.ts';
+
 export interface ServerOptions {
   /** The engine to use when a world’s project has none of its own. */
   bundled: Engine;
-  /** Where the docs bundle is (dist/docs when published). */
-  docsDir: string;
+  /** Where the docs bundle is. Default: the one shipped with this package (dist/docs). */
+  docsDir?: string;
   /** Relative world paths resolve against this (the client’s launch directory). */
   cwd: string;
   /** Worlds must live inside one of these directories (symlinks resolved). Default: [cwd]. */
@@ -26,7 +29,16 @@ const reply = (text: string, isError = false): Result => ({ content: [{ type: 't
 const PATH = z.string().min(1).describe('The world module: a .ts, .mts, .js or .mjs file, relative to the directory the server was started in, or absolute.');
 const EXPORT = z.string().min(1).optional().describe('Which export is the world. Default: the default export, else the only world-shaped export.');
 
+/**
+ * The brass-lantern MCP server, unconnected: pass it a transport. Stdout-based transports also
+ * want quietStdout(), so a world’s console output can’t corrupt the protocol.
+ *
+ * Loading a .mjs or .js world registers a process-wide module resolve hook (once). It only acts
+ * on imports made by modules this server loaded under its own ?bl= query, so the rest of the
+ * process resolves as before.
+ */
 export function createServer(options: ServerOptions): McpServer {
+  const docsDir = options.docsDir ?? fileURLToPath(new URL('./docs/', import.meta.url));
   const server = new McpServer({ name: 'brass-lantern', version: options.version });
 
   const real = (p: string): string => {
@@ -102,7 +114,7 @@ export function createServer(options: ServerOptions): McpServer {
     },
     ({ page, query }) => {
       try {
-        const r = docsReport(readDocs(options.docsDir), { page, query });
+        const r = docsReport(readDocs(docsDir), { page, query });
         return reply(r.text, r.isError);
       } catch (error) {
         return reply(`The docs bundle couldn’t be read (${error instanceof Error ? error.message : String(error)}).`, true);

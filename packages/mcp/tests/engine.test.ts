@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { resolveEngine } from '../src/engine.ts';
 
 /** A scratch project with a world file and, optionally, its own engine package. */
-function project(engineSource?: string): string {
+function project(engineSource?: string, exportsField: unknown = { '.': './index.js', './package.json': './package.json' }): string {
   const dir = mkdtempSync(join(tmpdir(), 'bl-mcp-engine-'));
   writeFileSync(join(dir, 'world.ts'), 'export default {};\n');
   if (engineSource !== undefined) {
@@ -14,7 +14,7 @@ function project(engineSource?: string): string {
     mkdirSync(pkg, { recursive: true });
     writeFileSync(
       join(pkg, 'package.json'),
-      JSON.stringify({ name: '@brass-lantern/engine', version: '9.9.9', type: 'module', exports: { '.': './index.js', './package.json': './package.json' } }),
+      JSON.stringify({ name: '@brass-lantern/engine', version: '9.9.9', type: 'module', exports: exportsField }),
     );
     writeFileSync(join(pkg, 'index.js'), engineSource);
   }
@@ -37,6 +37,11 @@ describe('resolveEngine', () => {
     const r = await resolveEngine(project("throw new Error('boom');"), bundled);
     expect(r.source).toBe('bundled');
     expect(r.note).toMatch(/couldn’t load the project’s @brass-lantern\/engine \(boom\)/);
+  });
+  it('falls back, with a note, when the project’s engine is installed but can’t be resolved', async () => {
+    const r = await resolveEngine(project('export {};', { '.': { import: './index.js' } }), bundled);
+    expect(r.source).toBe('bundled');
+    expect(r.note).toMatch(/^couldn’t resolve the project’s @brass-lantern\/engine \(.+\); used the bundled engine$/);
   });
   it('falls back, with a note, when it lacks createGame or auditWorld', async () => {
     const r = await resolveEngine(project("export const ENGINE_VERSION = '0.1.0';"), bundled);

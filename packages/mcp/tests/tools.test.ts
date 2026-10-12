@@ -54,8 +54,13 @@ describe('playReport', () => {
   });
   it('caps commands and lines', async () => {
     const loaded = await loadWorld(TUTORIAL, 'tutorial', FIXTURES);
-    const text = playReport(loaded, ENGINE, Array.from({ length: MAX_COMMANDS + 5 }, () => 'look'));
+    // The last command that runs is the only one that isn’t “look”: its reply must survive the cut.
+    const commands = [...Array.from({ length: MAX_COMMANDS - 1 }, () => 'look'), 'echo last one', ...Array.from({ length: 5 }, () => 'look')];
+    const text = playReport(loaded, ENGINE, commands);
     expect(text).toContain(`Only the first ${MAX_COMMANDS} commands ran.`);
-    expect(text).toMatch(new RegExp(`\\[… \\d+ more lines cut \\(over ${MAX_LINES}\\)\\]`));
+    expect(text).toMatch(new RegExp(`\\[… \\d+ lines cut \\(over ${MAX_LINES}\\) …\\]`));
+    expect(text).toContain('> echo last one');
+    expect(text.indexOf('> echo last one')).toBeGreaterThan(text.indexOf('lines cut'));
+    expect(text.split('\n').filter((l) => l === '> look').length).toBeLessThan(MAX_COMMANDS);
   });
 });

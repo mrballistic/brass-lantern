@@ -16,15 +16,20 @@ export interface ResolvedEngine {
 
 /**
  * The engine the world’s own project resolves (so a 2.2 project is audited by 2.2’s rules),
- * else `bundled`. A project engine that can’t be imported, or lacks the API, falls back with a note.
+ * else `bundled`. A project engine that can’t be resolved or imported, or lacks the API, falls back
+ * with a note; only a project with no engine installed falls back silently.
  */
 export async function resolveEngine(worldFile: string, bundled: Engine): Promise<ResolvedEngine> {
   const fallback = (note?: string): ResolvedEngine => ({ engine: bundled, version: bundled.ENGINE_VERSION, source: 'bundled', ...(note ? { note } : {}) });
   let entry: string;
   try {
     entry = createRequire(worldFile).resolve('@brass-lantern/engine');
-  } catch {
-    return fallback();
+  } catch (error) {
+    const { code, message } = error as { code?: unknown; message?: unknown };
+    // Silent only for a genuine “not installed”; anything else (a broken exports map, a malformed
+    // package.json) means the project has an engine we couldn’t use, which the agent should know.
+    if (code === 'MODULE_NOT_FOUND' && typeof message === 'string' && message.includes('@brass-lantern/engine')) return fallback();
+    return fallback(`couldn’t resolve the project’s @brass-lantern/engine (${typeof message === 'string' ? message.split('\n')[0] : String(error)}); used the bundled engine`);
   }
   try {
     const mod = (await import(pathToFileURL(entry).href)) as Partial<Engine>;

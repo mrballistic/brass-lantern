@@ -36,10 +36,18 @@ export function normalizePage(page: string): string {
 function sections(page: DocPage): Array<{ heading: string; text: string }> {
   const out: Array<{ heading: string; text: string }> = [];
   let current = { heading: page.title, text: '' };
-  let fenced = false;
+  // The open fence, if any. A fence opens on ``` or ~~~ (with an optional info string) and closes
+  // only on a bare fence of the same character at least as long, so a ```json line shown inside a
+  // ````text block doesn't end it.
+  let fence: { char: string; length: number } | undefined;
   for (const line of page.markdown.split('\n')) {
-    if (/^(```|~~~)/.test(line)) fenced = !fenced;
-    const heading = !fenced && /^#{1,4}\s+(.+)$/.exec(line);
+    const marker = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(line);
+    if (marker) {
+      const run = marker[1];
+      if (!fence) fence = { char: run[0], length: run.length };
+      else if (run[0] === fence.char && run.length >= fence.length && marker[2].trim() === '') fence = undefined;
+    }
+    const heading = !fence && /^#{1,4}\s+(.+)$/.exec(line);
     if (heading) {
       if (current.text.trim()) out.push(current);
       current = { heading: heading[1].trim(), text: `${line}\n` };

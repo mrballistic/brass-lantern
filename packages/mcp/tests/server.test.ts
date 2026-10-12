@@ -6,13 +6,14 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { bundleDocs } from '../scripts/bundle-docs.ts';
+import * as entry from '../src/server.ts';
 import { createServer } from '../src/server.ts';
 
 const FIXTURES = resolve(import.meta.dirname, 'fixtures');
 const ENGINE_WORLDS = resolve(import.meta.dirname, '../../engine/src/worlds');
 let client: Client;
 
-async function connect(options: Partial<Parameters<typeof createServer>[0]> & { docsDir: string; cwd: string }): Promise<Client> {
+async function connect(options: Partial<Parameters<typeof createServer>[0]> & { cwd: string }): Promise<Client> {
   const server = createServer({ bundled, version: '0.0.0-test', ...options });
   const [serverSide, clientSide] = InMemoryTransport.createLinkedPair();
   await server.connect(serverSide);
@@ -67,6 +68,15 @@ describe('the MCP server', () => {
   });
   it('docs answers from the bundle', async () => {
     expect(text(await client.callTool({ name: 'docs', arguments: { page: 'reference/world-schema' } }))).toContain('typoReplies');
+  });
+  it('docs default to the bundle beside the server module (dist/docs when built)', async () => {
+    const c = await connect({ cwd: FIXTURES });
+    const r = await c.callTool({ name: 'docs', arguments: {} });
+    // Run from source there is no src/docs, so the read fails, naming where it looked.
+    expect(text(r)).toContain(join(resolve(import.meta.dirname, '../src/docs'), 'pages.json'));
+  });
+  it('exports quietStdout for an embedder', () => {
+    expect(typeof entry.quietStdout).toBe('function');
   });
   it('docs read failure is an error result', async () => {
     const c = await connect({ docsDir: join(tmpdir(), 'bl-mcp-no-such-docs'), cwd: FIXTURES });

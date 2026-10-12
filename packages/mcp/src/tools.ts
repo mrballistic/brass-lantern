@@ -4,6 +4,8 @@ import type { LoadedWorld } from './load.ts';
 
 export const MAX_COMMANDS = 500;
 export const MAX_LINES = 2000;
+/** How many of a long transcript’s last lines survive the cut. */
+const TAIL_LINES = 200;
 
 const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
@@ -64,7 +66,11 @@ export function playReport(loaded: LoadedWorld, resolved: ResolvedEngine, comman
     over = reply.gameOver;
     ran += 1;
   }
-  const shown = transcript.length > MAX_LINES ? [...transcript.slice(0, MAX_LINES), `[… ${transcript.length - MAX_LINES} more lines cut (over ${MAX_LINES})]`] : transcript;
+  // Over the cap, keep the opening and the ending (where the run finished), and cut the middle.
+  const shown =
+    transcript.length > MAX_LINES
+      ? [...transcript.slice(0, MAX_LINES - TAIL_LINES), `[… ${transcript.length - MAX_LINES} lines cut (over ${MAX_LINES}) …]`, ...transcript.slice(-TAIL_LINES)]
+      : transcript;
   const s = game.state;
   const state = {
     room: `${world.rooms[s.currentRoom]?.name ?? s.currentRoom} (${s.currentRoom})`,

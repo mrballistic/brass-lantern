@@ -90,6 +90,15 @@ describe('loadWorld', () => {
     writeFileSync(join(dir, 'bad.mjs'), 'export const = ;\n');
     await expect(loadWorld('bad.mjs', undefined, dir)).rejects.toThrow(/^bad\.mjs: Unexpected token/);
   });
+  it('loads a .js world written in ES syntax under an explicit "type": "commonjs" (through jiti)', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'bl-mcp-'));
+    writeFileSync(join(dir, 'package.json'), '{"name":"cjs-project","type":"commonjs"}');
+    writeFileSync(join(dir, 'helper.js'), "export const HALL = { name: 'Hall', description: 'A hall.', exits: {}, items: [], npcs: [], onEnter: [] };\n");
+    writeFileSync(join(dir, 'w.js'), "import { HALL } from './helper.js';\nexport default { startRoom: 'hall', rooms: { hall: HALL }, items: {}, npcs: {} };\n");
+    const loaded = await loadWorld('w.js', undefined, dir);
+    expect(loaded.exportName).toBe('default');
+    expect(loaded.world.rooms.hall.name).toBe('Hall');
+  });
   it('loads a real world that imports from the engine (the tutorial source)', async () => {
     const tutorial = resolve(import.meta.dirname, '../../engine/src/worlds/tutorial.ts');
     expect((await loadWorld(tutorial, 'tutorial', FIXTURES)).world.startRoom).toBe('cubicle');

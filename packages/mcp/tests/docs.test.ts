@@ -40,6 +40,35 @@ describe('docs', () => {
   it('a query that matches nothing says so', () => {
     expect(docsReport(docs, { query: 'xylophonequux' }).text).toMatch(/No sections matched “xylophonequux”/);
   });
+  it('a fence inside a longer fence doesn’t end it, so the headings after it stay searchable', () => {
+    const markdown = [
+      '# Guide',
+      '````text',
+      'Example:',
+      '```json',
+      '# not a heading',
+      '```',
+      '````',
+      '## Zebra crossings',
+      'Stripes.',
+      '~~~',
+      '```',
+      '## still code',
+      '~~~',
+      '## Okapi notes',
+      'Shy.',
+    ].join('\n');
+    const page = { path: 'guide/x', title: 'Guide', markdown };
+    const fake: Docs = { index: '', pages: [page] };
+    expect(docsReport(fake, { query: 'zebra' }).text).toContain('## Guide › Zebra crossings');
+    expect(docsReport(fake, { query: 'okapi' }).text).toContain('## Guide › Okapi notes');
+    expect(docsReport(fake, { query: 'heading' }).text).not.toMatch(/› not a heading/);
+    expect(docsReport(fake, { query: 'still code' }).text).not.toMatch(/› still code/);
+  });
+  it('finds the coding-agents guide’s “Safety and limits” section', () => {
+    const r = docsReport(docs, { query: 'safety limits loops forever' });
+    expect(r.text).toMatch(/› Safety and limits\nSource: guide\/coding-agents/);
+  });
   it('normalizePage', () => {
     expect(normalizePage('/reference/world-schema.md')).toBe('reference/world-schema');
     expect(normalizePage('guide/building-worlds/')).toBe('guide/building-worlds/index');
