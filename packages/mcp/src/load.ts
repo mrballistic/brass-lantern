@@ -23,7 +23,11 @@ export function isWorldShaped(value: unknown): value is World {
  * jiti hands native ES modules (.mjs, and .js in a "type": "module" package) to Node's loader,
  * which caches by URL, so jiti's own moduleCache: false can't refresh them. Those files are
  * imported natively under a unique ?bl= query instead, and this resolve hook carries the query
- * onto every project file they import in turn, so a helper edit is seen too. The hook only
+ * onto every file they import by a relative or absolute specifier, so a helper edit is seen too.
+ * Bare specifiers (packages) are never touched, whatever their real path: a symlinked package
+ * (workspaces, npm link) has no /node_modules/ in its resolved URL, and re-instantiating it per
+ * load would leak its whole graph. So packages stay cached and are not reloaded; each call keeps
+ * one generation of the world's own project files for the life of the process. The hook only
  * touches modules whose importer carries the query; nothing else in the process is affected.
  */
 const FRESH_HOOK = `
@@ -31,7 +35,7 @@ export async function resolve(specifier, context, next) {
   const result = await next(specifier, context);
   const parent = context.parentURL;
   const query = parent && /[?&]bl=\\d+/.exec(parent);
-  if (query && result.url.startsWith('file:') && !result.url.includes('/node_modules/') && !result.url.includes('?')) {
+  if (query && /^(\\.{1,2}\\/|\\/|file:)/.test(specifier) && result.url.startsWith('file:') && !result.url.includes('?')) {
     return { ...result, url: result.url + '?' + query[0].replace(/^&/, '') };
   }
   return result;
@@ -54,12 +58,17 @@ function jitiImport(file: string): Promise<unknown> {
   return createJiti(import.meta.url, { moduleCache: false, fsCache: false, tryNative: false }).import(file);
 }
 
-/** Native and fresh; a file only jiti can read (ES syntax in a CommonJS-typed .js) falls back to jiti. */
+/** Native and fresh; ES syntax in a CommonJS-typed .js falls back to jiti. */
 async function importModule(file: string): Promise<unknown> {
   try {
     return await importNativeFresh(file);
-  } catch {
-    return jitiImport(file);
+  } catch (error) {
+    // jiti only for what it exists for: ES syntax in a .js of a CommonJS-typed package.
+    // Anything else (a throw at top level, a real syntax error) is Node's error to report.
+    if (error instanceof SyntaxError && /import statement outside a module|Unexpected token 'export'|Cannot use 'import\.meta'/.test(error.message)) {
+      return jitiImport(file);
+    }
+    throw error;
   }
 }
 

@@ -1,4 +1,4 @@
-import { cpSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -58,6 +58,37 @@ describe('loadWorld', () => {
     expect((await loadWorld('w.mjs', undefined, dir)).world.rooms.hall.name).toBe('Great Hall');
     writeFileSync(join(dir, 'w.mjs'), world(", startRoomNote: 'edited'"));
     expect((await loadWorld('w.mjs', undefined, dir)).world).toHaveProperty('startRoomNote', 'edited');
+  });
+  it.each(['mjs', 'ts'])('keeps a symlinked package cached across loads, with a relative helper fresh (%s)', async (ext) => {
+    const dir = mkdtempSync(join(tmpdir(), 'bl-mcp-'));
+    const real = join(dir, 'real-fakepkg');
+    mkdirSync(real);
+    writeFileSync(join(real, 'package.json'), '{"name":"fakepkg","type":"module","exports":"./index.js"}');
+    writeFileSync(join(real, 'index.js'), 'export const shared = {};\n');
+    mkdirSync(join(dir, 'project', 'node_modules'), { recursive: true });
+    symlinkSync(real, join(dir, 'project', 'node_modules', 'fakepkg'));
+    const project = join(dir, 'project');
+    const helper = (name: string) => `export const HALL = { name: '${name}' };\n`;
+    writeFileSync(join(project, `helper.${ext}`), helper('Hall'));
+    writeFileSync(
+      join(project, `w.${ext}`),
+      `import { shared } from 'fakepkg';\nimport { HALL } from './helper.${ext}';\nexport default { startRoom: 'hall', rooms: { hall: HALL }, items: {}, npcs: {}, shared };\n`,
+    );
+    const first = (await loadWorld(`w.${ext}`, undefined, project)).world as unknown as { shared: object };
+    writeFileSync(join(project, `helper.${ext}`), helper('Great Hall'));
+    const second = await loadWorld(`w.${ext}`, undefined, project);
+    expect(second.world.rooms.hall.name).toBe('Great Hall');
+    expect((second.world as unknown as { shared: object }).shared).toBe(first.shared);
+  });
+  it('a .mjs world that throws at top level runs once per load and reports Node’s error', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'bl-mcp-'));
+    const g = globalThis as unknown as { __blRuns?: number };
+    g.__blRuns = 0;
+    writeFileSync(join(dir, 'boom.mjs'), "globalThis.__blRuns += 1;\nthrow new Error('kaboom');\n");
+    await expect(loadWorld('boom.mjs', undefined, dir)).rejects.toThrow(/^boom\.mjs: kaboom/);
+    expect(g.__blRuns).toBe(1);
+    writeFileSync(join(dir, 'bad.mjs'), 'export const = ;\n');
+    await expect(loadWorld('bad.mjs', undefined, dir)).rejects.toThrow(/^bad\.mjs: Unexpected token/);
   });
   it('loads a real world that imports from the engine (the tutorial source)', async () => {
     const tutorial = resolve(import.meta.dirname, '../../engine/src/worlds/tutorial.ts');
