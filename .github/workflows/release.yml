@@ -90,7 +90,7 @@ jobs:
         run: npm run test:coverage
       - run: npm run build:packages
       - run: npm run build
-      # Packs the three packages as `npm publish` would, installs the tarballs
+      # Packs the four packages as `npm publish` would, installs the tarballs
       # into a scratch project and uses them from Node, tsc, Vite and a browser.
       - run: npm run smoke
 
@@ -99,7 +99,7 @@ jobs:
       - name: Publish
         run: |
           version="${TAG#v}"
-          for dir in engine server vue; do
+          for dir in engine mcp server vue; do
             name="$(node -p "require('./packages/$dir/package.json').name")"
             published="$(npm view "$name@$version" version 2>/dev/null || true)"
             if [ "$published" = "$version" ]; then

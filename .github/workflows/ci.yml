@@ -74,7 +74,7 @@ jobs:
           cache: npm
 
       - run: npm ci
-      # Builds the three packages, packs them as `npm publish` would, installs
+      # Builds the four packages, packs them as `npm publish` would, installs
       # the tarballs into a scratch project and uses them from Node and tsc,
       # then builds two Vite apps from them and checks them in a browser (the
       # runner's Chrome, or Playwright's Chromium).

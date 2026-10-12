@@ -1,6 +1,6 @@
 {
   "name": "@brass-lantern/mcp",
-  "version": "2.2.1",
+  "version": "2.3.0",
   "author": "Todd Greco <mrballistic@gmail.com>",
   "description": "A Model Context Protocol server for brass-lantern: lets a coding agent audit, play and read the docs for the text-adventure world it is writing.",
   "license": "MIT",
@@ -27,7 +27,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@brass-lantern/engine": "^2.2.0",
+    "@brass-lantern/engine": "^2.3.0",
     "@modelcontextprotocol/sdk": "^1.32.1",
     "jiti": "^2.7.0",
     "zod": "^4.6.7"

@@ -23,7 +23,7 @@ import { extname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const ROOT = resolve(import.meta.dirname, '..');
-const PACKAGES = ['@brass-lantern/engine', '@brass-lantern/vue', '@brass-lantern/server'];
+const PACKAGES = ['@brass-lantern/engine', '@brass-lantern/vue', '@brass-lantern/server', '@brass-lantern/mcp'];
 const keep = process.argv.includes('--keep');
 const build = !process.argv.includes('--no-build');
 const browserChecks = !process.argv.includes('--no-browser');
@@ -99,6 +99,10 @@ check(
   'engine: ships the vendored glkapi',
   contents['@brass-lantern/engine'].includes('dist/zmachine/vendor/glkapi.js'),
 );
+check(
+  'mcp: ships the binary and the docs bundle',
+  contents['@brass-lantern/mcp'].includes('dist/cli.js') && contents['@brass-lantern/mcp'].includes('dist/docs/pages.json'),
+);
 
 // 2. Pack for real and install into a scratch project.
 const scratch = mkdtempSync(join(tmpdir(), 'brass-lantern-smoke-'));
@@ -116,8 +120,37 @@ try {
   writeFileSync(join(app, 'package.json'), JSON.stringify({ name: 'smoke-consumer', private: true, type: 'module' }, null, 2));
 
   // Phase A: a Node host with the engine and the server, and no ifvms.
-  console.log(`\nPhase A: engine + server in ${app} (no ifvms)…`);
-  run('npm', ['install', '--ignore-scripts', tarballs['@brass-lantern/engine'], tarballs['@brass-lantern/server'], '@types/node@24'], app);
+  console.log(`\nPhase A: engine + server + mcp in ${app} (no ifvms)…`);
+  // The mcp tarball goes in with the engine's, so its engine range is met locally.
+  run(
+    'npm',
+    ['install', '--ignore-scripts', tarballs['@brass-lantern/engine'], tarballs['@brass-lantern/server'], tarballs['@brass-lantern/mcp'], '@types/node@24'],
+    app,
+  );
+
+  try {
+    writeFileSync(join(app, 'world.ts'), "import { tutorial } from '@brass-lantern/engine/worlds';\nexport default tutorial;\n");
+    const out = node(
+      app,
+      `const { Client } = await import('@modelcontextprotocol/sdk/client/index.js');
+       const { StdioClientTransport } = await import('@modelcontextprotocol/sdk/client/stdio.js');
+       const client = new Client({ name: 'smoke', version: '1' });
+       await client.connect(new StdioClientTransport({ command: process.execPath, args: ['node_modules/@brass-lantern/mcp/dist/cli.js'], cwd: process.cwd() }));
+       const tools = (await client.listTools()).tools.map((t) => t.name);
+       const audit = await client.callTool({ name: 'audit_world', arguments: { path: 'world.ts' } });
+       const play = await client.callTool({ name: 'play', arguments: { path: 'world.ts', commands: ['look'] } });
+       const docs = await client.callTool({ name: 'docs', arguments: { page: 'reference/world-schema' } });
+       await client.close();
+       console.log(JSON.stringify({ tools, audit: audit.content[0].text, play: play.content[0].text, docs: docs.content[0].text.slice(0, 200) }));`,
+    );
+    const result = JSON.parse(out.split('\n').at(-1));
+    check('mcp: lists audit_world, play and docs', result.tools.join(',') === 'audit_world,play,docs', out);
+    check('mcp: audits a world in the project (its own engine)', result.audit.includes('No problems.') && result.audit.includes('(the project’s)'), result.audit);
+    check('mcp: plays a world', result.play.includes('> look'), result.play);
+    check('mcp: serves the docs', result.docs.includes('World schema'), result.docs);
+  } catch (error) {
+    check('mcp: the stdio server runs from the installed package', false, error.stderr || String(error));
+  }
 
   try {
     const out = node(
