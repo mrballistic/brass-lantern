@@ -1,0 +1,67 @@
+import { Worker } from 'node:worker_threads';
+import type { Job, JobResult } from './job.ts';
+
+/** How long a world gets by default: 10 s. */
+export const DEFAULT_TIMEOUT_MS = 10_000;
+/** The longest delay setTimeout honors (2^31 − 1 ms, about 24.8 days); past it, Node fires after 1 ms. */
+export const MAX_TIMEOUT_MS = 2_147_483_647;
+
+// From source (tests, the repo) the worker is TypeScript and the engine resolves to its source;
+// published, both are plain JavaScript in dist/.
+const fromSource = import.meta.url.endsWith('.ts');
+const WORKER_URL = new URL(fromSource ? './worker.ts' : './worker.js', import.meta.url);
+// Published, the worker deliberately gets no flags: an empty execArgv stops it inheriting the
+// server's own (process.execArgv), which a world's worker has no business running under.
+const EXEC_ARGV = fromSource ? ['--import', 'tsx', '--conditions=@brass-lantern/source'] : [];
+
+/** How long a worker that has answered may linger before it is stopped. */
+const GRACE_MS = 500;
+
+const seconds = (ms: number) => String(Number((ms / 1000).toFixed(3)));
+
+/**
+ * Runs a job in a fresh worker thread, so a world that loops forever, calls process.exit(),
+ * crashes or writes to stdout can't freeze, end or corrupt the server. The worker's stdout and
+ * stderr go to this process's stderr. Never rejects: every outcome (a worker that can't even
+ * start included) is a result. `timeoutHint` ends the timeout message; `workerUrl` is for tests.
+ */
+export function runInWorker(
+  job: Job,
+  { timeoutMs: requested = DEFAULT_TIMEOUT_MS, timeoutHint = 'Raise the server’s timeout.', workerUrl = WORKER_URL }: { timeoutMs?: number; timeoutHint?: string; workerUrl?: URL } = {},
+): Promise<JobResult> {
+  // NaN means the default; anything past setTimeout's limit (Infinity included) is capped.
+  const timeoutMs = Number.isNaN(requested) ? DEFAULT_TIMEOUT_MS : Math.min(Math.max(requested, 1), MAX_TIMEOUT_MS);
+  return new Promise((resolve) => {
+    let worker: Worker;
+    try {
+      worker = new Worker(workerUrl, { workerData: job, stdout: true, stderr: true, execArgv: EXEC_ARGV });
+    } catch (error) {
+      resolve({ isError: true, text: `The world runner couldn’t start: ${error instanceof Error ? error.message : String(error)}` });
+      return;
+    }
+    // Forwarded chunk by chunk rather than piped, so concurrent calls add no listeners to stderr.
+    const forward = (chunk: Buffer) => process.stderr.write(chunk);
+    worker.stdout.on('data', forward);
+    worker.stderr.on('data', forward);
+    let settled = false;
+    const settle = (result: JobResult, grace = GRACE_MS) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(result);
+      // A world may leave timers running: once the answer is in, the worker gets a moment to exit
+      // on its own (flushing its output to stderr), then goes.
+      if (grace === 0) void worker.terminate();
+      else setTimeout(() => void worker.terminate(), grace).unref();
+    };
+    const timer = setTimeout(
+      () => settle({ isError: true, text: `The world didn’t finish within ${seconds(timeoutMs)} s (a script may loop forever). ${timeoutHint}` }, 0),
+      timeoutMs,
+    );
+    worker.on('message', (result: Partial<JobResult> | null) =>
+      settle(typeof result?.text === 'string' ? { text: result.text, isError: result.isError === true } : { isError: true, text: 'The world crashed: its worker sent something other than a result.' }),
+    );
+    worker.on('error', (error) => settle({ isError: true, text: `The world crashed: ${error instanceof Error ? error.message : String(error)}` }));
+    worker.on('exit', (code) => settle({ isError: true, text: `The world ended before answering (exit code ${code}); a world shouldn’t call process.exit() or leave a top-level await pending.` }));
+  });
+}

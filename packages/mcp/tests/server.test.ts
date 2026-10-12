@@ -1,7 +1,6 @@
 import { mkdirSync, readFileSync, mkdtempSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import * as bundled from '@brass-lantern/engine';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -14,7 +13,7 @@ const ENGINE_WORLDS = resolve(import.meta.dirname, '../../engine/src/worlds');
 let client: Client;
 
 async function connect(options: Partial<Parameters<typeof createServer>[0]> & { cwd: string }): Promise<Client> {
-  const server = createServer({ bundled, version: '0.0.0-test', ...options });
+  const server = createServer({ version: '0.0.0-test', ...options });
   const [serverSide, clientSide] = InMemoryTransport.createLinkedPair();
   await server.connect(serverSide);
   const c = new Client({ name: 'test', version: '1' });

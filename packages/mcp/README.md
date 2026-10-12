@@ -18,7 +18,7 @@ Or in any client’s JSON config:
 { "mcpServers": { "brass-lantern": { "command": "npx", "args": ["-y", "@brass-lantern/mcp"] } } }
 ```
 
-Node 24 or later. World paths are relative to where the client starts the server. Worlds must be inside that directory or one you allow with `--root <dir>` (repeatable).
+Node 24 or later. World paths are relative to where the client starts the server. Worlds must be inside that directory or one you allow with `--root <dir>` (repeatable). Each `audit_world` and `play` call runs in its own worker thread and is stopped after 10 seconds; `--timeout <seconds>` changes that.
 
 ## Tools
 

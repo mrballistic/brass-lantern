@@ -26,9 +26,11 @@ export async function resolveEngine(worldFile: string, bundled: Engine): Promise
     entry = createRequire(worldFile).resolve('@brass-lantern/engine');
   } catch (error) {
     const { code, message } = error as { code?: unknown; message?: unknown };
-    // Silent only for a genuine “not installed”; anything else (a broken exports map, a malformed
-    // package.json) means the project has an engine we couldn’t use, which the agent should know.
-    if (code === 'MODULE_NOT_FOUND' && typeof message === 'string' && message.includes('@brass-lantern/engine')) return fallback();
+    // Silent only for a genuine “not installed”, whose message quotes the bare specifier. Anything
+    // else (a broken exports map, a malformed package.json, an exports target that’s missing, whose
+    // message names a path inside the package) means the project has an engine we couldn’t use,
+    // which the agent should know.
+    if (code === 'MODULE_NOT_FOUND' && typeof message === 'string' && message.includes(`'@brass-lantern/engine'`)) return fallback();
     return fallback(`couldn’t resolve the project’s @brass-lantern/engine (${typeof message === 'string' ? message.split('\n')[0] : String(error)}); used the bundled engine`);
   }
   try {
