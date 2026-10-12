@@ -121,6 +121,29 @@ describe('typo replies', () => {
     restoreState(s, after);
     expect(s.typoMocked).toEqual(['neighbor']);
   });
+  it('a miss rewritten as “too dark” records nothing and teases nothing', () => {
+    const dark: World = { ...w, rooms: { ...w.rooms, yard: { ...w.rooms.yard, dark: true } } };
+    const s = stateWith(dark, { room: 'yard', carrying: ['wallet'] });
+    const r = execute({ action: 'give', target: 'wallt', indirect: 'zzzz' }, { world: dark, state: s });
+    expect(r.free).toBe(true);
+    expect(r.lines.join(' ')).not.toContain('You mean');
+    expect(s.typoMocked).toBeUndefined();
+  });
+  it('a turn that asks records nothing', () => {
+    const twins: World = {
+      ...w,
+      items: {
+        ...w.items,
+        twin_a: { name: 'red thing', aliases: ['thing'], description: 'A.', portable: true, tags: [] },
+        twin_b: { name: 'blue thing', aliases: ['thing'], description: 'B.', portable: true, tags: [] },
+      },
+    };
+    const s = stateWith(twins, { room: 'yard', carrying: ['twin_a', 'twin_b'] });
+    const r = execute({ action: 'give', target: 'thing', indirect: 'nieghbor' }, { world: twins, state: s });
+    expect(r.ask).toBeDefined();
+    expect(r.lines.join(' ')).not.toContain('You mean the Neighbor');
+    expect(s.typoMocked).toBeUndefined();
+  });
   it('works through createGame', () => {
     const game = createGame(w, { seed: 1 });
     game.state.currentRoom = 'yard';

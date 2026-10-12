@@ -184,6 +184,8 @@ function executeTurn(action: ParsedAction, deps: EngineDeps): EngineResult {
   } finally {
     setResolveById(state, false);
   }
+  const typos = takeTypos(state);
+  const missed = result.understood === false;
   result = { ...result, acted: takeActed(state) };
   if (turnFree(state) && result.understood !== false) result = { ...result, free: true };
   // You can't find things in the dark: an understood refusal, so the LLM isn't asked to re-guess.
@@ -193,8 +195,8 @@ function executeTurn(action: ParsedAction, deps: EngineDeps): EngineResult {
     result = { ...ok([tooDark(world)]), free: true };
   }
   // A misspelled name the engine matched anyway: the world may tease the player, once per thing.
-  const typos = takeTypos(state);
-  if (result.understood !== false && !result.ask && typos.length > 0) result = typoReply(result, typos, world, state);
+  // (A miss rewritten as “too dark” above was still a miss: it records nothing.)
+  if (!missed && result.understood !== false && !result.ask && typos.length > 0) result = typoReply(result, typos, world, state);
   if (result.understood === false || state.gameOver || result.free) return result;
   // No clock, but M-END still runs (Zork's main loop: the end routine for every verb, CLOCKER not for these).
   if (result.clockless) {
