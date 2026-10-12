@@ -43,6 +43,11 @@ describe('resolveEngine', () => {
     expect(r.source).toBe('bundled');
     expect(r.note).toMatch(/^couldn’t resolve the project’s @brass-lantern\/engine \(.+\); used the bundled engine$/);
   });
+  it('falls back, with a note, when the project’s engine is installed but its entry file is missing', async () => {
+    const r = await resolveEngine(project('export {};', { '.': './missing.js' }), bundled);
+    expect(r.source).toBe('bundled');
+    expect(r.note).toMatch(/^couldn’t resolve the project’s @brass-lantern\/engine \(.+missing\.js.*\); used the bundled engine$/);
+  });
   it('falls back, with a note, when it lacks createGame or auditWorld', async () => {
     const r = await resolveEngine(project("export const ENGINE_VERSION = '0.1.0';"), bundled);
     expect(r.source).toBe('bundled');

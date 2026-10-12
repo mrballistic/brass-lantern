@@ -11,7 +11,7 @@ Brass Lantern: a text-adventure engine with a CRT terminal, shipped as four npm 
 - `packages/server` (`@brass-lantern/server`): `parseIntent` and `intentRoute` (`src/lib.ts`, `src/express.ts`), which read no environment, plus the repo's own Express app (`src/index.ts`, `src/config.ts`), which does and is not published.
 - `packages/mcp` (`@brass-lantern/mcp`): a local stdio MCP server for coding agents (`audit_world`, `play`, `docs`). `src/server.ts` is `createServer`, `src/cli.ts` the `brass-lantern-mcp` binary; it loads world modules fresh (`src/load.ts`), prefers the world project's own engine (`src/engine.ts`) and serves a docs bundle built by `scripts/bundle-docs.ts` from the shared `scripts/llms.ts`.
 - `apps/site` (`brass-lantern-site`, private): the demo. `src/app.config.ts` lists the cartridges (native worlds and Zork I-III in `public/stories/`), `src/main.ts` calls `mountGame`, and consent and analytics live here, not in the library.
-- `docs/` (VitePress) stays at the repo root. Everything is version 2.0.0; in the repo the packages resolve to their sources through the `@brass-lantern/source` export condition, so tests and the site need no build.
+- `docs/` (VitePress) stays at the repo root. Every package, the site and the root share one version and release together (`.github/workflows/release.yml` enforces it: “The tag equals every package version”); in the repo the packages resolve to their sources through the `@brass-lantern/source` export condition, so tests and the site need no build.
 
 ## Invariants
 
