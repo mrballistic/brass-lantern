@@ -1,4 +1,4 @@
-import type { Game, World } from '@brass-lantern/engine';
+import type { World } from '@brass-lantern/engine';
 import type { ResolvedEngine } from './engine.ts';
 import type { LoadedWorld } from './load.ts';
 
@@ -42,16 +42,6 @@ function unread(resolved: ResolvedEngine, world: World, line: string): string[] 
   return splitCommands(line, world.verbs, andNames?.(world)).filter((piece) => !fallbackParse(piece, world.verbs));
 }
 
-/** The score SCORE reports: the `scoring` entries that hold, plus `vars.score` (null when the world never scores). */
-function scoreOf(resolved: ResolvedEngine, world: World, state: Game['state']): number | null {
-  const entries = world.scoring ?? [];
-  const base = state.vars?.score;
-  if (entries.length === 0) return base ?? null;
-  const { evaluateCondition } = resolved.engine;
-  const earned = (e: (typeof entries)[number]) => (e.flag ? Boolean(state.flags[e.flag]) : e.if && evaluateCondition ? evaluateCondition(e.if, state, world) : false);
-  return entries.reduce((sum, e) => sum + (earned(e) ? e.points : 0), base ?? 0);
-}
-
 export function playReport(loaded: LoadedWorld, resolved: ResolvedEngine, commands: string[], seed = 1): string {
   const world = loaded.world;
   const game = resolved.engine.createGame(world, { seed });
@@ -82,7 +72,7 @@ export function playReport(loaded: LoadedWorld, resolved: ResolvedEngine, comman
       .filter(([, place]) => place === 'player')
       .map(([id]) => world.items[id]?.name ?? id),
     flags: Object.keys(s.flags).filter((f) => s.flags[f]).sort(),
-    score: scoreOf(resolved, world, s),
+    score: resolved.engine.currentScore?.(world, s) ?? s.vars?.score ?? null,
     moves: s.moveCount,
     gameOver: s.gameOver,
   };

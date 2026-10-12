@@ -4,7 +4,7 @@ import type * as EngineModule from '@brass-lantern/engine';
 
 /** What the tools use of an engine. The parser helpers are optional: older engines may lack them. */
 export type Engine = Pick<typeof EngineModule, 'createGame' | 'auditWorld' | 'ENGINE_VERSION'> &
-  Partial<Pick<typeof EngineModule, 'fallbackParse' | 'splitCommands' | 'andNames' | 'evaluateCondition'>>;
+  Partial<Pick<typeof EngineModule, 'fallbackParse' | 'splitCommands' | 'andNames' | 'currentScore'>>;
 
 export interface ResolvedEngine {
   engine: Engine;
