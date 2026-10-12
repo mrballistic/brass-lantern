@@ -415,13 +415,18 @@ export function setResolveById(state: GameState, on: boolean): void {
   else byIdTurns.delete(state);
 }
 
+/** The candidates pickItem and pickThing rank items by: name and aliases kept apart, so an exact name stays exact. */
+function pickCandidates(ids: string[], world: World): Array<{ id: string; name: string; aliases?: string[] }> {
+  return ids.map((id) => ({ id, name: world.items[id]?.name ?? id, aliases: world.items[id]?.aliases }));
+}
+
 /**
  * Resolves what the player named among `ids`: the item, or null if nothing
  * matches. Several equally good matches raise a question (AskSignal), which
  * is safe because handlers resolve before they change anything.
  */
 export function pickItem(target: string, ids: string[], world: World, slot: 'target' | 'indirect' = 'target', state?: GameState): string | null {
-  const candidates = ids.map((id) => ({ id, name: world.items[id]?.name ?? id, aliases: world.items[id]?.aliases }));
+  const candidates = pickCandidates(ids, world);
   const ranked = rankCandidates(target, candidates, { byId: state ? byIdTurns.has(state) : false, typos: typosOn(world, state) });
   let found = [...new Set(ranked.ids)];
   if (found.length === 0) return null;
@@ -484,7 +489,7 @@ export function pickThing(
   opts: { slot?: 'target' | 'indirect'; prefer?: 'items' | 'people' } = {},
 ): Thing | null {
   const fuzzyOpts = { byId: byIdTurns.has(state), typos: typosOn(world, state) };
-  const items = rankCandidates(word, itemCandidates(itemIds, world), fuzzyOpts);
+  const items = rankCandidates(word, pickCandidates(itemIds, world), fuzzyOpts);
   const people = rankCandidates(word, npcCandidates(npcsSeen(world, state, state.currentRoom), world), fuzzyOpts);
   const order = compareRanked(people, items);
   const peopleWin = people.rank > 0 && (items.rank === 0 || order < 0 || (order === 0 && opts.prefer === 'people'));

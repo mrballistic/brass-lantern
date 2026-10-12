@@ -2,7 +2,7 @@ import type { GameState, ParsedAction } from '../types/game.ts';
 import type { Item, NPC, Room, Rule, World } from '../types/world.ts';
 import { evaluateCondition } from './conditions.ts';
 import { readsNumber } from './parser.ts';
-import { heldItems, inventoryOf, namesPlayer, namesThing, pickThing, PLAYER, reachableItems, restoreState, snapshotState, visibleItems } from './model.ts';
+import { heldItems, inventoryOf, matchNpc, namesPlayer, namesThing, pickItem, pickThing, PLAYER, reachableItems, restoreState, snapshotState, visibleItems, type Thing } from './model.ts';
 import { setCommand } from './scripts.ts';
 import { runEventKey, turnHalted } from './effects.ts';
 import { miss, ok, type EngineResult } from './result.ts';
@@ -113,6 +113,23 @@ function targetScope(verb: string, world: World, state: GameState): string[] {
   }
 }
 
+/** Verbs whose handlers rank a target's objects and people together (pickThing), with who wins a tie. */
+const TARGET_RANKED = new Map<string, 'items' | 'people'>([
+  ['examine', 'items'],
+  ['attack', 'people'],
+  ['follow', 'people'],
+]);
+
+/** Verbs that hand something to someone: their second object ranks people first (pickThing). */
+const INDIRECT_RANKED = new Set(['give', 'show']);
+
+/** An object if one matched, else a character the word names. */
+function itemThenNpc(item: string | null, word: string, world: World, state: GameState): Thing | null {
+  if (item) return { item };
+  const npc = matchNpc(word, world, state);
+  return npc ? { npc } : null;
+}
+
 /**
  * Runs a built-in verb with the world's rules around it: an applicable
  * `instead` rule replaces the default; `after` rules follow a default that
@@ -134,14 +151,21 @@ export function withRules(
   const typed = (word?: string) => readsNumber(action, word) && !namesThing(word!, world, state);
   // Resolve the target the way the verb's handler will, so the rules that fire
   // belong to the item the verb actually acts on.
-  // GIVE and SHOW hand something to someone: a person named there beats a thing named the same.
-  const preferPeople = verb === 'give' || verb === 'show';
-  const targetThing = typed(action.target) || me(action.target) || !action.target ? null : pickThing(action.target, targetScope(verb, world, state), world, state, { slot: 'target' });
+  // Each slot resolves as the verb's handler does: objects and people ranked together where the handler
+  // ranks them (pickThing), else an object first and a character only when no object matches.
+  const targetThing: Thing | null =
+    typed(action.target) || me(action.target) || !action.target
+      ? null
+      : TARGET_RANKED.has(verb)
+        ? pickThing(action.target, targetScope(verb, world, state), world, state, { slot: 'target', prefer: TARGET_RANKED.get(verb) })
+        : itemThenNpc(pickItem(action.target, targetScope(verb, world, state), world, 'target', state), action.target, world, state);
   const target = typed(action.target) ? 'number' : me(action.target) ? PLAYER : (targetThing?.item ?? null);
-  const indirectThing =
+  const indirectThing: Thing | null =
     typed(action.indirect) || me(action.indirect) || !action.indirect
       ? null
-      : pickThing(action.indirect, visibleItems(world, state), world, state, { slot: 'indirect', prefer: preferPeople ? 'people' : 'items' });
+      : INDIRECT_RANKED.has(verb)
+        ? pickThing(action.indirect, visibleItems(world, state), world, state, { slot: 'indirect', prefer: 'people' })
+        : itemThenNpc(pickItem(action.indirect, visibleItems(world, state), world, 'indirect', state), action.indirect, world, state);
   const indirect = typed(action.indirect) ? 'number' : me(action.indirect) ? PLAYER : (indirectThing?.item ?? null);
   // Words that aren't items may name characters, whose rules count too.
   const targetNpc = targetThing?.npc ?? null;

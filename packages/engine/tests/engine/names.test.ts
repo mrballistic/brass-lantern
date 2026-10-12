@@ -44,3 +44,43 @@ describe('objects and people, ranked together', () => {
     expect(execute({ action: 'examine', target: 'nieghbor', byId: true }, { world, state: s }).understood).toBe(false);
   });
 });
+
+describe('verbs that act on objects keep their rules', () => {
+  // The banner alone (no mug), so “neighbor” names one object here.
+  const ruled: World = {
+    ...world,
+    rooms: { ...world.rooms, yard: { ...world.rooms.yard, items: [...fixtureWorld.rooms.yard.items, 'neighbor_banner'] } },
+    items: {
+      ...world.items,
+      neighbor_banner: {
+        ...world.items.neighbor_banner,
+        portable: true,
+        instead: { take: [{ say: ['The banner rule.'] }], open: [{ say: ['The banner open rule.'] }] },
+      },
+    },
+  };
+  it('TAKE fires the object’s rule when a person outranks it', () => {
+    const s = stateWith(ruled, { room: 'yard' });
+    expect(execute({ action: 'take', target: 'neighbor' }, { world: ruled, state: s }).lines).toEqual(['The banner rule.']);
+    expect(s.locations.neighbor_banner).toBe('yard');
+  });
+  it('OPEN fires the object’s rule when a person outranks it', () => {
+    const s = stateWith(ruled, { room: 'yard' });
+    expect(execute({ action: 'open', target: 'neighbor' }, { world: ruled, state: s }).lines).toEqual(['The banner open rule.']);
+  });
+});
+
+describe('objects rank by their own name and aliases', () => {
+  const withNed = (aliases?: string[]): World => ({
+    ...world,
+    rooms: { ...world.rooms, yard: { ...world.rooms.yard, items: [...world.rooms.yard.items, 'ned_portrait'], npcs: [...(world.rooms.yard.npcs ?? []), 'flanders'] } },
+    items: { ...world.items, ned_portrait: { name: 'Ned', ...(aliases ? { aliases } : {}), description: 'A portrait of Ned.', portable: false, tags: [] } },
+    npcs: { ...world.npcs, flanders: { name: 'Ned Flanders', description: 'Hi-diddly-ho.' } },
+  });
+  it('an exact object name beats a person’s name word, with or without an alias', () => {
+    for (const w of [withNed(['portrait']), withNed()]) {
+      const s = stateWith(w, { room: 'yard' });
+      expect(execute({ action: 'follow', target: 'ned' }, { world: w, state: s }).lines).toEqual(['You can’t follow that.']);
+    }
+  });
+});
