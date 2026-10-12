@@ -1,4 +1,4 @@
-import { fuzzyCandidates, fuzzyMatch, fuzzyMatchExit, rankCandidates, RANK } from '../../src/engine/fuzzy';
+import { fuzzyCandidates, fuzzyMatch, fuzzyMatchExit, rankCandidates, RANK, editDistance, typoSimilarity } from '../../src/engine/fuzzy';
 
 describe('fuzzyMatch', () => {
   const candidates = [
@@ -224,5 +224,39 @@ describe('ranks', () => {
   });
   it('coarse folds ranks 2–4 into one tie (the 2.1 substring tier)', () => {
     expect(rankCandidates('banner', [{ id: 'flag', name: 'flag banner' }, { id: 'banner_pole', name: 'pole' }], { coarse: true }).ids).toEqual(['flag', 'banner_pole']);
+  });
+});
+
+describe('typos', () => {
+  const lumbergh = [{ id: 'lumbergh', name: 'Bill Lumbergh' }];
+  it('measures edits, swaps included', () => {
+    expect(editDistance('lunbergh', 'lumbergh')).toBe(1);
+    expect(editDistance('nieghbor', 'neighbor')).toBe(1);
+    expect(editDistance('ab', 'ba')).toBe(1);
+    expect(typoSimilarity('lunberg', 'lumbergh')).toBeCloseTo(6 / 7);
+  });
+  it('a close misspelling of 5+ letters is rank 6, with the word as typed', () => {
+    expect(rankCandidates('Lunbergh', lumbergh, { typos: true })).toEqual({ rank: RANK.typo, ids: ['lumbergh'], typed: 'Lunbergh' });
+    expect(rankCandidates('lunberg', lumbergh, { typos: true }).ids).toEqual(['lumbergh']);
+    expect(rankCandidates('bnner', [{ id: 'banner', name: 'banner' }], { typos: true }).ids).toEqual(['banner']);
+  });
+  it('only when asked', () => {
+    expect(rankCandidates('lunbergh', lumbergh)).toEqual({ rank: 0, ids: [] });
+    expect(rankCandidates('lunbergh', lumbergh, { typos: true, byId: true })).toEqual({ rank: 0, ids: [] });
+  });
+  it('leaves short words and far-off words alone', () => {
+    expect(rankCandidates('shrt', [{ id: 'shirt', name: 'shirt' }], { typos: true }).rank).toBe(0);
+    expect(rankCandidates('banar', [{ id: 'banner', name: 'banner' }], { typos: true }).rank).toBe(0);
+  });
+  it('every word must still match: a misspelling can’t carry a word that names nothing', () => {
+    const keys = [{ id: 'rusty_key', name: 'rusty key' }, { id: 'brass_key', name: 'brass key' }];
+    expect(rankCandidates('rustty key', keys, { typos: true })).toMatchObject({ rank: RANK.typo, ids: ['rusty_key'] });
+    expect(rankCandidates('brasss lamp', keys, { typos: true }).rank).toBe(0);
+  });
+  it('equally close misspellings tie', () => {
+    expect(rankCandidates('xatter', [{ id: 'hatter', name: 'hatter' }, { id: 'batter', name: 'batter' }], { typos: true }).ids).toEqual(['hatter', 'batter']);
+  });
+  it('an earlier rank always wins over a typo', () => {
+    expect(rankCandidates('bil lumberg', lumbergh, { typos: true }).rank).toBe(RANK.wordStart);
   });
 });

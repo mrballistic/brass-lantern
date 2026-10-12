@@ -62,6 +62,60 @@ const NONE: Ranked = { rank: 0, ids: [] };
 const containsRun = (hay: string[], run: string[]): boolean =>
   run.length > 0 && hay.some((_, i) => run.every((t, j) => hay[i + j] === t));
 
+/** A close misspelling: this alike or more (1 − edits ÷ the longer length). */
+export const TYPO_SIMILARITY = 0.8;
+/** Shorter typed words never count as misspellings: “bat” must not become “cat”. */
+export const TYPO_MIN_LENGTH = 5;
+
+/** Optimal string alignment distance: substitutions, insertions, deletions and adjacent swaps. */
+export function editDistance(a: string, b: string): number {
+  const d: number[][] = Array.from({ length: a.length + 1 }, (_, i) => Array.from({ length: b.length + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0)));
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost);
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+    }
+  }
+  return d[a.length][b.length];
+}
+
+/** How alike a typed word is to a word, or to that word's start cut to the typed length (“lunberg” → “lumberg”): 0 to 1. */
+export function typoSimilarity(typed: string, word: string): number {
+  const sim = (a: string, b: string) => 1 - editDistance(a, b) / Math.max(a.length, b.length);
+  return Math.max(sim(typed, word), word.length > typed.length ? sim(typed, word.slice(0, typed.length)) : 0);
+}
+
+/** Rank 6: each typed word of 3+ letters matches a candidate word exactly, by its start, or (5+ letters) as a close misspelling. */
+function typoRank(input: string, needleTokens: string[], candidates: Candidate[], words: (c: Candidate) => string[]): Ranked {
+  const checked = needleTokens.filter((t) => t.length >= 3 && !FUNCTION_WORDS.has(t));
+  let best = 0;
+  let ids: string[] = [];
+  let typo: string | undefined;
+  for (const c of candidates) {
+    const hay = [...tokens(c.id), ...words(c).flatMap(tokens)];
+    let score = 0;
+    let first: string | undefined;
+    let fits = true;
+    for (const t of checked) {
+      if (tokenPrefixScore([t], hay) > 0) continue;
+      const sim = t.length < TYPO_MIN_LENGTH ? 0 : Math.max(0, ...hay.map((h) => typoSimilarity(t, h)));
+      if (sim < TYPO_SIMILARITY) {
+        fits = false;
+        break;
+      }
+      score += sim;
+      first ??= t;
+    }
+    if (!fits || !first) continue;
+    if (score > best) [best, ids, typo] = [score, [c.id], first];
+    else if (score === best) ids.push(c.id);
+  }
+  if (ids.length === 0 || !typo) return NONE;
+  const typed = input.trim().split(/\s+/).find((w) => normalize(w) === typo) ?? typo;
+  return { rank: RANK.typo, ids, typed };
+}
+
 /**
  * Ranks `candidates` against what the player typed (see RANK): exact name, alias or ID; a whole word of a
  * name or alias; a whole word of the ID or part of a name; part of the ID; word starts (every typed word of
@@ -114,7 +168,8 @@ export function rankCandidates(
     else if (score === best && score > 0) ids.push(c.id);
   }
   if (ids.length > 0) return { rank: RANK.wordStart, ids };
-  return NONE;
+  if (!opts.typos || opts.byId) return NONE;
+  return typoRank(input, needleTokens, candidates, words);
 }
 
 /**
