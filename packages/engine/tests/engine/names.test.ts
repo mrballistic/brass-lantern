@@ -257,3 +257,26 @@ describe('answering “both”', () => {
     expect(game.state.locations.rusty_key).toBe('player');
   });
 });
+
+describe('BURN and THROW … AT rank people with objects', () => {
+  const fiery: World = { ...world, items: { ...world.items, torch: { name: 'torch', description: 'A torch.', portable: true, tags: [], flaming: true } } };
+  it('THROW X AT a person among things named after them: the person', () => {
+    const s = stateWith(fiery, { room: 'yard', carrying: ['wallet'] });
+    const r = execute({ action: 'throw', target: 'wallet', indirect: 'neighbor' }, { world: fiery, state: s });
+    expect(r.ask).toBeUndefined();
+    expect(r.lines).toEqual(['The wallet isn’t something you can throw at them.']);
+    expect(s.locations.wallet).toBe('player');
+  });
+  it('BURN a person among things named after them: the refusal, in both styles', () => {
+    for (const w of [fiery, { ...fiery, style: 'infocom' as const }]) {
+      const s = stateWith(w, { room: 'yard', carrying: ['torch'] });
+      const r = execute({ action: 'burn', target: 'neighbor', indirect: 'torch' }, { world: w, state: s });
+      expect(r.ask).toBeUndefined();
+      expect(r.lines).toEqual(['You can’t burn a Neighbor.']);
+    }
+  });
+  it('BURN still prefers an object on a tie', () => {
+    const s = stateWith(fiery, { room: 'yard', carrying: ['torch'] });
+    expect(execute({ action: 'burn', target: 'banner', indirect: 'torch' }, { world: fiery, state: s }).lines).toEqual(['You can’t burn a banner.']);
+  });
+});

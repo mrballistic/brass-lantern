@@ -2,7 +2,7 @@ import type { GameState, ParsedAction } from '../../types/game.ts';
 import type { World } from '../../types/world.ts';
 import { withArticle } from '../describe.ts';
 import { runSteps } from '../effects.ts';
-import { isCarried, isOn, matchNpc, moveItem, namesThing, needObject, pickItem, reachableItems, visibleItems } from '../model.ts';
+import { isCarried, isOn, matchNpc, moveItem, namesThing, needObject, pickItem, pickThing, reachableItems, visibleItems } from '../model.ts';
 import { miss, ok, zorkDefault, type EngineResult } from '../result.ts';
 import { notHeld } from './objects.ts';
 import { readsNumber } from '../parser.ts';
@@ -30,9 +30,11 @@ export function handleNoEffect(action: ParsedAction, world: World, state: GameSt
 export function handleBurn(action: ParsedAction, world: World, state: GameState): EngineResult {
   if (!action.target) needObject();
   const infocom = world.style === 'infocom';
-  const id = pickItem(action.target, visibleItems(world, state), world, 'target', state);
-  // A character isn't a thing, but in Zork's order it still gets V-BURN's refusal.
-  const person = !id && infocom ? matchNpc(action.target, world, state) : null;
+  // Objects and people ranked together, objects first on a tie. A character isn't a thing, but in Zork's
+  // order it still gets V-BURN's refusal (in every style).
+  const found = pickThing(action.target, visibleItems(world, state), world, state);
+  const id = found?.item ?? null;
+  const person = found?.npc ?? null;
   if (!id && !person) return miss(`You don’t see a “${action.target}” here.`);
   if (!action.indirect) needObject('indirect');
   // Zork's syntax wants the flame held: in sight but not held is “You don't have the torch.”

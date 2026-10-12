@@ -118,10 +118,11 @@ const TARGET_RANKED = new Map<string, 'items' | 'people'>([
   ['examine', 'items'],
   ['attack', 'people'],
   ['follow', 'people'],
+  ['burn', 'items'],
 ]);
 
-/** Verbs that hand something to someone: their second object ranks people first (pickThing). */
-const INDIRECT_RANKED = new Set(['give', 'show']);
+/** Verbs that hand something to someone (or aim it at them): their second object ranks people first (pickThing). */
+const INDIRECT_RANKED = new Set(['give', 'show', 'throw']);
 
 /** An object if one matched, else a character the word names. */
 function itemThenNpc(item: string | null, word: string, world: World, state: GameState): Thing | null {
