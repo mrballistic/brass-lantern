@@ -151,8 +151,13 @@ export function handleSmash(
   const reach = reachableItems(world, state);
   // Objects and people ranked together, people first on a tie (ATTACK without combat comes here).
   const found = target ? pickThing(target, reach, world, state, { prefer: 'people' }) : null;
-  // A person with no rule for it (withRules ran theirs): an understood refusal, nothing changes.
-  if (found?.npc) return ok([world.smashRefusal ?? 'Violence isn’t the answer to this one.']);
+  // A person with no rule for it (withRules ran theirs). Without combat, an understood refusal (Office
+  // Space's ATTACK comes here); with combat, a miss as before 2.2.0 (Zork's BREAK THIEF), so the intent
+  // server can read it as an attack. Nothing changes either way.
+  if (found?.npc) {
+    if (world.combat) return miss(`You don’t see a “${target}” worth smashing.`);
+    return ok([world.smashRefusal ?? 'Violence isn’t the answer to this one.']);
+  }
   const itemId = found?.item ?? null;
   const item = itemId ? world.items[itemId] : null;
 
