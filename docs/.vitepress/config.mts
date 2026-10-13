@@ -79,7 +79,7 @@ export default defineConfig({
     search: { provider: 'local' },
     footer: {
       // A quiet nod to where the name comes from.
-      message: `Brass Lantern v${pkg.version} · Released under the MIT License. · <a href="https://www.ifwiki.org/Brass_lantern">Why a brass lantern?</a>`,
+      message: `Brass Lantern v${pkg.version} · Released under the MIT License. · <a href="https://www.ifwiki.org/Brass_lantern">Why a brass lantern?</a> · <a href="https://buymeacoffee.com/mrballistic">Buy me a coffee</a>`,
       copyright: 'Copyright © 2026 Todd Greco',
     },
   },
