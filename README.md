@@ -126,3 +126,5 @@ Vue 3, TypeScript, Pinia and Vite in the browser; ifvms and glkapi.js for story 
 [MIT](./LICENSE). Brass Lantern isn’t affiliated with any historical text-adventure publisher, though it owes them everything.
 
 The Zork story files, ifvms and glkapi.js are included under their own MIT licenses; see [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md).
+
+[![BuyMeACoffee](https://raw.githubusercontent.com/pachadotdev/buymeacoffee-badges/main/bmc-yellow.svg)](https://buymeacoffee.com/mrballistic)
