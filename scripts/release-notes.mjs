@@ -19,8 +19,9 @@ if (!semver.valid(version)) {
 
 // A section runs from its `## <version>` heading to the next `## ` heading.
 const lines = readFileSync(join(ROOT, 'CHANGELOG.md'), 'utf8').split('\n');
-const heading = new RegExp(`^## ${version.replaceAll('.', '\\.')}(\\s|$)`);
-const start = lines.findIndex((line) => heading.test(line));
+// Compared as text, not a RegExp: a version can hold `+` (build metadata).
+const heading = `## ${version}`;
+const start = lines.findIndex((line) => line === heading || line.startsWith(`${heading} `));
 if (start === -1) {
   console.error(`release-notes: CHANGELOG.md has no “## ${version}” section.`);
   process.exit(1);
