@@ -6,7 +6,7 @@
 # Held on purpose:
 # - TypeScript on 6.x: the toolchain (vue-tsc, typescript-eslint) hasn't
 #   caught up with 7. Lift the ignore when it has.
-# - @types/node on the major we run (Node 24 LTS, locally and on the server).
+# - @types/node on the major we run (Node 26 LTS, locally and on the server).
 #   Bump it together with a runtime upgrade.
 version: 2
 updates:

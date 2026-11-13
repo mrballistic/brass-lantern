@@ -1,6 +1,6 @@
 {
   "name": "brass-lantern-site",
-  "version": "2.3.1",
+  "version": "2.3.2",
   "author": "Todd Greco <mrballistic@gmail.com>",
   "private": true,
   "description": "The Brass Lantern demo site: Snack Attack, Zork I and the Zork story files, on the library packages.",
@@ -17,10 +17,10 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@brass-lantern/engine": "2.3.1",
-    "@brass-lantern/vue": "2.3.1",
-    "pinia": "^4.0.3",
-    "vue": "^3.5.43"
+    "@brass-lantern/engine": "2.3.2",
+    "@brass-lantern/vue": "2.3.2",
+    "pinia": "^4.1.0",
+    "vue": "^3.5.45"
   },
   "engines": {
     "node": ">=24"

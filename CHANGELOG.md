@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.3.2 (2026-11-13)
+
+- **Security updates; no API or behavior changes.** `@brass-lantern/mcp` now requires `@modelcontextprotocol/sdk` 1.32.2 or later, and the lockfile resolves the SDK’s own dependencies past their advisories: `hono` 4.13.18, `@hono/node-server` 2.1.8, `body-parser` 2.4.0, `fast-uri` 3.1.9 and `qs` 6.17.1. These come in through the SDK’s own ranges, so a fresh install of 2.3.1 picks them up too; if your lockfile pins older ones, run `npm update` in your project.
+- The repo builds and tests on Node 26, now the active LTS. The packages still support Node 24 and later, and the consumer smoke test runs on 24 to keep that true.
+- Development tooling updated: Vite 8.3.8, Vitest 5.1, happy-dom 21, ESLint 10.14, typescript-eslint 8.72, vue-tsc 3.3.14, VitePress 2.0.0-alpha.21, Vue 3.5.45, Pinia 4.1, Express 5.3 and `@types/node` 26. TypeScript stays on 6.0: typescript-eslint doesn’t accept 7 yet. `minimatch` and `glob` are overridden to 11 and 14 until ESLint and typescript-eslint move off the vulnerable 10.x.
+- `@brass-lantern/engine`, `/vue` and `/server`: no changes beyond the version.
+
 ## 2.3.1 (2026-10-12)
 
 - **`audit_world` and `play` run in a worker thread with a time limit** (10 s by default, `--timeout <seconds>` to change it). A world that loops forever now returns an error instead of hanging the server, and one that crashes or calls `process.exit()` ends only its own call; a stray late throw or unhandled rejection from a world now fails that call (“The world crashed: …”), where 2.3.0 logged it and answered. This supersedes the 2.3.0 note that there was no per-call timeout.
