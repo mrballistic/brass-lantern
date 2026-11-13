@@ -7,7 +7,13 @@
 # repository, the workflow file release.yml and the "npm-publish" environment;
 # that environment has a required reviewer in the repo settings. Releases may
 # also wait for approval on npmjs.com if staged publishing is on.
-# Then: bump versions, merge to main, `git tag vX.Y.Z && git push --tags`.
+# Then: bump versions, add a `## X.Y.Z` section to CHANGELOG.md, merge to
+# main, `git tag vX.Y.Z && git push --tags`.
+#
+# After the packages are out, a second job creates the GitHub Release for the
+# tag, its notes taken from that CHANGELOG section (scripts/release-notes.mjs).
+# A release that already exists is left alone, so hand-edited notes survive a
+# re-run.
 #
 # Re-runnable: a package whose version is already on npm is skipped, so after
 # a partial publish (say the engine went out and vue failed) re-running the
@@ -19,7 +25,8 @@ on:
     tags: ["v*"]
 
 # id-token is how trusted publishing proves this workflow to npm (and signs
-# each package's provenance statement).
+# each package's provenance statement). Only the github-release job can write
+# to the repo.
 permissions:
   id-token: write
   contents: read
@@ -84,6 +91,10 @@ jobs:
       # range has to accept the engine this release publishes.
       - name: Internal dependency ranges accept the tag
         run: node scripts/release-check.mjs "${TAG#v}"
+      # Checked here, before anything is published, so a release can't reach
+      # npm and then fail for want of notes.
+      - name: The CHANGELOG has notes for the tag
+        run: node scripts/release-notes.mjs "${TAG#v}"
       - run: npm run lint
       - run: npm run type-check
       - name: Test (with coverage thresholds)
@@ -109,3 +120,39 @@ jobs:
             echo "Publishing $name@$version"
             npm publish -w "$name" --provenance --access public
           done
+
+  github-release:
+    name: GitHub Release
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+          cache: npm
+
+      # The notes script needs semver from the lockfile.
+      - run: npm ci --ignore-scripts
+
+      - name: Create the release
+        run: |
+          version="${TAG#v}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "The $TAG release already exists; leaving its notes alone."
+            exit 0
+          fi
+          node scripts/release-notes.mjs "$version" > "$RUNNER_TEMP/notes.md"
+          prerelease=()
+          case "$version" in *-*) prerelease=(--prerelease) ;; esac
+          gh release create "$TAG" --verify-tag --title "Brass Lantern $version" \
+            --notes-file "$RUNNER_TEMP/notes.md" "${prerelease[@]}"
