@@ -119,7 +119,7 @@ They live in `docs/`; `npm run docs:dev` serves them locally.
 
 ## Stack
 
-Vue 3, TypeScript, Pinia and Vite in the browser; ifvms and glkapi.js for story files; Node 24 and Express for the optional intent server; Vitest throughout. Saves stay in the browser’s localStorage, and analytics run only if you configure them, and then only with the player’s consent. See [CONTRIBUTING.md](./CONTRIBUTING.md) to help, and [SECURITY.md](./SECURITY.md) to report a problem.
+Vue 3, TypeScript, Pinia and Vite in the browser; ifvms and glkapi.js for story files; Node 24 or later and Express for the optional intent server; Vitest throughout. Saves stay in the browser’s localStorage, and analytics run only if you configure them, and then only with the player’s consent. See [CONTRIBUTING.md](./CONTRIBUTING.md) to help, and [SECURITY.md](./SECURITY.md) to report a problem.
 
 ## License
 
